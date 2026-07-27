@@ -1,4 +1,4 @@
-import { programs, allCourses } from '../lib/store.js'
+import { programs, allCourses, parsedRequirements } from '../lib/store.js'
 import { route, goToCourse, goHome } from '../lib/router.js'
 
 const { computed } = Vue
@@ -9,7 +9,10 @@ export default {
     const currentProgram = computed(() => {
       return programs.value.find(p => p.id === route.value.params.id) || null
     })
-    return { currentProgram, allCourses, goToCourse, goHome }
+    const currentParsed = computed(() => {
+      return parsedRequirements.value[route.value.params.id] || null
+    })
+    return { currentProgram, currentParsed, allCourses, goToCourse, goHome }
   },
   template: `
     <div v-if="currentProgram">
@@ -30,9 +33,24 @@ export default {
         {{ currentProgram.description }}
       </p>
 
-      <div v-if="Object.keys(currentProgram.requirements).length">
+      <div v-if="currentParsed && currentParsed.length">
         <div class="section-title">Requirements</div>
+        <div
+          class="req-block"
+          v-for="(req, ri) in currentParsed"
+          :key="ri"
+        >
+          <h4>{{ req.label }}</h4>
+          <RequirementSection
+            v-for="(section, si) in req.sections"
+            :key="si"
+            :section="section"
+          />
+        </div>
+      </div>
 
+      <div v-else-if="Object.keys(currentProgram.requirements).length">
+        <div class="section-title">Requirements</div>
         <div
           class="req-block"
           v-for="(req, key) in currentProgram.requirements"

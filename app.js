@@ -4,6 +4,7 @@ import { initRouter, route } from './lib/router.js'
 import ProgramList from './components/ProgramList.js'
 import ProgramDetail from './components/ProgramDetail.js'
 import CourseDetail from './components/CourseDetail.js'
+import RequirementSection from './components/RequirementSection.js'
 
 const app = Vue.createApp({
   setup() {
@@ -24,4 +25,5 @@ const app = Vue.createApp({
 app.component('ProgramList', ProgramList)
 app.component('ProgramDetail', ProgramDetail)
 app.component('CourseDetail', CourseDetail)
+app.component('RequirementSection', RequirementSection)
 app.mount('#app')
