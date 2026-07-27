@@ -15,6 +15,9 @@ def fetch_all_courses():
     r.raise_for_status()
     return r.json()['courses']['courses']
 
+def normalize_code(code):
+    return re.sub(r'\s+', ' ', code).strip().upper()
+
 def fetch_program_courses(prefix):
     r = requests.post(BASE_URL, data={'action': 'get_program_courses_file', 'program_course': prefix})
     r.raise_for_status()
@@ -28,7 +31,7 @@ def fetch_program_courses(prefix):
         code_el = p.select_one('span.course_code')
         name_el = p.select_one('span.course_name')
         desc_el = p.select_one('span.course_description')
-        code = code_el.get_text(strip=True) if code_el else ''
+        code = normalize_code(code_el.get_text(strip=True)) if code_el else ''
         name = name_el.get_text(strip=True) if name_el else ''
         desc = desc_el.get_text(strip=True) if desc_el else ''
         if desc.startswith('- '):
@@ -53,38 +56,35 @@ def parse_prerequisites(description):
     return prereqs
 
 def parse_requirement_block(strong_tag):
-    text = strong_tag.parent.get_text(' ', strip=True)
-    match = re.match(r'^(.*?):\s*(.*)', text, re.DOTALL)
-    label = match.group(1).strip() if match else strong_tag.get_text(strip=True).rstrip(':')
-    body = match.group(2).strip() if match else text.replace(label, '', 1).strip().lstrip(':').strip()
+    label = strong_tag.get_text(strip=True).rstrip(':').strip()
+    full_text = strong_tag.parent.get_text(' ', strip=True)
+    strong_text = strong_tag.get_text(strip=True)
+    if full_text.startswith(strong_text):
+        body = full_text[len(strong_text):].strip().lstrip(':').strip()
+    else:
+        body = full_text
     return label, body
 
-def extract_course_numbers(text, program_prefix):
-    text_clean = re.sub(r'\s+', ' ', text)
-    found = set()
-    for m in re.finditer(r'([A-Z]{2,4})\s*(\d{3})', text_clean):
-        found.add(f"{m.group(1)} {m.group(2)}")
-    for m in re.finditer(r'(?<![A-Z])(\d{3})(?![A-Z])', text_clean):
-        if program_prefix:
-            candidate = f"{program_prefix} {m.group(1)}"
-            if candidate not in found:
-                found.add(candidate)
-    return sorted(found)
+def normalize_prefixes_in_text(text, known_prefixes):
+    sorted_prefixes = sorted(known_prefixes, key=len, reverse=True)
+    for prefix in sorted_prefixes:
+        text = re.sub(
+            rf'\b{re.escape(prefix)}\s*(\d)',
+            lambda m, p=prefix: f'{p.upper()} {m.group(1)}',
+            text,
+            flags=re.IGNORECASE
+        )
+        text = re.sub(
+            rf'\b{re.escape(prefix)}\s+',
+            lambda m, p=prefix: f'{p.upper()} ',
+            text,
+            flags=re.IGNORECASE
+        )
+    return text
 
-def extract_total_courses(text):
-    m = re.search(r'Total of\s+([\d.]+)\s+(major|minor)', text, re.IGNORECASE)
-    if m:
-        return float(m.group(1))
-    return None
-
-def extract_culminating_experience(text):
-    m = re.search(r'([A-Z]*\s?\d{3,4}(?:\s+or\s+[A-Z]*\s?\d{3,4})?\s*\(culminating experience\))', text)
-    if m:
-        return m.group(1).strip()
-    return None
-
-def build_program_requirements(content, program_prefix):
+def build_program_requirements(content, program_prefix, known_prefixes=None):
     requirements = {}
+    key_counts = {}
     strong_tags = content.find_all('strong')
     for st in strong_tags:
         txt = st.get_text(strip=True)
@@ -94,30 +94,27 @@ def build_program_requirements(content, program_prefix):
             continue
         if any(kw in txt for kw in ('Major', 'Minor', 'Bachelor', 'Elementary', 'Secondary', 'Sports', 'German', 'German Studies')):
             label, body = parse_requirement_block(st)
+            if known_prefixes:
+                body = normalize_prefixes_in_text(body, known_prefixes)
             key = label.lower().replace(' ', '_').replace('–', '-').replace('—', '-')
             key = re.sub(r'[^a-z0-9_]', '', key)
             if not key:
                 key = 'requirement'
-            entry = {
+            if key in key_counts:
+                key_counts[key] += 1
+                key = f'{key}_{key_counts[key]}'
+            else:
+                key_counts[key] = 1
+            requirements[key] = {
                 'label': label,
                 'text': body,
             }
-            total = extract_total_courses(body)
-            if total is not None:
-                entry['total_courses'] = total
-            ce = extract_culminating_experience(body)
-            if ce:
-                entry['culminating_experience'] = ce
-            courses = extract_course_numbers(body, program_prefix)
-            if courses:
-                entry['course_numbers'] = courses
-            requirements[key] = entry
     return requirements
 
 def build_course_map(all_courses):
     course_map = {}
     for c in all_courses:
-        code = c['course_code']
+        code = normalize_code(c['course_code'])
         desc = c.get('course_description', '') or ''
         course_map[code] = {
             'course_code': code,
@@ -158,9 +155,9 @@ def main():
     programs_data = []
 
     for p in program_divs:
-        pid = p.get('id', '')
         header_a = p.select_one('.program_header a')
         name = header_a.get_text(strip=True) if header_a else ''
+        pid = re.sub(r'[^a-zA-Z0-9]', '', name.strip().replace(' ', '')).lower()
         content = p.select_one('.program_content')
         if not content:
             continue
@@ -198,7 +195,7 @@ def main():
         prefix_div = p.select_one('div.program_courses')
         prefix = prefix_div.get('id', '') if prefix_div else ''
 
-        requirements = build_program_requirements(content, prefix)
+        requirements = build_program_requirements(content, prefix, known_prefixes=known_prefixes)
 
         program_courses = []
         if prefix:
