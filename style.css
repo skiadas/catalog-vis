@@ -489,6 +489,34 @@ body {
   letter-spacing: 0.05em;
 }
 
+.anyof-items-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.anyof-subitem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.anyof-subitem + .anyof-subitem {
+  border-top: 1px dashed var(--border);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.pair-plus {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0 2px;
+}
+
 .item-note {
   display: inline-flex;
   align-items: center;

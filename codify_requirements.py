@@ -32,14 +32,20 @@ Requirement text:
 Rules:
 - Semicolons separate individual requirement items.
 - Bare numbers (e.g. "161") mean the program's prefix is prepended (e.g. "BIO 161").
-- "or" introduces alternatives => use type "any_of" with a codes array.
-- "and" joining course codes => use type "any_of" with note "must be taken together".
+- "or" introduces alternatives => use type "any_of".
+- "and" between course codes that must be taken together => use type "pair"
+  (e.g. "CHE 341 and 342" => pair).
+- "either X and Y, or Z and W" => any_of with two pair items.
+- "one pair from the following" => any_of with items array, each item a pair.
+- "No more than" / "at most" => level constraint with comparison "at_most".
 - Level phrases ("at the 300 level", "two of which must be at the 300 level",
   "200-level or above", "at or above the X level") => add level constraints.
 - Exclusion phrases ("not include", "not to include", "excluding", "other than",
   "but not include") => add exclude constraint.
 - Count words (five, three, etc.) before "others/additional/electives" =>
   use type "electives" with count.
+- When a constraint note mentions specific course codes, ALWAYS extract them
+  into a "codes" array; keep the note for context.
 - "Culminating experience" in parentheses => note field on that course.
 - "or equivalent" after a course => note "or equivalent".
 - Section headings ("Biology courses", "Cognate courses", etc.) => split into

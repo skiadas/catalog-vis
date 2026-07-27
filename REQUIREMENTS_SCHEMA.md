@@ -77,8 +77,37 @@ The heading is the group name (e.g. "Biology courses", "Cognate courses", "Core"
 
 | Field   | Description |
 |---------|-------------|
-| `codes` | Array of course code strings |
+| `codes` | Array of course code strings (use when alternatives are single courses) |
+| `items` | Array of nested item objects (use when alternatives are groups like `pair`) |
+| `note`  | Optional note — becomes the group label when `items` is present |
+
+Simple case — flat list of alternative codes:
+```json
+{"type": "any_of", "codes": ["BIO 336", "BIO 314"]}
+```
+
+Nested case — alternatives that are themselves structured items (pairs, etc.):
+```json
+{"type": "any_of", "items": [
+  {"type": "pair", "codes": ["CHE 341", "CHE 342"]},
+  {"type": "pair", "codes": ["KIP 215", "KIP 230"]}
+], "note": "choose one pair"}
+```
+
+One of `codes` or `items` must be present, never both.
+
+#### `pair` — Courses that must be taken together
+
+```json
+{"type": "pair", "codes": ["CHE 341", "CHE 342"], "note": "must be taken together"}
+```
+
+| Field   | Description |
+|---------|-------------|
+| `codes` | Array of 2+ course code strings — all required |
 | `note`  | Optional note |
+
+Renders as: `[CHE 341] + [CHE 342]` with the note as a contextual label.
 
 #### `electives` — A count of courses from a pool with constraints
 
@@ -102,9 +131,10 @@ The heading is the group name (e.g. "Biology courses", "Cognate courses", "Core"
 **Constraint types**:
 - `{"type": "level", "level": 300, "min": 2}` — at least N courses at that level
 - `{"type": "level", "level": 200, "min": null, "comparison": "or_above"}` — at the 200 level or above
+- `{"type": "level", "level": 100, "comparison": "at_most", "min": 1}` — at most N courses at that level
 - `{"type": "exclude", "codes": ["BIO 301"]}` — courses that cannot count
 - `{"type": "from", "codes": ["BIO 223", "BIO 235"]}` — explicit pool of eligible courses
-- `{"type": "from", "note": "any course at or above the 300 level"}` — descriptive pool
+- `{"type": "from", "codes": ["BIO 223", "BIO 235"], "note": "geographical area courses"}` — pool with context. *When codes appear in the source text, always extract them into a `codes` array and keep the note for context.*
 
 #### `level_gate` — A standalone level requirement
 
@@ -176,7 +206,46 @@ Prepend the program's `course_prefix` to bare numbers.
 ### 9. Pairs and groups
 
 > `one pair from the following: CHE 341 and 342 / CS 220 and either 223 or 229 / ...`
-> Each sub-group is an `any_of` of courses within that pair.
+> Use `any_of` with `items`, where each sub-item is a `pair`. Each `pair` contains the courses that must be taken together within that option.
+
+```json
+{"type": "any_of", "items": [
+  {"type": "pair", "codes": ["CHE 341", "CHE 342"]},
+  {"type": "pair", "codes": ["CS 220", "CS 223"], "note": "or CS 229"}
+], "note": "choose one pair"}
+```
+
+> `Either KIP 162 and 186, or KIP 215 and 230` → same pattern, two pair alternatives
+> `Either PHY 408 and PHY 409, or PHY 471` → `any_of` with one `pair` and one `course`
+> `PHY 408 and 409` → `pair` with codes `["PHY 408", "PHY 409"]`
+> `CHE 341 and 342` → `pair` with codes `["CHE 341", "CHE 342"]`
+
+### 10. "at most / no more than" — upper bounds
+
+> `No more than one 100-level course may count toward the major`
+> → `level` constraint with `comparison: "at_most"` (or a `level_gate`)
+
+```json
+{"type": "level", "level": 100, "comparison": "at_most", "min": 1}
+```
+
+As a standalone item:
+
+```json
+{"type": "level_gate", "level": 100, "comparison": "at_most", "count": 1, "note": "no more than one 100-level course"}
+```
+
+### 11. "at least X in language Y" — distribution rules
+
+> `A minimum of 7 courses must be in German. 1 course may be taken in English from: GER 222, GER 243, ...`
+> The English-allowable courses should be extracted as a `from` constraint inside the main `electives`. The minimum-in-language rule should be a separate `from` note constraint.
+
+```json
+{"type": "electives", "count": 8, "constraints": [
+  {"type": "from", "codes": ["GER 222", "GER 243", ...], "note": "may be taken in English"},
+  {"type": "from", "note": "at least 7 courses must be in German"}
+]}
+```
 
 ### 10. Percent and unit notations
 
@@ -201,11 +270,17 @@ Rules:
 - Bare numbers (e.g. "161") get the program's course_prefix prepended (e.g. "BIO 161")
 - Semicolons separate individual requirement items
 - "or" introduces alternatives → use type "any_of"
-- "and" joins courses that must be taken together
-- Level phrases ("at the 300 level", "200-level or above") become "level" constraints
-- Exclusion phrases ("not include", "not to include", "excluding", "other than") become "exclude" constraints
-- Count words ("five others", "two additional") become elective counts
-- "Culminating experience" in parens after a course → note field
+- "and" between course codes that must be taken together → use type "pair" (e.g. "CHE 341 and 342")
+- "either X and Y, or Z and W" → `any_of` with two `pair` items
+- "one pair from the following" → `any_of` with `items` (each item is a `pair`)
+- Level phrases ("at the 300 level", "two of which must be at the 300 level", "200-level or above", "at or above the X level") → "level" constraints
+- "No more than" / "at most" / upper bound phrases → "level" constraint with comparison "at_most"
+- Exclusion phrases ("not include", "not to include", "excluding", "other than", "but not include") → "exclude" constraint
+- Count words ("five others", "three additional") → type "electives" with count
+- When a constraint note mentions specific course codes, ALWAYS extract them into a "codes" array on that constraint; keep the note for context
+- Section headings in the raw text ("Biology courses:", "Cognate courses:") → split into separate sections
+- "Culminating experience" in parens → note field on that course
+- "or equivalent" after a course → note "or equivalent"
 - Only reference course codes actually mentioned in the text (including bare numbers with prefix prepended)
 - Do NOT hallucinate courses
 - If something cannot be codified, use {"type": "custom", "text": "..."}

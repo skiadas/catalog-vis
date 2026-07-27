@@ -39,7 +39,21 @@
                   "constraints": [
                     {
                       "type": "from",
-                      "note": "any ANTH course not already required; at least two must be geographical area courses (ANTH 223, 233, 238, 242, 243) and at least two must be comparative topics courses (ANTH 259, 311, 316, 332, 333, 334, 336)"
+                      "codes": [
+                        "ANTH 223",
+                        "ANTH 233",
+                        "ANTH 238",
+                        "ANTH 242",
+                        "ANTH 243",
+                        "ANTH 259",
+                        "ANTH 311",
+                        "ANTH 316",
+                        "ANTH 332",
+                        "ANTH 333",
+                        "ANTH 334",
+                        "ANTH 336"
+                      ],
+                      "note": "any ANTH course not already required; at least two must be geographical area courses (223, 233, 238, 242, 243) and at least two must be comparative topics courses (259, 311, 316, 332, 333, 334, 336)"
                     }
                   ]
                 }
@@ -71,7 +85,20 @@
                   "constraints": [
                     {
                       "type": "from",
-                      "note": "any ANTH course not already required; at least one must be a comparative topics course (ANTH 259, 311, 316, 332, 334, 336) and at least one must be a geographical area course (ANTH 223, 233, 238, 242, 243)"
+                      "codes": [
+                        "ANTH 223",
+                        "ANTH 233",
+                        "ANTH 238",
+                        "ANTH 242",
+                        "ANTH 243",
+                        "ANTH 259",
+                        "ANTH 311",
+                        "ANTH 316",
+                        "ANTH 332",
+                        "ANTH 334",
+                        "ANTH 336"
+                      ],
+                      "note": "any ANTH course not already required; at least one comparative topics and one geographical area"
                     }
                   ]
                 }
@@ -146,8 +173,14 @@
                   "code": "ARTD 172"
                 },
                 {
-                  "type": "custom",
-                  "text": "a 3-course sequence in one of: ceramics, graphic design, illustration, painting, photography, printmaking, drawing, or sculpture"
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "a 3-course sequence in one of: ceramics, graphic design, illustration, painting, photography, printmaking, drawing, or sculpture"
+                    }
+                  ]
                 },
                 {
                   "type": "course",
@@ -160,7 +193,13 @@
                 },
                 {
                   "type": "electives",
-                  "count": 3
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "additional ARTD electives"
+                    }
+                  ]
                 }
               ]
             },
@@ -273,7 +312,13 @@
                 },
                 {
                   "type": "electives",
-                  "count": 4
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "ARTH courses"
+                    }
+                  ]
                 }
               ]
             }
@@ -658,8 +703,50 @@
                   "code": "MAT 121"
                 },
                 {
-                  "type": "custom",
-                  "text": "one pair from the following: CHE 341 and 342; CS 220 and either 223 or 229; GEO 16x and either a 200- or 300-level GEO course; KIP 215 and 230; PHY 161 and 185; PSY 162 and 164"
+                  "type": "any_of",
+                  "items": [
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "CHE 341",
+                        "CHE 342"
+                      ]
+                    },
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "CS 220",
+                        "CS 223"
+                      ],
+                      "note": "or CS 229"
+                    },
+                    {
+                      "type": "custom",
+                      "text": "GEO 16x and a 200- or 300-level GEO course"
+                    },
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "KIP 215",
+                        "KIP 230"
+                      ]
+                    },
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "PHY 161",
+                        "PHY 185"
+                      ]
+                    },
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "PSY 162",
+                        "PSY 164"
+                      ]
+                    }
+                  ],
+                  "note": "choose one pair"
                 }
               ]
             }
@@ -754,7 +841,13 @@
                 },
                 {
                   "type": "electives",
-                  "count": 1
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "BUSN courses"
+                    }
+                  ]
                 }
               ]
             },
@@ -826,7 +919,13 @@
                 },
                 {
                   "type": "electives",
-                  "count": 1
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "BUSN courses"
+                    }
+                  ]
                 }
               ]
             },
@@ -965,8 +1064,19 @@
                   "code": "CHE 225"
                 },
                 {
-                  "type": "custom",
-                  "text": "two semesters of CHE 308 or one semester of CHE 309"
+                  "type": "any_of",
+                  "items": [
+                    {
+                      "type": "custom",
+                      "text": "CHE 308 (two semesters)"
+                    },
+                    {
+                      "type": "course",
+                      "code": "CHE 309",
+                      "note": "one semester"
+                    }
+                  ],
+                  "note": "choose one"
                 },
                 {
                   "type": "course",
@@ -1122,7 +1232,13 @@
                 },
                 {
                   "type": "electives",
-                  "count": 3
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "CLA courses"
+                    }
+                  ]
                 },
                 {
                   "type": "course",
@@ -1226,7 +1342,13 @@
                 },
                 {
                   "type": "electives",
-                  "count": 4
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "CLA courses"
+                    }
+                  ]
                 },
                 {
                   "type": "course",
@@ -1527,8 +1649,46 @@
                   ]
                 },
                 {
-                  "type": "custom",
-                  "text": "One pair from the following: BIO 161 and 185 (must be taken together); CHE 161 and 185 (must be taken together); One of GEO 161, 162, 163 and one of GEO 224, 323, 327, 328, 334; One of BIO 165, 185, KIP 161 and KIP 215; PHY 162 and 186 (must be taken together); PSY 162 and 164 (must be taken together)"
+                  "type": "any_of",
+                  "items": [
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "BIO 161",
+                        "BIO 185"
+                      ]
+                    },
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "CHE 161",
+                        "CHE 185"
+                      ]
+                    },
+                    {
+                      "type": "custom",
+                      "text": "one of GEO 161, 162, 163 and one of GEO 224, 323, 327, 328, 334"
+                    },
+                    {
+                      "type": "custom",
+                      "text": "one of BIO 165, 185, KIP 161 and KIP 215"
+                    },
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "PHY 162",
+                        "PHY 186"
+                      ]
+                    },
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "PSY 162",
+                        "PSY 164"
+                      ]
+                    }
+                  ],
+                  "note": "choose one pair"
                 }
               ]
             },
@@ -1757,8 +1917,18 @@
                 {
                   "type": "electives",
                   "count": 4,
-                  "constraints": [],
-                  "note": "Only one may be at the 100-level"
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "ECO courses"
+                    },
+                    {
+                      "type": "level",
+                      "level": 100,
+                      "comparison": "at_most",
+                      "min": 1
+                    }
+                  ]
                 }
               ]
             },
@@ -2249,8 +2419,11 @@
                   "text": "Students must select either the Literary Studies or Creative Writing track."
                 },
                 {
-                  "type": "custom",
-                  "text": "No more than one 100-level course may count toward the major."
+                  "type": "level_gate",
+                  "level": 100,
+                  "comparison": "at_most",
+                  "count": 1,
+                  "note": "no more than one 100-level course"
                 }
               ]
             }
@@ -2268,17 +2441,26 @@
                   "constraints": [
                     {
                       "type": "from",
-                      "note": "English courses"
+                      "note": "ENG courses"
+                    },
+                    {
+                      "type": "level",
+                      "level": 100,
+                      "comparison": "at_most",
+                      "min": 1
+                    },
+                    {
+                      "type": "from",
+                      "codes": [
+                        "ENG 243",
+                        "ENG 244",
+                        "ENG 245",
+                        "ENG 246",
+                        "ENG 247"
+                      ],
+                      "note": "at most 2 from these"
                     }
                   ]
-                },
-                {
-                  "type": "custom",
-                  "text": "No more than one 100-level course may count toward the minor."
-                },
-                {
-                  "type": "custom",
-                  "text": "No more than two courses may be from ENG 243, 244, 245, 246 and 247."
                 }
               ]
             }
@@ -2675,7 +2857,12 @@
                 {
                   "type": "electives",
                   "count": 4,
-                  "constraints": []
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "GEO courses"
+                    }
+                  ]
                 },
                 {
                   "type": "any_of",
@@ -2740,7 +2927,12 @@
                 {
                   "type": "electives",
                   "count": 5,
-                  "constraints": []
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "GEO courses"
+                    }
+                  ]
                 }
               ]
             }
@@ -2773,12 +2965,29 @@
                       "type": "level",
                       "level": 300,
                       "min": 3
+                    },
+                    {
+                      "type": "from",
+                      "note": "at least 7 courses must be in German"
+                    },
+                    {
+                      "type": "from",
+                      "codes": [
+                        "GER 222",
+                        "GER 243",
+                        "HIS 327",
+                        "HIS 349",
+                        "HIS 354",
+                        "HIS 355",
+                        "MUS 232",
+                        "PHI 163",
+                        "PHI 224",
+                        "PHI 246",
+                        "PHI 325"
+                      ],
+                      "note": "may be taken in English"
                     }
                   ]
-                },
-                {
-                  "type": "custom",
-                  "text": "A minimum of 7 courses must be in German. 1 course may be taken in English from: GER 222, GER 243, HIS 327, HIS 349, HIS 354, HIS 355, MUS 232, PHI 163, PHI 224, PHI 246, PHI 325, and other courses by petition"
                 },
                 {
                   "type": "any_of",
@@ -2808,12 +3017,29 @@
                         "GER 115",
                         "GER 116"
                       ]
+                    },
+                    {
+                      "type": "from",
+                      "note": "at least 4 courses must be in German"
+                    },
+                    {
+                      "type": "from",
+                      "codes": [
+                        "GER 222",
+                        "GER 243",
+                        "HIS 327",
+                        "HIS 349",
+                        "HIS 354",
+                        "HIS 355",
+                        "MUS 232",
+                        "PHI 163",
+                        "PHI 224",
+                        "PHI 246",
+                        "PHI 325"
+                      ],
+                      "note": "may be taken in English"
                     }
                   ]
-                },
-                {
-                  "type": "custom",
-                  "text": "A minimum of 4 courses must be in German. 1 course may be taken in English from: GER 222, GER 243, HIS 327, HIS 349, HIS 354, HIS 355, MUS 232, PHI 163, PHI 224, PHI 246, PHI 325, and other courses by petition"
                 }
               ]
             }
@@ -2846,12 +3072,29 @@
                       "type": "level",
                       "level": 300,
                       "min": 2
+                    },
+                    {
+                      "type": "from",
+                      "note": "at least 5 courses must be in German"
+                    },
+                    {
+                      "type": "from",
+                      "codes": [
+                        "GER 222",
+                        "GER 243",
+                        "HIS 327",
+                        "HIS 349",
+                        "HIS 354",
+                        "HIS 355",
+                        "MUS 232",
+                        "PHI 163",
+                        "PHI 224",
+                        "PHI 246",
+                        "PHI 325"
+                      ],
+                      "note": "up to 3 may be taken in English"
                     }
                   ]
-                },
-                {
-                  "type": "custom",
-                  "text": "A minimum of 5 courses must be in German. Up to 3 courses may be taken in English from: GER 222, GER 243, HIS 327, HIS 349, HIS 354, HIS 355, MUS 232, PHI 163, PHI 224, PHI 246, PHI 325, and other courses by petition"
                 },
                 {
                   "type": "any_of",
@@ -2881,12 +3124,29 @@
                         "GER 115",
                         "GER 116"
                       ]
+                    },
+                    {
+                      "type": "from",
+                      "note": "at least 3 courses must be in German"
+                    },
+                    {
+                      "type": "from",
+                      "codes": [
+                        "GER 222",
+                        "GER 243",
+                        "HIS 327",
+                        "HIS 349",
+                        "HIS 354",
+                        "HIS 355",
+                        "MUS 232",
+                        "PHI 163",
+                        "PHI 224",
+                        "PHI 246",
+                        "PHI 325"
+                      ],
+                      "note": "up to 2 may be taken in English"
                     }
                   ]
-                },
-                {
-                  "type": "custom",
-                  "text": "A minimum of 3 courses must be in German. Up to 2 courses may be taken in English from: GER 222, GER 243, HIS 327, HIS 349, HIS 354, HIS 355, MUS 232, PHI 163, PHI 224, PHI 246, PHI 325, and other courses by petition"
                 }
               ]
             }
@@ -2984,8 +3244,24 @@
                   ]
                 },
                 {
-                  "type": "custom",
-                  "text": "Either KIP 162 and 186, or KIP 215 and 230"
+                  "type": "any_of",
+                  "items": [
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "KIP 162",
+                        "KIP 186"
+                      ]
+                    },
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "KIP 215",
+                        "KIP 230"
+                      ]
+                    }
+                  ],
+                  "note": "choose one"
                 },
                 {
                   "type": "course",
@@ -3065,8 +3341,24 @@
                   ]
                 },
                 {
-                  "type": "custom",
-                  "text": "Either KIP 162 and 186, or KIP 215 and 230"
+                  "type": "any_of",
+                  "items": [
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "KIP 162",
+                        "KIP 186"
+                      ]
+                    },
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "KIP 215",
+                        "KIP 230"
+                      ]
+                    }
+                  ],
+                  "note": "choose one"
                 },
                 {
                   "type": "course",
@@ -3136,7 +3428,12 @@
                 {
                   "type": "electives",
                   "count": 5,
-                  "constraints": []
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "HIS courses"
+                    }
+                  ]
                 }
               ]
             }
@@ -3289,7 +3586,7 @@
               "items": [
                 {
                   "type": "custom",
-                  "text": "A gateway course"
+                  "text": "KIP gateway course (consult advisor)"
                 },
                 {
                   "type": "course",
@@ -3642,8 +3939,14 @@
                   "note": "Culminating experience"
                 },
                 {
-                  "type": "custom",
-                  "text": "Five other courses drawn from the list below"
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "ARTH courses"
+                    }
+                  ]
                 }
               ]
             }
@@ -3727,8 +4030,25 @@
                   "note": "Culminating experience"
                 },
                 {
-                  "type": "custom",
-                  "text": "Three courses from MUS 218, MUS 325, one course credit in major applied area, or one course credit in ensembles"
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "MUS 218",
+                        "MUS 325"
+                      ]
+                    },
+                    {
+                      "type": "from",
+                      "note": "major applied area (1 course credit)"
+                    },
+                    {
+                      "type": "from",
+                      "note": "ensembles (1 course credit)"
+                    }
+                  ]
                 },
                 {
                   "type": "course",
@@ -3864,8 +4184,18 @@
                 {
                   "type": "electives",
                   "count": 5,
-                  "constraints": [],
-                  "note": "with no more than one at the 100 level"
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "PHI courses"
+                    },
+                    {
+                      "type": "level",
+                      "level": 100,
+                      "comparison": "at_most",
+                      "min": 1
+                    }
+                  ]
                 }
               ]
             }
@@ -3947,8 +4277,22 @@
                   "note": "two terms"
                 },
                 {
-                  "type": "custom",
-                  "text": "Either PHY 408 and PHY 409, or PHY 471 (Culminating experience)"
+                  "type": "any_of",
+                  "items": [
+                    {
+                      "type": "pair",
+                      "codes": [
+                        "PHY 408",
+                        "PHY 409"
+                      ]
+                    },
+                    {
+                      "type": "course",
+                      "code": "PHY 471",
+                      "note": "Culminating experience"
+                    }
+                  ],
+                  "note": "choose one"
                 }
               ]
             }
@@ -4146,7 +4490,13 @@
                 },
                 {
                   "type": "electives",
-                  "count": 2
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "PSY courses"
+                    }
+                  ]
                 },
                 {
                   "type": "course",
@@ -4203,7 +4553,13 @@
                 },
                 {
                   "type": "electives",
-                  "count": 1
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "PSY courses"
+                    }
+                  ]
                 }
               ]
             }
@@ -4615,7 +4971,13 @@
                 },
                 {
                   "type": "electives",
-                  "count": 1
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "THR courses"
+                    }
+                  ]
                 }
               ]
             }
