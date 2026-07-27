@@ -617,6 +617,13 @@ body {
   line-height: 1.5;
 }
 
+.course-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
 @media (max-width: 600px) {
   #app {
     padding: 16px 12px;

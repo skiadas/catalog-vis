@@ -1,12 +1,34 @@
 import { allCourses } from '../lib/store.js'
 import { goToCourse } from '../lib/router.js'
 
+const { computed } = Vue
+
 export default {
   name: 'RequirementSection',
   props: {
     section: { type: Object, required: true }
   },
   setup(props) {
+    const groupedItems = computed(() => {
+      const items = props.section && props.section.items
+      if (!items) return []
+      const result = []
+      let currentGroup = null
+      for (const item of items) {
+        if (item.type === 'course') {
+          if (!currentGroup) {
+            currentGroup = { type: 'course_group', courses: [] }
+            result.push(currentGroup)
+          }
+          currentGroup.courses.push(item)
+        } else {
+          currentGroup = null
+          result.push(item)
+        }
+      }
+      return result
+    })
+
     function formatLevelConstraint(c) {
       if (c.comparison === 'or_above') return `${c.level}-level or above`
       if (c.comparison === 'exclude') return `Excluding ${c.level}-level`
@@ -26,18 +48,22 @@ export default {
       return note && note.toLowerCase().includes('culminating')
     }
 
-    return { allCourses, goToCourse, formatLevelConstraint, formatLevelGate, isCulminating }
+    return { allCourses, goToCourse, formatLevelConstraint, formatLevelGate, isCulminating, groupedItems }
   },
   template: `
     <div class="req-section">
       <div v-if="section.heading" class="req-section-heading">{{ section.heading }}</div>
       <div class="req-items">
-        <div v-for="(item, idx) in section.items" :key="idx" class="req-item">
+        <div v-for="(item, idx) in groupedItems" :key="idx" class="req-item">
 
-          <template v-if="item.type === 'course'">
-            <span class="course-chip" @click="goToCourse(item.code)" :title="allCourses[item.code] ? allCourses[item.code].course_name : ''">{{ item.code }}</span>
-            <span v-if="isCulminating(item.note)" class="item-note culminating">★ {{ item.note }}</span>
-            <span v-else-if="item.note" class="item-note">{{ item.note }}</span>
+          <template v-if="item.type === 'course_group'">
+            <div class="course-group">
+              <template v-for="(course, ci) in item.courses" :key="ci">
+                <span class="course-chip" @click="goToCourse(course.code)" :title="allCourses[course.code] ? allCourses[course.code].course_name : ''">{{ course.code }}</span>
+                <span v-if="isCulminating(course.note)" class="item-note culminating">★ {{ course.note }}</span>
+                <span v-else-if="course.note" class="item-note">{{ course.note }}</span>
+              </template>
+            </div>
           </template>
 
           <template v-else-if="item.type === 'pair'">
