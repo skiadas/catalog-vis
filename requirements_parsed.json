@@ -1,0 +1,4718 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-27",
+  "source": "majors.json",
+  "programs": [
+    {
+      "id": "anthropologycultural",
+      "name": "Anthropology, Cultural",
+      "requirements": [
+        {
+          "label": "Major in Cultural Anthropology",
+          "sections": [
+            {
+              "heading": "Anthropology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "ANTH 162"
+                },
+                {
+                  "type": "course",
+                  "code": "ANTH 325"
+                },
+                {
+                  "type": "course",
+                  "code": "ANTH 424"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ANTH 461",
+                    "ANTH 471"
+                  ],
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 6,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "any ANTH course not already required; at least two must be geographical area courses (ANTH 223, 233, 238, 242, 243) and at least two must be comparative topics courses (ANTH 259, 311, 316, 332, 333, 334, 336)"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Anthropology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "ANTH 162"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ANTH 222",
+                    "ANTH 325",
+                    "ANTH 424"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "any ANTH course not already required; at least one must be a comparative topics course (ANTH 259, 311, 316, 332, 334, 336) and at least one must be a geographical area course (ANTH 223, 233, 238, 242, 243)"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "archaeology",
+      "name": "Archaeology",
+      "requirements": [
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Required courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CLA 228"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "GEO 161",
+                    "GEO 162"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "ANTH 162"
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "artanddesign",
+      "name": "Art and Design",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "ARTD 126"
+                },
+                {
+                  "type": "course",
+                  "code": "ARTD 171"
+                },
+                {
+                  "type": "course",
+                  "code": "ARTD 172"
+                },
+                {
+                  "type": "custom",
+                  "text": "a 3-course sequence in one of: ceramics, graphic design, illustration, painting, photography, printmaking, drawing, or sculpture"
+                },
+                {
+                  "type": "course",
+                  "code": "ARTD 402"
+                },
+                {
+                  "type": "course",
+                  "code": "ARTD 471",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 3
+                }
+              ]
+            },
+            {
+              "heading": "Two Art History courses",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ARTH 112",
+                    "ARTH 328",
+                    "ARTH 339",
+                    "ARTH 343",
+                    "ARTH 344",
+                    "ARTH 345"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ARTH 111",
+                    "ARTH 210",
+                    "ARTH 212"
+                  ],
+                  "note": "or others by petition"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arthistory",
+      "name": "Art History",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Eight Art History courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "ARTH 111"
+                },
+                {
+                  "type": "course",
+                  "code": "ARTH 112"
+                },
+                {
+                  "type": "course",
+                  "code": "ARTH 362"
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "ARTH 171",
+                        "ARTH 210",
+                        "ARTH 212",
+                        "ARTH 213",
+                        "ARTH 214",
+                        "ARTH 223",
+                        "ARTH 225",
+                        "ARTH 328",
+                        "ARTH 335",
+                        "ARTH 339",
+                        "ARTH 343",
+                        "ARTH 344",
+                        "ARTH 345",
+                        "ARTH 348"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ARTH 457",
+                    "ARTH 471"
+                  ],
+                  "note": "Culminating experience"
+                }
+              ]
+            },
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "One Art and Design course"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "ARTH 112"
+                },
+                {
+                  "type": "electives",
+                  "count": 4
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "asianstudies",
+      "name": "Asian Studies",
+      "requirements": [
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "ARTH 111",
+                        "ARTH 210",
+                        "ARTH 212",
+                        "ARTH 348",
+                        "HIS 266",
+                        "HIS 267",
+                        "HIS 362",
+                        "HIS 364",
+                        "HIS 367",
+                        "PHI 222",
+                        "PHI 240",
+                        "PHI 241",
+                        "PHI 242",
+                        "PHI 244",
+                        "PHI 246",
+                        "PHI 247",
+                        "PHI 322"
+                      ],
+                      "note": "no more than two courses from the same department"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "astronomy",
+      "name": "Astronomy",
+      "requirements": []
+    },
+    {
+      "id": "biochemistry",
+      "name": "Biochemistry",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Chemistry courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CHE 161"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 185"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 221"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 222"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 341"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 342"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CHE 225",
+                    "CHE 311",
+                    "CHE 324"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 1
+                    },
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "CHE 308",
+                        "CHE 309",
+                        "CHE 372"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "heading": "Biology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "BIO 161"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 185"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 221"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "BIO 336",
+                    "BIO 314"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "BIO 223",
+                        "BIO 235",
+                        "BIO 313",
+                        "BIO 314",
+                        "BIO 326",
+                        "BIO 332",
+                        "BIO 333",
+                        "BIO 334",
+                        "BIO 335",
+                        "BIO 336"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "heading": "Culminating Experience",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "BCH 412"
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "MAT 121"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PHY 161",
+                    "PHY 162"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PHY 185",
+                    "PHY 186"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CHE 225"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 341"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 342"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 221"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 336"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "BIO 328",
+                    "BIO 333",
+                    "BIO 314"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "biology",
+      "name": "Biology",
+      "requirements": [
+        {
+          "label": "Major: Bachelor of Arts",
+          "sections": [
+            {
+              "heading": "Biology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "BIO 161"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 185"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 221"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 462",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 2
+                    },
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "BIO 301",
+                        "BIO 307",
+                        "BIO 308",
+                        "BIO 309",
+                        "BIO 357",
+                        "BIO 370",
+                        "BIO 380"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CHE 161",
+                  "note": "or equivalent"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 185"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Major: Bachelor of Science",
+          "sections": [
+            {
+              "heading": "Biology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "BIO 161"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 185"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 221"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 231"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 462",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 6,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 2
+                    },
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "BIO 301",
+                        "BIO 307",
+                        "BIO 308",
+                        "BIO 309",
+                        "BIO 357",
+                        "BIO 370",
+                        "BIO 380"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CHE 161",
+                  "note": "or equivalent"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 185"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CHE 221",
+                    "CHE 222"
+                  ],
+                  "note": "must be taken together"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 121"
+                },
+                {
+                  "type": "custom",
+                  "text": "one pair from the following: CHE 341 and 342; CS 220 and either 223 or 229; GEO 16x and either a 200- or 300-level GEO course; KIP 215 and 230; PHY 161 and 185; PSY 162 and 164"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Biology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "BIO 161",
+                  "note": "or equivalent"
+                },
+                {
+                  "type": "course",
+                  "code": "BIO 185"
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "BIO 301",
+                        "BIO 302",
+                        "BIO 307",
+                        "BIO 308",
+                        "BIO 309",
+                        "BIO 370",
+                        "BIO 380"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "requirements": [
+        {
+          "label": "Business Major",
+          "sections": [
+            {
+              "heading": "Business Program courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "BUSN 211"
+                },
+                {
+                  "type": "course",
+                  "code": "BUSN 215"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "BUSN 335",
+                    "BUSN 352"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "BUSN 325"
+                },
+                {
+                  "type": "course",
+                  "code": "BUSN 327"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "BUSN 357",
+                    "BUSN 323",
+                    "BUSN 326",
+                    "BUSN 329",
+                    "BUSN 351"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "BUSN 411",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "MAT 217",
+                    "MAT 327",
+                    "ECO 257",
+                    "PSY 217"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ECO 113",
+                    "ECO 114"
+                  ],
+                  "note": "must be taken together"
+                }
+              ]
+            },
+            {
+              "heading": "Workshops",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "6 BUSN workshops are required for the major but carry no grade or credit"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Business Program courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "BUSN 211"
+                },
+                {
+                  "type": "course",
+                  "code": "BUSN 325"
+                },
+                {
+                  "type": "course",
+                  "code": "BUSN 327"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "BUSN 357",
+                    "BUSN 323",
+                    "BUSN 326",
+                    "BUSN 329",
+                    "BUSN 351"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "BUSN 411",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "heading": "Cognate course",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ECO 113",
+                    "ECO 114",
+                    "ECO 161"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chemistry",
+      "name": "Chemistry",
+      "requirements": [
+        {
+          "label": "Major – Bachelor of Arts",
+          "sections": [
+            {
+              "heading": "Chemistry courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CHE 161"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 185"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 221"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 222"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 225"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CHE 311",
+                    "CHE 312"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 372"
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "CHE 324",
+                        "CHE 325",
+                        "CHE 341",
+                        "CHE 351"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CHE 471",
+                    "CHE 472"
+                  ],
+                  "note": "with permission of instructor"
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "MAT 121"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PHY 161",
+                    "PHY 162"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PHY 185",
+                    "PHY 186"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Major - Bachelor of Science",
+          "sections": [
+            {
+              "heading": "Chemistry courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CHE 161"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 185"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 221"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 222"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 225"
+                },
+                {
+                  "type": "custom",
+                  "text": "two semesters of CHE 308 or one semester of CHE 309"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 351"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 372"
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "CHE 311",
+                        "CHE 312",
+                        "CHE 324",
+                        "CHE 325",
+                        "CHE 341"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 409"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 472"
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "MAT 121"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 122"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PHY 161",
+                    "PHY 162"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PHY 185",
+                    "PHY 186"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor - Chemistry",
+          "sections": [
+            {
+              "heading": "Chemistry courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CHE 161"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 185"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 221"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 222"
+                },
+                {
+                  "type": "course",
+                  "code": "CHE 225"
+                },
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "classicalstudies",
+      "name": "Classical Studies",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "GRE 218",
+                    "LAT 218"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CLA 225",
+                    "CLA 228"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CLA 251",
+                    "CLA 252"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 2
+                    },
+                    {
+                      "type": "from",
+                      "note": "courses in ancient art and/or archaeology or in history"
+                    }
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 3
+                },
+                {
+                  "type": "course",
+                  "code": "CLA 401"
+                },
+                {
+                  "type": "course",
+                  "code": "CLA 471",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "course",
+                  "code": "CLA 499",
+                  "note": "with passing grade"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CLA 225"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CLA 251",
+                    "CLA 252"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 1
+                    },
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "LAT 115",
+                        "LAT 116",
+                        "GRE 115",
+                        "GRE 116"
+                      ]
+                    },
+                    {
+                      "type": "from",
+                      "note": "any Classical Studies (CLA), Latin (LAT), or Greek (GRE) course"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 2
+                    },
+                    {
+                      "type": "from",
+                      "note": "courses in Greek (GRE) and/or Latin (LAT)"
+                    }
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CLA 251",
+                    "CLA 252"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "CLA 401"
+                },
+                {
+                  "type": "course",
+                  "code": "CLA 471",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 4
+                },
+                {
+                  "type": "course",
+                  "code": "CLA 499",
+                  "note": "Comprehensive evaluation with passing grade"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "communication",
+      "name": "Communication",
+      "requirements": [
+        {
+          "label": "Communication: Sports and Media.",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "COM 2212"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 240"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 251"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 330"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 351"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 319",
+                    "COM 346"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 328",
+                    "COM 342"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "COM 357",
+                  "note": "Internship must be in sports media or industry"
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "COM 049",
+                        "COM 101",
+                        "COM 210",
+                        "COM 243",
+                        "COM 246",
+                        "COM 318",
+                        "COM 319",
+                        "COM 327",
+                        "COM 342",
+                        "COM 345",
+                        "COM 346",
+                        "COM 352",
+                        "SOC 318",
+                        "SOC 334",
+                        "BUSN 216",
+                        "BUSN 320"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "COM 462",
+                  "note": "Culminating experience; must be sports media project"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "Any five Communication units."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "computerscience",
+      "name": "Computer Science",
+      "requirements": [
+        {
+          "label": "Major - Bachelor of Arts",
+          "sections": [
+            {
+              "heading": "Computer Science courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CS 220"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 223"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 231"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 315"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 321"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CS 327",
+                    "CS 335"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CS 340",
+                    "CS 345"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "CS 461"
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "comparison": "or_above"
+                    },
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 2
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "MAT 243"
+                }
+              ]
+            },
+            {
+              "heading": "Comprehensive evaluation",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CS 497",
+                  "note": "Comprehensive evaluation, with passing grade"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Major - Bachelor of Science",
+          "sections": [
+            {
+              "heading": "Computer Science courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CS 220"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 223"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CS 229",
+                    "CS 328"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "CS 231"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 315"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 321"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CS 323",
+                    "CS 325"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "CS 327"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 340"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 345"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 461"
+                },
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "comparison": "or_above"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "MAT 121"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 122"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 243"
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "MAT 224",
+                        "MAT 320",
+                        "MAT 327",
+                        "MAT 343"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "One pair from the following: BIO 161 and 185 (must be taken together); CHE 161 and 185 (must be taken together); One of GEO 161, 162, 163 and one of GEO 224, 323, 327, 328, 334; One of BIO 165, 185, KIP 161 and KIP 215; PHY 162 and 186 (must be taken together); PSY 162 and 164 (must be taken together)"
+                }
+              ]
+            },
+            {
+              "heading": "Comprehensive evaluation",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CS 497",
+                  "note": "Comprehensive evaluation, with passing grade"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Computer Science courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CS 220"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 223"
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "comparison": "or_above"
+                    }
+                  ],
+                  "note": "One unit may be replaced by GEO 221, MAT 220, or MAT 243"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "creativewriting",
+      "name": "Creative Writing",
+      "requirements": [
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Modern and contemporary literature",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ENG 321",
+                    "ENG 322",
+                    "ENG 336"
+                  ],
+                  "note": "One course in modern and contemporary literature"
+                }
+              ]
+            },
+            {
+              "heading": "Creative Writing courses",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "COM 246",
+                        "ENG 161",
+                        "ENG 252",
+                        "ENG 253",
+                        "ENG 355",
+                        "ENG/THR 343",
+                        "ENG 358",
+                        "THR 345",
+                        "THR 346",
+                        "ENG/COM 251"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "datascience",
+      "name": "Data Science",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Data Science courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "DSCI 110"
+                },
+                {
+                  "type": "course",
+                  "code": "DSCI 471"
+                }
+              ]
+            },
+            {
+              "heading": "Computer Science courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CS 220"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 223"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CS 229",
+                    "CS 328"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "CS 263"
+                },
+                {
+                  "type": "course",
+                  "code": "CS 362"
+                }
+              ]
+            },
+            {
+              "heading": "Mathematics courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "MAT 121"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 122"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 217"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 224"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 327"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 337"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "economics",
+      "name": "Economics",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Economics courses",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ECO 113",
+                    "ECO 114"
+                  ],
+                  "note": "must be taken together; highly recommended by end of sophomore year"
+                },
+                {
+                  "type": "course",
+                  "code": "ECO 213"
+                },
+                {
+                  "type": "course",
+                  "code": "ECO 214"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ECO 257",
+                    "MAT 217",
+                    "PSY 217"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ECO 321",
+                    "BUSN 323"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "ECO 461",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [],
+                  "note": "Only one may be at the 100-level"
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "MAT 113",
+                    "MAT 121"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Economics courses",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ECO 113",
+                    "ECO 114"
+                  ],
+                  "note": "must be taken together; by end of sophomore year"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ECO 213",
+                    "ECO 214"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "ECO 257",
+                        "MAT 217"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "education",
+      "name": "Education",
+      "requirements": [
+        {
+          "label": "Elementary Education Major with certification",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "The elementary education major focuses on the learner in grades K-6 and requires admission to the Educator Preparation Program before the major can be declared. This major integrates liberal arts coursework with educational theory, pedagogy, and methodology. As early as the freshman year, students will be engaged in the elementary classroom; this continues throughout the entire education curriculum with over 400 hours spent in the classroom before graduation. Elementary education candidates must complete either an approved content area minor or complete the mild interventions coursework through the Teaching Diverse Learners Program. Licensure certification provides the necessary credentials to be eligible for teacher licensing in grades K-6. Students must complete the requirements for the Elementary Education major and will take EDU 310 Elementary Urban Teaching, EDU 456 Student Teaching in the Elementary School and MAT 212 Mathematics for Elementary School Teachers."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "The Secondary Education Major with certification",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "The Secondary Education major focuses on the learner in grades 5-12 and requires admission to the Educator Preparation Program prior to declaring the major. Students majoring in secondary education will have the depth of knowledge important to work with adolescents and beyond, including important differences targeting middle school versus high school student needs. This major includes additional coursework that provides the teacher candidate with additional advanced knowledge in key areas educational technology, special education policy, and classroom management."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Elementary Education Major",
+          "sections": [
+            {
+              "heading": "Education courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "EDU 203"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 221"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 231"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 240"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 241"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 302"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 304"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 305"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 308"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 341"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 403"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 461"
+                },
+                {
+                  "type": "course",
+                  "code": "PSY 111"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 244",
+                    "PSY 247"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "HF 101"
+                },
+                {
+                  "type": "course",
+                  "code": "HF 105"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "EDU 172",
+                    "EDU 216"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "BIO 165",
+                    "BIO 161"
+                  ]
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "HIS 225",
+                        "HIS 226",
+                        "HIS 227",
+                        "HIS 229",
+                        "HIS 230",
+                        "HIS 231",
+                        "HIS 234",
+                        "HIS 330",
+                        "HIS 333",
+                        "HIS 334",
+                        "HIS 335",
+                        "HIS 336",
+                        "HIS 337"
+                      ]
+                    }
+                  ],
+                  "note": "or other U.S. history courses by petition"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Secondary Education Major",
+          "sections": [
+            {
+              "heading": "Education courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "EDU 203"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 221"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 226"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 231"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 241"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 252"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 255"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 314"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 315"
+                },
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "any EDU 33X course (330-339)"
+                    }
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 341"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 403"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 461"
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "PSY 111"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 244",
+                    "PSY 247"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Education courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "EDU 221"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 231"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 252"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 330"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 461"
+                },
+                {
+                  "type": "custom",
+                  "text": "Must select one of the Three Themes"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "EDU 221"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 231"
+                },
+                {
+                  "type": "course",
+                  "code": "EDU 252"
+                },
+                {
+                  "type": "course",
+                  "code": "PSY 111"
+                },
+                {
+                  "type": "course",
+                  "code": "PSY 244"
+                },
+                {
+                  "type": "course",
+                  "code": "SOC 164"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "engineering",
+      "name": "Engineering",
+      "requirements": [
+        {
+          "label": "Major: Bachelor of Arts - Engineering Science (ENGS)",
+          "sections": [
+            {
+              "heading": "Engineering Core",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "Completion of Engineering Core (10 units)"
+                }
+              ]
+            },
+            {
+              "heading": "Electives",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "Math & Basic Science electives listed below"
+                    }
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "Engineering courses"
+                    }
+                  ]
+                },
+                {
+                  "type": "level_gate",
+                  "level": 300,
+                  "comparison": "at_least",
+                  "count": 4,
+                  "note": "Four of the six elective units must be at the 300 level or above"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Major: Bachelor of Science - Engineering",
+          "sections": [
+            {
+              "heading": "Engineering Core",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "Completion of Engineering Core (10 units)"
+                }
+              ]
+            },
+            {
+              "heading": "Engineering courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "ENGR 311"
+                },
+                {
+                  "type": "course",
+                  "code": "ENGR 401"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ENGR 315",
+                    "ENGR 321",
+                    "ENGR 347",
+                    "ENGR 414",
+                    "ENGR 418",
+                    "ENGR 422"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "Math & Basic Science electives listed below"
+                    }
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 11,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "Engineering courses or CS 223, CS 231, CS 315, CS 340, CS 345"
+                    }
+                  ],
+                  "note": "Up to four of those twelve additional units can be replaced with additional Math and Basic Science electives listed below"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "english",
+      "name": "English",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "Students must select either the Literary Studies or Creative Writing track."
+                },
+                {
+                  "type": "custom",
+                  "text": "No more than one 100-level course may count toward the major."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "English courses"
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "No more than one 100-level course may count toward the minor."
+                },
+                {
+                  "type": "custom",
+                  "text": "No more than two courses may be from ENG 243, 244, 245, 246 and 247."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "environmentalscience",
+      "name": "Environmental Science",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Core courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "ENV 201",
+                  "note": "Must be taken in freshmen or sophomore year"
+                },
+                {
+                  "type": "course",
+                  "code": "ENV 265"
+                },
+                {
+                  "type": "course",
+                  "code": "ENV 401",
+                  "note": "Must be taken in senior year"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ENV 408-409",
+                    "ENV 457",
+                    "ENV 471"
+                  ],
+                  "note": "Culminating experience for ENV 457 and ENV 471. ENV 408-409 only available to Environmental Geochemistry or Environmental Geophysics tracks"
+                }
+              ]
+            },
+            {
+              "heading": "Tracks",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "Students must elect one of four tracks: Environmental Biology, Environmental Geology, Geochemistry, or Geophysics."
+                },
+                {
+                  "type": "custom",
+                  "text": "Cognates for each track require coursework in at least two other natural science disciplines."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "ENV 201",
+                  "note": "Must be taken in freshmen or sophomore year"
+                },
+                {
+                  "type": "course",
+                  "code": "ENV 265"
+                },
+                {
+                  "type": "course",
+                  "code": "ENV 401"
+                },
+                {
+                  "type": "custom",
+                  "text": "Environmental Science Seminar (must be taken in senior year)"
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "Natural science courses"
+                    }
+                  ],
+                  "note": "No more than two 16X courses from the natural science disciplines may be counted toward the minor"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "environmentalstudies",
+      "name": "Environmental Studies",
+      "requirements": [
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "ENV 265",
+                  "note": "Global Environmental Change"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ECO 221",
+                    "PLS 213",
+                    "SOC 231"
+                  ],
+                  "note": "One from Social Sciences Core"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "BIO 161",
+                    "BIO 165",
+                    "GEO 161",
+                    "GEO 162",
+                    "GEO 163"
+                  ],
+                  "note": "One from Natural Sciences Core"
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "Elective courses from at least two different academic divisions; may include courses listed above but cannot double-count"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "filmstudies",
+      "name": "Film Studies",
+      "requirements": [
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "COM 164",
+                        "COM 242",
+                        "COM 343",
+                        "FRE 222",
+                        "FRE 312",
+                        "GER 222",
+                        "GER 322",
+                        "ML 161",
+                        "SPA 321",
+                        "THR 115",
+                        "THR 215",
+                        "THR 343"
+                      ]
+                    },
+                    {
+                      "type": "from",
+                      "codes": [
+                        "COM 250",
+                        "PSY 250"
+                      ]
+                    },
+                    {
+                      "type": "from",
+                      "note": "Other film courses by petition"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "firstyearexperience",
+      "name": "First-Year Experience",
+      "requirements": []
+    },
+    {
+      "id": "french",
+      "name": "French",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "French courses",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 8,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "FRE 115",
+                        "FRE 116",
+                        "FRE 222"
+                      ]
+                    },
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 3,
+                      "comparison": "or_above"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "heading": "Culminating experience",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "FRE 457",
+                    "FRE 471"
+                  ],
+                  "note": "Culminating experience"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "FRE 115",
+                        "FRE 116",
+                        "FRE 222"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "genderstudies",
+      "name": "Gender Studies",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "GNDS 111"
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "PHI 211",
+                        "PSY 233",
+                        "SOC 228"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "GNDS 471"
+                },
+                {
+                  "type": "electives",
+                  "count": 6,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "courses from the list below"
+                    },
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "min": 4,
+                      "comparison": "or_above"
+                    }
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "GNDR 499",
+                  "note": "with C- or better"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "courses from the list below"
+                    },
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "min": 4,
+                      "comparison": "or_above"
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "Courses must be from three different disciplines"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "geology",
+      "name": "Geology",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Geology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "GEO 16X",
+                  "note": "any GEO 160-169"
+                },
+                {
+                  "type": "course",
+                  "code": "GEO 224"
+                },
+                {
+                  "type": "course",
+                  "code": "GEO 236"
+                },
+                {
+                  "type": "course",
+                  "code": "GEO 471",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": []
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "GEO 237",
+                    "GEO 239"
+                  ],
+                  "note": "at least one field course"
+                }
+              ]
+            },
+            {
+              "heading": "Cognate courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CHE 161"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "AST 165",
+                    "AST 166",
+                    "PHY 161",
+                    "PHY 162"
+                  ],
+                  "note": "or any college-level, laboratory-based biology course"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "MAT 121",
+                    "MAT 217",
+                    "PSY 217"
+                  ]
+                }
+              ]
+            },
+            {
+              "heading": "Comprehensive evaluation",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "GEO 496",
+                  "note": "with grade C- or higher"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Geology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "GEO 16X",
+                  "note": "any GEO 160-169"
+                },
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "german",
+      "name": "German",
+      "requirements": [
+        {
+          "label": "German Major",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 8,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "GER 115",
+                        "GER 116"
+                      ]
+                    },
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 3
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "A minimum of 7 courses must be in German. 1 course may be taken in English from: GER 222, GER 243, HIS 327, HIS 349, HIS 354, HIS 355, MUS 232, PHI 163, PHI 224, PHI 246, PHI 325, and other courses by petition"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "GER 457",
+                    "GER 471"
+                  ],
+                  "note": "Culminating experience"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "German Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "GER 115",
+                        "GER 116"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "A minimum of 4 courses must be in German. 1 course may be taken in English from: GER 222, GER 243, HIS 327, HIS 349, HIS 354, HIS 355, MUS 232, PHI 163, PHI 224, PHI 246, PHI 325, and other courses by petition"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "germanstudies",
+      "name": "German Studies",
+      "requirements": [
+        {
+          "label": "German Studies Major",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 8,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "GER 115",
+                        "GER 116"
+                      ]
+                    },
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 2
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "A minimum of 5 courses must be in German. Up to 3 courses may be taken in English from: GER 222, GER 243, HIS 327, HIS 349, HIS 354, HIS 355, MUS 232, PHI 163, PHI 224, PHI 246, PHI 325, and other courses by petition"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "GER 457",
+                    "GER 471"
+                  ],
+                  "note": "Culminating experience"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "German Studies Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "GER 115",
+                        "GER 116"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "A minimum of 3 courses must be in German. Up to 2 courses may be taken in English from: GER 222, GER 243, HIS 327, HIS 349, HIS 354, HIS 355, MUS 232, PHI 163, PHI 224, PHI 246, PHI 325, and other courses by petition"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "greek",
+      "name": "Greek",
+      "requirements": [
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "note": "any course in Greek"
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "With the exception of courses specifically required for a student's major, no other Greek language course may be counted both toward this minor and toward the student's major itself"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "healthandfitness",
+      "name": "Health and Fitness",
+      "requirements": [
+        {
+          "label": "HFA 076. Racquet Sports.",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "HFA 076"
+                },
+                {
+                  "type": "custom",
+                  "text": ".25 unit. Fee charged."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "HF 105. Essential Movement for Elementary Children.",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "HF 105"
+                },
+                {
+                  "type": "custom",
+                  "text": "0.50 unit. Counts as 0.25 credit toward the AF CCR requirement."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "healthandmovementstudies",
+      "name": "Health and Movement Studies",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "KIP 161",
+                    "KIP 327"
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "Either KIP 162 and 186, or KIP 215 and 230"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 225"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 345"
+                },
+                {
+                  "type": "course",
+                  "code": "HMS 231"
+                },
+                {
+                  "type": "course",
+                  "code": "HMS 324"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "HMS 457",
+                    "HMS 461",
+                    "HMS 471"
+                  ],
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "course",
+                  "code": "PSY 111"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 244",
+                    "PSY 247"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "PSY 231"
+                      ]
+                    },
+                    {
+                      "type": "from",
+                      "note": "300-level KIP course"
+                    },
+                    {
+                      "type": "from",
+                      "note": "300-level HMS course"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "KIP 161"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "KIP 161",
+                    "KIP 327"
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "Either KIP 162 and 186, or KIP 215 and 230"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 345"
+                },
+                {
+                  "type": "course",
+                  "code": "HMS 231"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "KIP 225"
+                  ],
+                  "note": "or any 300-level KIP or HMS course"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "history",
+      "name": "History",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "History courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "HIS 372"
+                },
+                {
+                  "type": "course",
+                  "code": "HIS 471",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 7,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 100,
+                      "comparison": "exclude"
+                    }
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "Recommended: HIS 215, HIS 216, HIS 217"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "History courses",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "interdisciplinarystudies",
+      "name": "Interdisciplinary Studies",
+      "requirements": []
+    },
+    {
+      "id": "internationalstudies",
+      "name": "International Studies",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "International Studies courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "PLS 231"
+                },
+                {
+                  "type": "custom",
+                  "text": "A two-course sequence in economics, including ECO 114 followed by a course with an emphasis in international economics"
+                },
+                {
+                  "type": "custom",
+                  "text": "A two-course sequence in Anthropology including ANTH 162 followed by an area studies course"
+                },
+                {
+                  "type": "course",
+                  "code": "HIS 264"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ANTH 325",
+                    "ECO 257",
+                    "HIS 372",
+                    "PLS 239",
+                    "SOC 320"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "INS 461",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 2,
+                      "comparison": "or_above"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "International Studies courses",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "Any two of the following: PLS 231, a two-course sequence in economics (ECO 114 followed by a course with an emphasis in international economics), a two-course sequence in Anthropology (ANTH 162 followed by an area studies course), HIS 264, or a research methods course (ANTH 325, ECO 257, HIS 372, PLS 239, or SOC 320)"
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 1,
+                      "comparison": "or_above"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "journalism",
+      "name": "Journalism",
+      "requirements": [
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Journalism courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "ENG/COM 251"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 342"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 350"
+                },
+                {
+                  "type": "course",
+                  "code": "ENG/COM 357"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 240",
+                    "COM 342",
+                    "COM 246",
+                    "COM 351",
+                    "ENG 252",
+                    "ENG 253"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kinesiologyandintegrativephysiology",
+      "name": "Kinesiology and Integrative Physiology",
+      "requirements": [
+        {
+          "label": "Major - Bachelor of Arts",
+          "sections": [
+            {
+              "heading": "Kinesiology and Integrative Physiology courses",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "A gateway course"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 215"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 225"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 230"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 326"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 327"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 341"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "KIP 461",
+                    "KIP 471"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "comparison": "or_above"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Major - Bachelor of Science",
+          "sections": [
+            {
+              "heading": "Kinesiology and Integrative Physiology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "KIP 215"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 225"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 230"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 326"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 327"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 341"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 471"
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "comparison": "or_above"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Kinesiology and Integrative Physiology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "KIP 215"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 230"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 327"
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "comparison": "or_above"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "latin",
+      "name": "Latin",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 4
+                    }
+                  ],
+                  "note": "LAT courses at the 300 level"
+                },
+                {
+                  "type": "course",
+                  "code": "CLA 100"
+                },
+                {
+                  "type": "course",
+                  "code": "CLA 225"
+                },
+                {
+                  "type": "course",
+                  "code": "CLA 252"
+                },
+                {
+                  "type": "course",
+                  "code": "CLA 401"
+                },
+                {
+                  "type": "course",
+                  "code": "LAT 471",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "course",
+                  "code": "LAT 499",
+                  "note": "with passing grade"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "LAT 115"
+                      ]
+                    }
+                  ],
+                  "note": "Any four courses in Latin beyond LAT 115 or its equivalent"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mathematics",
+      "name": "Mathematics",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Mathematics courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "MAT 121",
+                  "note": "or equivalent"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 122"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 220"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 221"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 224"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 324"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 327"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 337"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "MAT 461",
+                    "MAT 471"
+                  ],
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 496"
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "MAT 101",
+                        "MAT 113",
+                        "MAT 210",
+                        "MAT 212",
+                        "MAT 217",
+                        "MAT 243"
+                      ]
+                    },
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 1,
+                      "comparison": "or_above"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "medievalrenaissancestudies",
+      "name": "Medieval-Renaissance Studies",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PHI 225",
+                    "PHI 226"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "HIS 215"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "HIS 243",
+                    "HIS 244",
+                    "HIS 254",
+                    "HIS 256",
+                    "HIS 326",
+                    "HIS 327",
+                    "HIS 359",
+                    "CLA/HIS 252"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "ENG 327",
+                        "ENG 334",
+                        "ENG 347",
+                        "ENG/THR 348",
+                        "FRE 423",
+                        "LAT 320",
+                        "SPA 336",
+                        "SPA 436"
+                      ]
+                    }
+                  ],
+                  "note": "in two different languages"
+                },
+                {
+                  "type": "course",
+                  "code": "MRS 471",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "custom",
+                  "text": "Five other courses drawn from the list below"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "HIS 215"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "ENG 327",
+                    "ENG 334",
+                    "ENG 347",
+                    "ENG/THR 348",
+                    "FRE 423",
+                    "LAT 320",
+                    "SPA 336",
+                    "SPA 436"
+                  ]
+                },
+                {
+                  "type": "custom",
+                  "text": "Three other courses drawn from the list below"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "modernlanguagesandculture",
+      "name": "Modern Languages and Culture",
+      "requirements": []
+    },
+    {
+      "id": "music",
+      "name": "Music",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Music courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "MUS 121"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 122"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 221"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 231"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 232"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 233"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 471",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "custom",
+                  "text": "Three courses from MUS 218, MUS 325, one course credit in major applied area, or one course credit in ensembles"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 499",
+                  "note": "oral, aural, and written; with a grade of C or better"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Music courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "MUS 112"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 121"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 122"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 221"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 231"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 232"
+                },
+                {
+                  "type": "course",
+                  "code": "MUS 233"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nursing",
+      "name": "Nursing",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Nursing courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "NUR 111"
+                },
+                {
+                  "type": "course",
+                  "code": "NUR 310"
+                },
+                {
+                  "type": "course",
+                  "code": "NUR 311"
+                },
+                {
+                  "type": "course",
+                  "code": "NUR 312"
+                },
+                {
+                  "type": "course",
+                  "code": "NUR 313"
+                },
+                {
+                  "type": "course",
+                  "code": "NUR 314"
+                },
+                {
+                  "type": "course",
+                  "code": "NUR 315"
+                },
+                {
+                  "type": "course",
+                  "code": "NUR 316"
+                },
+                {
+                  "type": "course",
+                  "code": "NUR 462"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "philosophy",
+      "name": "Philosophy",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Philosophy courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "PHI 224"
+                },
+                {
+                  "type": "course",
+                  "code": "PHI 225"
+                },
+                {
+                  "type": "course",
+                  "code": "PHI 351"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PHI 457",
+                    "PHI 471"
+                  ],
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [],
+                  "note": "with no more than one at the 100 level"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Philosophy courses",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 100,
+                      "comparison": "exclude"
+                    }
+                  ],
+                  "note": "Recommended: PHI 224 and PHI 225"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "physics",
+      "name": "Physics",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Physics courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "PHY 162"
+                },
+                {
+                  "type": "course",
+                  "code": "PHY 186"
+                },
+                {
+                  "type": "course",
+                  "code": "PHY 225"
+                },
+                {
+                  "type": "course",
+                  "code": "PHY 245"
+                },
+                {
+                  "type": "course",
+                  "code": "PHY 320"
+                },
+                {
+                  "type": "course",
+                  "code": "PHY 331"
+                },
+                {
+                  "type": "course",
+                  "code": "PHY 332"
+                },
+                {
+                  "type": "course",
+                  "code": "PHY 340"
+                },
+                {
+                  "type": "course",
+                  "code": "PHY 432"
+                },
+                {
+                  "type": "course",
+                  "code": "PHY 301",
+                  "note": "two terms"
+                },
+                {
+                  "type": "custom",
+                  "text": "Either PHY 408 and PHY 409, or PHY 471 (Culminating experience)"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Physics courses",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "PHY 226"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 121"
+                },
+                {
+                  "type": "course",
+                  "code": "MAT 122"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "politicalscience",
+      "name": "Political Science",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Political Science courses",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 100
+                    },
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "PLS 160"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PLS 212",
+                    "PLS 231"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "PLS 235"
+                },
+                {
+                  "type": "course",
+                  "code": "PLS 239"
+                },
+                {
+                  "type": "course",
+                  "code": "PLS 461",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 3
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Political Science courses",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 100
+                    },
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "PLS 160"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "min": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "psychology",
+      "name": "Psychology",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Psychology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "PSY 111"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 162",
+                    "PSY 164"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 217",
+                    "MAT 217"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "PSY 220",
+                  "note": "before the end of the junior year"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 231",
+                    "PSY 233",
+                    "PSY 244",
+                    "PSY 247"
+                  ],
+                  "note": "before the end of junior year"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 333",
+                    "PSY 334",
+                    "PSY 337"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 344",
+                    "PSY 346"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 2
+                },
+                {
+                  "type": "course",
+                  "code": "PSY 401"
+                },
+                {
+                  "type": "course",
+                  "code": "PSY 462",
+                  "note": "Culminating experience"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Psychology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "PSY 111"
+                },
+                {
+                  "type": "course",
+                  "code": "PSY 220"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 162",
+                    "PSY 164"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 231",
+                    "PSY 233",
+                    "PSY 244",
+                    "PSY 247"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "PSY 333",
+                    "PSY 334",
+                    "PSY 337",
+                    "PSY 344",
+                    "PSY 346"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "raceandethnicstudies",
+      "name": "Race and Ethnic Studies",
+      "requirements": [
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Race and Ethnic Studies courses",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "This interdisciplinary minor requires 5 of the following courses. At least four of the five courses must be at the 200-level or above, with no more than two courses in any single discipline."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sociology",
+      "name": "Sociology",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Sociology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "SOC 164"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "SOC 228",
+                    "SOC 318",
+                    "SOC 338",
+                    "SOC 348"
+                  ],
+                  "note": "social inequality course"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "SOC 320",
+                    "PLS 239"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "SOC 330"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "SOC 461",
+                    "SOC 471"
+                  ],
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "min": 2
+                    },
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "comparison": "or_above",
+                      "min": 3
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Sociology courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "SOC 164"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "SOC 228",
+                    "SOC 318",
+                    "SOC 338",
+                    "SOC 348"
+                  ],
+                  "note": "social inequality course"
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "SOC 461",
+                        "SOC 471"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "socialjustice",
+      "name": "Social Justice",
+      "requirements": []
+    },
+    {
+      "id": "spanish",
+      "name": "Spanish",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Spanish courses",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "SPA 227",
+                    "SPA 228"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "SPA 230",
+                    "SPA 231"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "SPA 319"
+                },
+                {
+                  "type": "course",
+                  "code": "SPA 320"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "SPA 457",
+                    "SPA 471",
+                    "EDU 455",
+                    "EDU 456"
+                  ],
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "custom",
+                  "text": "one course above 320"
+                },
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 400
+                    }
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "SPA 115",
+                        "SPA 116"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Spanish courses",
+              "items": [
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "SPA 319",
+                    "SPA 320"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "SPA 115",
+                        "SPA 116"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sportsmanagement",
+      "name": "Sports Management",
+      "requirements": [
+        {
+          "label": "Sports Management Major",
+          "sections": [
+            {
+              "heading": "Sports Management courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "BUSN 211"
+                },
+                {
+                  "type": "course",
+                  "code": "BUSN 215"
+                },
+                {
+                  "type": "course",
+                  "code": "BUSN 325"
+                },
+                {
+                  "type": "course",
+                  "code": "SMGT 216"
+                },
+                {
+                  "type": "course",
+                  "code": "SMGT 320"
+                },
+                {
+                  "type": "course",
+                  "code": "SMGT 332"
+                },
+                {
+                  "type": "course",
+                  "code": "SMGT 357"
+                },
+                {
+                  "type": "course",
+                  "code": "SMGT 412"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 319"
+                },
+                {
+                  "type": "course",
+                  "code": "KIP 330"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "MAT 217",
+                    "MAT 327",
+                    "ECO 257",
+                    "PSY 217"
+                  ],
+                  "note": "statistics course"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "BUSN 328",
+                    "SOC 334",
+                    "COM 246",
+                    "COM 342",
+                    "COM 351",
+                    "KIP 324"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "theatre",
+      "name": "Theatre",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Theatre courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "THR 051",
+                  "note": "0.25 unit; must take four times for a total of 1.0 unit"
+                },
+                {
+                  "type": "course",
+                  "code": "THR 114"
+                },
+                {
+                  "type": "course",
+                  "code": "THR 121"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "THR 122",
+                    "THR 222"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "THR 125"
+                },
+                {
+                  "type": "course",
+                  "code": "THR 305",
+                  "note": "0.5 unit"
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "comparison": "or_above",
+                      "min": 3
+                    }
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "THR 471",
+                  "note": "Culminating Experience"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Theatre courses",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "THR 051",
+                  "note": "0.25 unit; must take two times for a total of 0.5 unit"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "THR 114",
+                    "THR 122",
+                    "THR 222"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "THR 121"
+                },
+                {
+                  "type": "course",
+                  "code": "THR 125"
+                },
+                {
+                  "type": "course",
+                  "code": "THR 305",
+                  "note": "0.5 unit"
+                },
+                {
+                  "type": "electives",
+                  "count": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "theologicalstudies",
+      "name": "Theological Studies",
+      "requirements": [
+        {
+          "label": "Major",
+          "sections": [
+            {
+              "heading": "Theological Studies courses",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "one course in biblical studies"
+                },
+                {
+                  "type": "custom",
+                  "text": "one course in contemporary theology"
+                },
+                {
+                  "type": "custom",
+                  "text": "one course in ethics"
+                },
+                {
+                  "type": "custom",
+                  "text": "one course in historical theology"
+                },
+                {
+                  "type": "course",
+                  "code": "THS 412",
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "comparison": "or_above",
+                      "min": 2
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "Theological Studies courses",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "comparison": "or_above",
+                      "min": 3
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "worldreligions",
+      "name": "World Religions",
+      "requirements": [
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "World Religions courses",
+              "items": [
+                {
+                  "type": "custom",
+                  "text": "This minor requires 5 of the following courses. At least four of the five courses must be at the 200-level or above, with no more than three courses in any single discipline."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
