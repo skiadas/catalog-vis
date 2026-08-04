@@ -8,18 +8,28 @@ A deployable static Vue 3 SPA that browses Hanover College's 54 academic program
 
 | File | Purpose |
 |------|---------|
-| `scrape_catalog.py` | Scraper: fetches catalog HTML + API data, outputs `majors.json` |
+| `scrape_catalog.py` | Scraper: fetches catalog HTML + API data, outputs `majors.json`. Normalizes course codes and faculty names |
 | `majors.json` | All 54 programs, 1144 courses, requirement texts |
 | `requirements_parsed.json` | Codified requirements (structured JSON per `REQUIREMENTS_SCHEMA.md`) |
 | `REQUIREMENTS_SCHEMA.md` | Schema docs for requirements codification — item types, rules, known prefixes |
 | `codify_requirements.py` | Reproduction script with LLM prompt template for re-processing |
+| `generate_schedule.py` | Generates a synthetic schedule CSV from `majors.json` faculty (deterministic, seeded) |
+| `sample-schedule.csv` | Schedule data parsed in the browser (dept-prefix,course-number,section,instructor,days,times) |
 | `index.html` | Vue 3 SPA entry point (CDN-loaded, type="module") |
-| `app.js` | App shell + mount point |
-| `lib/store.js` | Shared reactive state (programs, courses, filters) |
-| `lib/router.js` | Hash router (program list → detail → course detail) |
+| `app.js` | App shell + mount point + global component registration |
+| `lib/store.js` | Shared reactive state (programs, courses, filters, schedule) |
+| `lib/router.js` | Hash router (programs, courses, schedule views) |
+| `lib/schedule.js` | Schedule domain model + helpers (parsing, index, conflicts, colors, calendars) |
 | `components/ProgramList.js` | Program list view |
 | `components/ProgramDetail.js` | Program detail with requirements + course tabs |
 | `components/CourseDetail.js` | Single course detail view |
+| `components/WeeklyCalendar.js` | Shared weekly-calendar scaffold (header, ruler, guides; `daycol` slot) |
+| `components/ScheduleApp.js` | Schedule shell + view switching + filters |
+| `components/ScheduleGrid.js` | Grid view (calendar blocks by slot) |
+| `components/ScheduleDay.js` / `ScheduleSlot.js` | Day and slot drill-down views |
+| `components/ScheduleCourse.js` | Per-course offerings + conflicts |
+| `components/ScheduleInstructor.js` | Per-instructor timetable + double-bookings |
+| `.editorconfig` / `.prettierrc.json` / `pyproject.toml` | Formatter configs (Prettier for JS, Black for Python) |
 | `style.css` | Styles |
 
 ## Data Pipeline
@@ -36,6 +46,7 @@ Key behaviors:
 - Course codes from API contain **double spaces** (e.g. `BIO  161`); `.normalize_code()` collapses to single space
 - Program IDs are derived from the program **name** (not the HTML div id) because the source HTML has incorrect IDs (e.g., "Computer Science" content inside `<div id="Creative Writing">`)
 - All known prefixes in requirement text are uppercased (e.g., "Bio" → "BIO")
+- Faculty names are normalized (`.normalize_faculty_name()`): whitespace collapsed, single trailing period stripped (e.g., `Patterson.` → `Patterson`), and duplicates removed while preserving order
 - Output: `majors.json` with 54 programs, each with `requirements` (label + raw text), `courses` array, and metadata
 
 ### 2. Requirements Codification (`codify_requirements.py` + `REQUIREMENTS_SCHEMA.md`)
@@ -55,7 +66,15 @@ Requirement text is transformed into structured JSON using an **LLM-based approa
 
 **Known prefixes** (42): ANTH, ARTD, ARTH, AST, BCH, BIO, BUSN, CHE, CLA, COM, CS, DSCI, ECO, EDU, ENG, ENGR, ENV, FRE, GEO, GER, GNDS, GRE, HIS, HMS, ID, INS, KIP, LAT, MAT, ML, MRS, MUS, NUR, PHI, PHY, PLS, PSY, SMGT, SOC, SPA, THR, THS
 
-### 3. Reprocessing Requirements (for future sessions)
+### 3. Schedule Generation (`generate_schedule.py`)
+
+Produces `sample-schedule.csv` from `majors.json` faculty:
+- Maps each `course_prefix` to its faculty pool (including interdisciplinary programs whose courses carry those prefixes)
+- Samples ~30% of eligible courses (seeded with `random.seed(42)` for determinism)
+- Assigns instructors by fewest-load; no instructor double-booked within a slot; no two sections of the same course in the same slot
+- Writes `dept-prefix,course-number,section,instructor,days,times`
+
+### 4. Reprocessing Requirements (for future sessions)
 
 To regenerate `requirements_parsed.json` from `majors.json`:
 1. Read `REQUIREMENTS_SCHEMA.md` for the schema + rules
@@ -67,17 +86,26 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 
 - Vue 3 loaded from CDN with `type="module"`
 - ES modules: no build step, components are `.js` files with template strings
-- Hash-based routing (`#/` → list, `#/program/:id` → detail, `#/course/:code` → course)
+- Hash-based routing (`#/` → list, `#/program/:id` → detail, `#/course/:code` → course, `#/schedule` and subviews)
 - Components use `Vue.defineComponent()` and are registered in `app.js`
+- Weekly calendar views (`ScheduleGrid`, `ScheduleInstructor`) share the `WeeklyCalendar` scaffold via a `daycol` scoped slot; the day header is clickable only when an `onDayClick` prop is provided
+
+## Formatting
+
+- JS/HTML: Prettier 3 via `npx prettier@3.3.3 --write <files>` (config in `.prettierrc.json`, ignores in `.prettierignore`)
+- Python: Black via `python3 -m black <files>` (config in `pyproject.toml`, with `skip-string-normalization` to keep single quotes)
+- `.editorconfig` covers indent/line-ending conventions for editors
 
 ## Current State
 
 **Completed**:
-- Scraper produces clean `majors.json` with normalized course codes
+- Scraper produces clean `majors.json` with normalized course codes and faculty names
 - All 54 programs have proper unique IDs (derived from program name)
 - Requirements codified for all programs with structured JSON output
 - Level numbers filtered, bare numbers resolved with correct prefix, exclusion lists applied
 - Vue 3 SPA with program list, detail, course detail views, and filter/sort
+- Schedule generator produces a deterministic synthetic `sample-schedule.csv`
+- Schedule SPA: grid, day, slot, course, and instructor views with dept/instructor filters, conflicts, and shared `WeeklyCalendar`
 
 **Known limitations in requirements_parsed.json**:
 - Complex multi-line "one pair from the following" sections (e.g., Biology BS cognates, CS BS cognates) use `custom` type rather than being fully parsed
@@ -88,4 +116,7 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 
 - **Re-scrape**: `python3 scrape_catalog.py` (updates `majors.json`)
 - **Regenerate requirements**: Use LLM with prompt from `codify_requirements.py` + schema from `REQUIREMENTS_SCHEMA.md`
+- **Regenerate schedule**: `python3 generate_schedule.py` (updates `sample-schedule.csv`; deterministic with seed 42)
+- **Format JS/HTML**: `npx prettier@3.3.3 --write app.js index.html lib/*.js components/*.js`
+- **Format Python**: `python3 -m black scrape_catalog.py generate_schedule.py codify_requirements.py`
 - **Serve locally**: `python3 -m http.server 8080` then open `http://localhost:8080`

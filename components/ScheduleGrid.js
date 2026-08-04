@@ -64,7 +64,7 @@ export default {
               <span
                 v-for="it in b.slot.items"
                 :key="it.code + it.o.section"
-                class="dept-offering"
+                class="filter-offering"
                 :style="{ backgroundColor: filter.color(it) }"
                 @click.stop="goScheduleCourse(it.code)"
               >{{ it.code }}{{ it.o.section }}<span class="do-inst">{{ briefInstructor(it.o.instructor) }}</span></span>

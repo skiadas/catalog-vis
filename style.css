@@ -1,4 +1,6 @@
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -15,7 +17,7 @@
   --border: #dee2e6;
   --tag-major: #1b4965;
   --tag-minor: #62b6cb;
-  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --radius: 8px;
 }
 
@@ -123,7 +125,7 @@ body {
 
 .program-card:hover {
   border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
 }
 
@@ -278,7 +280,7 @@ body {
   font-weight: 400;
 }
 
-.course-chip.dept-colored {
+.course-chip.filter-colored {
   color: #ffffff;
   border-color: transparent;
   flex-direction: column;
@@ -286,7 +288,7 @@ body {
   line-height: 1.15;
 }
 
-.course-chip.dept-colored:hover {
+.course-chip.filter-colored:hover {
   background: rgba(27, 73, 101, 0.9);
   color: #ffffff;
 }
@@ -298,7 +300,7 @@ body {
 }
 
 .course-chip:hover .sep {
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .req-original {
@@ -892,7 +894,7 @@ body {
 }
 
 .cal-dayhead:hover .day-name {
-  color: rgba(255,255,255,0.85);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .cal-ruler {
@@ -943,12 +945,14 @@ body {
   border: 1px solid rgba(27, 73, 101, 0.35);
   overflow: hidden;
   text-align: center;
-  transition: background 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
 }
 
 .cal-block:hover {
   background: rgba(98, 182, 203, 1);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .cal-block.teach {
@@ -986,7 +990,7 @@ body {
 }
 
 .cal-block.filtered:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .cal-block-depts {
@@ -998,7 +1002,7 @@ body {
   flex: 1;
 }
 
-.dept-offering {
+.filter-offering {
   display: flex;
   flex-direction: column;
   line-height: 1.15;
@@ -1013,12 +1017,12 @@ body {
   text-overflow: ellipsis;
 }
 
-.dept-offering:hover {
+.filter-offering:hover {
   filter: brightness(1.1);
 }
 
-/* Department filter chips */
-.dept-filter {
+/* Schedule filter chips */
+.filter-panel {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1026,14 +1030,14 @@ body {
   margin-bottom: 14px;
 }
 
-.dept-filter-label {
+.filter-label {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
   margin-right: 2px;
 }
 
-.dept-chip {
+.filter-chip {
   font-size: 12px;
   font-weight: 600;
   padding: 3px 9px;
@@ -1045,17 +1049,17 @@ body {
   transition: all 0.15s;
 }
 
-.dept-chip:hover {
+.filter-chip:hover {
   border-color: var(--accent);
   color: var(--primary);
 }
 
-.dept-chip.on {
+.filter-chip.on {
   color: #ffffff;
   border-color: transparent;
 }
 
-.dept-clear {
+.filter-clear {
   font-size: 12px;
   font-weight: 600;
   color: var(--primary);
@@ -1065,7 +1069,7 @@ body {
   padding: 3px 6px;
 }
 
-.dept-clear:hover {
+.filter-clear:hover {
   text-decoration: underline;
 }
 

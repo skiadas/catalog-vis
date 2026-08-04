@@ -1,4 +1,4 @@
-import { loading, scheduleLoading } from './lib/store.js'
+import { loading } from './lib/store.js'
 import { loadData } from './lib/store.js'
 import { initRouter, route, goSchedule, goHome } from './lib/router.js'
 import ProgramList from './components/ProgramList.js'
@@ -14,7 +14,7 @@ const app = Vue.createApp({
       loadData()
       initRouter()
     })
-    return { route, loading, scheduleLoading, goSchedule, goHome }
+    return { route, loading, goSchedule, goHome }
   },
   template: `
     <nav class="top-nav">

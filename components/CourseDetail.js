@@ -52,7 +52,6 @@ export default {
           <ul>
             <li v-for="pu in usage" :key="pu.program.id">
               <a @click="goToProgram(pu.program.id)">{{ pu.program.name }}</a>
-              — {{ pu.requirement.label }}
             </li>
           </ul>
         </div>

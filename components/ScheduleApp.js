@@ -124,30 +124,30 @@ export default {
           <button class="filter-btn" :class="{ active: filterMode === 'instructor' }" @click="filterMode = 'instructor'">Instructors</button>
         </div>
 
-        <div class="dept-filter" v-if="showFilter && filterMode === 'dept'">
-          <span class="dept-filter-label">Departments:</span>
+        <div class="filter-panel" v-if="showFilter && filterMode === 'dept'">
+          <span class="filter-label">Departments:</span>
           <span
             v-for="d in depts"
             :key="d"
-            class="dept-chip"
+            class="filter-chip"
             :class="{ on: selectedDepartments.includes(d) }"
             :style="selectedDepartments.includes(d) ? { backgroundColor: colorForDept(d) } : {}"
             @click="toggleDept(d)"
           >{{ d }}</span>
-          <button v-if="selectedDepartments.length" class="dept-clear" @click="clearDepts">Clear</button>
+          <button v-if="selectedDepartments.length" class="filter-clear" @click="clearDepts">Clear</button>
         </div>
 
-        <div class="dept-filter" v-if="showFilter && filterMode === 'instructor'">
-          <span class="dept-filter-label">Instructors:</span>
+        <div class="filter-panel" v-if="showFilter && filterMode === 'instructor'">
+          <span class="filter-label">Instructors:</span>
           <span
             v-for="i in instructors"
             :key="i"
-            class="dept-chip"
+            class="filter-chip"
             :class="{ on: selectedInstructors.includes(i) }"
             :style="selectedInstructors.includes(i) ? { backgroundColor: colorForInstructor(i) } : {}"
             @click="toggleInstructor(i)"
           >{{ i }}</span>
-          <button v-if="selectedInstructors.length" class="dept-clear" @click="clearInstructors">Clear</button>
+          <button v-if="selectedInstructors.length" class="filter-clear" @click="clearInstructors">Clear</button>
         </div>
 
         <ScheduleGrid v-if="view === 'grid'" />

@@ -48,7 +48,7 @@ export default {
         </thead>
         <tbody>
           <tr v-for="it in items" :key="it.code + it.o.section">
-            <td><span :class="filter.active ? 'course-chip dept-colored' : 'course-code-cell'" :style="filter.active ? { backgroundColor: filter.color(it) } : {}" @click="goScheduleCourse(it.code)">{{ it.code }}</span></td>
+            <td><span :class="filter.active ? 'course-chip filter-colored' : 'course-code-cell'" :style="filter.active ? { backgroundColor: filter.color(it) } : {}" @click="goScheduleCourse(it.code)">{{ it.code }}</span></td>
             <td>{{ it.o.section }}</td>
             <td>
               <span class="course-code-cell" @click="goScheduleInstructor(it.o.instructor)">

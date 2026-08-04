@@ -64,7 +64,7 @@ export default {
             v-for="it in s.items"
             :key="it.code + it.o.section"
             class="course-chip"
-            :class="{ 'dept-colored': filter.active }"
+            :class="{ 'filter-colored': filter.active }"
             :style="filter.active ? { backgroundColor: filter.color(it) } : {}"
             @click="goScheduleCourse(it.code)"
           >{{ it.code }}{{ filter.active ? ' ' + it.o.section : '' }}<span v-if="filter.active" class="do-inst">{{ briefInstructor(it.o.instructor) }}</span></span>
