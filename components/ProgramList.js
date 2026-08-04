@@ -1,8 +1,6 @@
 import { filteredPrograms, programs, loading, searchQuery, filterType } from '../lib/store.js'
 import { goToProgram } from '../lib/router.js'
 
-const { computed } = Vue
-
 export default {
   name: 'ProgramList',
   setup() {

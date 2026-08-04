@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install JS tooling
+        run: npm ci
+
+      - name: Lint JavaScript
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Compile Python scripts
+        run: python3 -m py_compile scrape_catalog.py generate_schedule.py codify_requirements.py
+
+      - name: Check Python formatting
+        run: python3 -m black --check scrape_catalog.py generate_schedule.py codify_requirements.py
+
+      - name: Data integrity + schedule determinism
+        run: python3 test/test_data.py
