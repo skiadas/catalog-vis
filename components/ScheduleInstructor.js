@@ -1,12 +1,14 @@
 import { route } from '../lib/router.js'
 import { schedule } from '../lib/store.js'
-import { WEEKDAYS, WEEKDAY_NAMES, hourMarks, instructorConflicts } from '../lib/schedule.js'
+import { instructorConflicts } from '../lib/schedule.js'
 import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../lib/router.js'
+import WeeklyCalendar from './WeeklyCalendar.js'
 
 const { computed } = Vue
 
 export default {
   name: 'ScheduleInstructor',
+  components: { WeeklyCalendar },
   setup() {
     const instructors = computed(() => (schedule.value ? Object.keys(schedule.value.byInstructor).sort() : []))
     const name = computed(() => route.value.params.instructor)
@@ -20,8 +22,12 @@ export default {
       height: (it.end - it.start) + 'px'
     })
     const itemsInDay = (day) => items.value.filter(it => it.days.includes(day)).sort((a, b) => a.start - b.start)
-    const hours = hourMarks()
-    return { instructors, name, items, conflicts, WEEKDAYS, WEEKDAY_NAMES, hours, itemStyle, itemsInDay,
+    const dayItems = (day) => itemsInDay(day).map(it => ({
+      key: it.code + it.o.section + it.o.time,
+      it,
+      style: itemStyle(it)
+    }))
+    return { instructors, name, items, conflicts, dayItems,
       goScheduleCourse, goScheduleSlot, goScheduleInstructor }
   },
   template: `
@@ -58,35 +64,19 @@ export default {
 
         <div style="margin-top:20px;">
           <div class="section-title">Weekly timetable</div>
-          <div class="calendar-scroll">
-            <div class="calendar">
-              <div class="cal-row cal-header">
-                <div class="cal-time-head"></div>
-                <div class="cal-dayhead" v-for="d in WEEKDAYS" :key="d">
-                  {{ d }}<span class="day-name">{{ WEEKDAY_NAMES[d] }}</span>
-                </div>
+          <WeeklyCalendar>
+            <template #daycol="{ day }">
+              <div
+                v-for="b in dayItems(day)"
+                :key="b.key"
+                class="cal-block teach"
+                :style="b.style"
+                @click="goScheduleCourse(b.it.code)"
+              >
+                <div class="cal-block-count">{{ b.it.code }}{{ b.it.o.section }}</div>
               </div>
-              <div class="cal-row cal-body">
-                <div class="cal-ruler">
-                  <div v-for="h in hours" :key="h.min" class="cal-hour"
-                    :style="{ top: (h.min - 480) + 'px', height: '60px' }">{{ h.label }}</div>
-                </div>
-                <div class="cal-daycol" v-for="d in WEEKDAYS" :key="d">
-                  <div v-for="g in hours" :key="g.min" class="cal-guide"
-                    :style="{ top: (g.min - 480) + 'px' }"></div>
-                  <div
-                    v-for="it in itemsInDay(d)"
-                    :key="it.code + it.o.section + it.o.time"
-                    class="cal-block teach"
-                    :style="itemStyle(it)"
-                    @click="goScheduleCourse(it.code)"
-                  >
-                    <div class="cal-block-count">{{ it.code }}{{ it.o.section }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+            </template>
+          </WeeklyCalendar>
         </div>
       </div>
     </div>

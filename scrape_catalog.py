@@ -18,6 +18,10 @@ def fetch_all_courses():
 def normalize_code(code):
     return re.sub(r'\s+', ' ', code).strip().upper()
 
+def normalize_faculty_name(name):
+    name = re.sub(r'\s+', ' ', name).strip()
+    return re.sub(r'\.$', '', name)
+
 def fetch_program_courses(prefix):
     r = requests.post(BASE_URL, data={'action': 'get_program_courses_file', 'program_course': prefix})
     r.raise_for_status()
@@ -222,11 +226,19 @@ def main():
         if not program_types:
             program_types.add('program')
 
+        faculty_names = []
+        seen = set()
+        for f in faculty.split(','):
+            name = normalize_faculty_name(f)
+            if name and name not in seen:
+                seen.add(name)
+                faculty_names.append(name)
+
         entry = {
             'id': pid,
             'name': name,
             'type': list(program_types),
-            'faculty': [f.strip() for f in faculty.split(',')] if faculty else [],
+            'faculty': faculty_names,
             'description': desc,
             'course_prefix': prefix,
             'requirements': requirements,

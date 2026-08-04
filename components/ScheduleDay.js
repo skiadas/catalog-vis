@@ -1,7 +1,7 @@
 import { route } from '../lib/router.js'
 import { WEEKDAY_NAMES, SLOT_BLOCKS, formatTime, slotKey, buildFilter, briefInstructor } from '../lib/schedule.js'
 import { schedule, selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
-import { goScheduleSlot, goScheduleCourse, goScheduleGrid } from '../lib/router.js'
+import { goScheduleSlot, goScheduleCourse } from '../lib/router.js'
 
 const { computed } = Vue
 
@@ -27,7 +27,7 @@ export default {
       }
       return out
     })
-    return { day, slots, filter, WEEKDAY_NAMES, formatTime, briefInstructor, goScheduleSlot, goScheduleCourse, goScheduleGrid }
+    return { day, slots, filter, WEEKDAY_NAMES, formatTime, briefInstructor, goScheduleSlot, goScheduleCourse }
   },
   template: `
     <div>

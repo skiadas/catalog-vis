@@ -2,7 +2,7 @@ import { route } from '../lib/router.js'
 import { schedule, scheduleOfferings } from '../lib/store.js'
 import { allCourses } from '../lib/store.js'
 import { conflictsForCourse, formatTime } from '../lib/schedule.js'
-import { goScheduleCourse, goScheduleSlot, goScheduleGrid } from '../lib/router.js'
+import { goScheduleCourse, goScheduleSlot } from '../lib/router.js'
 
 const { computed } = Vue
 
@@ -13,7 +13,7 @@ export default {
     const sections = computed(() => (schedule.value && code.value ? schedule.value.byCourse[code.value] : []) || [])
     const conflicts = computed(() => (schedule.value && code.value ? conflictsForCourse(code.value, schedule.value) : []))
     const catalog = computed(() => (allCourses.value && code.value ? allCourses.value[code.value] : null))
-    return { code, sections, conflicts, schedule, scheduleOfferings, allCourses, catalog, formatTime, goScheduleCourse, goScheduleSlot, goScheduleGrid }
+    return { code, sections, conflicts, schedule, scheduleOfferings, allCourses, catalog, formatTime, goScheduleCourse, goScheduleSlot }
   },
   template: `
     <div>

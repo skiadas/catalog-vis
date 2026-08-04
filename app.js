@@ -6,6 +6,7 @@ import ProgramDetail from './components/ProgramDetail.js'
 import CourseDetail from './components/CourseDetail.js'
 import RequirementSection from './components/RequirementSection.js'
 import ScheduleApp from './components/ScheduleApp.js'
+import WeeklyCalendar from './components/WeeklyCalendar.js'
 
 const app = Vue.createApp({
   setup() {
@@ -40,4 +41,5 @@ app.component('ProgramDetail', ProgramDetail)
 app.component('CourseDetail', CourseDetail)
 app.component('RequirementSection', RequirementSection)
 app.component('ScheduleApp', ScheduleApp)
+app.component('WeeklyCalendar', WeeklyCalendar)
 app.mount('#app')
