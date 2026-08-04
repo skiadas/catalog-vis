@@ -22,6 +22,8 @@ A deployable static Vue 3 SPA that browses Hanover College's 54 academic program
 | `lib/schedule.js` | Schedule domain model + helpers (parsing, index, conflicts, colors, calendars) |
 | `components/ProgramList.js` | Program list view |
 | `components/ProgramDetail.js` | Program detail with requirements + course tabs |
+| `components/RequirementSection.js` | Groups a section's `items` (merges consecutive `course`s) + renders each via `RequirementItem` |
+| `components/RequirementItem.js` | Recursive renderer for every requirement item type (`course`/`any_of`/`each_of`/`some_of`/`electives`/`custom` + constraint tags) |
 | `components/CourseDetail.js` | Single course detail view |
 | `components/WeeklyCalendar.js` | Shared weekly-calendar scaffold (header, ruler, guides; `daycol` slot) |
 | `components/ScheduleApp.js` | Schedule shell + view switching + filters |
@@ -53,16 +55,21 @@ Key behaviors:
 
 Requirement text is transformed into structured JSON using an **LLM-based approach** (not a parser).
 
-**Item types**:
+**Item types** (`requirements_parsed.json` is `schema_version: 2.0`):
 - `course` — a specific course (`{"type": "course", "code": "BIO 161"}`)
-- `any_of` — alternatives (`{"type": "any_of", "codes": ["BIO 335", "BIO 352"]}`)
+- `any_of` — choose exactly one of the alternatives; `codes` (flat courses) or `items` (arbitrary nested items) (`{"type": "any_of", "codes": ["BIO 335", "BIO 352"]}`)
+- `each_of` — satisfy ALL the sub-requirements (`{"type": "each_of", "items": [...]}`); replaces the legacy `pair`
+- `some_of` — satisfy at least N of the sub-requirements (`{"type": "some_of", "min": 2, "items": [...]}`)
 - `electives` — N courses with optional constraints (`{"type": "electives", "count": 5, "constraints": [...]}`)
 - `custom` — anything that can't be cleanly codified (`{"type": "custom", "text": "..."}`)
 
-**Constraint types**:
-- `level`: `{"type": "level", "level": 300, "min": 2}` or `{"type": "level", "level": 200, "comparison": "or_above"}`
+**Constraint types** (attach to `electives` `constraints` arrays; a course must pass all):
+- `level`: `{"type": "level", "level": 300, "atLeast": 2}`, level bands `{"type": "level", "min": 160, "max": 169}` (e.g. "GEO 16x"), counts via `atLeast`/`atMost`, `"orAbove": true`
+- `discipline`: prefix-based, `{"type": "discipline", "prefixes": ["GER"], "atLeast": 7}`, `"atMost"`, or `"distinctAtLeast"` ("from different disciplines")
+- `from`: `{"type": "from", "codes": ["CHE 324", "CHE 325"]}` (eligible pool)
 - `exclude`: `{"type": "exclude", "codes": ["BIO 301", "BIO 307"]}`
-- `from`: `{"type": "from", "codes": ["CHE 324", "CHE 325"]}`
+- `max_from`: cap on a set, `{"type": "max_from", "codes": [...], "atMost": 1}` ("no more than N of")
+- `min_from`: floor on a set, `{"type": "min_from", "codes": [...], "atLeast": 2}` ("at least N of")
 
 **Known prefixes** (42): ANTH, ARTD, ARTH, AST, BCH, BIO, BUSN, CHE, CLA, COM, CS, DSCI, ECO, EDU, ENG, ENGR, ENV, FRE, GEO, GER, GNDS, GRE, HIS, HMS, ID, INS, KIP, LAT, MAT, ML, MRS, MUS, NUR, PHI, PHY, PLS, PSY, SMGT, SOC, SPA, THR, THS
 
@@ -88,6 +95,7 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 - ES modules: no build step, components are `.js` files with template strings
 - Hash-based routing (`#/` → list, `#/program/:id` → detail, `#/course/:code` → course, `#/schedule` and subviews)
 - Components use `Vue.defineComponent()` and are registered in `app.js`
+- `RequirementItem` renders recursively (any item type may nest inside another via `any_of.items` / `each_of.items` / `some_of.items`); `RequirementSection` groups only the section's top-level consecutive `course`s
 - Weekly calendar views (`ScheduleGrid`, `ScheduleInstructor`) share the `WeeklyCalendar` scaffold via a `daycol` scoped slot; the day header is clickable only when an `onDayClick` prop is provided
 
 ## Formatting
@@ -101,16 +109,19 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 **Completed**:
 - Scraper produces clean `majors.json` with normalized course codes and faculty names
 - All 54 programs have proper unique IDs (derived from program name)
-- Requirements codified for all programs with structured JSON output
-- Level numbers filtered, bare numbers resolved with correct prefix, exclusion lists applied
+- Requirements codified for all programs with structured JSON output (`schema_version: 2.0`)
+- Requirement model normalized: `any_of`/`each_of`/`some_of` composition, `discipline`/`level` bands+counts, `max_from`/`min_from`; legacy `pair`/`level_gate` retired
+- `test/test_data.py` validates the requirements model vocabulary (node/constraint types, code formats, known discipline prefixes)
 - Vue 3 SPA with program list, detail, course detail views, and filter/sort
 - Schedule generator produces a deterministic synthetic `sample-schedule.csv`
 - Schedule SPA: grid, day, slot, course, and instructor views with dept/instructor filters, conflicts, and shared `WeeklyCalendar`
 
 **Known limitations in requirements_parsed.json**:
-- Complex multi-line "one pair from the following" sections (e.g., Biology BS cognates, CS BS cognates) use `custom` type rather than being fully parsed
-- Education's narrative descriptions are preserved as `custom` items
+- Complex multi-line "one pair from the following" sections use nested `any_of`/`each_of` items (e.g., Biology BS and CS BS cognates are now fully structured); a few remaining nested combos ("one of X and one of Y") are `each_of`s
+- Education's narrative descriptions and program-admission prose are preserved as `custom` items
 - Timing notes ("before end of junior year") stored as note fields on courses
+- `.25 unit` credit notes and topic-category requirements (e.g., Theological Studies "one course in biblical studies") remain `custom` — no `credit`/topic restriction kind yet
+- A handful of requirement codes don't resolve to `majors.json` course lists (cross-listings, ranges like `ENV 408-409`, legacy codes) — `test/test_data.py` validates code format, not code existence
 
 ## Common Tasks
 
