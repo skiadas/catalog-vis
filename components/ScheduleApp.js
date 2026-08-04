@@ -89,30 +89,37 @@ export default {
       <div class="schedule-header">
         <div class="schedule-title-row">
           <span class="section-title">Schedule Visualization</span>
+          <span class="schedule-sub">
+            {{ scheduleOfferings.length }} offerings ·
+            {{ Object.keys(schedule.byCourse).length }} distinct courses ·
+            {{ Object.keys(schedule.byInstructor).length }} instructors
+          </span>
           <button class="schedule-help-toggle" title="How to use this page" @click="toggleHelp">?</button>
-        </div>
-        <div class="schedule-sub">
-          {{ scheduleOfferings.length }} offerings ·
-          {{ Object.keys(schedule.byCourse).length }} distinct courses ·
-          {{ Object.keys(schedule.byInstructor).length }} instructors
         </div>
 
         <div class="schedule-note">
           This is a made-up, illustrative schedule. It does not reflect actual course offerings or meeting times.
         </div>
 
-        <div class="schedule-tabs">
-          <button class="filter-btn" :class="{ active: view === 'grid' }" @click="goScheduleGrid()">Grid</button>
-          <button
-            class="filter-btn"
-            :class="{ active: view === 'course' }"
-            @click="goScheduleCourse(selectedCode || sortedCourses[0])"
-          >Course conflicts</button>
-          <button
-            class="filter-btn"
-            :class="{ active: view === 'instructor' }"
-            @click="goScheduleInstructor(Object.keys(schedule.byInstructor)[0])"
-          >Instructor</button>
+        <div class="schedule-toolbar">
+          <div class="schedule-tabs">
+            <button class="filter-btn" :class="{ active: view === 'grid' }" @click="goScheduleGrid()">Grid</button>
+            <button
+              class="filter-btn"
+              :class="{ active: view === 'course' }"
+              @click="goScheduleCourse(selectedCode || sortedCourses[0])"
+            >Course conflicts</button>
+            <button
+              class="filter-btn"
+              :class="{ active: view === 'instructor' }"
+              @click="goScheduleInstructor(Object.keys(schedule.byInstructor)[0])"
+            >Instructor</button>
+          </div>
+
+          <div class="filter-mode" v-if="showFilter">
+            <button class="filter-btn" :class="{ active: filterMode === 'dept' }" @click="filterMode = 'dept'">Departments</button>
+            <button class="filter-btn" :class="{ active: filterMode === 'instructor' }" @click="filterMode = 'instructor'">Instructors</button>
+          </div>
         </div>
 
         <div class="course-picker" v-if="view === 'course'">
@@ -128,11 +135,6 @@ export default {
           </select>
         </div>
       </div>
-
-      <div class="filter-mode" v-if="showFilter">
-          <button class="filter-btn" :class="{ active: filterMode === 'dept' }" @click="filterMode = 'dept'">Departments</button>
-          <button class="filter-btn" :class="{ active: filterMode === 'instructor' }" @click="filterMode = 'instructor'">Instructors</button>
-        </div>
 
         <div class="filter-panel" v-if="showFilter && filterMode === 'dept'">
           <span class="filter-label">Departments:</span>
