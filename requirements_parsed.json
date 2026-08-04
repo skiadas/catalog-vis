@@ -1668,12 +1668,46 @@
                       ]
                     },
                     {
-                      "type": "custom",
-                      "text": "one of GEO 161, 162, 163 and one of GEO 224, 323, 327, 328, 334"
+                      "type": "any_of",
+                      "note": "one from each of the two groups",
+                      "items": [
+                        {
+                          "type": "any_of",
+                          "codes": [
+                            "GEO 161",
+                            "GEO 162",
+                            "GEO 163"
+                          ]
+                        },
+                        {
+                          "type": "any_of",
+                          "codes": [
+                            "GEO 224",
+                            "GEO 323",
+                            "GEO 327",
+                            "GEO 328",
+                            "GEO 334"
+                          ]
+                        }
+                      ]
                     },
                     {
-                      "type": "custom",
-                      "text": "one of BIO 165, 185, KIP 161 and KIP 215"
+                      "type": "any_of",
+                      "note": "one from the first group, plus the second",
+                      "items": [
+                        {
+                          "type": "any_of",
+                          "codes": [
+                            "BIO 165",
+                            "BIO 185",
+                            "KIP 161"
+                          ]
+                        },
+                        {
+                          "type": "course",
+                          "code": "KIP 215"
+                        }
+                      ]
                     },
                     {
                       "type": "pair",

@@ -5,6 +5,7 @@ import ProgramList from './components/ProgramList.js'
 import ProgramDetail from './components/ProgramDetail.js'
 import CourseDetail from './components/CourseDetail.js'
 import RequirementSection from './components/RequirementSection.js'
+import RequirementItem from './components/RequirementItem.js'
 import ScheduleApp from './components/ScheduleApp.js'
 import WeeklyCalendar from './components/WeeklyCalendar.js'
 
@@ -40,6 +41,7 @@ app.component('ProgramList', ProgramList)
 app.component('ProgramDetail', ProgramDetail)
 app.component('CourseDetail', CourseDetail)
 app.component('RequirementSection', RequirementSection)
+app.component('RequirementItem', RequirementItem)
 app.component('ScheduleApp', ScheduleApp)
 app.component('WeeklyCalendar', WeeklyCalendar)
 app.mount('#app')
