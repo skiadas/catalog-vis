@@ -278,6 +278,25 @@ body {
   font-weight: 400;
 }
 
+.course-chip.dept-colored {
+  color: #ffffff;
+  border-color: transparent;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+}
+
+.course-chip.dept-colored:hover {
+  background: rgba(27, 73, 101, 0.9);
+  color: #ffffff;
+}
+
+.do-inst {
+  font-weight: 500;
+  font-size: 9px;
+  opacity: 0.9;
+}
+
 .course-chip:hover .sep {
   color: rgba(255,255,255,0.7);
 }
@@ -624,6 +643,527 @@ body {
   gap: 6px;
 }
 
+/* ---------- Top navigation ---------- */
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--border);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.nav-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: var(--primary);
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 6px;
+}
+
+.nav-links a {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+
+.nav-links a:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.nav-links a.active {
+  background: var(--primary);
+  color: white;
+}
+
+/* ---------- Schedule ---------- */
+.schedule-header {
+  margin-bottom: 24px;
+}
+
+.schedule-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 4px 0 12px;
+}
+
+.schedule-note {
+  font-size: 13px;
+  color: #9a6b00;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-left: 4px solid #f0ad2c;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+.schedule-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.course-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.course-picker label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.schedule-grid {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.schedule-grid th,
+.schedule-grid td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  text-align: center;
+}
+
+.schedule-grid .day-head {
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-light);
+  transition: background 0.15s;
+}
+
+.schedule-grid .day-head:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.schedule-grid .day-head .day-name {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.schedule-grid .day-head:hover .day-name {
+  color: rgba(255,255,255,0.85);
+}
+
+.schedule-grid .hour-head {
+  width: 90px;
+}
+
+.schedule-grid .time-cell {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.schedule-grid .block-row td {
+  background: #f0f2f5;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  border: none;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.schedule-grid .slot-cell {
+  cursor: pointer;
+  min-width: 90px;
+  transition: background 0.15s;
+}
+
+.schedule-grid .slot-cell:hover {
+  background: var(--primary-light);
+}
+
+.schedule-grid .slot-cell.empty {
+  cursor: default;
+  background: #fafafa;
+}
+
+.schedule-grid .slot-cell.empty:hover {
+  background: #fafafa;
+}
+
+.schedule-grid .count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 15px;
+  background: var(--accent);
+  color: white;
+}
+
+.schedule-grid .count.zero {
+  background: #e9ecef;
+  color: var(--text-muted);
+}
+
+.schedule-grid .dot {
+  color: #ced4da;
+}
+
+/* Day view */
+.day-slot-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.day-slot-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--primary-light);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.day-slot-head:hover {
+  background: #d6e7f7;
+}
+
+.day-slot-time {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.day-slot-count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.day-slot-items {
+  padding: 12px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.day-slot-empty {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Instructor */
+.teach-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.conflict-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #c62828;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.section-title.alert {
+  color: #c62828;
+}
+
+.conflict-alert {
+  background: #ffebee;
+  border: 1px solid #ef9a9a;
+  color: #b71c1c;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+/* ---------- Weekly calendar grid ---------- */
+.calendar-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.calendar {
+  min-width: 640px;
+  font-size: 13px;
+}
+
+.cal-row {
+  display: flex;
+}
+
+.cal-header {
+  border-bottom: 2px solid var(--border);
+  background: var(--surface);
+}
+
+.cal-time-head {
+  flex: 0 0 56px;
+}
+
+.cal-dayhead {
+  flex: 1;
+  text-align: center;
+  padding: 10px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-light);
+  cursor: pointer;
+  border-left: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.cal-dayhead:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.cal-dayhead .day-name {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.cal-dayhead:hover .day-name {
+  color: rgba(255,255,255,0.85);
+}
+
+.cal-ruler {
+  flex: 0 0 56px;
+  position: relative;
+  height: 480px;
+}
+
+.cal-ruler .cal-hour {
+  position: absolute;
+  right: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  transform: translateY(-4px);
+}
+
+.cal-daycol {
+  flex: 1;
+  position: relative;
+  height: 480px;
+  border-left: 1px solid var(--border);
+  background: #fcfcfd;
+}
+
+.cal-guide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #ececf0;
+}
+
+.cal-block {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  padding: 4px 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 2px;
+  background: rgba(98, 182, 203, 0.85);
+  color: #073042;
+  border: 1px solid rgba(27, 73, 101, 0.35);
+  overflow: hidden;
+  text-align: center;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.cal-block:hover {
+  background: rgba(98, 182, 203, 1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.cal-block.teach {
+  background: rgba(27, 73, 101, 0.82);
+  color: white;
+  border-color: #103047;
+}
+
+.cal-block-count {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.cal-block-label {
+  font-weight: 600;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.cal-block-time {
+  font-size: 10px;
+  line-height: 1.2;
+  color: inherit;
+  opacity: 0.85;
+  word-break: break-word;
+}
+
+/* Filtered block variant: white card with per-department offerings */
+.cal-block.filtered {
+  background: #ffffff;
+  border-color: var(--border);
+  justify-content: flex-start;
+  padding-top: 6px;
+}
+
+.cal-block.filtered:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.cal-block-depts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.dept-offering {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  font-size: 10px;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 3px;
+  padding: 1px 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dept-offering:hover {
+  filter: brightness(1.1);
+}
+
+/* Department filter chips */
+.dept-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.dept-filter-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+
+.dept-chip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dept-chip:hover {
+  border-color: var(--accent);
+  color: var(--primary);
+}
+
+.dept-chip.on {
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.dept-clear {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px 6px;
+}
+
+.dept-clear:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 600px) {
   #app {
     padding: 16px 12px;
@@ -643,5 +1183,14 @@ body {
   .filter-btn {
     flex: 1;
     text-align: center;
+  }
+  .top-nav {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .schedule-grid .count {
+    min-width: 24px;
+    height: 24px;
+    font-size: 13px;
   }
 }

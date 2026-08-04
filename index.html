@@ -4,7 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hanover College Academic Catalog</title>
-  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    (function () {
+      var loopback = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|::1|\[::1\])$/i.test(location.hostname);
+      document.write('<script src="' +
+        (loopback ? 'https://unpkg.com/vue@3/dist/vue.global.js'        /* dev build (warnings) */
+                  : 'https://unpkg.com/vue@3/dist/vue.global.prod.js')  /* prod build */
+        + '"><\/script>');
+    })();
+  </script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
