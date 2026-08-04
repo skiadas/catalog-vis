@@ -10,16 +10,28 @@ export default {
   setup() {
     const day = computed(() => route.value.params.day)
     const time = computed(() => route.value.params.time)
-    const filter = computed(() => buildFilter(filterMode.value, selectedDepartments.value, selectedInstructors.value))
+    const filter = computed(() =>
+      buildFilter(filterMode.value, selectedDepartments.value, selectedInstructors.value),
+    )
     const items = computed(() => {
       if (!schedule.value) return []
       let list = schedule.value.bySlot[slotKey(day.value, time.value)] || []
       if (filter.value.active) {
-        list = list.filter(it => filter.value.matches(it))
+        list = list.filter((it) => filter.value.matches(it))
       }
       return list
     })
-    return { day, time, items, filter, WEEKDAY_NAMES, formatTime, goScheduleCourse, goScheduleDay, goScheduleInstructor }
+    return {
+      day,
+      time,
+      items,
+      filter,
+      WEEKDAY_NAMES,
+      formatTime,
+      goScheduleCourse,
+      goScheduleDay,
+      goScheduleInstructor,
+    }
   },
   template: `
     <div>
@@ -47,5 +59,5 @@ export default {
         </tbody>
       </table>
     </div>
-  `
+  `,
 }

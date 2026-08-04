@@ -5,22 +5,27 @@ from bs4 import BeautifulSoup
 
 BASE_URL = 'https://catalog.hanover.edu'
 
+
 def fetch_html():
     r = requests.get(BASE_URL)
     r.raise_for_status()
     return r.text
+
 
 def fetch_all_courses():
     r = requests.post(BASE_URL, data={'action': 'get_courses', 'course_name': '', 'course_program': ''})
     r.raise_for_status()
     return r.json()['courses']['courses']
 
+
 def normalize_code(code):
     return re.sub(r'\s+', ' ', code).strip().upper()
+
 
 def normalize_faculty_name(name):
     name = re.sub(r'\s+', ' ', name).strip()
     return re.sub(r'\.$', '', name)
+
 
 def fetch_program_courses(prefix):
     r = requests.post(BASE_URL, data={'action': 'get_program_courses_file', 'program_course': prefix})
@@ -40,12 +45,9 @@ def fetch_program_courses(prefix):
         desc = desc_el.get_text(strip=True) if desc_el else ''
         if desc.startswith('- '):
             desc = desc[2:]
-        courses.append({
-            'course_code': code,
-            'course_name': name,
-            'description': desc
-        })
+        courses.append({'course_code': code, 'course_name': name, 'description': desc})
     return courses
+
 
 def parse_prerequisites(description):
     if not description:
@@ -59,15 +61,17 @@ def parse_prerequisites(description):
             break
     return prereqs
 
+
 def parse_requirement_block(strong_tag):
     label = strong_tag.get_text(strip=True).rstrip(':').strip()
     full_text = strong_tag.parent.get_text(' ', strip=True)
     strong_text = strong_tag.get_text(strip=True)
     if full_text.startswith(strong_text):
-        body = full_text[len(strong_text):].strip().lstrip(':').strip()
+        body = full_text[len(strong_text) :].strip().lstrip(':').strip()
     else:
         body = full_text
     return label, body
+
 
 def normalize_prefixes_in_text(text, known_prefixes):
     sorted_prefixes = sorted(known_prefixes, key=len, reverse=True)
@@ -76,15 +80,13 @@ def normalize_prefixes_in_text(text, known_prefixes):
             rf'\b{re.escape(prefix)}\s*(\d)',
             lambda m, p=prefix: f'{p.upper()} {m.group(1)}',
             text,
-            flags=re.IGNORECASE
+            flags=re.IGNORECASE,
         )
         text = re.sub(
-            rf'\b{re.escape(prefix)}\s+',
-            lambda m, p=prefix: f'{p.upper()} ',
-            text,
-            flags=re.IGNORECASE
+            rf'\b{re.escape(prefix)}\s+', lambda m, p=prefix: f'{p.upper()} ', text, flags=re.IGNORECASE
         )
     return text
+
 
 def build_program_requirements(content, program_prefix, known_prefixes=None):
     requirements = {}
@@ -96,7 +98,19 @@ def build_program_requirements(content, program_prefix, known_prefixes=None):
             continue
         if txt.startswith('Faculty'):
             continue
-        if any(kw in txt for kw in ('Major', 'Minor', 'Bachelor', 'Elementary', 'Secondary', 'Sports', 'German', 'German Studies')):
+        if any(
+            kw in txt
+            for kw in (
+                'Major',
+                'Minor',
+                'Bachelor',
+                'Elementary',
+                'Secondary',
+                'Sports',
+                'German',
+                'German Studies',
+            )
+        ):
             label, body = parse_requirement_block(st)
             if known_prefixes:
                 body = normalize_prefixes_in_text(body, known_prefixes)
@@ -115,6 +129,7 @@ def build_program_requirements(content, program_prefix, known_prefixes=None):
             }
     return requirements
 
+
 def build_course_map(all_courses):
     course_map = {}
     for c in all_courses:
@@ -130,6 +145,7 @@ def build_course_map(all_courses):
         }
     return course_map
 
+
 def get_known_prefixes(programs_soup):
     prefixes = set()
     for p in programs_soup.select('div.program'):
@@ -137,6 +153,7 @@ def get_known_prefixes(programs_soup):
         if pd and pd.get('id'):
             prefixes.add(pd['id'])
     return prefixes
+
 
 def main():
     print('Fetching main HTML...')
@@ -260,6 +277,7 @@ def main():
     with open('majors.json', 'w', encoding='utf-8') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
     print(f'\nWritten majors.json ({len(programs_data)} programs, {len(all_courses_api)} total courses)')
+
 
 if __name__ == '__main__':
     main()

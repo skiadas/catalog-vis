@@ -10,10 +10,25 @@ export default {
   name: 'ScheduleCourse',
   setup() {
     const code = computed(() => route.value.params.code)
-    const sections = computed(() => (schedule.value && code.value ? schedule.value.byCourse[code.value] : []) || [])
-    const conflicts = computed(() => (schedule.value && code.value ? conflictsForCourse(code.value, schedule.value) : []))
+    const sections = computed(
+      () => (schedule.value && code.value ? schedule.value.byCourse[code.value] : []) || [],
+    )
+    const conflicts = computed(() =>
+      schedule.value && code.value ? conflictsForCourse(code.value, schedule.value) : [],
+    )
     const catalog = computed(() => (allCourses.value && code.value ? allCourses.value[code.value] : null))
-    return { code, sections, conflicts, schedule, scheduleOfferings, allCourses, catalog, formatTime, goScheduleCourse, goScheduleSlot }
+    return {
+      code,
+      sections,
+      conflicts,
+      schedule,
+      scheduleOfferings,
+      allCourses,
+      catalog,
+      formatTime,
+      goScheduleCourse,
+      goScheduleSlot,
+    }
   },
   template: `
     <div>
@@ -68,5 +83,5 @@ export default {
         {{ scheduleOfferings.length }} total offerings across {{ Object.keys(schedule.byCourse).length }} courses.
       </p>
     </div>
-  `
+  `,
 }

@@ -71,28 +71,29 @@ def main():
             'then process each requirement text using the prompt template '
             'with an LLM, writing structured sections arrays per the schema.'
         ),
-        'programs': []
+        'programs': [],
     }
 
     for prog in data['programs']:
         reqs_out = []
         for key, req in prog['requirements'].items():
             prompt = PROMPT_TEMPLATE.format(
-                name=prog['name'],
-                prefix=prog.get('course_prefix', ''),
-                label=req['label'],
-                text=req['text']
+                name=prog['name'], prefix=prog.get('course_prefix', ''), label=req['label'], text=req['text']
             )
-            reqs_out.append({
-                'label': req['label'],
-                '_prompt': prompt,
-            })
+            reqs_out.append(
+                {
+                    'label': req['label'],
+                    '_prompt': prompt,
+                }
+            )
 
-        output['programs'].append({
-            'id': prog['id'],
-            'name': prog['name'],
-            'requirements': reqs_out,
-        })
+        output['programs'].append(
+            {
+                'id': prog['id'],
+                'name': prog['name'],
+                'requirements': reqs_out,
+            }
+        )
 
         print(f'{prog["name"]}: {len(reqs_out)} requirements')
 

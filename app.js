@@ -33,7 +33,7 @@ const app = Vue.createApp({
     <ProgramDetail v-else-if="route.view === 'program-detail'" />
     <CourseDetail v-else-if="route.view === 'course-detail'" />
     <ScheduleApp v-else-if="route.view === 'schedule'" />
-  `
+  `,
 })
 
 app.component('ProgramList', ProgramList)

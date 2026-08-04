@@ -7,7 +7,7 @@ export default {
   name: 'ProgramDetail',
   setup() {
     const currentProgram = computed(() => {
-      return programs.value.find(p => p.id === route.value.params.id) || null
+      return programs.value.find((p) => p.id === route.value.params.id) || null
     })
     const currentParsed = computed(() => {
       return parsedRequirements.value[route.value.params.id] || null
@@ -111,5 +111,5 @@ export default {
         </table>
       </div>
     </div>
-  `
+  `,
 }

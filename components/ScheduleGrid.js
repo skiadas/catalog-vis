@@ -9,32 +9,42 @@ export default {
   name: 'ScheduleGrid',
   components: { WeeklyCalendar },
   setup() {
-    const slotTitle = (slot) => slot.items.map(it => it.code).join(', ')
+    const slotTitle = (slot) => slot.items.map((it) => it.code).join(', ')
 
-    const filter = computed(() => buildFilter(filterMode.value, selectedDepartments.value, selectedInstructors.value))
+    const filter = computed(() =>
+      buildFilter(filterMode.value, selectedDepartments.value, selectedInstructors.value),
+    )
 
     const dayBlocks = (day) => {
       const blocks = daySlotBlocks(day, schedule.value)
       if (!filter.value.active) return blocks
       const out = []
       for (const b of blocks) {
-        const items = b.items.filter(it => filter.value.matches(it))
+        const items = b.items.filter((it) => filter.value.matches(it))
         if (items.length) out.push({ ...b, items })
       }
       return out
     }
 
-    const blocksInDay = (day) => dayBlocks(day).map(slot => ({
-      key: slot.time,
-      slot,
-      style: blockStyle(slot),
-      title: slotTitle(slot),
-      active: filter.value.active
-    }))
+    const blocksInDay = (day) =>
+      dayBlocks(day).map((slot) => ({
+        key: slot.time,
+        slot,
+        style: blockStyle(slot),
+        title: slotTitle(slot),
+        active: filter.value.active,
+      }))
 
-    return { formatTime,
-      schedule, blocksInDay, filter, briefInstructor,
-      goScheduleSlot, goScheduleDay, goScheduleCourse }
+    return {
+      formatTime,
+      schedule,
+      blocksInDay,
+      filter,
+      briefInstructor,
+      goScheduleSlot,
+      goScheduleDay,
+      goScheduleCourse,
+    }
   },
   template: `
     <WeeklyCalendar :on-day-click="goScheduleDay">
@@ -67,5 +77,5 @@ export default {
         </div>
       </template>
     </WeeklyCalendar>
-  `
+  `,
 }

@@ -84,8 +84,8 @@ random.shuffle(offerings)
 
 # Greedy slot assignment: no instructor double-booked in a slot,
 # no two sections of the same course in the same slot.
-slot_taken_by = {sk: set() for sk in SLOTS}          # instructors per slot
-course_at_slot = {sk: set() for sk in SLOTS}          # course codes per slot
+slot_taken_by = {sk: set() for sk in SLOTS}  # instructors per slot
+course_at_slot = {sk: set() for sk in SLOTS}  # course codes per slot
 assignment = {}
 
 for pf, num, sec in offerings:

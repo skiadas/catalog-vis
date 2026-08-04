@@ -65,5 +65,5 @@ export default {
         <p>No programs match your search.</p>
       </div>
     </div>
-  `
+  `,
 }

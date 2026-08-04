@@ -1,5 +1,12 @@
 import { route } from '../lib/router.js'
-import { WEEKDAY_NAMES, SLOT_BLOCKS, formatTime, slotKey, buildFilter, briefInstructor } from '../lib/schedule.js'
+import {
+  WEEKDAY_NAMES,
+  SLOT_BLOCKS,
+  formatTime,
+  slotKey,
+  buildFilter,
+  briefInstructor,
+} from '../lib/schedule.js'
 import { schedule, selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
 import { goScheduleSlot, goScheduleCourse } from '../lib/router.js'
 
@@ -9,7 +16,9 @@ export default {
   name: 'ScheduleDay',
   setup() {
     const day = computed(() => route.value.params.day)
-    const filter = computed(() => buildFilter(filterMode.value, selectedDepartments.value, selectedInstructors.value))
+    const filter = computed(() =>
+      buildFilter(filterMode.value, selectedDepartments.value, selectedInstructors.value),
+    )
     const slots = computed(() => {
       const out = []
       for (const block of SLOT_BLOCKS) {
@@ -18,7 +27,7 @@ export default {
         for (const slot of block.slots) {
           let items = schedule.value.bySlot[slotKey(day.value, slot.time)] || []
           if (filter.value.active) {
-            items = items.filter(it => filter.value.matches(it))
+            items = items.filter((it) => filter.value.matches(it))
           }
           if (items.length) {
             out.push({ ...slot, days: block.label, items })
@@ -27,7 +36,16 @@ export default {
       }
       return out
     })
-    return { day, slots, filter, WEEKDAY_NAMES, formatTime, briefInstructor, goScheduleSlot, goScheduleCourse }
+    return {
+      day,
+      slots,
+      filter,
+      WEEKDAY_NAMES,
+      formatTime,
+      briefInstructor,
+      goScheduleSlot,
+      goScheduleCourse,
+    }
   },
   template: `
     <div>
@@ -54,5 +72,5 @@ export default {
         <div class="day-slot-empty" v-else>No offerings</div>
       </div>
     </div>
-  `
+  `,
 }

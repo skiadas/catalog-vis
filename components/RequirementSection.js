@@ -6,7 +6,7 @@ const { computed } = Vue
 export default {
   name: 'RequirementSection',
   props: {
-    section: { type: Object, required: true }
+    section: { type: Object, required: true },
   },
   setup(props) {
     const groupedItems = computed(() => {
@@ -32,7 +32,10 @@ export default {
     function formatLevelConstraint(c) {
       if (c.comparison === 'or_above') return `${c.level}-level or above`
       if (c.comparison === 'exclude') return `Excluding ${c.level}-level`
-      if (c.comparison === 'at_most') return c.min === 1 ? `No more than 1 at ${c.level}-level` : `No more than ${c.min} at ${c.level}-level`
+      if (c.comparison === 'at_most')
+        return c.min === 1
+          ? `No more than 1 at ${c.level}-level`
+          : `No more than ${c.min} at ${c.level}-level`
       if (c.min) return `At least ${c.min} at ${c.level}-level`
       return `${c.level}-level`
     }
@@ -145,5 +148,5 @@ export default {
         </div>
       </div>
     </div>
-  `
+  `,
 }

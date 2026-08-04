@@ -3,11 +3,11 @@ import { WEEKDAYS, WEEKDAY_NAMES, hourMarks, DAY_START_MIN } from '../lib/schedu
 export default {
   name: 'WeeklyCalendar',
   props: {
-    onDayClick: { type: Function, default: null }
+    onDayClick: { type: Function, default: null },
   },
   setup() {
     const hours = hourMarks()
-    const topOffset = (min) => (min - DAY_START_MIN) + 'px'
+    const topOffset = (min) => min - DAY_START_MIN + 'px'
     return { WEEKDAYS, WEEKDAY_NAMES, hours, topOffset }
   },
   template: `
@@ -45,5 +45,5 @@ export default {
         </div>
       </div>
     </div>
-  `
+  `,
 }

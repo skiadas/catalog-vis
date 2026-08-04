@@ -1,7 +1,18 @@
 import { route } from '../lib/router.js'
 import { goScheduleGrid, goScheduleCourse, goScheduleInstructor } from '../lib/router.js'
-import { schedule, scheduleOfferings, selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
-import { departmentsInSchedule, instructorsInSchedule, colorForDept, colorForInstructor } from '../lib/schedule.js'
+import {
+  schedule,
+  scheduleOfferings,
+  selectedDepartments,
+  selectedInstructors,
+  filterMode,
+} from '../lib/store.js'
+import {
+  departmentsInSchedule,
+  instructorsInSchedule,
+  colorForDept,
+  colorForInstructor,
+} from '../lib/schedule.js'
 import ScheduleGrid from './ScheduleGrid.js'
 import ScheduleDay from './ScheduleDay.js'
 import ScheduleSlot from './ScheduleSlot.js'
@@ -26,15 +37,19 @@ export default {
     const toggleDept = (prefix) => {
       const i = selectedDepartments.value.indexOf(prefix)
       if (i < 0) selectedDepartments.value = [...selectedDepartments.value, prefix]
-      else selectedDepartments.value = selectedDepartments.value.filter(p => p !== prefix)
+      else selectedDepartments.value = selectedDepartments.value.filter((p) => p !== prefix)
     }
-    const clearDepts = () => { selectedDepartments.value = [] }
+    const clearDepts = () => {
+      selectedDepartments.value = []
+    }
     const toggleInstructor = (name) => {
       const i = selectedInstructors.value.indexOf(name)
       if (i < 0) selectedInstructors.value = [...selectedInstructors.value, name]
-      else selectedInstructors.value = selectedInstructors.value.filter(n => n !== name)
+      else selectedInstructors.value = selectedInstructors.value.filter((n) => n !== name)
     }
-    const clearInstructors = () => { selectedInstructors.value = [] }
+    const clearInstructors = () => {
+      selectedInstructors.value = []
+    }
     const showFilter = computed(() => ['grid', 'day', 'slot'].includes(view.value))
 
     return {
@@ -57,7 +72,7 @@ export default {
       colorForInstructor,
       goScheduleGrid,
       goScheduleCourse,
-      goScheduleInstructor
+      goScheduleInstructor,
     }
   },
   template: `
@@ -142,5 +157,5 @@ export default {
       <ScheduleInstructor v-else-if="view === 'instructor'" />
     </div>
     <div v-else class="loading">Loading schedule...</div>
-  `
+  `,
 }

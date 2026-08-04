@@ -10,25 +10,39 @@ export default {
   name: 'ScheduleInstructor',
   components: { WeeklyCalendar },
   setup() {
-    const instructors = computed(() => (schedule.value ? Object.keys(schedule.value.byInstructor).sort() : []))
+    const instructors = computed(() =>
+      schedule.value ? Object.keys(schedule.value.byInstructor).sort() : [],
+    )
     const name = computed(() => route.value.params.instructor)
-    const items = computed(() => (schedule.value && name.value ? schedule.value.byInstructor[name.value] : []) || [])
+    const items = computed(
+      () => (schedule.value && name.value ? schedule.value.byInstructor[name.value] : []) || [],
+    )
     const conflicts = computed(() => {
       if (!schedule.value) return []
-      return instructorConflicts(schedule.value).filter(c => c.instructor === name.value)
+      return instructorConflicts(schedule.value).filter((c) => c.instructor === name.value)
     })
     const itemStyle = (it) => ({
-      top: (it.start - 480) + 'px',
-      height: (it.end - it.start) + 'px'
+      top: it.start - 480 + 'px',
+      height: it.end - it.start + 'px',
     })
-    const itemsInDay = (day) => items.value.filter(it => it.days.includes(day)).sort((a, b) => a.start - b.start)
-    const dayItems = (day) => itemsInDay(day).map(it => ({
-      key: it.code + it.o.section + it.o.time,
-      it,
-      style: itemStyle(it)
-    }))
-    return { instructors, name, items, conflicts, dayItems,
-      goScheduleCourse, goScheduleSlot, goScheduleInstructor }
+    const itemsInDay = (day) =>
+      items.value.filter((it) => it.days.includes(day)).sort((a, b) => a.start - b.start)
+    const dayItems = (day) =>
+      itemsInDay(day).map((it) => ({
+        key: it.code + it.o.section + it.o.time,
+        it,
+        style: itemStyle(it),
+      }))
+    return {
+      instructors,
+      name,
+      items,
+      conflicts,
+      dayItems,
+      goScheduleCourse,
+      goScheduleSlot,
+      goScheduleInstructor,
+    }
   },
   template: `
     <div>
@@ -80,5 +94,5 @@ export default {
         </div>
       </div>
     </div>
-  `
+  `,
 }
