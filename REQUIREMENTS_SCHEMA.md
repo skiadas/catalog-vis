@@ -2,9 +2,7 @@
 
 This document describes how raw requirement text in `majors.json` is transformed into structured JSON in `requirements_parsed.json`.
 
-## Purpose
-
-Each program in `majors.json` has a `requirements` dict where each entry has a `label` and `text`. The text is free-form prose. This schema codifies that text into a structured representation that programs can traverse programmatically.
+The model is designed so a future program can **evaluate** a requirement against a chosen set of courses: each item type reduces to a satisfiability check, and each `constraints` entry is a filter a course either passes or fails.
 
 ## Known Course Prefixes
 
@@ -17,15 +15,15 @@ HIS, HMS, ID, INS, KIP, LAT, MAT, ML, MRS, MUS, NUR, PHI,
 PHY, PLS, PSY, SMGT, SOC, SPA, THR, THS
 ```
 
+A course's **discipline** is its prefix. Cross-listed courses carry multiple prefixes (e.g. `CLA/HIS 252`) and satisfy a discipline constraint if any of their prefixes matches.
+
 ## Output Structure
 
 ### Top Level
 
-`requirements_parsed.json` is a JSON object with:
-
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "generated_at": "2026-07-27",
   "source": "majors.json",
   "programs": [
@@ -33,10 +31,7 @@ PHY, PLS, PSY, SMGT, SOC, SPA, THR, THS
       "id": "biology",
       "name": "Biology",
       "requirements": [
-        {
-          "label": "Major: Bachelor of Arts",
-          "sections": [ ... ]
-        }
+        { "label": "Major: Bachelor of Arts", "sections": [ ... ] }
       ]
     }
   ]
@@ -45,211 +40,165 @@ PHY, PLS, PSY, SMGT, SOC, SPA, THR, THS
 
 ### Section Structure
 
-Each requirement contains one or more `sections`. A section has:
+Each requirement has one or more `sections`:
 
 ```json
-{
-  "heading": "Biology courses",
-  "items": [ ... ]
-}
+{ "heading": "Biology courses", "items": [ ... ] }
 ```
 
-The heading is the group name (e.g. "Biology courses", "Cognate courses", "Core", etc.). A section with no explicit heading uses `"heading": ""` or groups by implication from the text.
+`heading` is the group name (e.g. "Biology courses", "Cognate courses"). A section with no explicit heading uses `"heading": ""`.
 
-### Item Types
+## Item Types
 
-#### `course` — A specific course requirement
+Every item has a `type`. `course`, `any_of`, `each_of`, `electives`, and `custom` are the canonical set. `pair` and `level_gate` are legacy and should be migrated away.
+
+#### `course` — a specific course
 
 ```json
 {"type": "course", "code": "BIO 161"}
 ```
 
-| Field   | Description |
-|---------|-------------|
-| `code`  | Full course code with uppercase prefix and number, e.g. `"BIO 161"` |
-| `note`  | Optional note, e.g. `"Culminating experience"`, `"or equivalent"` |
+| Field  | Description |
+|--------|-------------|
+| `code` | Full course code, uppercase prefix + number (e.g. `"BIO 161"`). |
+| `note` | Optional note, e.g. `"Culminating experience"`. |
 
-#### `any_of` — A list of alternatives (choose one or more)
+#### `any_of` — choose exactly one of the alternatives
 
 ```json
 {"type": "any_of", "codes": ["BIO 336", "BIO 314"], "note": "choose one"}
-```
 
-| Field   | Description |
-|---------|-------------|
-| `codes` | Array of course code strings (use when alternatives are single courses) |
-| `items` | Array of nested item objects (use when alternatives are groups like `pair`) |
-| `note`  | Optional note — becomes the group label when `items` is present |
-
-Simple case — flat list of alternative codes:
-```json
-{"type": "any_of", "codes": ["BIO 336", "BIO 314"]}
-```
-
-Nested case — alternatives that are themselves structured items (pairs, etc.):
-```json
 {"type": "any_of", "items": [
   {"type": "pair", "codes": ["CHE 341", "CHE 342"]},
-  {"type": "pair", "codes": ["KIP 215", "KIP 230"]}
-], "note": "choose one pair"}
+  {"type": "any_of", "codes": ["GEO 161", "GEO 162", "GEO 163"]}
+], "note": "choose one option"}
 ```
 
-One of `codes` or `items` must be present, never both.
+| Field  | Description |
+|--------|-------------|
+| `codes` | Flat list of alternative course codes (use when alternatives are single courses). |
+| `items` | Nested list of **arbitrary item types** — alternatives that are themselves structured requirements. Items recurse (an item may itself be `any_of`, `each_of`, `electives`, etc.). |
+| `note`  | Optional label; defaults to "Choose one:". |
 
-#### `pair` — Courses that must be taken together
+Exactly one of `codes` or `items` must be present, never both. Satisfied when **exactly one** child is satisfied.
+
+#### `each_of` — satisfy ALL of the listed sub-requirements
 
 ```json
-{"type": "pair", "codes": ["CHE 341", "CHE 342"], "note": "must be taken together"}
+{"type": "each_of", "items": [
+  {"type": "any_of", "codes": ["GEO 161", "GEO 162", "GEO 163"]},
+  {"type": "any_of", "codes": ["GEO 224", "GEO 323", "GEO 327", "GEO 328", "GEO 334"]}
+], "note": "one course from each group"}
 ```
 
-| Field   | Description |
-|---------|-------------|
-| `codes` | Array of 2+ course code strings — all required |
-| `note`  | Optional note |
+| Field  | Description |
+|--------|-------------|
+| `items` | List of arbitrary item types, all of which must be satisfied. |
+| `note`  | Optional label; defaults to "Complete all of the following:". |
 
-Renders as: `[CHE 341] + [CHE 342]` with the note as a contextual label.
+Use for "one from group A **and** one from group B", and as the target form for a multi-pool `electives` (one sub-`electives` per pool). Replaces `pair`.
 
-#### `electives` — A count of courses from a pool with constraints
+> `pair` (legacy) is semantically `each_of` where all children are `course` items; migrate `pair` → `each_of` of `course` children.
+
+#### `electives` — choose N courses from a pool, with constraints
 
 ```json
 {
   "type": "electives",
   "count": 5,
+  "note": "ETC courses",
   "constraints": [
-    {"type": "level", "level": 300, "min": 2},
+    {"type": "level", "level": 300, "atLeast": 2},
+    {"type": "level", "level": 200, "orAbove": true, "atLeast": 4},
+    {"type": "discipline", "atMost": 2},
     {"type": "exclude", "codes": ["BIO 301", "BIO 307"]},
     {"type": "from", "codes": ["BIO 223", "BIO 235", "BIO 313"]}
   ]
 }
 ```
 
-| Field   | Description |
-|---------|-------------|
-| `count` | Number of courses to choose (integer or null if unspecified) |
-| `constraints` | Array of constraint objects (see below) |
+| Field        | Description |
+|--------------|-------------|
+| `count`      | Number of courses to choose (integer, or `null` if unspecified). |
+| `note`       | Optional label/context. |
+| `constraints`| Filters every candidate course must pass (conjunctive). |
 
-**Constraint types**:
-- `{"type": "level", "level": 300, "min": 2}` — at least N courses at that level
-- `{"type": "level", "level": 200, "min": null, "comparison": "or_above"}` — at the 200 level or above
-- `{"type": "level", "level": 100, "comparison": "at_most", "min": 1}` — at most N courses at that level
-- `{"type": "exclude", "codes": ["BIO 301"]}` — courses that cannot count
-- `{"type": "from", "codes": ["BIO 223", "BIO 235"]}` — explicit pool of eligible courses
-- `{"type": "from", "codes": ["BIO 223", "BIO 235"], "note": "geographical area courses"}` — pool with context. *When codes appear in the source text, always extract them into a `codes` array and keep the note for context.*
+`constraints` iterate over the candidate universe of courses; a course satisfies the `electives` count only if it passes **all** constraints.
 
-#### `level_gate` — A standalone level requirement
+**Constraint types:**
+
+- `{"type": "level", "level": 300, "atLeast": 2}` — at least 2 at (exactly) the 300 level.
+- `{"type": "level", "level": 200, "orAbove": true, "atLeast": 4}` — at least 4 at or above the 200 level.
+- `{"type": "level", "level": 100, "atMost": 1}` — no more than 1 at the 100 level.
+- `{"type": "level", "level": 300}` — any course at the 300 level.
+- `{"type": "level", "min": 160, "max": 169}` — a **range** band (e.g. "GEO 16x").
+- `{"type": "discipline"}` — any discipline.
+- `{"type": "discipline", "prefixes": ["GER"], "atLeast": 7}` — at least 7 courses with a GER prefix.
+- `{"type": "discipline", "atMost": 2}` — no more than 2 in any single discipline.
+- `{"type": "discipline", "distinctAtLeast": 3}` — courses drawn from at least 3 different disciplines.
+- `{"type": "from", "codes": [...]}` — explicitly eligible pool.
+- `{"type": "from", "codes": [...], "note": "may be taken in English"}` — pool with context.
+- `{"type": "exclude", "codes": [...]}` — explicitly ineligible.
+- `{"type": "note", "text": "..."}` — advisory phrasing only (ignored by evaluation, shown for context).
+
+> Legacy `level` constraint fields `comparison` (`or_above` | `at_most` | `exclude`) and `min` are still understood by the renderer but should be migrated to `orAbove`, `atLeast`, `atMost`.
+
+> Legacy: a note-only `from` (e.g. `{"type":"from","note":"at least 7 courses must be in German"}`) should be migrated to a `discipline` constraint. Advisory-only prose becomes a `note` constraint.
+
+#### `level_gate` (legacy)
+
+A standalone level requirement, e.g. `{"type":"level_gate","level":300,"atLeast":4,"note":"Four of six at the 300 level"}`. Migrate to `electives` (with an implicit count) + a `level` constraint.
+
+#### `custom` — a requirement that cannot be cleanly codified
 
 ```json
-{"type": "level_gate", "level": 100, "comparison": "exclude", "note": "not including 100 level courses"}
+{"type": "custom", "text": "Students must elect one of four tracks."}
 ```
 
-Or for inclusion:
+Used only for genuinely prose/advisory requirements (program admission, "consult advisor", track-selection narration, `Recommended: …`, `.25 unit` credit notes, cross-counting policy). Nothing else.
 
-```json
-{"type": "level_gate", "level": 300, "comparison": "at_least", "count": 2, "note": "two at the 300 level"}
-```
-
-#### `custom` — A requirement that cannot be cleanly codified
-
-```json
-{"type": "custom", "text": "Any five Communication units."}
-```
-
-## Common Text Patterns and How to Handle Them
+## Common Text Patterns
 
 ### 1. Semicolons separate items
-
 > `161; 185; 221; 462 (Culminating experience); five others`
-
-Each semicolon-delimited piece is an item. Split on semicolons first.
+Each semicolon piece is an item. Split on semicolons first.
 
 ### 2. Bare numbers belong to current department
-
-> `161; 185; 221` → `BIO 161`, `BIO 185`, `BIO 221` (when prefix is BIO)
-
-Prepend the program's `course_prefix` to bare numbers.
+> `161; 185; 221` → `BIO 161`, `BIO 185`, `BIO 221` (prefix BIO)
+Prepend the program's `course_prefix`.
 
 ### 3. "or" introduces alternatives
-
 > `335 or 352` → `any_of` with codes `BIO 335`, `BIO 352`
-> `CHE 341 and 342` → `any_of` with codes `CHE 341`, `CHE 342` (both required as a pair)
-> `457 or 471` → `any_of` with codes
 
-### 4. "and" joins required-together courses
+### 4. "and" joins courses taken together
+> `CHE 341 and 342` → must both be taken → `each_of` of two `course` items (formerly `pair`).
 
-> `CHE 341 and 342` → these must both be taken (a pair)
+### 5. "one from X and one from Y"
+> `One of GEO 161,162,163; and one of GEO 224,323,327,328,334` → `each_of` containing two `any_of`s.
 
-### 5. "at the 300 level" — level constraints
+### 6. Level phrases
+> `two of which must be at the 300 level` → `level` with `atLeast: 2`
+> `at the 200-level or above` → `level` with `orAbove: true`
+> `at least four of the five at the 200 level or above` → `level` with `atLeast: 4, orAbove: true`
+> `no more than one 100-level course` → `level` with `atMost: 1`
+> `not including 100 level courses` → `level` with `atMost: 0`
 
-> `two of which must be at the 300 level` → `level` constraint with `level: 300, min: 2`
-> `at the 200-level or above` → `level` constraint with `level: 200, comparison: "or_above"`
-> `not including 100 level courses` → `level_gate` with `comparison: "exclude"`
-
-### 6. Exclusion phrases
-
+### 7. Exclusion
 > `but not include 301, 307, 308` → `exclude` constraint
-> `not to include 301, 302, 307` → `exclude` constraint
-> `excluding 308, 309, and 372` → `exclude` constraint
-> `not including 115 or 116` → `exclude` constraint
 
-### 7. Counts
+### 8. Counts
+> `five others` → `electives` with `count: 5`. `Total of 9 major courses` → store as `total` in the section.
 
-> `five others` → `electives` with `count: 5`
-> `four additional courses` → `electives` with `count: 4`
-> `three other courses` → `electives` with `count: 3`
-> `Total of 9 major courses` → stored as `total` in the section
+### 9. Ranges with "x"
+> `GEO 16x` → `level` with `{min: 160, max: 169}`. `EDU 33X` → `{min: 330, max: 339}`.
 
-### 8. Ranges with "x"
+### 10. Discipline / distribution
+> `no more than two courses in any single discipline` → `discipline` with `atMost: 2`
+> `at least 7 courses must be in German` → `discipline` with `prefixes: ["GER"], atLeast: 7`
+> `courses from three different disciplines` → `discipline` with `distinctAtLeast: 3`
 
-> `GEO 16x` → any GEO 160-169 level course
-> `EDU 33X` → any EDU 330-339 level course
-
-### 9. Pairs and groups
-
-> `one pair from the following: CHE 341 and 342 / CS 220 and either 223 or 229 / ...`
-> Use `any_of` with `items`, where each sub-item is a `pair`. Each `pair` contains the courses that must be taken together within that option.
-
-```json
-{"type": "any_of", "items": [
-  {"type": "pair", "codes": ["CHE 341", "CHE 342"]},
-  {"type": "pair", "codes": ["CS 220", "CS 223"], "note": "or CS 229"}
-], "note": "choose one pair"}
-```
-
-> `Either KIP 162 and 186, or KIP 215 and 230` → same pattern, two pair alternatives
-> `Either PHY 408 and PHY 409, or PHY 471` → `any_of` with one `pair` and one `course`
-> `PHY 408 and 409` → `pair` with codes `["PHY 408", "PHY 409"]`
-> `CHE 341 and 342` → `pair` with codes `["CHE 341", "CHE 342"]`
-
-### 10. "at most / no more than" — upper bounds
-
-> `No more than one 100-level course may count toward the major`
-> → `level` constraint with `comparison: "at_most"` (or a `level_gate`)
-
-```json
-{"type": "level", "level": 100, "comparison": "at_most", "min": 1}
-```
-
-As a standalone item:
-
-```json
-{"type": "level_gate", "level": 100, "comparison": "at_most", "count": 1, "note": "no more than one 100-level course"}
-```
-
-### 11. "at least X in language Y" — distribution rules
-
-> `A minimum of 7 courses must be in German. 1 course may be taken in English from: GER 222, GER 243, ...`
-> The English-allowable courses should be extracted as a `from` constraint inside the main `electives`. The minimum-in-language rule should be a separate `from` note constraint.
-
-```json
-{"type": "electives", "count": 8, "constraints": [
-  {"type": "from", "codes": ["GER 222", "GER 243", ...], "note": "may be taken in English"},
-  {"type": "from", "note": "at least 7 courses must be in German"}
-]}
-```
-
-### 10. Percent and unit notations
-
-> `.25 unit` → stored as `unit` item
+### 11. "at most / no more than" — upper bounds
+See level patterns above. A standalone upper bound may also be a `level_gate` (legacy) or an `electives` + `level` constraint.
 
 ## Processing Prompt (for LLM-based reproduction)
 
@@ -269,21 +218,20 @@ Requirement text: {text}
 Rules:
 - Bare numbers (e.g. "161") get the program's course_prefix prepended (e.g. "BIO 161")
 - Semicolons separate individual requirement items
-- "or" introduces alternatives → use type "any_of"
-- "and" between course codes that must be taken together → use type "pair" (e.g. "CHE 341 and 342")
-- "either X and Y, or Z and W" → `any_of` with two `pair` items
-- "one pair from the following" → `any_of` with `items` (each item is a `pair`)
-- Level phrases ("at the 300 level", "two of which must be at the 300 level", "200-level or above", "at or above the X level") → "level" constraints
-- "No more than" / "at most" / upper bound phrases → "level" constraint with comparison "at_most"
-- Exclusion phrases ("not include", "not to include", "excluding", "other than", "but not include") → "exclude" constraint
-- Count words ("five others", "three additional") → type "electives" with count
-- When a constraint note mentions specific course codes, ALWAYS extract them into a "codes" array on that constraint; keep the note for context
-- Section headings in the raw text ("Biology courses:", "Cognate courses:") → split into separate sections
-- "Culminating experience" in parens → note field on that course
-- "or equivalent" after a course → note "or equivalent"
-- Only reference course codes actually mentioned in the text (including bare numbers with prefix prepended)
-- Do NOT hallucinate courses
-- If something cannot be codified, use {"type": "custom", "text": "..."}
+- "or" introduces alternatives -> type "any_of" (codes, or items for nested options)
+- "and" between courses that must be taken together -> type "each_of" with course items
+- "one from X and one from Y" -> type "each_of" containing the two selections
+- "one pair from the following" -> `any_of` with `items` (each item a requirement)
+- Level phrases -> "level" constraints; use `atLeast`/`atMost` for counts and `orAbove` for "or above"
+- Ranges ("GEO 16x") -> level with `min`/`max`
+- Discipline phrases ("no more than two in any single discipline", "must be in German") -> "discipline" constraints
+- Exclusion phrases ("not include", "excluding", "other than") -> "exclude" constraint
+- Count words ("five others", "three additional") -> type "electives" with count
+- When a constraint note lists course codes, ALWAYS extract them into a "codes" array; keep the note for context
+- Section headings in the raw text ("Biology courses:", "Cognate courses:") -> split into separate sections
+- "Culminating experience" in parens -> note field on that course
+- Only reference course codes actually mentioned in the text (including bare numbers with prefix prepended); do NOT hallucinate
+- If something cannot be codified cleanly, use {"type": "custom", "text": "..."}
 
 Output JSON for the sections array only (no wrapper).
 ```

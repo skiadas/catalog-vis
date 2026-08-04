@@ -15,14 +15,29 @@ export default {
     })
 
     function formatLevelConstraint(c) {
-      if (c.comparison === 'or_above') return `At the ${c.level} level or above`
-      if (c.comparison === 'exclude') return `Excluding ${c.level} level`
-      if (c.comparison === 'at_most')
-        return c.min === 1
-          ? `No more than 1 at the ${c.level} level`
-          : `No more than ${c.min} at the ${c.level} level`
-      if (c.min) return `At least ${c.min} at the ${c.level} level`
-      return `the ${c.level} level`
+      const above = c.orAbove || c.comparison === 'or_above'
+      if (c.min !== undefined && c.max !== undefined) {
+        const band = `Level ${c.min}–${c.max}`
+        if (c.atLeast) return `At least ${c.atLeast} from ${band}`
+        if (c.atMost) return `No more than ${c.atMost} from ${band}`
+        return band
+      }
+      const placement = above ? ` at or above the ${c.level} level` : ` at the ${c.level} level`
+      const atMost = c.atMost !== undefined ? c.atMost : c.comparison === 'at_most' ? c.min : undefined
+      if (atMost !== undefined) return `No more than ${atMost}${placement}`
+      if (c.comparison === 'exclude') return `Excluding the ${c.level} level`
+      const atLeast = c.atLeast !== undefined ? c.atLeast : c.min
+      if (atLeast) return `At least ${atLeast}${placement}`
+      return above ? `At the ${c.level} level or above` : `the ${c.level} level`
+    }
+
+    function formatDiscipline(c) {
+      const scope = c.prefixes && c.prefixes.length ? c.prefixes.join('/') : 'any single discipline'
+      if (c.distinctAtLeast) return `Across at least ${c.distinctAtLeast} different disciplines`
+      if (c.distinctAtMost) return `Across at most ${c.distinctAtMost} different disciplines`
+      if (c.atLeast) return `At least ${c.atLeast} in ${scope}`
+      if (c.atMost) return `No more than ${c.atMost} in ${scope}`
+      return `In ${scope}`
     }
 
     function formatLevelGate(c) {
@@ -40,6 +55,7 @@ export default {
       allCourses,
       goToCourse,
       formatLevelConstraint,
+      formatDiscipline,
       formatLevelGate,
       isCulminating,
       isNested,
@@ -85,6 +101,13 @@ export default {
       </div>
     </div>
 
+    <div v-else-if="item.type === 'each_of'" class="eachof-group">
+      <div class="eachof-label">{{ item.note || 'Complete all of the following:' }}</div>
+      <div v-for="(sub, di) in item.items" :key="di" class="eachof-subitem">
+        <RequirementItem :item="sub" />
+      </div>
+    </div>
+
     <div v-else-if="item.type === 'electives'" class="electives-group">
       <div class="electives-header">
         <span class="electives-count">{{ item.count ? 'Choose ' + item.count : 'Choose' }} {{ item.count === 1 ? 'course' : 'courses' }}</span>
@@ -94,6 +117,9 @@ export default {
         <div v-for="(c, ci) in item.constraints" :key="ci" class="constraint-row">
           <template v-if="c.type === 'level'">
             <span class="constraint-tag level">{{ formatLevelConstraint(c) }}</span>
+          </template>
+          <template v-else-if="c.type === 'discipline'">
+            <span class="constraint-tag discipline">{{ formatDiscipline(c) }}</span>
           </template>
           <template v-else-if="c.type === 'exclude'">
             <span class="constraint-tag exclude">
