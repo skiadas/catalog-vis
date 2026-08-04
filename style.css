@@ -608,6 +608,15 @@ body {
   font-weight: 500;
 }
 
+.constraint-tag.from .constraint-note {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.constraint-tag.from .constraint-from-label {
+  color: var(--text-muted);
+}
+
 .constraint-tag.note-only {
   font-style: italic;
   font-weight: 400;

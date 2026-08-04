@@ -30,21 +30,21 @@ export default {
     })
 
     function formatLevelConstraint(c) {
-      if (c.comparison === 'or_above') return `${c.level}-level or above`
-      if (c.comparison === 'exclude') return `Excluding ${c.level}-level`
+      if (c.comparison === 'or_above') return `At the ${c.level} level or above`
+      if (c.comparison === 'exclude') return `Excluding ${c.level} level`
       if (c.comparison === 'at_most')
         return c.min === 1
-          ? `No more than 1 at ${c.level}-level`
-          : `No more than ${c.min} at ${c.level}-level`
-      if (c.min) return `At least ${c.min} at ${c.level}-level`
-      return `${c.level}-level`
+          ? `No more than 1 at the ${c.level} level`
+          : `No more than ${c.min} at the ${c.level} level`
+      if (c.min) return `At least ${c.min} at the ${c.level} level`
+      return `the ${c.level} level`
     }
 
     function formatLevelGate(c) {
-      if (c.comparison === 'exclude') return c.note || `Excluding ${c.level}-level courses`
-      if (c.comparison === 'at_least') return c.note || `At least ${c.count || 1} at ${c.level}-level`
-      if (c.comparison === 'at_most') return c.note || `No more than ${c.count || 1} at ${c.level}-level`
-      return c.note || `${c.level}-level`
+      if (c.comparison === 'exclude') return c.note || `Excluding ${c.level} level courses`
+      if (c.comparison === 'at_least') return c.note || `At least ${c.count || 1} at the ${c.level} level`
+      if (c.comparison === 'at_most') return c.note || `No more than ${c.count || 1} at the ${c.level} level`
+      return c.note || `the ${c.level} level`
     }
 
     function isCulminating(note) {
@@ -78,7 +78,7 @@ export default {
           </template>
 
           <div v-else-if="item.type === 'any_of' && item.codes" class="anyof-group">
-            <span class="anyof-label">Pick one:</span>
+            <span class="anyof-label">Choose one:</span>
             <template v-for="(code, ci) in item.codes" :key="code">
               <span class="course-chip" @click="goToCourse(code)" :title="allCourses[code] ? allCourses[code].course_name : ''">{{ code }}</span>
               <span v-if="ci < item.codes.length - 1" class="anyof-or">OR</span>
@@ -126,8 +126,8 @@ export default {
                 </template>
                 <template v-else-if="c.type === 'from' && c.codes">
                   <span class="constraint-tag from">
-                    <template v-if="c.note">{{ c.note }}: </template>
-                    <template v-else>From: </template>
+                    <span class="constraint-note" v-if="c.note">{{ c.note }}</span>
+                    <span class="constraint-from-label">Choose from:</span>
                     <template v-for="(code, fi) in c.codes" :key="code">
                       <span class="course-chip mini" @click="goToCourse(code)" :title="allCourses[code] ? allCourses[code].course_name : ''">{{ code }}</span>
                       <template v-if="fi < c.codes.length - 1">, </template>
