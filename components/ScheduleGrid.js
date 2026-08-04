@@ -1,6 +1,6 @@
 import { WEEKDAYS, WEEKDAY_NAMES, daySlotBlocks, blockStyle, hourMarks, formatTime,
-  colorForDept, briefInstructor } from '../lib/schedule.js'
-import { schedule, selectedDepartments } from '../lib/store.js'
+  buildFilter, briefInstructor } from '../lib/schedule.js'
+import { schedule, selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
 import { goScheduleSlot, goScheduleDay, goScheduleCourse } from '../lib/router.js'
 
 const { computed } = Vue
@@ -11,22 +11,21 @@ export default {
     const slotTitle = (slot) => slot.items.map(it => it.code).join(', ')
     const hours = hourMarks()
 
-    const isFiltering = computed(() => selectedDepartments.value.length > 0)
+    const filter = computed(() => buildFilter(filterMode.value, selectedDepartments.value, selectedInstructors.value))
 
     const dayBlocks = (day) => {
       const blocks = daySlotBlocks(day, schedule.value)
-      if (!isFiltering.value) return blocks
+      if (!filter.value.active) return blocks
       const out = []
       for (const b of blocks) {
-        const items = b.items.filter(it => selectedDepartments.value.includes(it.o.prefix))
+        const items = b.items.filter(it => filter.value.matches(it))
         if (items.length) out.push({ ...b, items })
       }
       return out
     }
 
     return { WEEKDAYS, WEEKDAY_NAMES, formatTime, hours,
-      schedule, selectedDepartments, dayBlocks, blockStyle, slotTitle, briefInstructor, deptColor: colorForDept,
-      isFiltering,
+      schedule, dayBlocks, blockStyle, slotTitle, briefInstructor, filter,
       goScheduleSlot, goScheduleDay, goScheduleCourse }
   },
   template: `
@@ -62,19 +61,19 @@ export default {
                 v-for="slot in dayBlocks(d)"
                 :key="slot.time"
                 class="cal-block"
-                :class="{ filtered: isFiltering }"
+                :class="{ filtered: filter.active }"
                 :title="slotTitle(slot)"
                 :style="blockStyle(slot)"
                 @click="goScheduleSlot(d, slot.time)"
               >
-                <template v-if="isFiltering">
+                <template v-if="filter.active">
                   <div class="cal-block-time">{{ formatTime(slot.time) }}</div>
                   <div class="cal-block-depts">
                     <span
                       v-for="it in slot.items"
                       :key="it.code + it.o.section"
                       class="dept-offering"
-                      :style="{ backgroundColor: deptColor(it.o.prefix) }"
+                      :style="{ backgroundColor: filter.color(it) }"
                       @click.stop="goScheduleCourse(it.code)"
                     >{{ it.code }}{{ it.o.section }}<span class="do-inst">{{ briefInstructor(it.o.instructor) }}</span></span>
                   </div>

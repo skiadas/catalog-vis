@@ -731,6 +731,18 @@ body {
   flex-wrap: wrap;
 }
 
+.filter-mode {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-mode .filter-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
 .course-picker {
   display: flex;
   align-items: center;

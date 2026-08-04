@@ -1,6 +1,6 @@
 import { route } from '../lib/router.js'
-import { WEEKDAY_NAMES, SLOT_BLOCKS, formatTime, slotKey, colorForDept, briefInstructor } from '../lib/schedule.js'
-import { schedule, selectedDepartments } from '../lib/store.js'
+import { WEEKDAY_NAMES, SLOT_BLOCKS, formatTime, slotKey, buildFilter, briefInstructor } from '../lib/schedule.js'
+import { schedule, selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
 import { goScheduleSlot, goScheduleCourse, goScheduleGrid } from '../lib/router.js'
 
 const { computed } = Vue
@@ -9,6 +9,7 @@ export default {
   name: 'ScheduleDay',
   setup() {
     const day = computed(() => route.value.params.day)
+    const filter = computed(() => buildFilter(filterMode.value, selectedDepartments.value, selectedInstructors.value))
     const slots = computed(() => {
       const out = []
       for (const block of SLOT_BLOCKS) {
@@ -16,8 +17,8 @@ export default {
         if (!days.includes(day.value)) continue
         for (const slot of block.slots) {
           let items = schedule.value.bySlot[slotKey(day.value, slot.time)] || []
-          if (selectedDepartments.value.length) {
-            items = items.filter(it => selectedDepartments.value.includes(it.o.prefix))
+          if (filter.value.active) {
+            items = items.filter(it => filter.value.matches(it))
           }
           if (items.length) {
             out.push({ ...slot, days: block.label, items })
@@ -26,8 +27,7 @@ export default {
       }
       return out
     })
-    const isFiltering = computed(() => selectedDepartments.value.length > 0)
-    return { day, slots, isFiltering, WEEKDAY_NAMES, formatTime, colorForDept, briefInstructor, goScheduleSlot, goScheduleCourse, goScheduleGrid }
+    return { day, slots, filter, WEEKDAY_NAMES, formatTime, briefInstructor, goScheduleSlot, goScheduleCourse, goScheduleGrid }
   },
   template: `
     <div>
@@ -46,10 +46,10 @@ export default {
             v-for="it in s.items"
             :key="it.code + it.o.section"
             class="course-chip"
-            :class="{ 'dept-colored': isFiltering }"
-            :style="isFiltering ? { backgroundColor: colorForDept(it.o.prefix) } : {}"
+            :class="{ 'dept-colored': filter.active }"
+            :style="filter.active ? { backgroundColor: filter.color(it) } : {}"
             @click="goScheduleCourse(it.code)"
-          >{{ it.code }}{{ isFiltering ? ' ' + it.o.section : '' }}<span v-if="isFiltering" class="do-inst">{{ briefInstructor(it.o.instructor) }}</span></span>
+          >{{ it.code }}{{ filter.active ? ' ' + it.o.section : '' }}<span v-if="filter.active" class="do-inst">{{ briefInstructor(it.o.instructor) }}</span></span>
         </div>
         <div class="day-slot-empty" v-else>No offerings</div>
       </div>

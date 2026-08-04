@@ -1,7 +1,7 @@
 import { route } from '../lib/router.js'
 import { goScheduleGrid, goScheduleCourse, goScheduleInstructor } from '../lib/router.js'
-import { schedule, scheduleOfferings, selectedDepartments } from '../lib/store.js'
-import { departmentsInSchedule, colorForDept } from '../lib/schedule.js'
+import { schedule, scheduleOfferings, selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
+import { departmentsInSchedule, instructorsInSchedule, colorForDept, colorForInstructor } from '../lib/schedule.js'
 import ScheduleGrid from './ScheduleGrid.js'
 import ScheduleDay from './ScheduleDay.js'
 import ScheduleSlot from './ScheduleSlot.js'
@@ -22,13 +22,19 @@ export default {
     const selectedCode = computed(() => route.value.params.code || '')
 
     const depts = computed(() => departmentsInSchedule(schedule.value))
-    const isFiltering = computed(() => selectedDepartments.value.length > 0)
+    const instructors = computed(() => instructorsInSchedule(schedule.value))
     const toggleDept = (prefix) => {
       const i = selectedDepartments.value.indexOf(prefix)
       if (i < 0) selectedDepartments.value = [...selectedDepartments.value, prefix]
       else selectedDepartments.value = selectedDepartments.value.filter(p => p !== prefix)
     }
     const clearDepts = () => { selectedDepartments.value = [] }
+    const toggleInstructor = (name) => {
+      const i = selectedInstructors.value.indexOf(name)
+      if (i < 0) selectedInstructors.value = [...selectedInstructors.value, name]
+      else selectedInstructors.value = selectedInstructors.value.filter(n => n !== name)
+    }
+    const clearInstructors = () => { selectedInstructors.value = [] }
     const showFilter = computed(() => ['grid', 'day', 'slot'].includes(view.value))
 
     return {
@@ -38,12 +44,17 @@ export default {
       schedule,
       scheduleOfferings,
       selectedDepartments,
+      selectedInstructors,
+      filterMode,
       depts,
-      isFiltering,
+      instructors,
       toggleDept,
       clearDepts,
+      toggleInstructor,
+      clearInstructors,
       showFilter,
       colorForDept,
+      colorForInstructor,
       goScheduleGrid,
       goScheduleCourse,
       goScheduleInstructor
@@ -93,7 +104,12 @@ export default {
         </div>
       </div>
 
-      <div class="dept-filter" v-if="showFilter">
+      <div class="filter-mode" v-if="showFilter">
+          <button class="filter-btn" :class="{ active: filterMode === 'dept' }" @click="filterMode = 'dept'">Departments</button>
+          <button class="filter-btn" :class="{ active: filterMode === 'instructor' }" @click="filterMode = 'instructor'">Instructors</button>
+        </div>
+
+        <div class="dept-filter" v-if="showFilter && filterMode === 'dept'">
           <span class="dept-filter-label">Departments:</span>
           <span
             v-for="d in depts"
@@ -103,7 +119,20 @@ export default {
             :style="selectedDepartments.includes(d) ? { backgroundColor: colorForDept(d) } : {}"
             @click="toggleDept(d)"
           >{{ d }}</span>
-          <button v-if="isFiltering" class="dept-clear" @click="clearDepts">Clear</button>
+          <button v-if="selectedDepartments.length" class="dept-clear" @click="clearDepts">Clear</button>
+        </div>
+
+        <div class="dept-filter" v-if="showFilter && filterMode === 'instructor'">
+          <span class="dept-filter-label">Instructors:</span>
+          <span
+            v-for="i in instructors"
+            :key="i"
+            class="dept-chip"
+            :class="{ on: selectedInstructors.includes(i) }"
+            :style="selectedInstructors.includes(i) ? { backgroundColor: colorForInstructor(i) } : {}"
+            @click="toggleInstructor(i)"
+          >{{ i }}</span>
+          <button v-if="selectedInstructors.length" class="dept-clear" @click="clearInstructors">Clear</button>
         </div>
 
         <ScheduleGrid v-if="view === 'grid'" />
