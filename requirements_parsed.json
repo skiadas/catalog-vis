@@ -1067,8 +1067,9 @@
                   "type": "any_of",
                   "items": [
                     {
-                      "type": "custom",
-                      "text": "CHE 308 (two semesters)"
+                      "type": "course",
+                      "code": "CHE 308",
+                      "note": "two semesters"
                     },
                     {
                       "type": "course",
@@ -1453,8 +1454,9 @@
               "heading": "",
               "items": [
                 {
-                  "type": "custom",
-                  "text": "Any five Communication units."
+                  "type": "electives",
+                  "count": 5,
+                  "note": "Communication units"
                 }
               ]
             }
@@ -3976,8 +3978,9 @@
                   ]
                 },
                 {
-                  "type": "custom",
-                  "text": "Three other courses drawn from the list below"
+                  "type": "electives",
+                  "count": 3,
+                  "note": "drawn from the list below"
                 }
               ]
             }
@@ -4738,8 +4741,10 @@
                   "note": "Culminating experience"
                 },
                 {
-                  "type": "custom",
-                  "text": "one course above 320"
+                  "type": "level_gate",
+                  "level": 300,
+                  "comparison": "or_above",
+                  "note": "one course above 320"
                 },
                 {
                   "type": "electives",
