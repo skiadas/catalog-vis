@@ -32,24 +32,26 @@ Requirement text:
 Rules:
 - Semicolons separate individual requirement items.
 - Bare numbers (e.g. "161") mean the program's prefix is prepended (e.g. "BIO 161").
-- "or" introduces alternatives => use type "any_of".
-- "and" between course codes that must be taken together => use type "pair"
-  (e.g. "CHE 341 and 342" => pair).
-- "either X and Y, or Z and W" => any_of with two pair items.
-- "one pair from the following" => any_of with items array, each item a pair.
-- "No more than" / "at most" => level constraint with comparison "at_most".
+- "or" introduces alternatives => type "any_of" (codes for single courses, or "items" for nested options).
+- "and" between courses that must be taken together => type "each_of" with course items (not "pair").
+- "one from X and one from Y" => type "each_of" containing the two selections.
+- "any two/three of the following" => type "some_of" with "min" set.
+- "one pair from the following" => any_of with items array.
 - Level phrases ("at the 300 level", "two of which must be at the 300 level",
-  "200-level or above", "at or above the X level") => add level constraints.
-- Exclusion phrases ("not include", "not to include", "excluding", "other than",
-  "but not include") => add exclude constraint.
+  "200-level or above") => level constraint with atLeast/atMost/orAbove.
+- Ranges like "GEO 16x" or "EDU 33X" => level constraint with min/max.
+- Discipline phrases ("no more than two in any single discipline",
+  "at least 7 must be in German") => discipline constraint.
+- "no more than N from [a set]" => max_from constraint (atMost).
+- "at least N from [a set]" => min_from constraint (atLeast).
+- Exclusion phrases ("not include", "excluding", "other than") => exclude constraint.
 - Count words (five, three, etc.) before "others/additional/electives" =>
-  use type "electives" with count.
+  type "electives" with count.
 - When a constraint note mentions specific course codes, ALWAYS extract them
   into a "codes" array; keep the note for context.
 - "Culminating experience" in parentheses => note field on that course.
 - "or equivalent" after a course => note "or equivalent".
-- Section headings ("Biology courses", "Cognate courses", etc.) => split into
-  separate sections.
+- Section headings ("Biology courses", "Cognate courses") => split into separate sections.
 - Only use course codes that actually appear in the text. Do NOT hallucinate.
 - If you cannot cleanly codify something => {"type": "custom", "text": "..."}.
 
@@ -63,7 +65,7 @@ def main():
         data = json.load(f)
 
     output = {
-        'schema_version': '1.0',
+        'schema_version': '2.0',
         'generated_at': '2026-07-27',
         'source': 'majors.json',
         'reproduction': (

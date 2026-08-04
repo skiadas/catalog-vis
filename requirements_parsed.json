@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "generated_at": "2026-07-27",
   "source": "majors.json",
   "programs": [
@@ -38,13 +38,26 @@
                   "count": 6,
                   "constraints": [
                     {
-                      "type": "from",
+                      "type": "discipline",
+                      "prefixes": [
+                        "ANTH"
+                      ]
+                    },
+                    {
+                      "type": "min_from",
                       "codes": [
                         "ANTH 223",
                         "ANTH 233",
                         "ANTH 238",
                         "ANTH 242",
-                        "ANTH 243",
+                        "ANTH 243"
+                      ],
+                      "atLeast": 2,
+                      "note": "geographical area courses"
+                    },
+                    {
+                      "type": "min_from",
+                      "codes": [
                         "ANTH 259",
                         "ANTH 311",
                         "ANTH 316",
@@ -53,7 +66,8 @@
                         "ANTH 334",
                         "ANTH 336"
                       ],
-                      "note": "any ANTH course not already required; at least two must be geographical area courses (223, 233, 238, 242, 243) and at least two must be comparative topics courses (259, 311, 316, 332, 333, 334, 336)"
+                      "atLeast": 2,
+                      "note": "comparative topics courses"
                     }
                   ]
                 }
@@ -84,21 +98,36 @@
                   "count": 3,
                   "constraints": [
                     {
-                      "type": "from",
+                      "type": "discipline",
+                      "prefixes": [
+                        "ANTH"
+                      ]
+                    },
+                    {
+                      "type": "min_from",
+                      "codes": [
+                        "ANTH 259",
+                        "ANTH 311",
+                        "ANTH 316",
+                        "ANTH 332",
+                        "ANTH 333",
+                        "ANTH 334",
+                        "ANTH 336"
+                      ],
+                      "atLeast": 1,
+                      "note": "comparative topics course"
+                    },
+                    {
+                      "type": "min_from",
                       "codes": [
                         "ANTH 223",
                         "ANTH 233",
                         "ANTH 238",
                         "ANTH 242",
-                        "ANTH 243",
-                        "ANTH 259",
-                        "ANTH 311",
-                        "ANTH 316",
-                        "ANTH 332",
-                        "ANTH 334",
-                        "ANTH 336"
+                        "ANTH 243"
                       ],
-                      "note": "any ANTH course not already required; at least one comparative topics and one geographical area"
+                      "atLeast": 1,
+                      "note": "geographical area course"
                     }
                   ]
                 }
@@ -140,7 +169,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 1
+                      "atLeast": 1
                     }
                   ]
                 }
@@ -196,8 +225,10 @@
                   "count": 3,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "additional ARTD electives"
+                      "type": "discipline",
+                      "prefixes": [
+                        "ARTD"
+                      ]
                     }
                   ]
                 }
@@ -293,8 +324,17 @@
               "heading": "",
               "items": [
                 {
-                  "type": "custom",
-                  "text": "One Art and Design course"
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "ARTD",
+                        "ARTH"
+                      ]
+                    }
+                  ]
                 }
               ]
             }
@@ -315,8 +355,10 @@
                   "count": 4,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "ARTH courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "ARTH"
+                      ]
                     }
                   ]
                 }
@@ -360,10 +402,14 @@
                         "PHI 246",
                         "PHI 247",
                         "PHI 322"
-                      ],
-                      "note": "no more than two courses from the same department"
+                      ]
+                    },
+                    {
+                      "type": "discipline",
+                      "atMost": 2
                     }
-                  ]
+                  ],
+                  "note": "no more than one course may be counted toward both a major and a minor or to any two minors"
                 }
               ]
             }
@@ -425,7 +471,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 1
+                      "atLeast": 1
                     },
                     {
                       "type": "exclude",
@@ -592,7 +638,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 2
+                      "atLeast": 2
                     },
                     {
                       "type": "exclude",
@@ -660,7 +706,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 2
+                      "atLeast": 2
                     },
                     {
                       "type": "exclude",
@@ -706,43 +752,110 @@
                   "type": "any_of",
                   "items": [
                     {
-                      "type": "pair",
-                      "codes": [
-                        "CHE 341",
-                        "CHE 342"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "CHE 341"
+                        },
+                        {
+                          "type": "course",
+                          "code": "CHE 342"
+                        }
                       ]
                     },
                     {
-                      "type": "pair",
-                      "codes": [
-                        "CS 220",
-                        "CS 223"
-                      ],
-                      "note": "or CS 229"
-                    },
-                    {
-                      "type": "custom",
-                      "text": "GEO 16x and a 200- or 300-level GEO course"
-                    },
-                    {
-                      "type": "pair",
-                      "codes": [
-                        "KIP 215",
-                        "KIP 230"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "CS 220"
+                        },
+                        {
+                          "type": "any_of",
+                          "codes": [
+                            "CS 223",
+                            "CS 229"
+                          ]
+                        }
                       ]
                     },
                     {
-                      "type": "pair",
-                      "codes": [
-                        "PHY 161",
-                        "PHY 185"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "electives",
+                          "count": 1,
+                          "constraints": [
+                            {
+                              "type": "discipline",
+                              "prefixes": [
+                                "GEO"
+                              ]
+                            },
+                            {
+                              "type": "level",
+                              "min": 160,
+                              "max": 169
+                            }
+                          ]
+                        },
+                        {
+                          "type": "electives",
+                          "count": 1,
+                          "constraints": [
+                            {
+                              "type": "discipline",
+                              "prefixes": [
+                                "GEO"
+                              ]
+                            },
+                            {
+                              "type": "level",
+                              "min": 200,
+                              "max": 399
+                            }
+                          ]
+                        }
                       ]
                     },
                     {
-                      "type": "pair",
-                      "codes": [
-                        "PSY 162",
-                        "PSY 164"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "KIP 215"
+                        },
+                        {
+                          "type": "course",
+                          "code": "KIP 230"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "PHY 161"
+                        },
+                        {
+                          "type": "course",
+                          "code": "PHY 185"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "PSY 162"
+                        },
+                        {
+                          "type": "course",
+                          "code": "PSY 164"
+                        }
                       ]
                     }
                   ],
@@ -844,8 +957,10 @@
                   "count": 1,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "BUSN courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "BUSN"
+                      ]
                     }
                   ]
                 }
@@ -922,8 +1037,10 @@
                   "count": 1,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "BUSN courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "BUSN"
+                      ]
                     }
                   ]
                 }
@@ -1175,7 +1292,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 1
+                      "atLeast": 1
                     }
                   ]
                 }
@@ -1223,7 +1340,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 2
+                      "atLeast": 2
                     },
                     {
                       "type": "from",
@@ -1236,8 +1353,10 @@
                   "count": 3,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "CLA courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "CLA"
+                      ]
                     }
                   ]
                 },
@@ -1283,7 +1402,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 1
+                      "atLeast": 1
                     },
                     {
                       "type": "exclude",
@@ -1295,8 +1414,12 @@
                       ]
                     },
                     {
-                      "type": "from",
-                      "note": "any Classical Studies (CLA), Latin (LAT), or Greek (GRE) course"
+                      "type": "discipline",
+                      "prefixes": [
+                        "CLA",
+                        "LAT",
+                        "GRE"
+                      ]
                     }
                   ]
                 }
@@ -1317,11 +1440,14 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 2
+                      "atLeast": 2
                     },
                     {
-                      "type": "from",
-                      "note": "courses in Greek (GRE) and/or Latin (LAT)"
+                      "type": "discipline",
+                      "prefixes": [
+                        "GRE",
+                        "LAT"
+                      ]
                     }
                   ]
                 },
@@ -1346,8 +1472,10 @@
                   "count": 4,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "CLA courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "CLA"
+                      ]
                     }
                   ]
                 },
@@ -1374,7 +1502,7 @@
               "items": [
                 {
                   "type": "course",
-                  "code": "COM 2212"
+                  "code": "COM 221"
                 },
                 {
                   "type": "course",
@@ -1519,12 +1647,12 @@
                     {
                       "type": "level",
                       "level": 200,
-                      "comparison": "or_above"
+                      "orAbove": true
                     },
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 2
+                      "atLeast": 2
                     }
                   ]
                 }
@@ -1614,7 +1742,7 @@
                     {
                       "type": "level",
                       "level": 200,
-                      "comparison": "or_above"
+                      "orAbove": true
                     }
                   ]
                 }
@@ -1654,22 +1782,33 @@
                   "type": "any_of",
                   "items": [
                     {
-                      "type": "pair",
-                      "codes": [
-                        "BIO 161",
-                        "BIO 185"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "BIO 161"
+                        },
+                        {
+                          "type": "course",
+                          "code": "BIO 185"
+                        }
                       ]
                     },
                     {
-                      "type": "pair",
-                      "codes": [
-                        "CHE 161",
-                        "CHE 185"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "CHE 161"
+                        },
+                        {
+                          "type": "course",
+                          "code": "CHE 185"
+                        }
                       ]
                     },
                     {
-                      "type": "any_of",
-                      "note": "one from each of the two groups",
+                      "type": "each_of",
                       "items": [
                         {
                           "type": "any_of",
@@ -1689,11 +1828,11 @@
                             "GEO 334"
                           ]
                         }
-                      ]
+                      ],
+                      "note": "one from each of the two groups"
                     },
                     {
-                      "type": "any_of",
-                      "note": "one from the first group, plus the second",
+                      "type": "each_of",
                       "items": [
                         {
                           "type": "any_of",
@@ -1707,20 +1846,33 @@
                           "type": "course",
                           "code": "KIP 215"
                         }
+                      ],
+                      "note": "one from the first group, plus the second"
+                    },
+                    {
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "PHY 162"
+                        },
+                        {
+                          "type": "course",
+                          "code": "PHY 186"
+                        }
                       ]
                     },
                     {
-                      "type": "pair",
-                      "codes": [
-                        "PHY 162",
-                        "PHY 186"
-                      ]
-                    },
-                    {
-                      "type": "pair",
-                      "codes": [
-                        "PSY 162",
-                        "PSY 164"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "PSY 162"
+                        },
+                        {
+                          "type": "course",
+                          "code": "PSY 164"
+                        }
                       ]
                     }
                   ],
@@ -1761,7 +1913,17 @@
                     {
                       "type": "level",
                       "level": 200,
-                      "comparison": "or_above"
+                      "orAbove": true
+                    },
+                    {
+                      "type": "max_from",
+                      "codes": [
+                        "GEO 221",
+                        "MAT 220",
+                        "MAT 243"
+                      ],
+                      "atMost": 1,
+                      "note": "one unit may be replaced by GEO 221, MAT 220, or MAT 243"
                     }
                   ],
                   "note": "One unit may be replaced by GEO 221, MAT 220, or MAT 243"
@@ -1955,14 +2117,15 @@
                   "count": 4,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "ECO courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "ECO"
+                      ]
                     },
                     {
                       "type": "level",
                       "level": 100,
-                      "comparison": "at_most",
-                      "min": 1
+                      "atMost": 1
                     }
                   ]
                 }
@@ -2222,8 +2385,15 @@
                   "count": 1,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "any EDU 33X course (330-339)"
+                      "type": "discipline",
+                      "prefixes": [
+                        "EDU"
+                      ]
+                    },
+                    {
+                      "type": "level",
+                      "min": 330,
+                      "max": 339
                     }
                   ]
                 },
@@ -2363,16 +2533,23 @@
                   "count": 5,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "Engineering courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "ENGR"
+                      ]
                     }
                   ]
                 },
                 {
-                  "type": "level_gate",
-                  "level": 300,
-                  "comparison": "at_least",
-                  "count": 4,
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "atLeast": 4
+                    }
+                  ],
                   "note": "Four of the six elective units must be at the 300 level or above"
                 }
               ]
@@ -2455,10 +2632,15 @@
                   "text": "Students must select either the Literary Studies or Creative Writing track."
                 },
                 {
-                  "type": "level_gate",
-                  "level": 100,
-                  "comparison": "at_most",
+                  "type": "electives",
                   "count": 1,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 100,
+                      "atMost": 1
+                    }
+                  ],
                   "note": "no more than one 100-level course"
                 }
               ]
@@ -2476,17 +2658,12 @@
                   "count": 5,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "ENG courses"
-                    },
-                    {
                       "type": "level",
                       "level": 100,
-                      "comparison": "at_most",
-                      "min": 1
+                      "atMost": 1
                     },
                     {
-                      "type": "from",
+                      "type": "max_from",
                       "codes": [
                         "ENG 243",
                         "ENG 244",
@@ -2494,7 +2671,7 @@
                         "ENG 246",
                         "ENG 247"
                       ],
-                      "note": "at most 2 from these"
+                      "atMost": 2
                     }
                   ]
                 }
@@ -2673,21 +2850,13 @@
                         "SPA 321",
                         "THR 115",
                         "THR 215",
-                        "THR 343"
-                      ]
-                    },
-                    {
-                      "type": "from",
-                      "codes": [
+                        "THR 343",
                         "COM 250",
                         "PSY 250"
                       ]
-                    },
-                    {
-                      "type": "from",
-                      "note": "Other film courses by petition"
                     }
-                  ]
+                  ],
+                  "note": "or other film courses by petition"
                 }
               ]
             }
@@ -2725,8 +2894,8 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 3,
-                      "comparison": "or_above"
+                      "orAbove": true,
+                      "atLeast": 3
                     }
                   ]
                 }
@@ -2816,8 +2985,8 @@
                     {
                       "type": "level",
                       "level": 200,
-                      "min": 4,
-                      "comparison": "or_above"
+                      "orAbove": true,
+                      "atLeast": 4
                     }
                   ]
                 },
@@ -2847,14 +3016,15 @@
                     {
                       "type": "level",
                       "level": 200,
-                      "min": 4,
-                      "comparison": "or_above"
+                      "orAbove": true,
+                      "atLeast": 4
+                    },
+                    {
+                      "type": "discipline",
+                      "distinctAtLeast": 3
                     }
-                  ]
-                },
-                {
-                  "type": "custom",
-                  "text": "Courses must be from three different disciplines"
+                  ],
+                  "note": ""
                 }
               ]
             }
@@ -2873,9 +3043,21 @@
               "heading": "Geology courses",
               "items": [
                 {
-                  "type": "course",
-                  "code": "GEO 16X",
-                  "note": "any GEO 160-169"
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "GEO"
+                      ]
+                    },
+                    {
+                      "type": "level",
+                      "min": 160,
+                      "max": 169
+                    }
+                  ]
                 },
                 {
                   "type": "course",
@@ -2895,8 +3077,10 @@
                   "count": 4,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "GEO courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "GEO"
+                      ]
                     }
                   ]
                 },
@@ -2956,17 +3140,31 @@
               "heading": "Geology courses",
               "items": [
                 {
-                  "type": "course",
-                  "code": "GEO 16X",
-                  "note": "any GEO 160-169"
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "GEO"
+                      ]
+                    },
+                    {
+                      "type": "level",
+                      "min": 160,
+                      "max": 169
+                    }
+                  ]
                 },
                 {
                   "type": "electives",
                   "count": 5,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "GEO courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "GEO"
+                      ]
                     }
                   ]
                 }
@@ -2998,16 +3196,19 @@
                       ]
                     },
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "GER"
+                      ],
+                      "atLeast": 7
+                    },
+                    {
                       "type": "level",
                       "level": 300,
-                      "min": 3
+                      "atLeast": 3
                     },
                     {
-                      "type": "from",
-                      "note": "at least 7 courses must be in German"
-                    },
-                    {
-                      "type": "from",
+                      "type": "max_from",
                       "codes": [
                         "GER 222",
                         "GER 243",
@@ -3021,6 +3222,7 @@
                         "PHI 246",
                         "PHI 325"
                       ],
+                      "atMost": 1,
                       "note": "may be taken in English"
                     }
                   ]
@@ -3055,11 +3257,14 @@
                       ]
                     },
                     {
-                      "type": "from",
-                      "note": "at least 4 courses must be in German"
+                      "type": "discipline",
+                      "prefixes": [
+                        "GER"
+                      ],
+                      "atLeast": 4
                     },
                     {
-                      "type": "from",
+                      "type": "max_from",
                       "codes": [
                         "GER 222",
                         "GER 243",
@@ -3073,6 +3278,7 @@
                         "PHI 246",
                         "PHI 325"
                       ],
+                      "atMost": 1,
                       "note": "may be taken in English"
                     }
                   ]
@@ -3105,16 +3311,19 @@
                       ]
                     },
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "GER"
+                      ],
+                      "atLeast": 5
+                    },
+                    {
                       "type": "level",
                       "level": 300,
-                      "min": 2
+                      "atLeast": 2
                     },
                     {
-                      "type": "from",
-                      "note": "at least 5 courses must be in German"
-                    },
-                    {
-                      "type": "from",
+                      "type": "max_from",
                       "codes": [
                         "GER 222",
                         "GER 243",
@@ -3128,6 +3337,7 @@
                         "PHI 246",
                         "PHI 325"
                       ],
+                      "atMost": 3,
                       "note": "up to 3 may be taken in English"
                     }
                   ]
@@ -3162,11 +3372,14 @@
                       ]
                     },
                     {
-                      "type": "from",
-                      "note": "at least 3 courses must be in German"
+                      "type": "discipline",
+                      "prefixes": [
+                        "GER"
+                      ],
+                      "atLeast": 3
                     },
                     {
-                      "type": "from",
+                      "type": "max_from",
                       "codes": [
                         "GER 222",
                         "GER 243",
@@ -3180,6 +3393,7 @@
                         "PHI 246",
                         "PHI 325"
                       ],
+                      "atMost": 2,
                       "note": "up to 2 may be taken in English"
                     }
                   ]
@@ -3205,8 +3419,10 @@
                   "count": 5,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "any course in Greek"
+                      "type": "discipline",
+                      "prefixes": [
+                        "GRE"
+                      ]
                     }
                   ]
                 },
@@ -3283,17 +3499,29 @@
                   "type": "any_of",
                   "items": [
                     {
-                      "type": "pair",
-                      "codes": [
-                        "KIP 162",
-                        "KIP 186"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "KIP 162"
+                        },
+                        {
+                          "type": "course",
+                          "code": "KIP 186"
+                        }
                       ]
                     },
                     {
-                      "type": "pair",
-                      "codes": [
-                        "KIP 215",
-                        "KIP 230"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "KIP 215"
+                        },
+                        {
+                          "type": "course",
+                          "code": "KIP 230"
+                        }
                       ]
                     }
                   ],
@@ -3336,22 +3564,47 @@
                   ]
                 },
                 {
-                  "type": "electives",
-                  "count": 2,
-                  "constraints": [
+                  "type": "some_of",
+                  "min": 2,
+                  "note": "choose any two",
+                  "items": [
                     {
-                      "type": "from",
-                      "codes": [
-                        "PSY 231"
+                      "type": "course",
+                      "code": "PSY 231"
+                    },
+                    {
+                      "type": "electives",
+                      "count": 1,
+                      "constraints": [
+                        {
+                          "type": "discipline",
+                          "prefixes": [
+                            "KIP"
+                          ]
+                        },
+                        {
+                          "type": "level",
+                          "level": 300,
+                          "orAbove": true
+                        }
                       ]
                     },
                     {
-                      "type": "from",
-                      "note": "300-level KIP course"
-                    },
-                    {
-                      "type": "from",
-                      "note": "300-level HMS course"
+                      "type": "electives",
+                      "count": 1,
+                      "constraints": [
+                        {
+                          "type": "discipline",
+                          "prefixes": [
+                            "HMS"
+                          ]
+                        },
+                        {
+                          "type": "level",
+                          "level": 300,
+                          "orAbove": true
+                        }
+                      ]
                     }
                   ]
                 }
@@ -3380,17 +3633,29 @@
                   "type": "any_of",
                   "items": [
                     {
-                      "type": "pair",
-                      "codes": [
-                        "KIP 162",
-                        "KIP 186"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "KIP 162"
+                        },
+                        {
+                          "type": "course",
+                          "code": "KIP 186"
+                        }
                       ]
                     },
                     {
-                      "type": "pair",
-                      "codes": [
-                        "KIP 215",
-                        "KIP 230"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "KIP 215"
+                        },
+                        {
+                          "type": "course",
+                          "code": "KIP 230"
+                        }
                       ]
                     }
                   ],
@@ -3443,7 +3708,7 @@
                     {
                       "type": "level",
                       "level": 100,
-                      "comparison": "exclude"
+                      "atMost": 0
                     }
                   ]
                 },
@@ -3466,8 +3731,10 @@
                   "count": 5,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "HIS courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "HIS"
+                      ]
                     }
                   ]
                 }
@@ -3530,8 +3797,8 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 2,
-                      "comparison": "or_above"
+                      "orAbove": true,
+                      "atLeast": 2
                     }
                   ]
                 }
@@ -3556,8 +3823,8 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 1,
-                      "comparison": "or_above"
+                      "orAbove": true,
+                      "atLeast": 1
                     }
                   ]
                 }
@@ -3662,7 +3929,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "comparison": "or_above"
+                      "orAbove": true
                     }
                   ]
                 }
@@ -3711,7 +3978,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "comparison": "or_above"
+                      "orAbove": true
                     }
                   ]
                 }
@@ -3744,7 +4011,7 @@
                     {
                       "type": "level",
                       "level": 200,
-                      "comparison": "or_above"
+                      "orAbove": true
                     }
                   ]
                 }
@@ -3771,7 +4038,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 4
+                      "atLeast": 4
                     }
                   ],
                   "note": "LAT courses at the 300 level"
@@ -3904,8 +4171,8 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 1,
-                      "comparison": "or_above"
+                      "orAbove": true,
+                      "atLeast": 1
                     }
                   ]
                 }
@@ -3979,8 +4246,10 @@
                   "count": 4,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "ARTH courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "ARTH"
+                      ]
                     }
                   ]
                 }
@@ -4067,23 +4336,27 @@
                   "note": "Culminating experience"
                 },
                 {
-                  "type": "electives",
-                  "count": 3,
-                  "constraints": [
+                  "type": "some_of",
+                  "min": 3,
+                  "note": "three of the following",
+                  "items": [
                     {
-                      "type": "from",
-                      "codes": [
-                        "MUS 218",
-                        "MUS 325"
-                      ]
+                      "type": "course",
+                      "code": "MUS 218"
                     },
                     {
-                      "type": "from",
-                      "note": "major applied area (1 course credit)"
+                      "type": "course",
+                      "code": "MUS 325"
                     },
                     {
-                      "type": "from",
-                      "note": "ensembles (1 course credit)"
+                      "type": "electives",
+                      "count": 1,
+                      "note": "one course credit in major applied area"
+                    },
+                    {
+                      "type": "electives",
+                      "count": 1,
+                      "note": "one course credit in ensembles"
                     }
                   ]
                 },
@@ -4223,14 +4496,15 @@
                   "count": 5,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "PHI courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "PHI"
+                      ]
                     },
                     {
                       "type": "level",
                       "level": 100,
-                      "comparison": "at_most",
-                      "min": 1
+                      "atMost": 1
                     }
                   ]
                 }
@@ -4251,7 +4525,7 @@
                     {
                       "type": "level",
                       "level": 100,
-                      "comparison": "exclude"
+                      "atMost": 0
                     }
                   ],
                   "note": "Recommended: PHI 224 and PHI 225"
@@ -4317,10 +4591,16 @@
                   "type": "any_of",
                   "items": [
                     {
-                      "type": "pair",
-                      "codes": [
-                        "PHY 408",
-                        "PHY 409"
+                      "type": "each_of",
+                      "items": [
+                        {
+                          "type": "course",
+                          "code": "PHY 408"
+                        },
+                        {
+                          "type": "course",
+                          "code": "PHY 409"
+                        }
                       ]
                     },
                     {
@@ -4420,7 +4700,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 3
+                      "atLeast": 3
                     }
                   ]
                 }
@@ -4457,7 +4737,7 @@
                     {
                       "type": "level",
                       "level": 300,
-                      "min": 1
+                      "atLeast": 1
                     }
                   ]
                 }
@@ -4530,8 +4810,10 @@
                   "count": 2,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "PSY courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "PSY"
+                      ]
                     }
                   ]
                 },
@@ -4593,8 +4875,10 @@
                   "count": 1,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "PSY courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "PSY"
+                      ]
                     }
                   ]
                 }
@@ -4615,8 +4899,20 @@
               "heading": "Race and Ethnic Studies courses",
               "items": [
                 {
-                  "type": "custom",
-                  "text": "This interdisciplinary minor requires 5 of the following courses. At least four of the five courses must be at the 200-level or above, with no more than two courses in any single discipline."
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "orAbove": true,
+                      "atLeast": 4
+                    },
+                    {
+                      "type": "discipline",
+                      "atMost": 2
+                    }
+                  ]
                 }
               ]
             }
@@ -4674,13 +4970,13 @@
                     {
                       "type": "level",
                       "level": 200,
-                      "min": 2
+                      "atLeast": 2
                     },
                     {
                       "type": "level",
                       "level": 300,
-                      "comparison": "or_above",
-                      "min": 3
+                      "orAbove": true,
+                      "atLeast": 3
                     }
                   ]
                 }
@@ -4775,9 +5071,15 @@
                   "note": "Culminating experience"
                 },
                 {
-                  "type": "level_gate",
-                  "level": 300,
-                  "comparison": "or_above",
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "orAbove": true
+                    }
+                  ],
                   "note": "one course above 320"
                 },
                 {
@@ -4962,8 +5264,8 @@
                     {
                       "type": "level",
                       "level": 200,
-                      "comparison": "or_above",
-                      "min": 3
+                      "orAbove": true,
+                      "atLeast": 3
                     }
                   ]
                 },
@@ -5013,8 +5315,10 @@
                   "count": 1,
                   "constraints": [
                     {
-                      "type": "from",
-                      "note": "THR courses"
+                      "type": "discipline",
+                      "prefixes": [
+                        "THR"
+                      ]
                     }
                   ]
                 }
@@ -5062,8 +5366,8 @@
                     {
                       "type": "level",
                       "level": 200,
-                      "comparison": "or_above",
-                      "min": 2
+                      "orAbove": true,
+                      "atLeast": 2
                     }
                   ]
                 }
@@ -5084,8 +5388,8 @@
                     {
                       "type": "level",
                       "level": 200,
-                      "comparison": "or_above",
-                      "min": 3
+                      "orAbove": true,
+                      "atLeast": 3
                     }
                   ]
                 }
@@ -5106,8 +5410,20 @@
               "heading": "World Religions courses",
               "items": [
                 {
-                  "type": "custom",
-                  "text": "This minor requires 5 of the following courses. At least four of the five courses must be at the 200-level or above, with no more than three courses in any single discipline."
+                  "type": "electives",
+                  "count": 5,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 200,
+                      "orAbove": true,
+                      "atLeast": 4
+                    },
+                    {
+                      "type": "discipline",
+                      "atMost": 3
+                    }
+                  ]
                 }
               ]
             }
