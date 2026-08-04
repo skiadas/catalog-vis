@@ -1073,6 +1073,124 @@ body {
   text-decoration: underline;
 }
 
+/* Schedule help pop-up */
+.schedule-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.schedule-help-toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--primary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.schedule-help-toggle:hover {
+  background: var(--primary);
+  color: white;
+  border-color: transparent;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow: auto;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
+.modal-head h3 {
+  margin: 0;
+  font-size: 17px;
+  color: var(--primary);
+}
+
+.modal-close {
+  border: none;
+  background: none;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.modal-close:hover {
+  color: var(--primary);
+}
+
+.modal-body {
+  padding: 16px 18px 20px;
+}
+
+.modal-intro {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.help-section {
+  margin-top: 14px;
+}
+
+.help-section h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--primary);
+}
+
+.help-section p,
+.help-section ul {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.help-section ul {
+  padding-left: 18px;
+}
+
+.help-section li {
+  margin-bottom: 2px;
+}
+
 @media (max-width: 600px) {
   #app {
     padding: 16px 12px;
