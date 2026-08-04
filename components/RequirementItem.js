@@ -14,6 +14,17 @@ export default {
       return item && item.type === 'any_of' && item.items && item.items.length
     })
 
+    const eachOfInline = computed(() => {
+      const item = props.item
+      return (
+        item &&
+        item.type === 'each_of' &&
+        item.items &&
+        item.items.length &&
+        item.items.every((s) => s.type === 'course')
+      )
+    })
+
     function formatLevelConstraint(c) {
       const above = c.orAbove || c.comparison === 'or_above'
       if (c.min !== undefined && c.max !== undefined) {
@@ -51,6 +62,12 @@ export default {
       return note && note.toLowerCase().includes('culminating')
     }
 
+    function someOfLabel() {
+      const item = props.item
+      if (item.note) return item.note
+      return 'Choose ' + item.min + ' of the following:'
+    }
+
     return {
       allCourses,
       goToCourse,
@@ -59,6 +76,8 @@ export default {
       formatLevelGate,
       isCulminating,
       isNested,
+      eachOfInline,
+      someOfLabel,
     }
   },
   template: `
@@ -101,9 +120,24 @@ export default {
       </div>
     </div>
 
+    <div v-else-if="eachOfInline" class="pair-group">
+      <template v-for="(sub, di) in item.items" :key="di">
+        <span class="course-chip" @click="goToCourse(sub.code)" :title="allCourses[sub.code] ? allCourses[sub.code].course_name : ''">{{ sub.code }}</span>
+        <span v-if="di < item.items.length - 1" class="pair-plus">+</span>
+      </template>
+      <span v-if="item.note" class="item-note">{{ item.note }}</span>
+    </div>
+
     <div v-else-if="item.type === 'each_of'" class="eachof-group">
       <div class="eachof-label">{{ item.note || 'Complete all of the following:' }}</div>
       <div v-for="(sub, di) in item.items" :key="di" class="eachof-subitem">
+        <RequirementItem :item="sub" />
+      </div>
+    </div>
+
+    <div v-else-if="item.type === 'some_of'" class="eachof-group">
+      <div class="eachof-label">{{ someOfLabel() }}</div>
+      <div v-for="(sub, sii) in item.items" :key="sii" class="eachof-subitem">
         <RequirementItem :item="sub" />
       </div>
     </div>
@@ -142,6 +176,26 @@ export default {
           </template>
           <template v-else-if="c.type === 'from' && c.note">
             <span class="constraint-tag from note-only">{{ c.note }}</span>
+          </template>
+          <template v-else-if="c.type === 'max_from'">
+            <span class="constraint-tag from">
+              <span class="constraint-note">{{ 'At most ' + c.atMost + ' of:' }}</span>
+              <template v-for="(code, xi) in c.codes" :key="code">
+                <span class="course-chip mini" @click="goToCourse(code)" :title="allCourses[code] ? allCourses[code].course_name : ''">{{ code }}</span>
+                <template v-if="xi < c.codes.length - 1">, </template>
+              </template>
+              <span v-if="c.note" class="constraint-note">{{ c.note }}</span>
+            </span>
+          </template>
+          <template v-else-if="c.type === 'min_from'">
+            <span class="constraint-tag from">
+              <span class="constraint-note">{{ 'At least ' + c.atLeast + ' of:' }}</span>
+              <template v-for="(code, yi) in c.codes" :key="code">
+                <span class="course-chip mini" @click="goToCourse(code)" :title="allCourses[code] ? allCourses[code].course_name : ''">{{ code }}</span>
+                <template v-if="yi < c.codes.length - 1">, </template>
+              </template>
+              <span v-if="c.note" class="constraint-note">{{ c.note }}</span>
+            </span>
           </template>
         </div>
       </div>

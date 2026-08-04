@@ -100,6 +100,25 @@ Use for "one from group A **and** one from group B", and as the target form for 
 
 > `pair` (legacy) is semantically `each_of` where all children are `course` items; migrate `pair` → `each_of` of `course` children.
 
+#### `some_of` — satisfy at least N of the listed sub-requirements
+
+```json
+{"type": "some_of", "min": 2, "note": "choose any two", "items": [
+  {"type": "course", "code": "PSY 231"},
+  {"type": "electives", "count": 1, "constraints": [{"type": "discipline", "prefixes": ["KIP"]}, {"type": "level", "level": 300, "orAbove": true}]},
+  {"type": "electives", "count": 1, "constraints": [{"type": "discipline", "prefixes": ["HMS"]}, {"type": "level", "level": 300, "orAbove": true}]}
+]}
+```
+
+| Field  | Description |
+|--------|-------------|
+| `min`   | Minimum number of sub-requirements to satisfy (defaults to 1). |
+| `max`   | Optional maximum number (defaults to `items.length`). |
+| `items` | List of arbitrary item types. |
+| `note`  | Optional label; defaults to "Choose N of the following:". |
+
+Use for "any two of the following:", "three others from …", etc. Generalizes `any_of` (min 1, max 1) and `each_of` (min = all), which remain separate node types for readability.
+
 #### `electives` — choose N courses from a pool, with constraints
 
 ```json
@@ -139,6 +158,8 @@ Use for "one from group A **and** one from group B", and as the target form for 
 - `{"type": "from", "codes": [...]}` — explicitly eligible pool.
 - `{"type": "from", "codes": [...], "note": "may be taken in English"}` — pool with context.
 - `{"type": "exclude", "codes": [...]}` — explicitly ineligible.
+- `{"type": "max_from", "codes": [...], "atMost": 1, "note": "may be taken in English"}` — no more than `atMost` of the chosen courses may come from this set (a cap, not a filter).
+- `{"type": "min_from", "codes": [...], "atLeast": 2, "note": "geographical area courses"}` — at least `atLeast` of the chosen courses must come from this set.
 - `{"type": "note", "text": "..."}` — advisory phrasing only (ignored by evaluation, shown for context).
 
 > Legacy `level` constraint fields `comparison` (`or_above` | `at_most` | `exclude`) and `min` are still understood by the renderer but should be migrated to `orAbove`, `atLeast`, `atMost`.
@@ -182,8 +203,6 @@ Prepend the program's `course_prefix`.
 > `at least four of the five at the 200 level or above` → `level` with `atLeast: 4, orAbove: true`
 > `no more than one 100-level course` → `level` with `atMost: 1`
 > `not including 100 level courses` → `level` with `atMost: 0`
-
-### 7. Exclusion
 > `but not include 301, 307, 308` → `exclude` constraint
 
 ### 8. Counts
@@ -222,9 +241,11 @@ Rules:
 - "and" between courses that must be taken together -> type "each_of" with course items
 - "one from X and one from Y" -> type "each_of" containing the two selections
 - "one pair from the following" -> `any_of` with `items` (each item a requirement)
+- "any two/three of the following" -> type "some_of" with `min`
 - Level phrases -> "level" constraints; use `atLeast`/`atMost` for counts and `orAbove` for "or above"
 - Ranges ("GEO 16x") -> level with `min`/`max`
 - Discipline phrases ("no more than two in any single discipline", "must be in German") -> "discipline" constraints
+- "no more than N from [a set]" / "at most N may be taken in [a set]" -> "max_from" constraint with `atMost`
 - Exclusion phrases ("not include", "excluding", "other than") -> "exclude" constraint
 - Count words ("five others", "three additional") -> type "electives" with count
 - When a constraint note lists course codes, ALWAYS extract them into a "codes" array; keep the note for context
