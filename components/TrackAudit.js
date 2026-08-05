@@ -58,7 +58,8 @@ export default {
       </div>
       <div class="planner-gaps" v-if="report.status !== 'satisfied'">
         <div class="planner-gap-group" v-for="(g, gi) in gaps" :key="gi">
-          <span class="planner-gap-label" v-if="g.label">{{ g.label }}:</span>
+          <span class="planner-gap-label" v-if="g.label && g.suggested">{{ g.label }}</span>
+          <span v-if="g.suggested" class="planner-gap-examples">e.g.</span>
           <span
             v-for="code in g.codes"
             :key="code"
@@ -67,6 +68,7 @@ export default {
             :title="allCourses[code] ? allCourses[code].course_name : ''"
             :class="{ taken: takenSet.has(code) }"
           >{{ code }}</span>
+          <span v-if="g.label && !g.suggested">{{ g.label }}:</span>
           <span class="planner-gap-note" v-if="g.note && !g.codes">{{ g.note }}</span>
         </div>
       </div>

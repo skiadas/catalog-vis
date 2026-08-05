@@ -525,7 +525,7 @@ test('gapGroups for some_of is a single pick-N-of group', () => {
   ])
 })
 
-test('gapGroups for an electives shortfall describes the missing kind', () => {
+test('gapGroups for an electives shortfall states the kind and marks suggestions', () => {
   const it = {
     type: 'electives',
     count: 3,
@@ -536,7 +536,8 @@ test('gapGroups for an electives shortfall describes the missing kind', () => {
   }
   const groups = gapGroups(it, takenFrom(['GER 101']), CATALOG)
   assert.equal(groups.length, 1)
-  assert.match(groups[0].label, /2 more courses/)
+  assert.match(groups[0].label, /^Need 2 more GER courses/)
+  assert.equal(groups[0].suggested, true)
   assert.match(groups[0].label, /GER courses/)
   assert.equal(groups[0].codes.length, 2)
 })

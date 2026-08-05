@@ -1471,6 +1471,12 @@ body {
   font-weight: 600;
 }
 
+.planner-gap-examples {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 12px;
+}
+
 .planner-gap-note {
   color: var(--text-muted);
   font-style: italic;
