@@ -525,7 +525,7 @@ test('gapGroups for some_of is a single pick-N-of group', () => {
   ])
 })
 
-test('gapGroups for an electives shortfall states the kind and marks suggestions', () => {
+test('gapGroups for an electives shortfall lists the full eligible pool, expandable', () => {
   const it = {
     type: 'electives',
     count: 3,
@@ -537,12 +537,12 @@ test('gapGroups for an electives shortfall states the kind and marks suggestions
   const groups = gapGroups(it, takenFrom(['GER 101']), CATALOG)
   assert.equal(groups.length, 1)
   assert.match(groups[0].label, /^Need 2 more GER courses/)
-  assert.equal(groups[0].suggested, true)
-  assert.match(groups[0].label, /GER courses/)
-  assert.equal(groups[0].codes.length, 2)
+  assert.equal(groups[0].expandable, true)
+  // All eligible GER courses not yet taken, alphabetically.
+  assert.deepEqual(groups[0].codes, ['GER 115', 'GER 222', 'GER 243', 'GER 301', 'GER 302'])
 })
 
-test('gapGroups for electives aggregate shortfall returns a note', () => {
+test('gapGroups for electives with count met but aggregate short flags an expandable pool', () => {
   const it = {
     type: 'electives',
     count: 2,
@@ -550,8 +550,9 @@ test('gapGroups for electives aggregate shortfall returns a note', () => {
   }
   const groups = gapGroups(it, takenFrom(['GER 101', 'GER 301']), CATALOG)
   assert.equal(groups.length, 1)
-  assert.ok(groups[0].note)
-  assert.match(groups[0].note, /at least 2 at 300-level/)
+  assert.equal(groups[0].expandable, true)
+  assert.match(groups[0].label, /Still need/)
+  assert.ok(groups[0].codes.length > 0)
 })
 
 test('gapGroups for custom returns an unknown note', () => {

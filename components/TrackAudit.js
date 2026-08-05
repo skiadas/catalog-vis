@@ -1,7 +1,7 @@
 import { allCourses, takenSet, toggleTaken } from '../lib/store.js'
 import { evaluateProgram, audit, gapGroups } from '../lib/planner.js'
 
-const { computed } = Vue
+const { ref, computed } = Vue
 
 export default {
   name: 'TrackAudit',
@@ -28,6 +28,12 @@ export default {
       return groups
     })
 
+    // Which expandable (electives) gap groups are currently opened.
+    const expanded = ref({})
+    function toggleExpand(i) {
+      expanded.value = { ...expanded.value, [i]: !expanded.value[i] }
+    }
+
     const statusLabel = {
       satisfied: 'Met',
       partial: 'Partial',
@@ -35,7 +41,7 @@ export default {
       unknown: 'Not structured',
     }
 
-    return { report, gaps, statusLabel, allCourses, takenSet, toggleTaken }
+    return { report, gaps, statusLabel, allCourses, takenSet, toggleTaken, expanded, toggleExpand }
   },
   template: `
     <div class="planner-req">
@@ -58,18 +64,35 @@ export default {
       </div>
       <div class="planner-gaps" v-if="report.status !== 'satisfied'">
         <div class="planner-gap-group" v-for="(g, gi) in gaps" :key="gi">
-          <span class="planner-gap-label" v-if="g.label && g.suggested">{{ g.label }}</span>
-          <span v-if="g.suggested" class="planner-gap-examples">e.g.</span>
-          <span
-            v-for="code in g.codes"
-            :key="code"
-            class="course-chip mini"
-            @click="toggleTaken(code)"
-            :title="allCourses[code] ? allCourses[code].course_name : ''"
-            :class="{ taken: takenSet.has(code) }"
-          >{{ code }}</span>
-          <span v-if="g.label && !g.suggested">{{ g.label }}:</span>
-          <span class="planner-gap-note" v-if="g.note && !g.codes">{{ g.note }}</span>
+          <template v-if="g.expandable">
+            <button class="planner-gap-toggle" @click="toggleExpand(gi)">
+              <span class="planner-gap-label">{{ g.label }}</span>
+              <span class="planner-gap-count">({{ g.codes.length }} option{{ g.codes.length !== 1 ? 's' : '' }})</span>
+              <span class="planner-gap-chevron">{{ expanded[gi] ? '▾' : '▸' }}</span>
+            </button>
+            <div v-if="expanded[gi]" class="planner-gap-options">
+              <span
+                v-for="code in g.codes"
+                :key="code"
+                class="course-chip mini"
+                @click="toggleTaken(code)"
+                :title="allCourses[code] ? allCourses[code].course_name : ''"
+                :class="{ taken: takenSet.has(code) }"
+              >{{ code }}</span>
+            </div>
+          </template>
+          <template v-else>
+            <span class="planner-gap-label" v-if="g.label">{{ g.label }}:</span>
+            <span
+              v-for="code in g.codes"
+              :key="code"
+              class="course-chip mini"
+              @click="toggleTaken(code)"
+              :title="allCourses[code] ? allCourses[code].course_name : ''"
+              :class="{ taken: takenSet.has(code) }"
+            >{{ code }}</span>
+            <span class="planner-gap-note" v-if="g.note && !g.codes">{{ g.note }}</span>
+          </template>
         </div>
       </div>
     </div>
