@@ -9,6 +9,8 @@ import {
   evaluateRequirement,
   evaluateProgram,
   planGaps,
+  gapGroups,
+  describeConstraints,
   audit,
 } from '../lib/planner.js'
 
@@ -472,6 +474,104 @@ test('planGaps for custom is unknown', () => {
     courses: [],
     unknown: true,
   })
+})
+
+// ---------------------------------------------------------------------------
+// gapGroups / describeConstraints
+// ---------------------------------------------------------------------------
+
+test('gapGroups for a missing course is a bare group', () => {
+  assert.deepEqual(gapGroups({ type: 'course', code: 'BIO 161' }, takenFrom([]), CATALOG), [
+    { codes: ['BIO 161'] },
+  ])
+})
+
+test('gapGroups is empty when satisfied', () => {
+  assert.deepEqual(gapGroups({ type: 'course', code: 'BIO 161' }, takenFrom(['BIO 161']), CATALOG), [])
+})
+
+test('gapGroups presents an any_of choice once, not per alternative', () => {
+  const it = { type: 'any_of', codes: ['BIO 362', 'BIO 363'] }
+  assert.deepEqual(gapGroups(it, takenFrom([]), CATALOG), [
+    { label: 'Choose one of', codes: ['BIO 362', 'BIO 363'] },
+  ])
+  // Taking one alternative clears the group entirely.
+  assert.deepEqual(gapGroups(it, takenFrom(['BIO 362']), CATALOG), [])
+})
+
+test('gapGroups for each_of keeps only the still-missing child', () => {
+  const it = {
+    type: 'each_of',
+    items: [
+      { type: 'course', code: 'BIO 161' },
+      { type: 'course', code: 'BIO 221' },
+    ],
+  }
+  assert.deepEqual(gapGroups(it, takenFrom(['BIO 161']), CATALOG), [{ codes: ['BIO 221'] }])
+})
+
+test('gapGroups for some_of is a single pick-N-of group', () => {
+  const it = {
+    type: 'some_of',
+    min: 2,
+    items: [
+      { type: 'course', code: 'BIO 161' },
+      { type: 'course', code: 'BIO 221' },
+      { type: 'course', code: 'BIO 301' },
+    ],
+  }
+  assert.deepEqual(gapGroups(it, takenFrom([]), CATALOG), [
+    { label: 'Pick 2 of', codes: ['BIO 161', 'BIO 221', 'BIO 301'].slice(0, 2) },
+  ])
+})
+
+test('gapGroups for an electives shortfall describes the missing kind', () => {
+  const it = {
+    type: 'electives',
+    count: 3,
+    constraints: [
+      { type: 'discipline', prefixes: ['GER'] },
+      { type: 'level', level: 300, atLeast: 2 },
+    ],
+  }
+  const groups = gapGroups(it, takenFrom(['GER 101']), CATALOG)
+  assert.equal(groups.length, 1)
+  assert.match(groups[0].label, /2 more courses/)
+  assert.match(groups[0].label, /GER courses/)
+  assert.equal(groups[0].codes.length, 2)
+})
+
+test('gapGroups for electives aggregate shortfall returns a note', () => {
+  const it = {
+    type: 'electives',
+    count: 2,
+    constraints: [{ type: 'level', level: 300, atLeast: 2 }],
+  }
+  const groups = gapGroups(it, takenFrom(['GER 101', 'GER 301']), CATALOG)
+  assert.equal(groups.length, 1)
+  assert.ok(groups[0].note)
+  assert.match(groups[0].note, /at least 2 at 300-level/)
+})
+
+test('gapGroups for custom returns an unknown note', () => {
+  const groups = gapGroups({ type: 'custom', text: 'x' }, takenFrom([]), CATALOG)
+  assert.equal(groups.length, 1)
+  assert.ok(groups[0].note)
+})
+
+test('describeConstraints renders filter and aggregate constraints', () => {
+  const text = describeConstraints([
+    { type: 'discipline', prefixes: ['CS'] },
+    { type: 'level', level: 200, orAbove: true },
+    { type: 'level', level: 300, atLeast: 2 },
+  ])
+  assert.match(text, /CS courses/)
+  assert.match(text, /200-level or above/)
+  assert.match(text, /at least 2 at 300-level/)
+})
+
+test('describeConstraints is empty without constraints', () => {
+  assert.equal(describeConstraints([]), '')
 })
 
 test('audit rolls up requirement statuses', () => {

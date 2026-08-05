@@ -642,6 +642,12 @@ body {
   padding: 1px 6px;
 }
 
+.planner-gap-group .course-chip.taken {
+  background: #e5f6e6;
+  color: #1e7e34;
+  text-decoration: line-through;
+}
+
 .level-gate-badge {
   display: inline-flex;
   align-items: center;
@@ -1450,6 +1456,19 @@ body {
 .planner-gaps {
   margin-top: 6px;
   font-size: 13px;
+}
+
+.planner-gap-group {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.planner-gap-label {
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .planner-gap-note {

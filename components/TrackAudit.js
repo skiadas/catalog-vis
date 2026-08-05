@@ -1,6 +1,5 @@
-import { allCourses, takenSet } from '../lib/store.js'
-import { goToCourse } from '../lib/router.js'
-import { evaluateProgram, audit, planGaps } from '../lib/planner.js'
+import { allCourses, takenSet, toggleTaken } from '../lib/store.js'
+import { evaluateProgram, audit, gapGroups } from '../lib/planner.js'
 
 const { computed } = Vue
 
@@ -20,18 +19,13 @@ export default {
 
     const gaps = computed(() => {
       const requirement = (props.parsed || [])[0]
-      const courses = []
-      let aggregate = false
-      let unknown = false
+      const groups = []
       for (const s of (requirement && requirement.sections) || []) {
         for (const it of s.items || []) {
-          const g = planGaps(it, takenSet.value, allCourses.value)
-          if (g.aggregate) aggregate = true
-          if (g.unknown) unknown = true
-          courses.push(...g.courses)
+          groups.push(...gapGroups(it, takenSet.value, allCourses.value))
         }
       }
-      return { courses: [...new Set(courses)], aggregate, unknown }
+      return groups
     })
 
     const statusLabel = {
@@ -41,7 +35,7 @@ export default {
       unknown: 'Not structured',
     }
 
-    return { report, gaps, statusLabel, allCourses, goToCourse }
+    return { report, gaps, statusLabel, allCourses, toggleTaken }
   },
   template: `
     <div class="planner-req">
@@ -63,20 +57,17 @@ export default {
         </span>
       </div>
       <div class="planner-gaps" v-if="report.status !== 'satisfied'">
-        <div v-if="gaps.unknown" class="planner-gap-note">Includes unstructured requirements.</div>
-        <div v-if="gaps.aggregate" class="planner-gap-note">
-          Needs enough courses in a specific category (level/discipline).
-        </div>
-        <div v-if="gaps.courses.length" class="planner-gap-courses">
-          Still need:
+        <div class="planner-gap-group" v-for="(g, gi) in gaps" :key="gi">
+          <span class="planner-gap-label" v-if="g.label">{{ g.label }}:</span>
           <span
-            v-for="code in gaps.courses.slice(0, 12)"
+            v-for="code in g.codes"
             :key="code"
             class="course-chip mini"
-            @click="goToCourse(code)"
+            @click="toggleTaken(code)"
             :title="allCourses[code] ? allCourses[code].course_name : ''"
+            :class="{ taken: takenSet.has(code) }"
           >{{ code }}</span>
-          <span v-if="gaps.courses.length > 12" class="planner-gap-more">+{{ gaps.courses.length - 12 }} more</span>
+          <span class="planner-gap-note" v-if="g.note && !g.codes">{{ g.note }}</span>
         </div>
       </div>
     </div>
