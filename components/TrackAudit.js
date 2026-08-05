@@ -82,6 +82,25 @@ export default {
               >{{ code }}</span>
             </div>
           </template>
+          <template v-else-if="g.alternatives">
+            <div class="planner-gap-label">{{ g.label }}:</div>
+            <div
+              v-for="(alt, ai) in g.alternatives"
+              :key="ai"
+              class="planner-gap-alternative"
+            >
+              <span class="anyof-option">{{ 'Option ' + (ai + 1) }}</span>
+              <template v-for="(code, ci) in alt.codes" :key="code">
+                <span
+                  class="course-chip mini"
+                  @click="toggleTaken(code)"
+                  :title="allCourses[code] ? allCourses[code].course_name : ''"
+                  :class="{ taken: takenSet.has(code) }"
+                >{{ code }}</span>
+                <span v-if="ci < alt.codes.length - 1" class="pair-plus">+</span>
+              </template>
+            </div>
+          </template>
           <template v-else>
             <span class="planner-gap-label" v-if="g.label">{{ g.label }}:</span>
             <span

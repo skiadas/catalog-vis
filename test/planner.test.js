@@ -609,6 +609,78 @@ test('planGaps offers both sides of a cross-listed course', () => {
   assert.deepEqual(gaps.courses, ['ENG 251', 'COM 251', 'ENG/COM 251'])
 })
 
+test('gapGroups keeps nested any_of pairs together as options', () => {
+  const science = {
+    type: 'any_of',
+    note: 'choose one pair',
+    items: [
+      {
+        type: 'each_of',
+        items: [
+          { type: 'course', code: 'BIO 161' },
+          { type: 'course', code: 'BIO 185' },
+        ],
+      },
+      {
+        type: 'each_of',
+        items: [
+          { type: 'course', code: 'CHE 161' },
+          { type: 'course', code: 'CHE 185' },
+        ],
+      },
+    ],
+  }
+  const groups = gapGroups(science, takenFrom([]), CATALOG, new Set())
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].label, 'choose one pair')
+  assert.equal(groups[0].alternatives.length, 2)
+  assert.deepEqual(groups[0].alternatives[0].codes, ['BIO 161', 'BIO 185'])
+  assert.deepEqual(groups[0].alternatives[1].codes, ['CHE 161', 'CHE 185'])
+})
+
+test('gapGroups skips a nested any_of alternative already satisfied', () => {
+  const science = {
+    type: 'any_of',
+    note: 'choose one pair',
+    items: [
+      {
+        type: 'each_of',
+        items: [
+          { type: 'course', code: 'BIO 161' },
+          { type: 'course', code: 'BIO 185' },
+        ],
+      },
+      {
+        type: 'each_of',
+        items: [
+          { type: 'course', code: 'CHE 161' },
+          { type: 'course', code: 'CHE 185' },
+        ],
+      },
+    ],
+  }
+  // With BIO 161+185 taken the whole any_of is satisfied, so no gap remains.
+  const satisfied = gapGroups(science, takenFrom(['BIO 161', 'BIO 185']), CATALOG, new Set())
+  assert.deepEqual(satisfied, [])
+  // Taking only half a pair leaves the choice open, still offered as options.
+  const half = gapGroups(science, takenFrom(['BIO 161']), CATALOG, new Set())
+  assert.equal(half[0].alternatives.length, 2)
+})
+
+test('gapGroups falls back to a flat any_of when every option is a single course', () => {
+  const it = {
+    type: 'any_of',
+    items: [
+      { type: 'course', code: 'BIO 161' },
+      { type: 'course', code: 'BIO 221' },
+    ],
+  }
+  const groups = gapGroups(it, takenFrom([]), CATALOG, new Set())
+  assert.equal(groups.length, 1)
+  assert.ok(!groups[0].alternatives)
+  assert.deepEqual(groups[0].codes, ['BIO 161', 'BIO 221'])
+})
+
 // ---------------------------------------------------------------------------
 // planGaps / audit
 // ---------------------------------------------------------------------------

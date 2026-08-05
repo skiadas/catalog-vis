@@ -671,6 +671,20 @@ body {
   text-decoration: line-through;
 }
 
+.planner-gap-alternative {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.planner-gap-alternative + .planner-gap-alternative {
+  border-top: 1px dashed var(--border);
+  margin-top: 4px;
+  padding-top: 6px;
+}
+
 .level-gate-badge {
   display: inline-flex;
   align-items: center;
