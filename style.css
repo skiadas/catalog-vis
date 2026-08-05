@@ -1652,3 +1652,23 @@ body {
   color: #1e7e34;
   border-color: #1e7e34;
 }
+
+.track-remove-btn {
+  margin-left: auto;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.track-remove-btn:hover {
+  background: #d93025;
+  border-color: #d93025;
+  color: #ffffff;
+}

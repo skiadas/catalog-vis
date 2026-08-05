@@ -6,6 +6,7 @@ const { computed } = Vue
 
 export default {
   name: 'TrackAudit',
+  emits: ['remove'],
   props: {
     program: { type: Object, required: true },
     parsed: { type: Array, required: true },
@@ -48,6 +49,7 @@ export default {
         <span class="planner-status" :class="report.status">{{ statusLabel[report.status] || report.status }}</span>
         <span class="planner-req-label">{{ label }}</span>
         <span class="planner-req-count">{{ report.satisfied }} / {{ report.total }}</span>
+        <button class="track-remove-btn" @click="$emit('remove')" title="Remove this track">✕</button>
       </div>
       <div class="planner-req-sections">
         <span

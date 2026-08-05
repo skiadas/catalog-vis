@@ -8,6 +8,7 @@ import {
   toggleTrack,
   programTracks,
   clearTracks,
+  removeTrack,
   toggleTaken,
   resetTaken,
 } from '../lib/store.js'
@@ -79,6 +80,7 @@ export default {
       takenSet,
       toggleTrack,
       clearTracks,
+      removeTrack,
       toggleTaken,
       resetTaken,
       goToProgram,
@@ -108,6 +110,7 @@ export default {
           :program="t.program"
           :parsed="[t.requirement]"
           :label="t.program.name + ' · ' + t.requirement.label"
+          @remove="removeTrack(t.program.id, t.trackKey)"
         />
       </div>
       <div v-else class="empty-state">
