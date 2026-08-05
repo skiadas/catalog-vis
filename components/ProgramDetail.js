@@ -1,18 +1,26 @@
 import { programs, allCourses, parsedRequirements } from '../lib/store.js'
 import { route, goToCourse, goHome } from '../lib/router.js'
 
-const { computed } = Vue
+const { computed, ref } = Vue
 
 export default {
   name: 'ProgramDetail',
   setup() {
+    const showPlanner = ref(false)
     const currentProgram = computed(() => {
       return programs.value.find((p) => p.id === route.value.params.id) || null
     })
     const currentParsed = computed(() => {
       return parsedRequirements.value[route.value.params.id] || null
     })
-    return { currentProgram, currentParsed, allCourses, goToCourse, goHome }
+    return {
+      currentProgram,
+      currentParsed,
+      showPlanner,
+      allCourses,
+      goToCourse,
+      goHome,
+    }
   },
   template: `
     <div v-if="currentProgram">
@@ -32,6 +40,21 @@ export default {
       <p class="detail-description" v-if="currentProgram.description">
         {{ currentProgram.description }}
       </p>
+
+      <button
+        v-if="currentParsed && currentParsed.length"
+        class="planner-toggle"
+        :class="{ active: showPlanner }"
+        @click="showPlanner = !showPlanner"
+      >
+        {{ showPlanner ? 'Hide planner' : 'Plan your courses' }}
+      </button>
+
+      <PlannerPanel
+        v-if="showPlanner && currentParsed && currentParsed.length"
+        :program="currentProgram"
+        :parsed="currentParsed"
+      />
 
       <div v-if="currentParsed && currentParsed.length">
         <div class="section-title">Requirements</div>
