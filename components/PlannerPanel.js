@@ -59,6 +59,7 @@ export default {
       matchingCourses,
       requirementGaps,
       statusLabel,
+      allCourses,
       takenSet,
       toggleTaken,
       resetTaken,
