@@ -117,7 +117,7 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 14px 16px;
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: var(--shadow);
@@ -130,16 +130,17 @@ body {
 }
 
 .program-card h3 {
-  font-size: 16px;
-  margin-bottom: 8px;
+  font-size: 15px;
+  margin: 0;
   color: var(--primary);
 }
 
 .program-card .meta {
   display: flex;
+  align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-top: 6px;
 }
 
 .tag {
@@ -164,11 +165,6 @@ body {
 
 .tag.program {
   background: #f0f0f0;
-  color: var(--text-muted);
-}
-
-.program-card .course-count {
-  font-size: 13px;
   color: var(--text-muted);
 }
 

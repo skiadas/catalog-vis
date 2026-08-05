@@ -1333,11 +1333,11 @@
       ]
     },
     {
-      "id": "classicsarchaeologyandhistory",
+      "id": "classicalstudies",
       "name": "Classics: Archaeology and History",
       "requirements": [
         {
-          "label": "Major",
+          "label": "Classics: Archaeology and History",
           "sections": [
             {
               "heading": "",
@@ -1409,62 +1409,7 @@
           ]
         },
         {
-          "label": "Minor",
-          "sections": [
-            {
-              "heading": "",
-              "items": [
-                {
-                  "type": "course",
-                  "code": "CLA 225"
-                },
-                {
-                  "type": "any_of",
-                  "codes": [
-                    "CLA 251",
-                    "CLA 252"
-                  ]
-                },
-                {
-                  "type": "electives",
-                  "count": 3,
-                  "constraints": [
-                    {
-                      "type": "level",
-                      "level": 300,
-                      "atLeast": 1
-                    },
-                    {
-                      "type": "exclude",
-                      "codes": [
-                        "LAT 115",
-                        "LAT 116",
-                        "GRE 115",
-                        "GRE 116"
-                      ]
-                    },
-                    {
-                      "type": "discipline",
-                      "prefixes": [
-                        "CLA",
-                        "LAT",
-                        "GRE"
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "classicslanguageandliterature",
-      "name": "Classics: Language and Literature",
-      "requirements": [
-        {
-          "label": "Major",
+          "label": "Classics: Language and Literature",
           "sections": [
             {
               "heading": "",
@@ -1519,6 +1464,55 @@
                   "type": "course",
                   "code": "CLA 499",
                   "note": "Comprehensive evaluation with passing grade"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Minor",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "CLA 225"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "CLA 251",
+                    "CLA 252"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "constraints": [
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "atLeast": 1
+                    },
+                    {
+                      "type": "exclude",
+                      "codes": [
+                        "LAT 115",
+                        "LAT 116",
+                        "GRE 115",
+                        "GRE 116"
+                      ]
+                    },
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "CLA",
+                        "LAT",
+                        "GRE"
+                      ]
+                    }
+                  ]
                 }
               ]
             }

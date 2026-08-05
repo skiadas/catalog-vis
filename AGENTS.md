@@ -9,12 +9,12 @@ A deployable static Vue 3 SPA that browses Hanover College's 55 academic program
 | File | Purpose |
 |------|---------|
 | `scrape_catalog.py` | Scraper: fetches catalog HTML + API data, outputs `majors.json`. Normalizes course codes and faculty names |
-| `majors.json` | All 55 programs, 1144 courses, requirement texts |
+| `majors.json` | All 54 programs, 1144 courses, requirement texts |
 | `requirements_parsed.json` | Codified requirements (structured JSON per `REQUIREMENTS_SCHEMA.md`) |
 | `REQUIREMENTS_SCHEMA.md` | Schema docs for requirements codification — item types, rules, known prefixes |
 | `codify_requirements.py` | Reproduction script with LLM prompt template for re-processing |
 | `generate_schedule.py` | Generates a synthetic schedule CSV from `majors.json` faculty (deterministic, seeded) |
-| `migrate_classics.py` | One-off migration: split the merged "Classical Studies" into two catalog majors (`classicsarchaeologyandhistory`, `classicslanguageandliterature`); already applied |
+| `merge_classics.py` | One-off migration: merge the two Classics majors into a single "Classical Studies" department exposing both majors (keys `major`/`major_2`/`minor`); applied |
 | `sample-schedule.csv` | Schedule data parsed in the browser (dept-prefix,course-number,section,instructor,days,times) |
 | `index.html` | Vue 3 SPA entry point (CDN-loaded, type="module") |
 | `app.js` | App shell + mount point + global component registration |
@@ -53,7 +53,7 @@ Key behaviors:
 - Program IDs are derived from the program **name** (not the HTML div id) because the source HTML has incorrect IDs (e.g., "Computer Science" content inside `<div id="Creative Writing">`)
 - All known prefixes in requirement text are uppercased (e.g., "Bio" → "BIO")
 - Faculty names are normalized (`.normalize_faculty_name()`): whitespace collapsed, single trailing period stripped (e.g., `Patterson.` → `Patterson`), and duplicates removed while preserving order
-- Output: `majors.json` with 55 programs, each with `requirements` (label + raw text), `courses` array, and metadata
+- Output: `majors.json` with 54 programs, each with `requirements` (label + raw text), `courses` array, and metadata
 
 ### 2. Requirements Codification (`codify_requirements.py` + `REQUIREMENTS_SCHEMA.md`)
 
@@ -113,7 +113,7 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 
 **Completed**:
 - Scraper produces clean `majors.json` with normalized course codes and faculty names
-- All 55 programs have proper unique IDs (derived from program name)
+- All 54 programs have proper unique IDs (derived from program name)
 - Requirements codified for all programs with structured JSON output (`schema_version: 2.0`)
 - Requirement model normalized: `any_of`/`each_of`/`some_of` composition, `discipline`/`level` bands+counts, `max_from`/`min_from`; legacy `pair`/`level_gate` retired
 - `test/test_data.py` validates the requirements model vocabulary (node/constraint types, code formats, known discipline prefixes)
@@ -122,7 +122,7 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 - Requirements planner: pure evaluator (`lib/planner.js`), a dedicated `#/planner` view with add/remove major+minor tracks, per-track audits + "still need" gaps, and a global course picker (session-only taken-courses)
 - Schedule generator produces a deterministic synthetic `sample-schedule.csv`
 - Schedule SPA: grid, day, slot, course, and instructor views with dept/instructor filters, conflicts, and shared `WeeklyCalendar`
-- "Classical Studies" split into `classicsarchaeologyandhistory` (major+minor) and `classicslanguageandliterature` (major) via `migrate_classics.py`
+- "Classical Studies" one department exposing both majors + the minor (keys `major`/`major_2`/`minor`) via `merge_classics.py`
 
 **Known limitations in requirements_parsed.json**:
 - Complex multi-line "one pair from the following" sections use nested `any_of`/`each_of` items (e.g., Biology BS and CS BS cognates are now fully structured); a few remaining nested combos ("one of X and one of Y") are `each_of`s

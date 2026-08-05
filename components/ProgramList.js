@@ -55,7 +55,6 @@ export default {
             <span class="tag minor" v-if="p.type.includes('minor')">Minor</span>
             <span class="tag program" v-if="!p.type.includes('major') && !p.type.includes('minor')">Program</span>
           </div>
-          <div class="course-count">{{ p.course_count }} courses</div>
         </div>
       </div>
 
