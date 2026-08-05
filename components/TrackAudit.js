@@ -1,5 +1,5 @@
 import { allCourses, takenSet, toggleTaken } from '../lib/store.js'
-import { evaluateProgram, audit, gapGroups, claimedCourses } from '../lib/planner.js'
+import { evaluateProgram, audit, gapGroups, assignRequirement } from '../lib/planner.js'
 
 const { ref, computed } = Vue
 
@@ -19,12 +19,12 @@ export default {
 
     const gaps = computed(() => {
       const requirement = (props.parsed || [])[0]
-      const claimed = claimedCourses(requirement, takenSet.value, allCourses.value)
+      const assignment = assignRequirement(requirement, takenSet.value, allCourses.value)
+      const totalUsed = new Set(assignment.flatMap((a) => [...a.used]))
       const groups = []
-      for (const s of (requirement && requirement.sections) || []) {
-        for (const it of s.items || []) {
-          groups.push(...gapGroups(it, takenSet.value, allCourses.value, claimed))
-        }
+      for (const a of assignment) {
+        const excluded = new Set([...totalUsed].filter((c) => !a.used.has(c)))
+        groups.push(...gapGroups(a.item, takenSet.value, allCourses.value, excluded))
       }
       return groups
     })

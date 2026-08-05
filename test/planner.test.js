@@ -13,6 +13,7 @@ import {
   describeConstraints,
   claimedCourses,
   audit,
+  assignRequirement,
 } from '../lib/planner.js'
 
 // Small synthetic catalog the way majors.json exposes courses.
@@ -41,6 +42,8 @@ const CATALOG = [
   'CS 150',
   'CS 220',
   'CS 231',
+  'CS 340',
+  'CS 345',
   'MUS 232',
 ]
 
@@ -412,7 +415,7 @@ test('gapGroups omits claimed courses from electives options', () => {
   const electives = groups.find((g) => g.expandable)
   assert.ok(electives)
   assert.ok(!electives.codes.includes('CS 220'))
-  assert.deepEqual(electives.codes, ['CS 150', 'CS 231'])
+  assert.deepEqual(electives.codes, ['CS 150', 'CS 231', 'CS 340', 'CS 345'])
 })
 
 test('a course may count for requirements in different tracks', () => {
@@ -430,6 +433,58 @@ test('a course may count for requirements in different tracks', () => {
   const out = evaluateProgram([CS_TRACK, otherTrack], takenFrom(['CS 220']), CATALOG)
   assert.equal(out[0].sections[0].items[0].status, 'satisfied')
   assert.equal(out[1].sections[0].items[0].status, 'satisfied')
+})
+
+test('any_of consumes one alternative, freeing the other for same-track electives', () => {
+  const track = {
+    label: 'T',
+    sections: [
+      { heading: 'Choice', items: [{ type: 'any_of', codes: ['CS 340', 'CS 345'] }] },
+      {
+        heading: 'Electives',
+        items: [{ type: 'electives', count: 1, constraints: [{ type: 'discipline', prefixes: ['CS'] }] }],
+      },
+    ],
+  }
+  const out = evaluateRequirement(track, takenFrom(['CS 340', 'CS 345']), CATALOG)
+  assert.equal(out.sections[0].items[0].status, 'satisfied')
+  // The freed alternative counts toward the elective bucket.
+  assert.equal(out.sections[1].items[0].status, 'satisfied')
+  assert.equal(out.sections[1].items[0].count, 1)
+})
+
+test('a single course cannot satisfy two rigid nodes in one track', () => {
+  const track = {
+    label: 'T',
+    sections: [
+      { heading: 'A', items: [{ type: 'course', code: 'CS 220' }] },
+      { heading: 'B', items: [{ type: 'any_of', codes: ['CS 220', 'CS 231'] }] },
+    ],
+  }
+  const out = evaluateRequirement(track, takenFrom(['CS 220']), CATALOG)
+  // Only one of the two required nodes may claim CS 220.
+  assert.equal(out.sections[0].items[0].status, 'satisfied')
+  assert.equal(out.sections[1].items[0].status, 'unsatisfied')
+})
+
+test('assignRequirement reports which course goes to which node', () => {
+  const track = {
+    label: 'T',
+    sections: [
+      { heading: 'Choice', items: [{ type: 'any_of', codes: ['CS 340', 'CS 345'] }] },
+      {
+        heading: 'Electives',
+        items: [{ type: 'electives', count: 1, constraints: [{ type: 'discipline', prefixes: ['CS'] }] }],
+      },
+    ],
+  }
+  const assignment = assignRequirement(track, takenFrom(['CS 340', 'CS 345']), CATALOG)
+  const choice = assignment[0]
+  const electives = assignment[1]
+  // Exactly one of the two is assigned to the choice; the other to electives.
+  assert.deepEqual([...choice.used], ['CS 340'])
+  assert.deepEqual([...electives.used], ['CS 345'])
+  assert.ok(!choice.used.has([...electives.used][0]))
 })
 
 // ---------------------------------------------------------------------------
