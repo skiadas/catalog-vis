@@ -1,15 +1,10 @@
 import { filteredPrograms, programs, loading, searchQuery, filterType } from '../lib/store.js'
-import { addProgramTracks } from '../lib/store.js'
-import { goToProgram, goPlanner } from '../lib/router.js'
+import { goToProgram } from '../lib/router.js'
 
 export default {
   name: 'ProgramList',
   setup() {
-    function openInPlanner(pid) {
-      addProgramTracks(pid)
-      goPlanner()
-    }
-    return { filteredPrograms, programs, loading, searchQuery, filterType, goToProgram, openInPlanner }
+    return { filteredPrograms, programs, loading, searchQuery, filterType, goToProgram }
   },
   template: `
     <div>
@@ -52,7 +47,7 @@ export default {
           class="program-card"
           v-for="p in filteredPrograms"
           :key="p.id"
-          @click="openInPlanner(p.id)"
+          @click="goToProgram(p.id)"
         >
           <h3>{{ p.name }}</h3>
           <div class="meta">
@@ -61,10 +56,6 @@ export default {
             <span class="tag program" v-if="!p.type.includes('major') && !p.type.includes('minor')">Program</span>
           </div>
           <div class="course-count">{{ p.course_count }} courses</div>
-          <div class="program-card-actions">
-            <span class="program-card-plan">Add to planner</span>
-            <span class="program-card-detail" @click.stop="goToProgram(p.id)">Details →</span>
-          </div>
         </div>
       </div>
 

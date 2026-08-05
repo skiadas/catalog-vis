@@ -1610,32 +1610,18 @@ body {
   text-decoration: underline;
 }
 
-.program-card-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 8px;
-  font-size: 12px;
-}
-
-.program-card-plan {
-  color: var(--primary);
-  font-weight: 600;
-}
-
-.program-card-detail {
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.program-card-detail:hover {
-  color: var(--primary);
-}
-
 .taken-list {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
   margin-top: 10px;
+}
+
+.plan-tracks {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
 }

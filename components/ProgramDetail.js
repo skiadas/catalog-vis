@@ -1,5 +1,12 @@
-import { programs, allCourses, parsedRequirements } from '../lib/store.js'
-import { route, goToCourse, goHome } from '../lib/router.js'
+import {
+  programs,
+  allCourses,
+  parsedRequirements,
+  programTracks,
+  addTrack,
+  addedTracks,
+} from '../lib/store.js'
+import { route, goToCourse, goHome, goPlanner } from '../lib/router.js'
 
 const { computed } = Vue
 
@@ -12,9 +19,18 @@ export default {
     const currentParsed = computed(() => {
       return parsedRequirements.value[route.value.params.id] || null
     })
+    const tracks = computed(() => programTracks(route.value.params.id))
+    const addedSet = computed(() => new Set(addedTracks.value.map((t) => `${t.programId}:${t.trackKey}`)))
+    function planTrack(track) {
+      addTrack(track.programId, track.trackKey)
+      goPlanner()
+    }
     return {
       currentProgram,
       currentParsed,
+      tracks,
+      addedSet,
+      planTrack,
       allCourses,
       goToCourse,
       goHome,
@@ -38,6 +54,17 @@ export default {
       <p class="detail-description" v-if="currentProgram.description">
         {{ currentProgram.description }}
       </p>
+
+      <div class="plan-tracks" v-if="tracks.length">
+        <span class="filter-label">Add to planner:</span>
+        <span
+          v-for="t in tracks"
+          :key="t.trackKey"
+          class="track-chip"
+          :class="{ on: addedSet.has(t.programId + ':' + t.trackKey) }"
+          @click="planTrack(t)"
+        >{{ t.label }}<span v-if="addedSet.has(t.programId + ':' + t.trackKey)"> ✓</span></span>
+      </div>
 
       <div v-if="currentParsed && currentParsed.length">
         <div class="section-title">Requirements</div>
