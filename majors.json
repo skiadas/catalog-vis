@@ -2,7 +2,7 @@
   "catalog_year": "2025-2026",
   "generated_at": "2026-07-27",
   "source_url": "https://catalog.hanover.edu/#programs",
-  "total_programs": 54,
+  "total_programs": 55,
   "total_courses": 1144,
   "programs": [
     {
@@ -1920,33 +1920,12 @@
       ]
     },
     {
-      "id": "classicalstudies",
-      "name": "Classical Studies",
-      "type": [
-        "major",
-        "minor"
-      ],
       "faculty": [
         "Baechle",
         "O’Neill",
         "Pittenger"
       ],
-      "description": "This major is designed for students whose primary interests are in archaeological, historical, and/\r\n\t\tor art historical studies of the ancient world. In courses on archaeology and art, students will have\r\n\t\tmore time to become familiar with the available archaeological evidence and notable architectural\r\n\t\tand artistic remains of the Ancient Mediterranean world; they will also learn how these are\r\n\t\tprocured, preserved, and used to understand ancient culture. In history courses, students will get\r\n\t\tmore grounding in ancient historical texts and in current scholarly discussions of ancient history,\r\n\t\tand they will study the methods and aims of both modern and ancient historians.",
       "course_prefix": "CLA",
-      "requirements": {
-        "major": {
-          "label": "Major",
-          "text": "GRE 218 or LAT 218; CLA 225 or CLA 228; CLA 251 or CLA 252; two 300-level\r\n\t\tcourses in ancient art and/or archeology or in history; three other appropriate courses as determined\r\n\t\tby the Classical Studies Department; CLA 401; CLA 471 (culminating experience) ; CLA 499 with\r\n\t\tpassing grade.\r\n\t\tTotal of 11.5 major courses."
-        },
-        "minor": {
-          "label": "Minor",
-          "text": "CLA 225; CLA 251 or CLA 252; three additional Classical Studies, Latin, or Greek\r\n\t\tcourses (not including LAT 115-116 or GRE 115-116), one of which must be at the 300-level.\r\n\t\tExcept for courses specifically required for the student’s major, no more than one of these\r\n\t\tcourses may be counted toward this minor and either a major or another minor. Total of 5\r\n\t\tminor courses."
-        },
-        "major_2": {
-          "label": "Major",
-          "text": "Two 300-level courses in Greek and/or Latin; CLA 251 or 252; CLA 401; CLA 471\r\n\t\t(culminating experience); four other appropriate courses as determined by the Classical Studies\r\n\t\tDepartment. Comprehensive evaluation (CLA 499) with passing grade.\r\n\t\tTotal of 9.5 major courses."
-        }
-      },
       "course_count": 27,
       "courses": [
         {
@@ -2169,7 +2148,267 @@
           "credit_hours": 1,
           "program": "Classical Studies"
         }
-      ]
+      ],
+      "id": "classicsarchaeologyandhistory",
+      "name": "Classics: Archaeology and History",
+      "type": [
+        "major",
+        "minor"
+      ],
+      "description": "This major is designed for students whose primary interests are in archaeological, historical, and/ or art historical studies of the ancient world. In courses on archaeology and art, students will have more time to become familiar with the available archaeological evidence and notable architectural and artistic remains of the Ancient Mediterranean world; they will also learn how these are procured, preserved, and used to understand ancient culture. In history courses, students will get more grounding in ancient historical texts and in current scholarly discussions of ancient history, and they will study the methods and aims of both modern and ancient historians.",
+      "requirements": {
+        "major": {
+          "label": "Major",
+          "text": "GRE 218 or LAT 218; CLA 225 or CLA 228; CLA 251 or CLA 252; two 300-level\r\n\t\tcourses in ancient art and/or archeology or in history; three other appropriate courses as determined\r\n\t\tby the Classical Studies Department; CLA 401; CLA 471 (culminating experience) ; CLA 499 with\r\n\t\tpassing grade.\r\n\t\tTotal of 11.5 major courses."
+        },
+        "minor": {
+          "label": "Minor",
+          "text": "CLA 225; CLA 251 or CLA 252; three additional Classical Studies, Latin, or Greek\r\n\t\tcourses (not including LAT 115-116 or GRE 115-116), one of which must be at the 300-level.\r\n\t\tExcept for courses specifically required for the student’s major, no more than one of these\r\n\t\tcourses may be counted toward this minor and either a major or another minor. Total of 5\r\n\t\tminor courses."
+        }
+      }
+    },
+    {
+      "faculty": [
+        "Baechle",
+        "O’Neill",
+        "Pittenger"
+      ],
+      "course_prefix": "CLA",
+      "course_count": 27,
+      "courses": [
+        {
+          "course_code": "CLA 100",
+          "course_name": "Mythology",
+          "description": "Depending on the instructor, the course will be an introduction to Greek myth or to Roman myth and Roman uses of Greek myth. Topics may include: myth in its historical and social context, myth as a conceptual language for expressing a culture's world-wide view, modern theoretical understandings of the functions of myth, myth as part of a literary and artistic tradition. Offered alternate years.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 160",
+          "course_name": "Special Topics",
+          "description": "",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 162",
+          "course_name": "Ancient Eurasia",
+          "description": "An examination of great works of literature and art of Greece, Rome, India, and China from about 2500 BCE to 0 CE. This period saw the founding and development of both western culture, in the Greco-Roman period, and the non-western cultures of India and China. The course will trace such themes as Ultimate Reality and the human relationship to it, mortality, the good life, love, heroism, and leadership through the literature and art of these ancient cultures.  Partially satisfies LA Knowledge in the Hanover Core.  Satisfies S Skills in the Hanover Core.  Satisfies CP Skills in the Hanover Core.  Partially satisfies LA CCR.  Satisfies the S ACE. Satisfies the CP ACE.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 163",
+          "course_name": "Argument & Persuasion in Antiquity",
+          "description": "The art of oratory (i.e., public speaking) was developed and elaborated by both the ancient Greeks and the Romans. Persuasion and oral arguments were crucial for the conduct of politics and the law-courts. Not only were famous political and court speeches painstakingly preserved and avidly read, but ancient historical narratives, philosophical works, and even stage dramas also contain extended speeches exhibiting many of the same rhetorical features as their “real-world” cousins. Students in this course will read and analyze a variety of ancient Greek and/or Roman speeches as well as theoretical works about speech-making, all in English translation. They will also give several speeches of their own in which they will construct arguments and practice persuasive techniques. Identical to Com 163. Partially satisfies HS Knowledge in the Hanover Core.  Satisfies S Skills in the Hanover Core.  Partially satisfies the HS CCR. Satisfies the S ACE.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 171",
+          "course_name": "Ancient Comedy and Tragedy",
+          "description": "This course studies both samples of Greek and Roman comedy and tragedy and examples of later Western drama that respond to and reinterpret ancient ideas of drama. In doing so, it examines the conventions of each genre and various ways in which drama can be approached and interpreted.  Partially satisfies LA Knowledge in the Hanover Core.  Satisfies W1 Skills in the Hanover Core.  Partially satisfies LA CCR.  Satisfies W1 ACE.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 172",
+          "course_name": "Ancient Epic",
+          "description": "Starting from study of one or more ancient epics, the Iliad, Odyssey, Aeneid etc., the course moves on to further examples of Greek or Roman epics, or non-western epics (like Gilgamesh and The Bagavad Gita), or later literary and artistic works in the western tradition. Possible topics: the epic hero, adventures and journeys, ancient religion(s), and the nature of literary and artistic traditions.  Partially satisfies LA Knowledge in the Hanover Core.  Satisfies W1 Skills in the Hanover Core.  Partially satisfies the LA CCR.  Satisfies the W1 ACE.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 173",
+          "course_name": "The Writing of History",
+          "description": "Narrative history was an important form of writing in the ancient world. Famous authors such as Herodotus, Thucydides, Livy, Tacitus, and others produced extended literary works in which historical events were recounted in an effort to commemorate, reflect on, and learn from the past. Students in this course will read extensively in English translation from ancient writers of history and will write a series of analytical essays on their methods and aims.  Partially satisfies HS Knowledge in the Hanover Core.  Satisfies W1 Skills in the Hanover Core.  Partially satisfies the HS CCR.  Satisfies the W1 ACE.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 224",
+          "course_name": "Topics in Classical Mythology",
+          "description": "Students will explore one or more aspects of ancient Greek and Roman myth through focused and detailed analysis. While the mythological \"theme\" may vary from offering to offering, one of the primary goals of the course will be to investigate how and why certain myths or types of myth can resonate so powerfully in Classical culture or in the European tradition (or in both). Possible contexts for analysis include: the original ancient cultural settings, contemporary and later artistic and literary traditions, the broader sphere of comparative mythology, and modern myth-theory. Prerequisite: CLA 100 or permission of the instructor.  May be repeated for credit with the permission of the instructor. Partially satisfies LA Knowledge in the Hanover Core.  Satisfies W2 Skills in the Hanover Core.  Partially satisfies the LA CCR.  Satisfies the W2 ACE.",
+          "prerequisites": [
+            "CLA 100 or permission of the instructor"
+          ],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 225",
+          "course_name": "Intro Classical Art & Archaeology",
+          "description": "This course examines the degree to which the art and artifacts of the ancient Greek and Roman worlds can help to inform us about the cultural settings in which they were created. Throughout the semester, students will chart the evolution of Classical art and architecture and discover how an archaeologist might use the remains of the ancient past to reconstruct daily life and broader cultural phenomena. This overview is intended to introduce the student to the most widely referenced material works of the Greek and Roman past and the factors which influenced their style and substance.  Identical to ARTH225.  Partially satisfies LA Knowledge in the Hanover Core.  Partially satisfies HS Knowledge in the Hanover Core.  Partially satisfies the LA CCR.  Partially satisfies the HS CCR.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 226",
+          "course_name": "Medieval Philosophy",
+          "description": "A survey of Western philosophy from St. Augustine to Nicholas of Cusa. Focus on the development of Christian philosophy. Identical to Phi 226.  Satisfies RP Knowledge in the Hanover Core.   Satisfies the PP CCR.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 228",
+          "course_name": "Archaeological Methods and Theory",
+          "description": "This course introduces the discipline of archaeology and the methods used by archaeologists to study the human past through material remains. Both within and outside of the classroom, a wide range of techniques will be explained and evaluated, including: preliminary research design, excavation, data collection and analysis, dating methods, sampling, geophysical exploration, surface survey, site preservation, and artifact conservation. Much of the requisite work will take place outside of the classroom, and every student will be required to participate in active fieldwork throughout the semester. Identical to ANTH 228.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 234",
+          "course_name": "Classical Literature in Translation",
+          "description": "This course offers students the opportunity to get an overview of a particular genre of Classical literature, history, or rhetoric: ancient epic, ancient drama, personal lyric, historical biography, ancient letters, political rhetoric, etc. –any genre can be studied in survey form and in translation. The course will be particularly valuable for students interested in the connections between Greek and Roman texts or in the later history of the genre in the European tradition. Course can be repeated for credit with the permission of the instructor.  Partially satisfies LA Knowledge in the Hanover Core.  Satisfies W2 Skills in the Hanover Core.  Partially satisfies the LA CCR.  Satisfies the W2 ACE.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 251",
+          "course_name": "Greek History",
+          "description": "A survey of Greek history from the Aegean Bronze Age to the age of Alexander. Identical to His 251. Offered every third year.  Partially satisfies HS Knowledge in the Hanover Core.  Partially satisfies the HS CCR.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 252",
+          "course_name": "Roman History",
+          "description": "A survey of Roman history from the founding of the city to the fall of the Roman Empire. Identical to His 252. Offered alternate years.  Partially satisfies HS Knowledge in the Hanover Core.  Partially satisfies the HS CCR.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 253",
+          "course_name": "Roman Games",
+          "description": "Mass-entertainment by means of blood-sports, in the arena and the circus, was a prominent feature of Roman culture. This course will examine the social, religious, economic and political significance of the Roman games from a historical standpoint, including archaeological remains, artistic renderings and literary sources both pagan and Christian.  Discussion will also touch on modern parallels and big-budget Hollywood films. All sources in English translation. Identical to His 253. Offered alternate years during Spring Term.  Partially satisfies HS Knowledge in the Hanover Core.  Partially satisfies the HS CCR.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 260",
+          "course_name": "Special Topics",
+          "description": "",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 307",
+          "course_name": "Directed Study",
+          "description": "0.50 unit.",
+          "prerequisites": [],
+          "credit_hours": 0.5,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 345",
+          "course_name": "Topics in Mediterranean Archaeology",
+          "description": "This course offers a thorough examination of a topic related to the material culture of the ancient Mediterranean world.  While the geographic and chronological focus may change from offering to offering, this course will invariably provide the setting for the concentrated analysis of a particular range of archaeological materials and approaches, with a strong emphasis placed on current field methods, theoretical discussions, and research practices. Prerequisite: Cla 225 or Cla 228 or Anth 228.  This course may be repeated for credit with the permission of the instructor. Partially satisfies HS Knowledge in the Hanover Core.  Partially satisfies the HS CCR.",
+          "prerequisites": [
+            "Cla 225 or Cla 228 or Anth 228"
+          ],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 346",
+          "course_name": "Society and Politics in Athens",
+          "description": "How did people in ancient Athens think about differences among various kinds of people: rich and poor, free and slave, male and female, Athenian and non-Athenian? This course examines the social and political world shaped by Athenian thinking about those differences.  Partially satisfies HS Knowledge in the Hanover Core.  Partially satisfies the HS CCR.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 351",
+          "course_name": "Alexander & the Hellenistic World",
+          "description": "Alexander the Great remains one of the most compelling figures in all of history, and after his death the Mediterranean world was never the same again. His successors carved up his vast empire between them, and the new hybrid civilization they created (known as Hellenistic or “Greek-ish”) was still in place more than a century later when the Romans came along. This course is taught as a seminar and will cover a wide range of topics, including warfare, politics, society, culture and always the problem of evidence. No prerequisite, but students are encouraged to contact the instructor in advance. Offered every three years. Identical to His 351.  Partially satisfies HS Knowledge in the Hanover Core.  Partially satisfies the HS CCR.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 353",
+          "course_name": "Advanced Topics in Ancient History",
+          "description": "This course offers a thorough and detailed examination of an important topic or problem from Greco-Roman history. The specific focus of the course may vary, but the goal in each case will be to sift through the ancient evidence for the problem at hand, knowing that this is often highly fragmentary and/or biased in some way, and also to analyze and assess a range of divergent scholarly arguments based on that evidence, so as to arrive at a deeper understanding of the ancient historian’s craft, as well as an understanding of its inherent limitations. This course may be repeated for credit with the permission of the instructor.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 360",
+          "course_name": "Special Topics",
+          "description": "",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 366",
+          "course_name": "Studies in Historiography",
+          "description": "An examination of selected topics in the ancient world, emphasizing the history, philosophy and methods of historical investigation. Content may vary. May be repeated for credit with permission of instructor. Offered alternate years.  Identical to His 366.",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 370",
+          "course_name": "Directed Study",
+          "description": "",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 401",
+          "course_name": "Seminar for Majors",
+          "description": "Preliminary work for the Senior Thesis combined with background for the reading lists for the comprehensive exam and study of the history and methodologies of Classics as a discipline. 0.50 unit",
+          "prerequisites": [],
+          "credit_hours": 0.5,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 471",
+          "course_name": "Senior Thesis",
+          "description": "",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        },
+        {
+          "course_code": "CLA 499",
+          "course_name": "Major Comprehensive Evaluation",
+          "description": "Major Comprehensive Evaluation",
+          "prerequisites": [],
+          "credit_hours": 1,
+          "program": "Classical Studies"
+        }
+      ],
+      "id": "classicslanguageandliterature",
+      "name": "Classics: Language and Literature",
+      "type": [
+        "major"
+      ],
+      "description": "Classics is the study of the cultures and cultural values of ancient Greece and Rome. A foundation for that study is learning to read and analyze ancient texts in the original languages. The “Language and Literature” major, therefore, employs language study to hone a student’s ability to translate texts faithfully and to develop crucial analytic skills. It is meant for those students who will spend most of their time studying ancient texts in Greek and Latin. In some cases, this means students interested in literature, philosophy, or early Christianity. In others, this will mean students with a broad range of interests that includes further study in the languages. Thus, this major is designed to help students to become competent at learning Greek and/or Latin, as students in Classical Studies have always done; on the other hand, it is designed flexibly in order to accommodate this wide range of possible student interests. Options also exist for those students wishing only to minor in Greek or in Latin (please refer to the portions of the catalog devoted to course-offerings in those languages, below).",
+      "requirements": {
+        "major": {
+          "label": "Major",
+          "text": "Two 300-level courses in Greek and/or Latin; CLA 251 or 252; CLA 401; CLA 471\r\n\t\t(culminating experience); four other appropriate courses as determined by the Classical Studies\r\n\t\tDepartment. Comprehensive evaluation (CLA 499) with passing grade.\r\n\t\tTotal of 9.5 major courses."
+        }
+      }
     },
     {
       "id": "communication",

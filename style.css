@@ -1535,3 +1535,107 @@ body {
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* ---------------------------------------------------------------------------
+ * Planner view (PlannerApp / TrackAudit)
+ * --------------------------------------------------------------------------- */
+
+.planner-summary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 22px;
+  font-size: 13px;
+}
+
+.planner-summary-item {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.planner-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.track-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.track-chip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--primary);
+  cursor: pointer;
+  text-transform: capitalize;
+  transition: background 0.15s;
+}
+
+.track-chip:hover {
+  border-color: var(--primary);
+}
+
+.track-chip.on {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.track-chip.disabled {
+  color: var(--text-muted);
+  cursor: default;
+  border-color: transparent;
+  text-transform: none;
+}
+
+.program-card-title {
+  cursor: pointer;
+}
+
+.program-card-title:hover {
+  text-decoration: underline;
+}
+
+.program-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.program-card-plan {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.program-card-detail {
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.program-card-detail:hover {
+  color: var(--primary);
+}
+
+.taken-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+}

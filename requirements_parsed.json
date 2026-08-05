@@ -1303,8 +1303,8 @@
       ]
     },
     {
-      "id": "classicalstudies",
-      "name": "Classical Studies",
+      "id": "classicsarchaeologyandhistory",
+      "name": "Classics: Archaeology and History",
       "requirements": [
         {
           "label": "Major",
@@ -1426,7 +1426,13 @@
               ]
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "id": "classicslanguageandliterature",
+      "name": "Classics: Language and Literature",
+      "requirements": [
         {
           "label": "Major",
           "sections": [

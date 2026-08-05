@@ -2,28 +2,32 @@
 
 ## Project Overview
 
-A deployable static Vue 3 SPA that browses Hanover College's 54 academic programs, their courses, and requirements. Data is scraped from https://catalog.hanover.edu and stored as JSON.
+A deployable static Vue 3 SPA that browses Hanover College's 55 academic programs, their courses, and requirements. Data is scraped from https://catalog.hanover.edu and stored as JSON.
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
 | `scrape_catalog.py` | Scraper: fetches catalog HTML + API data, outputs `majors.json`. Normalizes course codes and faculty names |
-| `majors.json` | All 54 programs, 1144 courses, requirement texts |
+| `majors.json` | All 55 programs, 1144 courses, requirement texts |
 | `requirements_parsed.json` | Codified requirements (structured JSON per `REQUIREMENTS_SCHEMA.md`) |
 | `REQUIREMENTS_SCHEMA.md` | Schema docs for requirements codification — item types, rules, known prefixes |
 | `codify_requirements.py` | Reproduction script with LLM prompt template for re-processing |
 | `generate_schedule.py` | Generates a synthetic schedule CSV from `majors.json` faculty (deterministic, seeded) |
+| `migrate_classics.py` | One-off migration: split the merged "Classical Studies" into two catalog majors (`classicsarchaeologyandhistory`, `classicslanguageandliterature`); already applied |
 | `sample-schedule.csv` | Schedule data parsed in the browser (dept-prefix,course-number,section,instructor,days,times) |
 | `index.html` | Vue 3 SPA entry point (CDN-loaded, type="module") |
 | `app.js` | App shell + mount point + global component registration |
 | `lib/store.js` | Shared reactive state (programs, courses, filters, schedule) |
-| `lib/router.js` | Hash router (programs, courses, schedule views) |
+| `lib/router.js` | Hash router (programs, courses, schedule, planner views) |
 | `lib/schedule.js` | Schedule domain model + helpers (parsing, index, conflicts, colors, calendars) |
+| `lib/planner.js` | Pure requirements evaluator + planning/audit helpers (nodes, filters vs aggregate constraints, `planGaps`, `audit`) |
 | `components/ProgramList.js` | Program list view |
 | `components/ProgramDetail.js` | Program detail with requirements + course tabs |
 | `components/RequirementSection.js` | Groups a section's `items` (merges consecutive `course`s) + renders each via `RequirementItem` |
 | `components/RequirementItem.js` | Recursive renderer for every requirement item type (`course`/`any_of`/`each_of`/`some_of`/`electives`/`custom` + constraint tags) |
+| `components/PlannerApp.js` | Planner view: add/remove major+minor tracks, per-track audits, global course picker |
+| `components/TrackAudit.js` | Per-track planner audit block (status, section chips, `planGaps` "still need" list) |
 | `components/CourseDetail.js` | Single course detail view |
 | `components/WeeklyCalendar.js` | Shared weekly-calendar scaffold (header, ruler, guides; `daycol` slot) |
 | `components/ScheduleApp.js` | Schedule shell + view switching + filters |
@@ -49,7 +53,7 @@ Key behaviors:
 - Program IDs are derived from the program **name** (not the HTML div id) because the source HTML has incorrect IDs (e.g., "Computer Science" content inside `<div id="Creative Writing">`)
 - All known prefixes in requirement text are uppercased (e.g., "Bio" → "BIO")
 - Faculty names are normalized (`.normalize_faculty_name()`): whitespace collapsed, single trailing period stripped (e.g., `Patterson.` → `Patterson`), and duplicates removed while preserving order
-- Output: `majors.json` with 54 programs, each with `requirements` (label + raw text), `courses` array, and metadata
+- Output: `majors.json` with 55 programs, each with `requirements` (label + raw text), `courses` array, and metadata
 
 ### 2. Requirements Codification (`codify_requirements.py` + `REQUIREMENTS_SCHEMA.md`)
 
@@ -93,9 +97,10 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 
 - Vue 3 loaded from CDN with `type="module"`
 - ES modules: no build step, components are `.js` files with template strings
-- Hash-based routing (`#/` → list, `#/program/:id` → detail, `#/course/:code` → course, `#/schedule` and subviews)
+- Hash-based routing (`#/` → list, `#/program/:id` → detail, `#/course/:code` → course, `#/schedule` and subviews, `#/planner`)
 - Components use `Vue.defineComponent()` and are registered in `app.js`
 - `RequirementItem` renders recursively (any item type may nest inside another via `any_of.items` / `each_of.items` / `some_of.items`); `RequirementSection` groups only the section's top-level consecutive `course`s
+- The planner view is separate from program browsing: a program's addable units are its **tracks** (one per parsed requirement, keyed by the `majors.json` requirements slug); clicking a program in the list jumps to `#/planner` with its tracks added
 - Weekly calendar views (`ScheduleGrid`, `ScheduleInstructor`) share the `WeeklyCalendar` scaffold via a `daycol` scoped slot; the day header is clickable only when an `onDayClick` prop is provided
 
 ## Formatting
@@ -108,13 +113,16 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 
 **Completed**:
 - Scraper produces clean `majors.json` with normalized course codes and faculty names
-- All 54 programs have proper unique IDs (derived from program name)
+- All 55 programs have proper unique IDs (derived from program name)
 - Requirements codified for all programs with structured JSON output (`schema_version: 2.0`)
 - Requirement model normalized: `any_of`/`each_of`/`some_of` composition, `discipline`/`level` bands+counts, `max_from`/`min_from`; legacy `pair`/`level_gate` retired
 - `test/test_data.py` validates the requirements model vocabulary (node/constraint types, code formats, known discipline prefixes)
+- `test/planner.test.js` (node --test) exercises the evaluator/`planGaps`/`audit` against hand-built fixtures for every node + constraint kind
 - Vue 3 SPA with program list, detail, course detail views, and filter/sort
+- Requirements planner: pure evaluator (`lib/planner.js`), a dedicated `#/planner` view with add/remove major+minor tracks, per-track audits + "still need" gaps, and a global course picker (session-only taken-courses)
 - Schedule generator produces a deterministic synthetic `sample-schedule.csv`
 - Schedule SPA: grid, day, slot, course, and instructor views with dept/instructor filters, conflicts, and shared `WeeklyCalendar`
+- "Classical Studies" split into `classicsarchaeologyandhistory` (major+minor) and `classicslanguageandliterature` (major) via `migrate_classics.py`
 
 **Known limitations in requirements_parsed.json**:
 - Complex multi-line "one pair from the following" sections use nested `any_of`/`each_of` items (e.g., Biology BS and CS BS cognates are now fully structured); a few remaining nested combos ("one of X and one of Y") are `each_of`s
@@ -129,5 +137,4 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 - **Regenerate requirements**: Use LLM with prompt from `codify_requirements.py` + schema from `REQUIREMENTS_SCHEMA.md`
 - **Regenerate schedule**: `python3 generate_schedule.py` (updates `sample-schedule.csv`; deterministic with seed 42)
 - **Format JS/HTML**: `npx prettier@3.3.3 --write app.js index.html lib/*.js components/*.js`
-- **Format Python**: `python3 -m black scrape_catalog.py generate_schedule.py codify_requirements.py`
-- **Serve locally**: `python3 -m http.server 8080` then open `http://localhost:8080`
+- **Format Python**: `python3 -m black scrape_catalog.py generate_schedule.py codify_requirements.py`- **Serve locally**: `python3 -m http.server 8080` then open `http://localhost:8080`
