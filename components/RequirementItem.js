@@ -114,8 +114,9 @@ export default {
     </div>
 
     <div v-else-if="isNested" class="anyof-items-group">
-      <div class="anyof-label">{{ item.note || 'Choose one:' }}</div>
+      <div class="anyof-label">{{ item.note || 'Choose one of the following options:' }}</div>
       <div v-for="(sub, si) in item.items" :key="si" class="anyof-subitem">
+        <span class="anyof-option">{{ 'Option ' + (si + 1) }}</span>
         <RequirementItem :item="sub" />
       </div>
     </div>
