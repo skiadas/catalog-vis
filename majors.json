@@ -2414,6 +2414,7 @@
       "id": "communication",
       "name": "Communication",
       "type": [
+        "major",
         "minor"
       ],
       "faculty": [
@@ -2426,9 +2427,25 @@
       "description": "The Communication program at Hanover College empowers students to become thoughtful, ethical, and effective communicators across diverse contexts. Through a curriculum that blends theoretical exploration with applied media practice, students learn to analyze, create, and critique messages in their professional and personal lives, in their use of media, and as engaged citizens. Majors can pursue a general Communication track or choose from focused tracks that are tailored to specific interests and career goals.  All tracks conclude with a senior culminating experience, either a thesis or media project.",
       "course_prefix": "COM",
       "requirements": {
+        "communication": {
+          "label": "Communication.",
+          "text": "212; 324; 330; one applied media course - 242, 243, 246, 251, 345, 351; one citizenship course - 323, 325, 328, 342, 350; one core discipline course - 318, 319, 320, 327, 346; culminating experience, one from 461 or 462; and any three electives. Total of 10 units."
+        },
+        "communication_media": {
+          "label": "Communication: Media.",
+          "text": "212; 242; 240 or 318; 330; 342 or 350; one of 164, 240, 250, 318, 320, 321, 325, 350, ARTD 224, ENG 181 or THR 115; four additional units from among the following, at least two of which are 300/400-level (COM 357 Internship is recommended): 049, 101, 210, 243, 246, 251, 342, 345, 351, 357, ARTD 213, ARTD 237, ARTD 310, ARTD 313, ARTD 337, ARTD 410, ARTD 437, ENG 184, ENG 252, ENG 253, ENG 343, ENG 355, ENG 358, THR 125 and THR 343; one additional 300-level Communication elective; culminating experience - COM 462. Total of 12 units."
+        },
         "communication_sports_and_media": {
           "label": "Communication: Sports and Media.",
-          "text": "2212; 240; 251; 330; 351; 319 or 346; 328 or 342; 357 (Internship must be in sports media or industry); and three additional units from: 049, 101, 210, 243, 246, 318, 319, 327, 342, 345, 346, 352, SOC 318, SOC 334, BUSN 216 and BUSN 320; culminating experience - 462 (must be sports media project). Total of 12 units."
+          "text": "212; 240; 251; 330; 351; 319 or 346; 328 or 342; 357 (Internship must be in sports media or industry); and three additional units from: 049, 101, 210, 243, 246, 318, 319, 327, 342, 345, 346, 352, SOC 318, SOC 334, BUSN 216 and BUSN 320; culminating experience - 462 (must be sports media project). Total of 12 units."
+        },
+        "communication_public_relations": {
+          "label": "Communication: Public Relations.",
+          "text": "212; 246; 251; 320; 324; 330; 328 or 350; three additional courses from: 211, 242, 240, 243, 251, 318, 319, 323, 325, 327, 328, 342, 350, 351, 352, and 357; one additional 300-level communication elective (COM 357 recommended); culminating experience - one from 461 or 462. Total of 12 units."
+        },
+        "communication_law_and_leadership": {
+          "label": "Communication: Law and Leadership.",
+          "text": "212; 319; 320; 324; 325; 330; 350; 251 or 345; and two additional courses from: 163, 211, 319, 323, 325, 327, 328, 346, any Political Science or Sociology course, ANTH 259, ANTH 334, BUSN 215, BUSN 225, BUSN 333, ECO 221, ECO 224, ECO 234, ECO 331, ENV 265, PHI 237, PHI 234, HIS 223, HIS 230, HIS 330, HIS 334, HIS 337, and THS 111; one additional COM elective; culminating experience - 461. Total of 12 units."
         },
         "minor": {
           "label": "Minor",

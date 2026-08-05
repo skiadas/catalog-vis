@@ -1092,7 +1092,7 @@
       "name": "Chemistry",
       "requirements": [
         {
-          "label": "Major \u2013 Bachelor of Arts",
+          "label": "Major – Bachelor of Arts",
           "sections": [
             {
               "heading": "Chemistry courses",
@@ -1531,6 +1531,200 @@
       "name": "Communication",
       "requirements": [
         {
+          "label": "Communication.",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "COM 212"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 324"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 330"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 242",
+                    "COM 243",
+                    "COM 246",
+                    "COM 251",
+                    "COM 345",
+                    "COM 351"
+                  ],
+                  "note": "one applied media course"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 323",
+                    "COM 325",
+                    "COM 328",
+                    "COM 342",
+                    "COM 350"
+                  ],
+                  "note": "one citizenship course"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 318",
+                    "COM 319",
+                    "COM 320",
+                    "COM 327",
+                    "COM 346"
+                  ],
+                  "note": "one core discipline course"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 461",
+                    "COM 462"
+                  ],
+                  "note": "Culminating experience"
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "note": "any three electives",
+                  "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "COM"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Communication: Media.",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "COM 212"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 242"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 240",
+                    "COM 318"
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "COM 330"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 342",
+                    "COM 350"
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 164",
+                    "COM 240",
+                    "COM 250",
+                    "COM 318",
+                    "COM 320",
+                    "COM 321",
+                    "COM 325",
+                    "COM 350",
+                    "ARTD 224",
+                    "ENG 181",
+                    "THR 115"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 4,
+                  "note": "four additional units (COM 357 recommended)",
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "COM 049",
+                        "COM 101",
+                        "COM 210",
+                        "COM 243",
+                        "COM 246",
+                        "COM 251",
+                        "COM 342",
+                        "COM 345",
+                        "COM 351",
+                        "COM 357",
+                        "ARTD 213",
+                        "ARTD 237",
+                        "ARTD 310",
+                        "ARTD 313",
+                        "ARTD 337",
+                        "ARTD 410",
+                        "ARTD 437",
+                        "ENG 184",
+                        "ENG 252",
+                        "ENG 253",
+                        "ENG 343",
+                        "ENG 355",
+                        "ENG 358",
+                        "THR 125",
+                        "THR 343"
+                      ]
+                    },
+                    {
+                      "type": "level",
+                      "level": 300,
+                      "atLeast": 2,
+                      "orAbove": true
+                    }
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "note": "one additional 300-level Communication elective",
+                  "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "COM"
+                      ]
+                    },
+                    {
+                      "type": "level",
+                      "level": 300
+                    }
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "COM 462",
+                  "note": "Culminating experience"
+                }
+              ]
+            }
+          ]
+        },
+        {
           "label": "Communication: Sports and Media.",
           "sections": [
             {
@@ -1538,7 +1732,7 @@
               "items": [
                 {
                   "type": "course",
-                  "code": "COM 221"
+                  "code": "COM 212"
                 },
                 {
                   "type": "course",
@@ -1578,6 +1772,7 @@
                 {
                   "type": "electives",
                   "count": 3,
+                  "note": "three additional units",
                   "constraints": [
                     {
                       "type": "from",
@@ -1606,6 +1801,202 @@
                   "type": "course",
                   "code": "COM 462",
                   "note": "Culminating experience; must be sports media project"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Communication: Public Relations.",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "COM 212"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 246"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 251"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 320"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 324"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 330"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 328",
+                    "COM 350"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 3,
+                  "note": "three additional courses",
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "COM 211",
+                        "COM 242",
+                        "COM 240",
+                        "COM 243",
+                        "COM 251",
+                        "COM 318",
+                        "COM 319",
+                        "COM 323",
+                        "COM 325",
+                        "COM 327",
+                        "COM 328",
+                        "COM 342",
+                        "COM 350",
+                        "COM 351",
+                        "COM 352",
+                        "COM 357"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "note": "one additional 300-level communication elective (COM 357 recommended)",
+                  "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "COM"
+                      ]
+                    },
+                    {
+                      "type": "level",
+                      "level": 300
+                    }
+                  ]
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 461",
+                    "COM 462"
+                  ],
+                  "note": "Culminating experience"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Communication: Law and Leadership.",
+          "sections": [
+            {
+              "heading": "",
+              "items": [
+                {
+                  "type": "course",
+                  "code": "COM 212"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 319"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 320"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 324"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 325"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 330"
+                },
+                {
+                  "type": "course",
+                  "code": "COM 350"
+                },
+                {
+                  "type": "any_of",
+                  "codes": [
+                    "COM 251",
+                    "COM 345"
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 2,
+                  "note": "two additional courses",
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "COM 163",
+                        "COM 211",
+                        "COM 319",
+                        "COM 323",
+                        "COM 325",
+                        "COM 327",
+                        "COM 328",
+                        "COM 346",
+                        "ANTH 259",
+                        "ANTH 334",
+                        "BUSN 215",
+                        "BUSN 225",
+                        "BUSN 333",
+                        "ECO 221",
+                        "ECO 224",
+                        "ECO 234",
+                        "ECO 331",
+                        "ENV 265",
+                        "PHI 237",
+                        "PHI 234",
+                        "HIS 223",
+                        "HIS 230",
+                        "HIS 330",
+                        "HIS 334",
+                        "HIS 337",
+                        "THS 111"
+                      ],
+                      "note": "or any Political Science or Sociology course"
+                    }
+                  ]
+                },
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "note": "one additional COM elective",
+                  "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "COM"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "course",
+                  "code": "COM 461",
+                  "note": "Culminating experience"
                 }
               ]
             }

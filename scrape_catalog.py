@@ -88,45 +88,51 @@ def normalize_prefixes_in_text(text, known_prefixes):
     return text
 
 
-def build_program_requirements(content, program_prefix, known_prefixes=None):
+def build_program_requirements(content, program_prefix, known_prefixes=None, program_name=None):
     requirements = {}
     key_counts = {}
     strong_tags = content.find_all('strong')
+    # Requirement blocks are labeled with Major/Minor/Bachelor/etc. OR are
+    # program-name-prefixed tracks ("Communication: Media."). Nested subheadings
+    # like "Cognate courses:" share a <p> with their parent block and are not
+    # matched here; they stay part of that block's text.
+    requirement_keywords = (
+        'Major',
+        'Minor',
+        'Bachelor',
+        'Elementary',
+        'Secondary',
+        'Sports',
+        'German',
+        'German Studies',
+    )
     for st in strong_tags:
         txt = st.get_text(strip=True)
         if txt in ('Faculty:', 'Course Descriptions:'):
             continue
         if txt.startswith('Faculty'):
             continue
-        if any(
-            kw in txt
-            for kw in (
-                'Major',
-                'Minor',
-                'Bachelor',
-                'Elementary',
-                'Secondary',
-                'Sports',
-                'German',
-                'German Studies',
-            )
-        ):
-            label, body = parse_requirement_block(st)
-            if known_prefixes:
-                body = normalize_prefixes_in_text(body, known_prefixes)
-            key = label.lower().replace(' ', '_').replace('–', '-').replace('—', '-')
-            key = re.sub(r'[^a-z0-9_]', '', key)
-            if not key:
-                key = 'requirement'
-            if key in key_counts:
-                key_counts[key] += 1
-                key = f'{key}_{key_counts[key]}'
-            else:
-                key_counts[key] = 1
-            requirements[key] = {
-                'label': label,
-                'text': body,
-            }
+        is_requirement = any(kw in txt for kw in requirement_keywords)
+        if not is_requirement and program_name:
+            is_requirement = txt.lower().startswith(program_name.lower().rstrip(':').strip())
+        if not is_requirement:
+            continue
+        label, body = parse_requirement_block(st)
+        if known_prefixes:
+            body = normalize_prefixes_in_text(body, known_prefixes)
+        key = label.lower().replace(' ', '_').replace('–', '-').replace('—', '-')
+        key = re.sub(r'[^a-z0-9_]', '', key)
+        if not key:
+            key = 'requirement'
+        if key in key_counts:
+            key_counts[key] += 1
+            key = f'{key}_{key_counts[key]}'
+        else:
+            key_counts[key] = 1
+        requirements[key] = {
+            'label': label,
+            'text': body,
+        }
     return requirements
 
 
@@ -216,7 +222,9 @@ def main():
         prefix_div = p.select_one('div.program_courses')
         prefix = prefix_div.get('id', '') if prefix_div else ''
 
-        requirements = build_program_requirements(content, prefix, known_prefixes=known_prefixes)
+        requirements = build_program_requirements(
+            content, prefix, known_prefixes=known_prefixes, program_name=name
+        )
 
         program_courses = []
         if prefix:
@@ -235,11 +243,20 @@ def main():
                     program_courses.append(cc)
 
         program_types = set()
-        for key in requirements:
-            if 'major' in key.lower():
-                program_types.add('major')
-            if 'minor' in key.lower():
-                program_types.add('minor')
+        has_major_block = any('major' in key.lower() for key in requirements)
+        has_minor_block = any('minor' in key.lower() for key in requirements)
+        # A program whose majors are name-prefixed tracks ("Communication:
+        # Media.") has no 'major' key, so treat any non-minor requirement block
+        # alongside a minor as evidence of a major offering.
+        non_minor_blocks = [
+            key
+            for key in requirements
+            if 'minor' not in key.lower() and key not in ('program', 'requirement')
+        ]
+        if has_major_block or (has_minor_block and non_minor_blocks):
+            program_types.add('major')
+        if has_minor_block:
+            program_types.add('minor')
         if not program_types:
             program_types.add('program')
 
