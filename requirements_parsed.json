@@ -469,6 +469,12 @@
                   "count": 1,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "CHE"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 300,
                       "atLeast": 1
@@ -636,6 +642,12 @@
                   "count": 5,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "BIO"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 300,
                       "atLeast": 2
@@ -703,6 +715,12 @@
                   "type": "electives",
                   "count": 6,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "BIO"
+                      ]
+                    },
                     {
                       "type": "level",
                       "level": 300,
@@ -884,6 +902,12 @@
                   "type": "electives",
                   "count": 3,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "BIO"
+                      ]
+                    },
                     {
                       "type": "exclude",
                       "codes": [
@@ -1068,7 +1092,7 @@
       "name": "Chemistry",
       "requirements": [
         {
-          "label": "Major – Bachelor of Arts",
+          "label": "Major \u2013 Bachelor of Arts",
           "sections": [
             {
               "heading": "Chemistry courses",
@@ -1289,6 +1313,12 @@
                   "type": "electives",
                   "count": 1,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "CHE"
+                      ]
+                    },
                     {
                       "type": "level",
                       "level": 300,
@@ -1590,7 +1620,15 @@
                 {
                   "type": "electives",
                   "count": 5,
-                  "note": "Communication units"
+                  "note": "Communication units",
+                  "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "COM"
+                      ]
+                    }
+                  ]
                 }
               ]
             }
@@ -1650,6 +1688,12 @@
                   "type": "electives",
                   "count": 3,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "CS"
+                      ]
+                    },
                     {
                       "type": "level",
                       "level": 200,
@@ -1745,6 +1789,12 @@
                   "type": "electives",
                   "count": 1,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "CS"
+                      ]
+                    },
                     {
                       "type": "level",
                       "level": 200,
@@ -1916,6 +1966,12 @@
                   "type": "electives",
                   "count": 3,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "CS"
+                      ]
+                    },
                     {
                       "type": "level",
                       "level": 200,
@@ -2176,6 +2232,12 @@
                   "type": "electives",
                   "count": 3,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "ECO"
+                      ]
+                    },
                     {
                       "type": "exclude",
                       "codes": [
@@ -2642,6 +2704,12 @@
                   "count": 1,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "ENG"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 100,
                       "atMost": 1
@@ -2663,6 +2731,12 @@
                   "type": "electives",
                   "count": 5,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "ENG"
+                      ]
+                    },
                     {
                       "type": "level",
                       "level": 100,
@@ -2890,6 +2964,12 @@
                   "count": 8,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "FRE"
+                      ]
+                    },
+                    {
                       "type": "exclude",
                       "codes": [
                         "FRE 115",
@@ -2932,6 +3012,12 @@
                   "type": "electives",
                   "count": 5,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "FRE"
+                      ]
+                    },
                     {
                       "type": "exclude",
                       "codes": [
@@ -3712,6 +3798,12 @@
                   "count": 7,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "HIS"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 100,
                       "atMost": 0
@@ -3933,6 +4025,12 @@
                   "count": 2,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "KIP"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 300,
                       "orAbove": true
@@ -3982,6 +4080,12 @@
                   "count": 3,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "KIP"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 300,
                       "orAbove": true
@@ -4015,6 +4119,12 @@
                   "count": 2,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "KIP"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 200,
                       "orAbove": true
@@ -4041,6 +4151,12 @@
                   "type": "electives",
                   "count": 4,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "LAT"
+                      ]
+                    },
                     {
                       "type": "level",
                       "level": 300,
@@ -4089,6 +4205,12 @@
                   "type": "electives",
                   "count": 4,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "LAT"
+                      ]
+                    },
                     {
                       "type": "exclude",
                       "codes": [
@@ -4163,6 +4285,12 @@
                   "type": "electives",
                   "count": 2,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "MAT"
+                      ]
+                    },
                     {
                       "type": "exclude",
                       "codes": [
@@ -4357,12 +4485,28 @@
                     {
                       "type": "electives",
                       "count": 1,
-                      "note": "one course credit in major applied area"
+                      "note": "one course credit in major applied area",
+                      "constraints": [
+                        {
+                          "type": "discipline",
+                          "prefixes": [
+                            "MUS"
+                          ]
+                        }
+                      ]
                     },
                     {
                       "type": "electives",
                       "count": 1,
-                      "note": "one course credit in ensembles"
+                      "note": "one course credit in ensembles",
+                      "constraints": [
+                        {
+                          "type": "discipline",
+                          "prefixes": [
+                            "MUS"
+                          ]
+                        }
+                      ]
                     }
                   ]
                 },
@@ -4529,6 +4673,12 @@
                   "count": 5,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "PHI"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 100,
                       "atMost": 0
@@ -4632,6 +4782,12 @@
                   "count": 5,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "PHY"
+                      ]
+                    },
+                    {
                       "type": "exclude",
                       "codes": [
                         "PHY 226"
@@ -4667,6 +4823,12 @@
                   "type": "electives",
                   "count": 1,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "PLS"
+                      ]
+                    },
                     {
                       "type": "level",
                       "level": 100
@@ -4704,6 +4866,12 @@
                   "count": 5,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "PLS"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 300,
                       "atLeast": 3
@@ -4725,6 +4893,12 @@
                   "count": 1,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "PLS"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 100
                     },
@@ -4740,6 +4914,12 @@
                   "type": "electives",
                   "count": 4,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "PLS"
+                      ]
+                    },
                     {
                       "type": "level",
                       "level": 300,
@@ -4974,6 +5154,12 @@
                   "count": 5,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "SOC"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 200,
                       "atLeast": 2
@@ -5014,6 +5200,12 @@
                   "type": "electives",
                   "count": 4,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "SOC"
+                      ]
+                    },
                     {
                       "type": "exclude",
                       "codes": [
@@ -5081,6 +5273,12 @@
                   "count": 1,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "SPA"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 300,
                       "orAbove": true
@@ -5093,6 +5291,12 @@
                   "count": 1,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "SPA"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 400
                     }
@@ -5102,6 +5306,12 @@
                   "type": "electives",
                   "count": 2,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "SPA"
+                      ]
+                    },
                     {
                       "type": "exclude",
                       "codes": [
@@ -5132,6 +5342,12 @@
                   "type": "electives",
                   "count": 5,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "SPA"
+                      ]
+                    },
                     {
                       "type": "exclude",
                       "codes": [
@@ -5268,6 +5484,12 @@
                   "count": 4,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "THR"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 200,
                       "orAbove": true,
@@ -5370,6 +5592,12 @@
                   "count": 4,
                   "constraints": [
                     {
+                      "type": "discipline",
+                      "prefixes": [
+                        "THS"
+                      ]
+                    },
+                    {
                       "type": "level",
                       "level": 200,
                       "orAbove": true,
@@ -5391,6 +5619,12 @@
                   "type": "electives",
                   "count": 5,
                   "constraints": [
+                    {
+                      "type": "discipline",
+                      "prefixes": [
+                        "THS"
+                      ]
+                    },
                     {
                       "type": "level",
                       "level": 200,
