@@ -11,6 +11,7 @@ import {
   planGaps,
   gapGroups,
   describeConstraints,
+  claimedCourses,
   audit,
 } from '../lib/planner.js'
 
@@ -38,6 +39,8 @@ const CATALOG = [
   'BIO 362',
   'BIO 363',
   'CS 150',
+  'CS 220',
+  'CS 231',
   'MUS 232',
 ]
 
@@ -353,7 +356,7 @@ test('evaluateRequirement mirrors the sections/items shape', () => {
       { heading: 'Cognate', items: [{ type: 'electives', count: 1 }] },
     ],
   }
-  const out = evaluateRequirement(req, takenFrom(['BIO 161']), CATALOG)
+  const out = evaluateRequirement(req, takenFrom(['BIO 161', 'BIO 221']), CATALOG)
   assert.equal(out.label, 'Biology courses')
   assert.equal(out.sections[0].heading, 'Core')
   assert.equal(out.sections[0].items[0].status, 'satisfied')
@@ -369,6 +372,64 @@ test('evaluateProgram evaluates the full list', () => {
   assert.equal(out.length, 2)
   assert.equal(out[0].sections[0].items[0].status, 'satisfied')
   assert.equal(out[1].sections[0].items[0].status, 'unknown')
+})
+
+// ---------------------------------------------------------------------------
+// Within-track no double counting
+// ---------------------------------------------------------------------------
+
+const CS_TRACK = {
+  label: 'Major',
+  sections: [
+    { heading: 'Core', items: [{ type: 'course', code: 'CS 220' }] },
+    {
+      heading: 'Electives',
+      items: [{ type: 'electives', count: 1, constraints: [{ type: 'discipline', prefixes: ['CS'] }] }],
+    },
+  ],
+}
+
+test('a required course cannot also fill the same track electives', () => {
+  // CS 220 is the required course; taking it must not satisfy the elective.
+  const out = evaluateRequirement(CS_TRACK, takenFrom(['CS 220']), CATALOG)
+  assert.equal(out.sections[0].items[0].status, 'satisfied')
+  assert.equal(out.sections[1].items[0].status, 'unsatisfied')
+  assert.equal(out.sections[1].items[0].count, 0)
+  // A distinct CS course does satisfy the elective.
+  const out2 = evaluateRequirement(CS_TRACK, takenFrom(['CS 220', 'CS 231']), CATALOG)
+  assert.equal(out2.sections[1].items[0].status, 'satisfied')
+  assert.equal(out2.sections[1].items[0].count, 1)
+})
+
+test('claimedCourses reserves a required course from the electives pool', () => {
+  const claimed = claimedCourses(CS_TRACK, takenFrom(['CS 220', 'CS 231']), CATALOG)
+  assert.deepEqual([...claimed], ['CS 220'])
+})
+
+test('gapGroups omits claimed courses from electives options', () => {
+  const claimed = claimedCourses(CS_TRACK, takenFrom(['CS 220']), CATALOG)
+  const groups = gapGroups(CS_TRACK.sections[1].items[0], takenFrom(['CS 220']), CATALOG, claimed)
+  const electives = groups.find((g) => g.expandable)
+  assert.ok(electives)
+  assert.ok(!electives.codes.includes('CS 220'))
+  assert.deepEqual(electives.codes, ['CS 150', 'CS 231'])
+})
+
+test('a course may count for requirements in different tracks', () => {
+  const otherTrack = {
+    label: 'CS minor',
+    sections: [
+      {
+        heading: null,
+        items: [{ type: 'electives', count: 1, constraints: [{ type: 'discipline', prefixes: ['CS'] }] }],
+      },
+    ],
+  }
+  // Two separate tracks: CS 220 satisfies the first track's required course and
+  // (on its own) the second track's elective — allowed.
+  const out = evaluateProgram([CS_TRACK, otherTrack], takenFrom(['CS 220']), CATALOG)
+  assert.equal(out[0].sections[0].items[0].status, 'satisfied')
+  assert.equal(out[1].sections[0].items[0].status, 'satisfied')
 })
 
 // ---------------------------------------------------------------------------

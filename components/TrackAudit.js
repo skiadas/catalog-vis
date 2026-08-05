@@ -1,5 +1,5 @@
 import { allCourses, takenSet, toggleTaken } from '../lib/store.js'
-import { evaluateProgram, audit, gapGroups } from '../lib/planner.js'
+import { evaluateProgram, audit, gapGroups, claimedCourses } from '../lib/planner.js'
 
 const { ref, computed } = Vue
 
@@ -19,10 +19,11 @@ export default {
 
     const gaps = computed(() => {
       const requirement = (props.parsed || [])[0]
+      const claimed = claimedCourses(requirement, takenSet.value, allCourses.value)
       const groups = []
       for (const s of (requirement && requirement.sections) || []) {
         for (const it of s.items || []) {
-          groups.push(...gapGroups(it, takenSet.value, allCourses.value))
+          groups.push(...gapGroups(it, takenSet.value, allCourses.value, claimed))
         }
       }
       return groups
