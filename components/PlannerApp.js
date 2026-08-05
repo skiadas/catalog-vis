@@ -135,17 +135,10 @@ export default {
           </div>
         </div>
 
-        <div class="program-grid">
-          <div class="program-card" v-for="p in filteredPrograms" :key="p.id">
-            <div class="program-card-head">
-              <h3 class="program-card-title" @click="goToProgram(p.id)">{{ p.name }}</h3>
-              <div class="meta">
-                <span class="tag major" v-if="p.type.includes('major')">Major</span>
-                <span class="tag minor" v-if="p.type.includes('minor')">Minor</span>
-                <span class="tag program" v-if="!p.type.includes('major') && !p.type.includes('minor')">Program</span>
-              </div>
-            </div>
-            <div class="track-chips">
+        <div class="add-program-list">
+          <div class="add-program-row" v-for="p in filteredPrograms" :key="p.id">
+            <button class="add-program-name" @click="goToProgram(p.id)">{{ p.name }}</button>
+            <div class="add-program-chips">
               <span
                 v-for="t in programTracks(p.id)"
                 :key="t.trackKey"
@@ -155,7 +148,6 @@ export default {
               >{{ t.label }}</span>
               <span v-if="!programTracks(p.id).length" class="track-chip disabled">No structured requirements</span>
             </div>
-            <div class="course-count">{{ p.course_count }} courses</div>
           </div>
         </div>
 
