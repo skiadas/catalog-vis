@@ -132,6 +132,22 @@ export default {
         <p>No tracks yet. Click <strong>Add track</strong> to start planning a major or minor.</p>
       </div>
 
+      <div v-if="takenCourses.length" class="planner-taken">
+        <div class="planner-taken-head">
+          <span class="section-title" style="margin: 0">Courses You've Taken</span>
+          <button class="planner-reset" @click="resetTaken()">Clear all</button>
+        </div>
+        <div class="taken-list">
+          <span
+            v-for="code in takenCourses"
+            :key="code"
+            class="course-chip"
+            @click="toggleTaken(code)"
+            :title="allCourses[code] ? allCourses[code].course_name : ''"
+          >{{ code }} ✕</span>
+        </div>
+      </div>
+
       <div v-if="showAdd">
         <div class="section-title">Add Majors / Minors</div>
         <div class="controls">
@@ -162,9 +178,9 @@ export default {
         <div v-if="filteredPrograms.length === 0" class="empty-state"><p>No programs match your search.</p></div>
       </div>
 
-      <div class="section-title" style="margin-top: 28px">Courses You've Taken</div>
-      <input v-model="courseSearch" class="planner-search" type="search" placeholder="Search any course code or name…" />
-      <div class="planner-pick-list">
+      <div class="section-title" style="margin-top: 28px">Add Courses You've Taken</div>
+      <input v-model="courseSearch" class="planner-search" type="search" placeholder="Type a course code or name to search…" />
+      <div v-if="courseSearch.trim()" class="planner-pick-list">
         <button
           v-for="c in matchingCourses"
           :key="c.course_code"
@@ -178,16 +194,8 @@ export default {
         </button>
         <div v-if="!matchingCourses.length" class="planner-pick-empty">No matching courses.</div>
       </div>
-
-      <div v-if="takenCourses.length" class="taken-list">
-        <span
-          v-for="code in takenCourses"
-          :key="code"
-          class="course-chip"
-          @click="toggleTaken(code)"
-          :title="allCourses[code] ? allCourses[code].course_name : ''"
-        >{{ code }} ✕</span>
-        <button class="planner-reset" @click="resetTaken()">Reset taken courses</button>
+      <div v-else class="planner-pick-hint">
+        Search for a course to mark it as taken.
       </div>
     </div>
   `,

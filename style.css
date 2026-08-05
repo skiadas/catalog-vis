@@ -1514,6 +1514,27 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.planner-pick-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.planner-taken {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.planner-taken-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .planner-pick {
