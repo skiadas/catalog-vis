@@ -1618,10 +1618,38 @@ body {
   margin-top: 10px;
 }
 
-.plan-tracks {
+.req-block-head {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.req-block-head h4 {
+  margin-bottom: 0;
+}
+
+.plan-track-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 3px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.plan-track-btn:hover {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.plan-track-btn.added {
+  background: #e5f6e6;
+  color: #1e7e34;
+  border-color: #1e7e34;
 }

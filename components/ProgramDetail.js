@@ -55,17 +55,6 @@ export default {
         {{ currentProgram.description }}
       </p>
 
-      <div class="plan-tracks" v-if="tracks.length">
-        <span class="filter-label">Add to planner:</span>
-        <span
-          v-for="t in tracks"
-          :key="t.trackKey"
-          class="track-chip"
-          :class="{ on: addedSet.has(t.programId + ':' + t.trackKey) }"
-          @click="planTrack(t)"
-        >{{ t.label }}<span v-if="addedSet.has(t.programId + ':' + t.trackKey)"> ✓</span></span>
-      </div>
-
       <div v-if="currentParsed && currentParsed.length">
         <div class="section-title">Requirements</div>
         <div
@@ -73,7 +62,17 @@ export default {
           v-for="(req, ri) in currentParsed"
           :key="ri"
         >
-          <h4>{{ req.label }}</h4>
+          <div class="req-block-head">
+            <h4>{{ req.label }}</h4>
+            <button
+              v-if="tracks[ri]"
+              class="plan-track-btn"
+              :class="{ added: addedSet.has(tracks[ri].programId + ':' + tracks[ri].trackKey) }"
+              @click="planTrack(tracks[ri])"
+            >
+              {{ addedSet.has(tracks[ri].programId + ':' + tracks[ri].trackKey) ? 'In planner ✓' : 'Add to planner' }}
+            </button>
+          </div>
           <RequirementSection
             v-for="(section, si) in req.sections"
             :key="si"
