@@ -803,14 +803,27 @@ body {
 }
 
 .filter-mode {
+  margin-left: auto;
   display: flex;
   gap: 6px;
+  align-items: center;
   flex-wrap: wrap;
 }
 
 .filter-mode .filter-btn {
-  padding: 5px 12px;
+  padding: 5px 14px;
   font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--primary);
+}
+
+.filter-mode .filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
 }
 
 .course-picker {
@@ -987,6 +1000,12 @@ body {
   background: #fcfcfd;
 }
 
+/* Gentle non-white slot tint; applied when a grid filter is active so slot
+   boundaries stay visible through the light filtered blocks. */
+.cal-daycol.slot-striped {
+  background: #eef3f5;
+}
+
 .cal-guide {
   position: absolute;
   left: 0;
@@ -1051,8 +1070,8 @@ body {
 
 /* Filtered block variant: white card with per-department offerings */
 .cal-block.filtered {
-  background: #ffffff;
-  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.82);
+  border-color: #aebac3;
   justify-content: flex-start;
   padding-top: 6px;
 }

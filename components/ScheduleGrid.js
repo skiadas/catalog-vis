@@ -47,7 +47,7 @@ export default {
     }
   },
   template: `
-    <WeeklyCalendar :on-day-click="goScheduleDay">
+    <WeeklyCalendar :on-day-click="goScheduleDay" :striped="filter.active">
       <template #daycol="{ day }">
         <div
           v-for="b in blocksInDay(day)"

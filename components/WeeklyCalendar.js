@@ -4,6 +4,7 @@ export default {
   name: 'WeeklyCalendar',
   props: {
     onDayClick: { type: Function, default: null },
+    striped: { type: Boolean, default: false },
   },
   setup() {
     const hours = hourMarks()
@@ -33,7 +34,7 @@ export default {
             >{{ h.label }}</div>
           </div>
 
-          <div class="cal-daycol" v-for="d in WEEKDAYS" :key="d">
+          <div class="cal-daycol" :class="{ 'slot-striped': striped }" v-for="d in WEEKDAYS" :key="d">
             <div
               class="cal-guide"
               v-for="g in hours"
