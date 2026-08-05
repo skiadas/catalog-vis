@@ -196,6 +196,39 @@ body {
   margin-bottom: 6px;
 }
 
+/* Prev/next navigation header (day / slot views) */
+.nav-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-header h2 {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.nav-arrow {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius);
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.nav-arrow:hover {
+  background: var(--primary-light);
+  border-color: var(--accent);
+}
+
 .detail-header .types {
   display: flex;
   gap: 6px;
@@ -342,6 +375,80 @@ body {
 
 .course-code-cell:hover {
   text-decoration: underline;
+}
+
+/* Time-slot offerings as pills */
+.slot-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.slot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: default;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+
+.slot-pill:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.slot-pill .sep {
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 1px;
+}
+
+.slot-pill:hover .sep {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.slot-pill-code {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.slot-pill-inst {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+  border-left: 1px solid rgba(27, 73, 101, 0.25);
+  padding-left: 8px;
+}
+
+.slot-pill:hover .slot-pill-inst {
+  color: white;
+  border-left-color: rgba(255, 255, 255, 0.4);
+}
+
+.slot-pill.filter-colored {
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.slot-pill.filter-colored .slot-pill-inst {
+  border-left-color: rgba(255, 255, 255, 0.5);
+}
+
+.slot-pill.filter-colored .sep {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.slot-pill.filter-colored:hover {
+  background: rgba(27, 73, 101, 0.9);
 }
 
 .course-prereq {
@@ -810,6 +917,15 @@ body {
   flex-wrap: wrap;
 }
 
+.filter-mode .filter-mode-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 2px;
+}
+
 .filter-mode .filter-btn {
   padding: 5px 14px;
   font-size: 12px;
@@ -876,7 +992,7 @@ body {
   padding: 12px 16px;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .day-slot-empty {

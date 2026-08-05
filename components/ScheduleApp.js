@@ -113,10 +113,11 @@ export default {
               class="filter-btn"
               :class="{ active: view === 'instructor' }"
               @click="goScheduleInstructor(Object.keys(schedule.byInstructor)[0])"
-            >Instructor</button>
+            >Instructor Schedule</button>
           </div>
 
           <div class="filter-mode" v-if="showFilter">
+            <span class="filter-mode-label">Filters:</span>
             <button class="filter-btn" :class="{ active: filterMode === 'dept' }" @click="filterMode = 'dept'">Departments</button>
             <button class="filter-btn" :class="{ active: filterMode === 'instructor' }" @click="filterMode = 'instructor'">Instructors</button>
           </div>

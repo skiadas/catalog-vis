@@ -1,6 +1,6 @@
 import { route } from '../lib/router.js'
 import { schedule } from '../lib/store.js'
-import { instructorConflicts } from '../lib/schedule.js'
+import { instructorConflicts, compareInstructors } from '../lib/schedule.js'
 import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../lib/router.js'
 import WeeklyCalendar from './WeeklyCalendar.js'
 
@@ -11,7 +11,7 @@ export default {
   components: { WeeklyCalendar },
   setup() {
     const instructors = computed(() =>
-      schedule.value ? Object.keys(schedule.value.byInstructor).sort() : [],
+      schedule.value ? Object.keys(schedule.value.byInstructor).sort(compareInstructors) : [],
     )
     const name = computed(() => route.value.params.instructor)
     const items = computed(
