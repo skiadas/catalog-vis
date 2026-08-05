@@ -37,6 +37,13 @@ export default {
 
     const activeSet = computed(() => new Set(addedTracks.value.map((t) => `${t.programId}:${t.trackKey}`)))
 
+    function filteredTracksFor(program) {
+      const tracks = programTracks(program.id)
+      if (type.value === 'all') return tracks
+      const needle = type.value
+      return tracks.filter((t) => t.label.toLowerCase().includes(needle))
+    }
+
     const summary = computed(() => {
       const st = {
         satisfied: 0,
@@ -72,6 +79,7 @@ export default {
       courseSearch,
       showAdd,
       programTracks,
+      filteredTracksFor,
       filteredPrograms,
       activeSet,
       summary,
@@ -140,13 +148,13 @@ export default {
             <button class="add-program-name" @click="goToProgram(p.id)">{{ p.name }}</button>
             <div class="add-program-chips">
               <span
-                v-for="t in programTracks(p.id)"
+                v-for="t in filteredTracksFor(p)"
                 :key="t.trackKey"
                 class="track-chip"
                 :class="{ on: activeSet.has(p.id + ':' + t.trackKey) }"
                 @click="toggleTrack(p.id, t.trackKey)"
               >{{ t.label }}</span>
-              <span v-if="!programTracks(p.id).length" class="track-chip disabled">No structured requirements</span>
+              <span v-if="!filteredTracksFor(p).length" class="track-chip disabled">No structured requirements</span>
             </div>
           </div>
         </div>
