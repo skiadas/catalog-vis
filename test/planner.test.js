@@ -634,8 +634,30 @@ test('gapGroups keeps nested any_of pairs together as options', () => {
   assert.equal(groups.length, 1)
   assert.equal(groups[0].label, 'choose one pair')
   assert.equal(groups[0].alternatives.length, 2)
-  assert.deepEqual(groups[0].alternatives[0].codes, ['BIO 161', 'BIO 185'])
-  assert.deepEqual(groups[0].alternatives[1].codes, ['CHE 161', 'CHE 185'])
+  assert.deepEqual(groups[0].alternatives[0].slots, [{ codes: ['BIO 161'] }, { codes: ['BIO 185'] }])
+  assert.deepEqual(groups[0].alternatives[1].slots, [{ codes: ['CHE 161'] }, { codes: ['CHE 185'] }])
+})
+
+test('gapGroups splits a choice+required slot into two slots', () => {
+  const kip = {
+    type: 'any_of',
+    note: 'choose one pair',
+    items: [
+      {
+        type: 'each_of',
+        items: [
+          { type: 'any_of', codes: ['BIO 165', 'BIO 185', 'KIP 161'] },
+          { type: 'course', code: 'KIP 215' },
+        ],
+      },
+    ],
+  }
+  const groups = gapGroups(kip, takenFrom([]), CATALOG, new Set())
+  const option = groups[0].alternatives[0]
+  assert.equal(option.slots.length, 2)
+  assert.equal(option.slots[0].label, 'Choose one of')
+  assert.deepEqual(option.slots[0].codes, ['BIO 165', 'BIO 185', 'KIP 161'])
+  assert.deepEqual(option.slots[1], { codes: ['KIP 215'] })
 })
 
 test('gapGroups skips a nested any_of alternative already satisfied', () => {

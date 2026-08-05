@@ -90,14 +90,18 @@ export default {
               class="planner-gap-alternative"
             >
               <span class="anyof-option">{{ 'Option ' + (ai + 1) }}</span>
-              <template v-for="(code, ci) in alt.codes" :key="code">
-                <span
-                  class="course-chip mini"
-                  @click="toggleTaken(code)"
-                  :title="allCourses[code] ? allCourses[code].course_name : ''"
-                  :class="{ taken: takenSet.has(code) }"
-                >{{ code }}</span>
-                <span v-if="ci < alt.codes.length - 1" class="pair-plus">+</span>
+              <template v-for="(slot, si) in alt.slots" :key="si">
+                <span v-if="si > 0" class="pair-plus">+</span>
+                <span v-if="slot.label" class="planner-gap-slot-label">{{ slot.label }}</span>
+                <template v-for="(code, ci) in slot.codes" :key="code">
+                  <span
+                    class="course-chip mini"
+                    @click="toggleTaken(code)"
+                    :title="allCourses[code] ? allCourses[code].course_name : ''"
+                    :class="{ taken: takenSet.has(code) }"
+                  >{{ code }}</span>
+                  <span v-if="slot.label && ci < slot.codes.length - 1" class="anyof-or">or</span>
+                </template>
               </template>
             </div>
           </template>
