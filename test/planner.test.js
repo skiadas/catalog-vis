@@ -8,6 +8,8 @@ import {
   satisfied,
   evaluateRequirement,
   evaluateProgram,
+  planGaps,
+  audit,
 } from '../lib/planner.js'
 
 // Small synthetic catalog the way majors.json exposes courses.
@@ -391,4 +393,109 @@ test('passes handles exclude and cross-listed prefix filters', () => {
 
 test('checkAggregates is true when no aggregates present', () => {
   assert.equal(checkAggregates(['BIO 161'], [{ type: 'from', codes: ['BIO 161'] }]), true)
+})
+
+// ---------------------------------------------------------------------------
+// planGaps / audit
+// ---------------------------------------------------------------------------
+
+test('planGaps for a missing course', () => {
+  assert.deepEqual(planGaps({ type: 'course', code: 'BIO 161' }, takenFrom([]), CATALOG), {
+    need: 1,
+    courses: ['BIO 161'],
+  })
+})
+
+test('planGaps for a satisfied course is empty', () => {
+  assert.deepEqual(planGaps({ type: 'course', code: 'BIO 161' }, takenFrom(['BIO 161']), CATALOG), {
+    need: 0,
+    courses: [],
+  })
+})
+
+test('planGaps for an unsatisfied any_of lists the alternatives', () => {
+  const it = { type: 'any_of', codes: ['BIO 362', 'BIO 363'] }
+  assert.deepEqual(planGaps(it, takenFrom([]), CATALOG), { need: 1, courses: ['BIO 362', 'BIO 363'] })
+  assert.deepEqual(planGaps(it, takenFrom(['BIO 362']), CATALOG), { need: 0, courses: [] })
+})
+
+test('planGaps for each_of lists only the missing child', () => {
+  const it = {
+    type: 'each_of',
+    items: [
+      { type: 'course', code: 'BIO 161' },
+      { type: 'course', code: 'BIO 221' },
+    ],
+  }
+  const gaps = planGaps(it, takenFrom(['BIO 161']), CATALOG)
+  assert.equal(gaps.need, 1)
+  assert.deepEqual(gaps.courses, ['BIO 221'])
+})
+
+test('planGaps for some_of lists at most `need` children', () => {
+  const it = {
+    type: 'some_of',
+    min: 2,
+    items: [
+      { type: 'course', code: 'BIO 161' },
+      { type: 'course', code: 'BIO 221' },
+      { type: 'course', code: 'BIO 301' },
+    ],
+  }
+  const gaps = planGaps(it, takenFrom(['BIO 161']), CATALOG)
+  assert.equal(gaps.need, 1)
+  assert.equal(gaps.courses.length, 1)
+})
+
+test('planGaps for electives caps recommended courses at need', () => {
+  const it = { type: 'electives', count: 2, constraints: [{ type: 'discipline', prefixes: ['GER'] }] }
+  const gaps = planGaps(it, takenFrom(['GER 101']), CATALOG)
+  assert.equal(gaps.need, 1)
+  assert.equal(gaps.courses.length, 1)
+})
+
+test('planGaps for electives flags aggregate shortfalls', () => {
+  const it = {
+    type: 'electives',
+    count: 2,
+    constraints: [{ type: 'level', level: 300, atLeast: 2 }],
+  }
+  // Enough courses, but only one at 300 -> falls to the aggregate flag.
+  const gaps = planGaps(it, takenFrom(['GER 101', 'GER 301']), CATALOG)
+  assert.equal(gaps.aggregate, true)
+  assert.equal(gaps.need, 0)
+})
+
+test('planGaps for custom is unknown', () => {
+  assert.deepEqual(planGaps({ type: 'custom', text: 'x' }, takenFrom([]), CATALOG), {
+    need: 0,
+    courses: [],
+    unknown: true,
+  })
+})
+
+test('audit rolls up requirement statuses', () => {
+  const reqs = [
+    {
+      label: 'Met',
+      sections: [{ heading: 'Core', items: [{ type: 'course', code: 'BIO 161' }] }],
+    },
+    {
+      label: 'Partial',
+      sections: [
+        { heading: 'A', items: [{ type: 'course', code: 'BIO 161' }] },
+        { heading: 'B', items: [{ type: 'course', code: 'BIO 221' }] },
+      ],
+    },
+    { label: 'Unknown', sections: [{ heading: 'C', items: [{ type: 'custom', text: 'x' }] }] },
+  ]
+  const out = audit(evaluateProgram(reqs, takenFrom(['BIO 161']), CATALOG))
+  assert.equal(out.total, 3)
+  assert.equal(out.satisfied, 1)
+  assert.equal(out.partial, 1)
+  assert.equal(out.unknown, 1)
+  assert.equal(out.unsatisfied, 0)
+  assert.equal(out.requirements[1].status, 'partial')
+  assert.equal(out.requirements[1].sections[0].status, 'satisfied')
+  assert.equal(out.requirements[1].sections[1].status, 'unsatisfied')
 })
