@@ -35,7 +35,7 @@ export default {
       unknown: 'Not structured',
     }
 
-    return { report, gaps, statusLabel, allCourses, toggleTaken }
+    return { report, gaps, statusLabel, allCourses, takenSet, toggleTaken }
   },
   template: `
     <div class="planner-req">
