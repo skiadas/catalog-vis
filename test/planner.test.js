@@ -2,6 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   courseInfo,
+  expandCode,
+  prefixMatch,
   filteredUniverse,
   passes,
   checkAggregates,
@@ -45,6 +47,12 @@ const CATALOG = [
   'CS 340',
   'CS 345',
   'MUS 232',
+  'ENG 251',
+  'COM 251',
+  'CLA 252',
+  'HIS 252',
+  'GNDS 499',
+  'HF 101',
 ]
 
 const takenFrom = (codes) => new Set(codes)
@@ -511,6 +519,94 @@ test('passes handles exclude and cross-listed prefix filters', () => {
 
 test('checkAggregates is true when no aggregates present', () => {
   assert.equal(checkAggregates(['BIO 161'], [{ type: 'from', codes: ['BIO 161'] }]), true)
+})
+
+// ---------------------------------------------------------------------------
+// cross-listing resolution (slash codes + prefix aliases)
+// ---------------------------------------------------------------------------
+
+test('expandCode turns a cross-listed code into its concrete variants', () => {
+  assert.deepEqual(expandCode('ENG/COM 251'), ['ENG 251', 'COM 251', 'ENG/COM 251'])
+  assert.deepEqual(expandCode('CLA/HIS 252'), ['CLA 252', 'HIS 252', 'CLA/HIS 252'])
+})
+
+test('expandCode applies prefix aliases', () => {
+  assert.deepEqual(expandCode('GNDR 499'), ['GNDS 499', 'GNDR 499'])
+  assert.deepEqual(expandCode('GNDS 499'), ['GNDS 499'])
+})
+
+test('prefixMatch matches an aliased spelling against the real prefix', () => {
+  assert.equal(prefixMatch('GNDR 499', ['GNDS']), true)
+  assert.equal(prefixMatch('GNDS 499', ['GNDS']), true)
+  assert.equal(prefixMatch('GNDR 499', ['GNDR']), false)
+})
+
+test('course satisfied by either side of a cross-listed code', () => {
+  assert.equal(
+    satisfied({ type: 'course', code: 'ENG/COM 251' }, takenFrom(['COM 251']), CATALOG).status,
+    'satisfied',
+  )
+  const r = satisfied({ type: 'course', code: 'ENG/COM 251' }, takenFrom(['ENG 251']), CATALOG)
+  assert.equal(r.status, 'satisfied')
+  assert.deepEqual(r.matched, ['ENG 251'])
+  assert.equal(
+    satisfied({ type: 'course', code: 'ENG/COM 251' }, takenFrom(['CLA 252']), CATALOG).status,
+    'unsatisfied',
+  )
+})
+
+test('course satisfied through a prefix alias', () => {
+  const r = satisfied({ type: 'course', code: 'GNDR 499' }, takenFrom(['GNDS 499']), CATALOG)
+  assert.equal(r.status, 'satisfied')
+  assert.deepEqual(r.matched, ['GNDS 499'])
+})
+
+test('any_of matches a cross-listed alternative', () => {
+  const it = { type: 'any_of', codes: ['ENG/COM 251', 'BIO 161'] }
+  assert.equal(satisfied(it, takenFrom(['COM 251']), CATALOG).status, 'satisfied')
+  assert.equal(satisfied(it, takenFrom(['BIO 161']), CATALOG).status, 'satisfied')
+  assert.equal(satisfied(it, takenFrom(['CLA 252']), CATALOG).status, 'unsatisfied')
+})
+
+test('from pool expands cross-listed codes', () => {
+  const pool = filteredUniverse([{ type: 'from', codes: ['ENG/COM 251'] }], CATALOG)
+  assert.deepEqual([...pool].sort(), ['COM 251', 'ENG 251', 'ENG/COM 251'])
+  assert.equal(passes('ENG 251', { type: 'from', codes: ['ENG/COM 251'] }), true)
+  assert.equal(passes('COM 251', { type: 'from', codes: ['ENG/COM 251'] }), true)
+})
+
+test('exclude removes both sides of a cross-listed code', () => {
+  const pool = filteredUniverse([{ type: 'exclude', codes: ['ENG/COM 251'] }], CATALOG)
+  assert.ok(!pool.has('ENG 251'))
+  assert.ok(!pool.has('COM 251'))
+  assert.ok(pool.has('ENG 243'))
+})
+
+test('min_from counts cross-listed codes', () => {
+  const chosen = ['ENG 251', 'BIO 161']
+  assert.equal(checkAggregates(chosen, [{ type: 'min_from', codes: ['ENG/COM 251'], atLeast: 1 }]), true)
+  assert.equal(
+    checkAggregates(['BIO 161'], [{ type: 'min_from', codes: ['ENG/COM 251'], atLeast: 1 }]),
+    false,
+  )
+})
+
+test('solver consumes one side of a cross-listed course', () => {
+  const track = {
+    label: 'T',
+    sections: [
+      { heading: 'A', items: [{ type: 'course', code: 'ENG/COM 251' }] },
+      { heading: 'B', items: [{ type: 'course', code: 'ENG/COM 251' }] },
+    ],
+  }
+  const out = evaluateRequirement(track, takenFrom(['ENG 251']), CATALOG)
+  assert.equal(out.sections[0].items[0].status, 'satisfied')
+  assert.equal(out.sections[1].items[0].status, 'unsatisfied')
+})
+
+test('planGaps offers both sides of a cross-listed course', () => {
+  const gaps = planGaps({ type: 'course', code: 'ENG/COM 251' }, takenFrom([]), CATALOG)
+  assert.deepEqual(gaps.courses, ['ENG 251', 'COM 251', 'ENG/COM 251'])
 })
 
 // ---------------------------------------------------------------------------

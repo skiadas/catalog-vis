@@ -129,7 +129,8 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 - Education's narrative descriptions and program-admission prose are preserved as `custom` items
 - Timing notes ("before end of junior year") stored as note fields on courses
 - `.25 unit` credit notes and topic-category requirements (e.g., Theological Studies "one course in biblical studies") remain `custom` — no `credit`/topic restriction kind yet
-- A handful of requirement codes don't resolve to `majors.json` course lists (cross-listings, ranges like `ENV 408-409`, legacy codes) — `test/test_data.py` validates code format, not code existence
+- Cross-listing is resolved in the planner: `majors.json` carries a global `catalog` (all API courses, incl. codes that appear in no single program's list, e.g. `HF 101`, `SMGT 332`, `HFA 076`), and `expandCode()` splits slash codes (`ENG/COM 251` → `ENG 251`/`COM 251`) and applies prefix aliases (`GNDR` → `GNDS`). `lib/store.js` seeds `allCourses` from `catalog` first, then per-program details.
+- Only three requirement codes exist *nowhere* in the scraped data (global catalog or per-program lists) and stay unresolvable: `COM 221`, `LAT 471`, `LAT 499` — genuine gaps at the source catalog, not a planner bug.
 
 ## Common Tasks
 

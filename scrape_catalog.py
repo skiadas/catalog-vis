@@ -265,12 +265,18 @@ def main():
         programs_data.append(entry)
         print(f'  {name}: {len(program_courses)} courses, {len(requirements)} requirement(s)')
 
+    # Master catalog: every course the API knows about, keyed by normalized
+    # code. Backs the planner universe so cross-listed and orphan courses (that
+    # appear in no single program's list, e.g. HF/SMGT) still resolve.
+    catalog = dict(sorted(course_map.items()))
+
     output = {
         'catalog_year': '2025-2026',
         'generated_at': '2026-07-27',
         'source_url': 'https://catalog.hanover.edu/#programs',
         'total_programs': len(programs_data),
         'total_courses': len(all_courses_api),
+        'catalog': catalog,
         'programs': programs_data,
     }
 
