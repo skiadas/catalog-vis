@@ -25,6 +25,7 @@ export default {
     const query = ref('')
     const type = ref('all')
     const courseSearch = ref('')
+    const showAdd = ref(false)
 
     const filteredPrograms = computed(() => {
       let list = programs.value
@@ -69,6 +70,7 @@ export default {
       query,
       type,
       courseSearch,
+      showAdd,
       programTracks,
       filteredPrograms,
       activeSet,
@@ -102,7 +104,12 @@ export default {
         <button v-if="addedTracks.length" class="planner-reset" @click="clearTracks()">Clear tracks</button>
       </div>
 
-      <div class="section-title">Your Plan</div>
+      <div class="planner-toolbar">
+        <div class="section-title" style="margin: 0">Your Plan</div>
+        <button class="add-track-btn" @click="showAdd = !showAdd">
+          {{ showAdd ? 'Done adding' : 'Add track' }}
+        </button>
+      </div>
       <div v-if="addedTracksDetailed.length" class="planner-plan">
         <TrackAudit
           v-for="t in addedTracksDetailed"
@@ -114,44 +121,46 @@ export default {
         />
       </div>
       <div v-else class="empty-state">
-        <p>No tracks yet. Add a major or minor below to start planning.</p>
+        <p>No tracks yet. Click <strong>Add track</strong> to start planning a major or minor.</p>
       </div>
 
-      <div class="section-title">Add Majors / Minors</div>
-      <div class="controls">
-        <input class="search-input" type="text" placeholder="Search programs..." v-model="query" />
-        <div class="filter-group">
-          <button class="filter-btn" :class="{ active: type === 'all' }" @click="type = 'all'">All</button>
-          <button class="filter-btn" :class="{ active: type === 'major' }" @click="type = 'major'">Majors</button>
-          <button class="filter-btn" :class="{ active: type === 'minor' }" @click="type = 'minor'">Minors</button>
+      <div v-if="showAdd">
+        <div class="section-title">Add Majors / Minors</div>
+        <div class="controls">
+          <input class="search-input" type="text" placeholder="Search programs..." v-model="query" />
+          <div class="filter-group">
+            <button class="filter-btn" :class="{ active: type === 'all' }" @click="type = 'all'">All</button>
+            <button class="filter-btn" :class="{ active: type === 'major' }" @click="type = 'major'">Majors</button>
+            <button class="filter-btn" :class="{ active: type === 'minor' }" @click="type = 'minor'">Minors</button>
+          </div>
         </div>
-      </div>
 
-      <div class="program-grid">
-        <div class="program-card" v-for="p in filteredPrograms" :key="p.id">
-          <div class="program-card-head">
-            <h3 class="program-card-title" @click="goToProgram(p.id)">{{ p.name }}</h3>
-            <div class="meta">
-              <span class="tag major" v-if="p.type.includes('major')">Major</span>
-              <span class="tag minor" v-if="p.type.includes('minor')">Minor</span>
-              <span class="tag program" v-if="!p.type.includes('major') && !p.type.includes('minor')">Program</span>
+        <div class="program-grid">
+          <div class="program-card" v-for="p in filteredPrograms" :key="p.id">
+            <div class="program-card-head">
+              <h3 class="program-card-title" @click="goToProgram(p.id)">{{ p.name }}</h3>
+              <div class="meta">
+                <span class="tag major" v-if="p.type.includes('major')">Major</span>
+                <span class="tag minor" v-if="p.type.includes('minor')">Minor</span>
+                <span class="tag program" v-if="!p.type.includes('major') && !p.type.includes('minor')">Program</span>
+              </div>
             </div>
+            <div class="track-chips">
+              <span
+                v-for="t in programTracks(p.id)"
+                :key="t.trackKey"
+                class="track-chip"
+                :class="{ on: activeSet.has(p.id + ':' + t.trackKey) }"
+                @click="toggleTrack(p.id, t.trackKey)"
+              >{{ t.label }}</span>
+              <span v-if="!programTracks(p.id).length" class="track-chip disabled">No structured requirements</span>
+            </div>
+            <div class="course-count">{{ p.course_count }} courses</div>
           </div>
-          <div class="track-chips">
-            <span
-              v-for="t in programTracks(p.id)"
-              :key="t.trackKey"
-              class="track-chip"
-              :class="{ on: activeSet.has(p.id + ':' + t.trackKey) }"
-              @click="toggleTrack(p.id, t.trackKey)"
-            >{{ t.label }}</span>
-            <span v-if="!programTracks(p.id).length" class="track-chip disabled">No structured requirements</span>
-          </div>
-          <div class="course-count">{{ p.course_count }} courses</div>
         </div>
-      </div>
 
-      <div v-if="filteredPrograms.length === 0" class="empty-state"><p>No programs match your search.</p></div>
+        <div v-if="filteredPrograms.length === 0" class="empty-state"><p>No programs match your search.</p></div>
+      </div>
 
       <div class="section-title" style="margin-top: 28px">Courses You've Taken</div>
       <input v-model="courseSearch" class="planner-search" type="search" placeholder="Search any course code or name…" />
