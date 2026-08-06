@@ -2032,6 +2032,23 @@ body {
   margin: 6px 0 10px;
 }
 
+.tl-zones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.tl-zones .tl-zone {
+  margin-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .tl-zones {
+    grid-template-columns: 1fr;
+  }
+}
+
 .tl-zone {
   border: 1px dashed #cbd2d9;
   border-radius: 10px;
@@ -2137,4 +2154,157 @@ body {
 
 .tl-remove:hover {
   color: #dc2626;
+}
+
+/* ---- Planner top bar, tabs, and modals ---- */
+
+.planner-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 14px 0 6px;
+}
+
+.planner-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.planner-head .planner-top-left {
+  justify-content: flex-end;
+}
+
+.planner-head-title {
+  min-width: 0;
+}
+
+.planner-top-spacer {
+  flex: 1;
+}
+
+.planner-top-left,
+.planner-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.planner-plan-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.planner-icon-btn {
+  font-size: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.planner-icon-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.planner-add-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  background: #fff;
+  border: 1px solid var(--primary);
+  border-radius: 16px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  white-space: nowrap;
+}
+
+.planner-add-btn:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.planner-add-btn.primary {
+  color: #fff;
+  background: var(--primary);
+}
+
+.planner-add-btn.primary:hover {
+  background: var(--primary-dark, var(--primary));
+}
+
+.planner-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 14px 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.planner-tab {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.planner-tab:hover {
+  color: var(--primary);
+}
+
+.planner-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.planner-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-wide {
+  max-width: 720px;
+}
+
+.modal > .controls,
+.modal > .planner-search,
+.modal > .add-program-list,
+.modal > .planner-pick-list,
+.modal > .planner-pick-hint,
+.modal > .planner-pick-empty,
+.modal > .empty-state {
+  margin-left: 18px;
+  margin-right: 18px;
+}
+
+.modal > .controls {
+  margin-top: 14px;
+}
+
+.modal > .planner-search {
+  margin-top: 14px;
+}
+
+.modal > .add-program-list,
+.modal > .planner-pick-list,
+.modal > .planner-pick-hint,
+.modal > .planner-pick-empty,
+.modal > .empty-state {
+  margin-bottom: 20px;
 }

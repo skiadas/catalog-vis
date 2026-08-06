@@ -36,10 +36,6 @@ export default {
       else placeCourse(code)
     }
 
-    function startDrag(e, code) {
-      e.dataTransfer.setData('text/plain', JSON.stringify({ code, from: null }))
-    }
-
     // Which expandable (electives) gap groups are currently opened.
     const expanded = ref({})
     function toggleExpand(i) {
@@ -60,7 +56,6 @@ export default {
       allCourses,
       takenSet,
       togglePlaced,
-      startDrag,
       expanded,
       toggleExpand,
     }
@@ -97,7 +92,7 @@ export default {
                 v-for="code in g.codes"
                 :key="code"
                 class="course-chip mini"
-                @click="togglePlaced(code)" draggable="true" @dragstart="startDrag($event, code)"
+                @click="togglePlaced(code)"
                 :title="allCourses[code] ? allCourses[code].course_name : ''"
                 :class="{ taken: takenSet.has(code) }"
               >{{ code }}</span>
@@ -117,7 +112,7 @@ export default {
                 <template v-for="(code, ci) in slot.codes" :key="code">
                   <span
                     class="course-chip mini"
-                    @click="togglePlaced(code)" draggable="true" @dragstart="startDrag($event, code)"
+                    @click="togglePlaced(code)"
                     :title="allCourses[code] ? allCourses[code].course_name : ''"
                     :class="{ taken: takenSet.has(code) }"
                   >{{ code }}</span>
@@ -132,7 +127,7 @@ export default {
               v-for="code in g.codes"
               :key="code"
               class="course-chip mini"
-              @click="togglePlaced(code)" draggable="true" @dragstart="startDrag($event, code)"
+              @click="togglePlaced(code)"
               :title="allCourses[code] ? allCourses[code].course_name : ''"
               :class="{ taken: takenSet.has(code) }"
             >{{ code }}</span>

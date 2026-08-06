@@ -75,6 +75,7 @@ export default {
   },
   template: `
     <div class="planner-timeline">
+      <div class="tl-zones">
       <div
         class="tl-zone tl-shelf"
         :class="{ 'drag-over': dragOverKey === SHELF }"
@@ -94,6 +95,28 @@ export default {
           >{{ code }}<button class="tl-remove" @click="removeCourse(code)" title="Remove from plan">✕</button></span>
         </div>
         <div v-else class="tl-empty">New courses land here — drag them into a term below.</div>
+      </div>
+
+      <div
+        class="tl-zone tl-transfer"
+        :class="{ 'drag-over': dragOverKey === TRANSFER }"
+        @dragover.prevent="onDragOver(TRANSFER)"
+        @dragleave="onDragLeave"
+        @drop="onDrop($event, TRANSFER)"
+      >
+        <div class="tl-zone-title">Transfer Credit</div>
+        <div v-if="slot(TRANSFER).length" class="tl-zone-courses">
+          <span
+            v-for="code in slot(TRANSFER)"
+            :key="code"
+            class="course-chip tl-chip"
+            draggable="true"
+            @dragstart="onDragStart($event, code, TRANSFER)"
+            :title="title(code)"
+          >{{ code }}<button class="tl-remove" @click="removeCourse(code)" title="Remove from plan">✕</button></span>
+        </div>
+        <div v-else class="tl-empty">No transfer credits yet.</div>
+      </div>
       </div>
 
       <div class="tl-grid">
@@ -121,27 +144,6 @@ export default {
             >{{ code }}<button class="tl-remove" @click="removeCourse(code)" title="Remove from plan">✕</button></span>
           </div>
         </template>
-      </div>
-
-      <div
-        class="tl-zone tl-transfer"
-        :class="{ 'drag-over': dragOverKey === TRANSFER }"
-        @dragover.prevent="onDragOver(TRANSFER)"
-        @dragleave="onDragLeave"
-        @drop="onDrop($event, TRANSFER)"
-      >
-        <div class="tl-zone-title">Transfer Credit</div>
-        <div v-if="slot(TRANSFER).length" class="tl-zone-courses">
-          <span
-            v-for="code in slot(TRANSFER)"
-            :key="code"
-            class="course-chip tl-chip"
-            draggable="true"
-            @dragstart="onDragStart($event, code, TRANSFER)"
-            :title="title(code)"
-          >{{ code }}<button class="tl-remove" @click="removeCourse(code)" title="Remove from plan">✕</button></span>
-        </div>
-        <div v-else class="tl-empty">No transfer credits yet.</div>
       </div>
     </div>
   `,
