@@ -1,5 +1,6 @@
 import {
-  programs,
+  plannerPrograms,
+  CORE_ID,
   allCourses,
   takenSet,
   takenCourses,
@@ -38,7 +39,7 @@ export default {
     const showAddTrack = ref(false)
 
     const filteredPrograms = computed(() => {
-      let list = programs.value
+      let list = plannerPrograms.value
       if (type.value !== 'all') list = list.filter((p) => p.type.includes(type.value))
       const q = query.value.trim().toLowerCase()
       if (q) list = list.filter((p) => p.name.toLowerCase().includes(q))
@@ -138,6 +139,7 @@ export default {
       goToProgram,
       goToCourse,
       allCourses,
+      CORE_ID,
     }
   },
   template: `
@@ -255,7 +257,8 @@ export default {
 
           <div class="add-program-list">
             <div class="add-program-row" v-for="p in filteredPrograms" :key="p.id">
-              <button class="add-program-name" @click="goToProgram(p.id)">{{ p.name }}</button>
+              <button v-if="p.id !== CORE_ID" class="add-program-name" @click="goToProgram(p.id)">{{ p.name }}</button>
+              <span v-else class="add-program-name" style="cursor: default">{{ p.name }}</span>
               <div class="add-program-chips">
                 <span
                   v-for="t in filteredTracksFor(p)"

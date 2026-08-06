@@ -12,9 +12,45 @@ export default {
     label: { type: String, default: '' },
   },
   setup(props) {
-    const report = computed(() => {
+    // The fully evaluated requirement (per-section matched courses, statuses).
+    const evaluated = computed(() => {
       const ev = evaluateProgram(props.parsed || [], takenSet.value, allCourses.value)
-      return audit(ev).requirements[0] || { status: 'unknown', sections: [], satisfied: 0, total: 0 }
+      return ev[0] || { label: '', sections: [] }
+    })
+
+    const report = computed(
+      () =>
+        audit([evaluated.value]).requirements[0] || {
+          status: 'unknown',
+          sections: [],
+          satisfied: 0,
+          total: 0,
+        },
+    )
+
+    // Per-section course-level progress: how many courses of the section's
+    // requirement are currently satisfied (`done`/`total`), the courses used,
+    // and the section's status. For an electives that needs 2, picking 1 shows
+    // "1/2" partial rather than the item-level "0/1".
+    const sections = computed(() => {
+      const rec = report.value.sections || []
+      return (evaluated.value.sections || []).map((s, si) => {
+        const items = s.items || []
+        const codes = [...new Set(items.flatMap((i) => i.matched || []))]
+        const total = items.reduce((sum, i) => sum + (Number.isFinite(i.min) ? i.min : 0), 0)
+        const done = codes.length
+        // Course-level status: an electives that needs 2 and has 1 chosen reads
+        // as "partial" even though the underlying item is `unsatisfied`.
+        const status =
+          done === 0
+            ? rec[si] || 'unsatisfied'
+            : done < total
+              ? 'partial'
+              : rec[si] && rec[si].status === 'satisfied'
+                ? 'satisfied'
+                : rec[si] || 'unsatisfied'
+        return { heading: s.heading, status, done, total, codes }
+      })
     })
 
     const gaps = computed(() => {
@@ -51,6 +87,7 @@ export default {
 
     return {
       report,
+      sections,
       gaps,
       statusLabel,
       allCourses,
@@ -68,16 +105,31 @@ export default {
         <span class="planner-req-count">{{ report.satisfied }} / {{ report.total }}</span>
         <button class="track-remove-btn" @click="$emit('remove')" title="Remove this track">✕</button>
       </div>
-      <div class="planner-req-sections">
-        <span
-          v-for="(sec, si) in report.sections"
+      <div class="planner-sections">
+        <div
+          v-for="(sec, si) in sections"
           :key="si"
-          class="planner-section-chip"
+          class="planner-section"
           :class="sec.status"
-          :title="(sec.heading || 'section') + ': ' + sec.satisfied + ' / ' + sec.total"
+          v-show="sec.codes.length || sec.status === 'partial'"
         >
-          {{ sec.satisfied }}/{{ sec.total }}
-        </span>
+          <div class="planner-section-head">
+            <span class="planner-section-title">{{ sec.heading || 'Section' }}</span>
+            <span class="planner-section-count" :class="sec.status">{{ sec.done }}/{{ sec.total }}</span>
+            <span v-if="sec.status === 'partial'" class="planner-section-more">
+              need {{ sec.total - sec.done }} more
+            </span>
+          </div>
+          <div v-if="sec.codes.length" class="planner-section-courses">
+            <span
+              v-for="code in sec.codes"
+              :key="code"
+              class="course-chip mini matched"
+              @click="togglePlaced(code)"
+              :title="(allCourses[code] ? allCourses[code].course_name + ' — ' : '') + 'click to remove from plan'"
+            >{{ code }}</span>
+          </div>
+        </div>
       </div>
       <div class="planner-gaps" v-if="report.status !== 'satisfied'">
         <div class="planner-gap-group" v-for="(g, gi) in gaps" :key="gi">

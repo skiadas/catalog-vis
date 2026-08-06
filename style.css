@@ -774,6 +774,81 @@ body {
   text-decoration: line-through;
 }
 
+.course-chip.matched {
+  background: #e5f6e6;
+  color: #1e7e34;
+}
+
+.course-chip.matched:hover {
+  background: #fdecea;
+  color: #c53030;
+}
+
+.planner-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.planner-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.planner-section + .planner-section {
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+}
+
+.planner-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.planner-section-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.planner-section-count {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.planner-section-count.satisfied {
+  color: #1e7e34;
+}
+
+.planner-section-count.partial {
+  color: #b45309;
+}
+
+.planner-section-count.unsatisfied {
+  color: #c53030;
+}
+
+.planner-section-more {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.planner-section-courses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .planner-gap-alternative {
   display: flex;
   flex-wrap: wrap;
