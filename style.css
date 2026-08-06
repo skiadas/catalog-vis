@@ -420,6 +420,23 @@ body {
   align-items: baseline;
 }
 
+.slot-pill-name {
+  font-weight: 400;
+  color: var(--text-muted);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slot-pill:hover .slot-pill-name {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.slot-pill.filter-colored .slot-pill-name {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .slot-pill-inst {
   cursor: pointer;
   font-size: 11px;
