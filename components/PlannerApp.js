@@ -9,18 +9,27 @@ import {
   programTracks,
   clearTracks,
   removeTrack,
-  toggleTaken,
-  resetTaken,
+  placeCourse,
+  removeCourse,
+  plans,
+  currentPlanId,
+  currentName,
+  setName,
+  loadPlan,
+  newPlan,
+  duplicatePlan,
+  deletePlan,
 } from '../lib/store.js'
 import { goToProgram, goToCourse } from '../lib/router.js'
 import { evaluateProgram, audit } from '../lib/planner.js'
 import TrackAudit from './TrackAudit.js'
+import PlannerTimeline from './PlannerTimeline.js'
 
 const { ref, computed } = Vue
 
 export default {
   name: 'PlannerApp',
-  components: { TrackAudit },
+  components: { TrackAudit, PlannerTimeline },
   setup() {
     const query = ref('')
     const type = ref('all')
@@ -73,6 +82,15 @@ export default {
       return list.sort((a, b) => a.course_code.localeCompare(b.course_code)).slice(0, 200)
     })
 
+    function togglePlaced(code) {
+      if (takenSet.value.has(code)) removeCourse(code)
+      else placeCourse(code)
+    }
+
+    function startDrag(e, code) {
+      e.dataTransfer.setData('text/plain', JSON.stringify({ code, from: null }))
+    }
+
     return {
       query,
       type,
@@ -91,8 +109,16 @@ export default {
       toggleTrack,
       clearTracks,
       removeTrack,
-      toggleTaken,
-      resetTaken,
+      togglePlaced,
+      startDrag,
+      plans,
+      currentPlanId,
+      currentName,
+      setName,
+      loadPlan,
+      newPlan,
+      duplicatePlan,
+      deletePlan,
       goToProgram,
       goToCourse,
       allCourses,
@@ -102,15 +128,33 @@ export default {
     <div>
       <div class="header">
         <h1>Course Planner</h1>
-        <div class="header-sub">Add majors/minors, mark courses as taken, and see what you still need.</div>
+        <div class="header-sub">Add majors/minors, plan when you'll take courses, and see what you still need.</div>
       </div>
 
       <div class="planner-summary">
         <span class="planner-summary-item">{{ addedTracks.length }} track{{ addedTracks.length !== 1 ? 's' : '' }} added</span>
         <span class="planner-summary-item">{{ summary.satisfied }} of {{ summary.total }} satisfied</span>
-        <span class="planner-summary-item">{{ takenCourses.length }} course{{ takenCourses.length !== 1 ? 's' : '' }} taken</span>
+        <span class="planner-summary-item">{{ takenCourses.length }} course{{ takenCourses.length !== 1 ? 's' : '' }} planned</span>
         <button v-if="addedTracks.length" class="planner-reset" @click="clearTracks()">Clear tracks</button>
       </div>
+
+      <div class="planner-plans">
+        <input
+          class="planner-plan-name"
+          type="text"
+          :value="currentName"
+          @input="setName($event.target.value)"
+          placeholder="Plan name…"
+        />
+        <select class="planner-plan-select" :value="currentPlanId" @change="loadPlan($event.target.value)">
+          <option v-for="p in plans" :key="p.id" :value="p.id">{{ p.name }}</option>
+        </select>
+        <button class="planner-reset" @click="newPlan()">New plan</button>
+        <button class="planner-reset" @click="duplicatePlan()">Duplicate plan</button>
+        <button class="planner-reset" @click="deletePlan()">Delete plan</button>
+      </div>
+
+      <PlannerTimeline />
 
       <div class="planner-toolbar">
         <div class="section-title" style="margin: 0">Your Plan</div>
@@ -130,22 +174,6 @@ export default {
       </div>
       <div v-else class="empty-state">
         <p>No tracks yet. Click <strong>Add track</strong> to start planning a major or minor.</p>
-      </div>
-
-      <div v-if="takenCourses.length" class="planner-taken">
-        <div class="planner-taken-head">
-          <span class="section-title" style="margin: 0">Courses You've Taken</span>
-          <button class="planner-reset" @click="resetTaken()">Clear all</button>
-        </div>
-        <div class="taken-list">
-          <span
-            v-for="code in takenCourses"
-            :key="code"
-            class="course-chip"
-            @click="toggleTaken(code)"
-            :title="allCourses[code] ? allCourses[code].course_name : ''"
-          >{{ code }} ✕</span>
-        </div>
       </div>
 
       <div v-if="showAdd">
@@ -178,15 +206,17 @@ export default {
         <div v-if="filteredPrograms.length === 0" class="empty-state"><p>No programs match your search.</p></div>
       </div>
 
-      <div class="section-title" style="margin-top: 28px">Add Courses You've Taken</div>
-      <input v-model="courseSearch" class="planner-search" type="search" placeholder="Type a course code or name to search…" />
+      <div class="section-title" style="margin-top: 28px">Add Courses</div>
+      <input v-model="courseSearch" class="planner-search" type="search" placeholder="Type a course code or name to search… (click to add to the shelf, or drag into a term)" />
       <div v-if="courseSearch.trim()" class="planner-pick-list">
         <button
           v-for="c in matchingCourses"
           :key="c.course_code"
           class="planner-pick"
           :class="{ taken: takenSet.has(c.course_code) }"
-          @click="toggleTaken(c.course_code)"
+          @click="togglePlaced(c.course_code)"
+          @dragstart="startDrag($event, c.course_code)"
+          draggable="true"
           :title="c.course_name"
         >
           <span class="planner-pick-code">{{ c.course_code }}</span>
@@ -195,7 +225,7 @@ export default {
         <div v-if="!matchingCourses.length" class="planner-pick-empty">No matching courses.</div>
       </div>
       <div v-else class="planner-pick-hint">
-        Search for a course to mark it as taken.
+        Search for a course to add it to your plan.
       </div>
     </div>
   `,

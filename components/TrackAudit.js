@@ -1,4 +1,4 @@
-import { allCourses, takenSet, toggleTaken } from '../lib/store.js'
+import { allCourses, takenSet, placeCourse, removeCourse } from '../lib/store.js'
 import { evaluateProgram, audit, gapGroups, assignRequirement } from '../lib/planner.js'
 
 const { ref, computed } = Vue
@@ -29,6 +29,17 @@ export default {
       return groups
     })
 
+    // Clicking a suggested course adds it to the unassigned shelf; clicking one
+    // already in the plan removes it.
+    function togglePlaced(code) {
+      if (takenSet.value.has(code)) removeCourse(code)
+      else placeCourse(code)
+    }
+
+    function startDrag(e, code) {
+      e.dataTransfer.setData('text/plain', JSON.stringify({ code, from: null }))
+    }
+
     // Which expandable (electives) gap groups are currently opened.
     const expanded = ref({})
     function toggleExpand(i) {
@@ -42,7 +53,17 @@ export default {
       unknown: 'Not structured',
     }
 
-    return { report, gaps, statusLabel, allCourses, takenSet, toggleTaken, expanded, toggleExpand }
+    return {
+      report,
+      gaps,
+      statusLabel,
+      allCourses,
+      takenSet,
+      togglePlaced,
+      startDrag,
+      expanded,
+      toggleExpand,
+    }
   },
   template: `
     <div class="planner-req">
@@ -76,7 +97,7 @@ export default {
                 v-for="code in g.codes"
                 :key="code"
                 class="course-chip mini"
-                @click="toggleTaken(code)"
+                @click="togglePlaced(code)" draggable="true" @dragstart="startDrag($event, code)"
                 :title="allCourses[code] ? allCourses[code].course_name : ''"
                 :class="{ taken: takenSet.has(code) }"
               >{{ code }}</span>
@@ -96,7 +117,7 @@ export default {
                 <template v-for="(code, ci) in slot.codes" :key="code">
                   <span
                     class="course-chip mini"
-                    @click="toggleTaken(code)"
+                    @click="togglePlaced(code)" draggable="true" @dragstart="startDrag($event, code)"
                     :title="allCourses[code] ? allCourses[code].course_name : ''"
                     :class="{ taken: takenSet.has(code) }"
                   >{{ code }}</span>
@@ -111,7 +132,7 @@ export default {
               v-for="code in g.codes"
               :key="code"
               class="course-chip mini"
-              @click="toggleTaken(code)"
+              @click="togglePlaced(code)" draggable="true" @dragstart="startDrag($event, code)"
               :title="allCourses[code] ? allCourses[code].course_name : ''"
               :class="{ taken: takenSet.has(code) }"
             >{{ code }}</span>
