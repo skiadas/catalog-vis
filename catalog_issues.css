@@ -1,0 +1,95 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+  margin: 2rem auto;
+  max-width: 1100px;
+  padding: 0 1.5rem;
+  color: #1f2933;
+  line-height: 1.5;
+}
+
+h1 {
+  font-size: 1.6rem;
+  border-bottom: 2px solid #cbd2d9;
+  padding-bottom: 0.5rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+  margin-top: 2rem;
+  color: #334155;
+}
+
+code {
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+th {
+  background: #0f172a;
+  color: #fff;
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  position: sticky;
+  top: 0;
+}
+
+td {
+  border: 1px solid #d7dee5;
+  padding: 0.35rem 0.7rem;
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+tbody tr:hover {
+  background: #eef4ff;
+}
+
+.badge {
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.1em 0.6em;
+  white-space: nowrap;
+}
+
+.sev-major {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.sev-moderate {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.sev-minor {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.sev-trivial {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.side-search-only {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.side-program-only {
+  background: #eff6ff;
+  color: #1d4ed8;
+}

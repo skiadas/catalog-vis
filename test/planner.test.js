@@ -521,6 +521,37 @@ test('checkAggregates is true when no aggregates present', () => {
   assert.equal(checkAggregates(['BIO 161'], [{ type: 'from', codes: ['BIO 161'] }]), true)
 })
 
+test('sameDiscipline requires all chosen to share one common prefix', () => {
+  const constraint = { type: 'discipline', sameDiscipline: true }
+  assert.equal(checkAggregates(['GER 101', 'GER 222'], [constraint]), true)
+  assert.equal(checkAggregates(['GER 101', 'GER 222', 'GER 301'], [constraint]), true)
+  assert.equal(checkAggregates(['GER 101', 'HIS 327'], [constraint]), false)
+  // Cross-listed codes count as a match when any side overlaps.
+  assert.equal(checkAggregates(['ENG/COM 251', 'COM 251'], [constraint]), true)
+  assert.equal(checkAggregates(['ENG/COM 251', 'HIS 327'], [constraint]), false)
+  // Empty chosen set trivially passes.
+  assert.equal(checkAggregates([], [constraint]), true)
+})
+
+test('sameDiscipline does not scope the universe', () => {
+  const constraint = { type: 'discipline', sameDiscipline: true }
+  assert.equal(filteredUniverse([constraint], CATALOG).size, CATALOG.length)
+  assert.equal(passes('GER 101', constraint), true)
+  assert.equal(passes('HIS 327', constraint), true)
+})
+
+test('electives fail sameDiscipline when taken courses span disciplines', () => {
+  const it = { type: 'electives', count: 2, constraints: [{ type: 'discipline', sameDiscipline: true }] }
+  const mixed = satisfied(it, takenFrom(['GER 101', 'HIS 327']), CATALOG)
+  assert.equal(mixed.status, 'unsatisfied')
+  const same = satisfied(it, takenFrom(['GER 101', 'GER 115']), CATALOG)
+  assert.equal(same.status, 'satisfied')
+})
+
+test('describeConstraints renders sameDiscipline as a shared-discipline note', () => {
+  assert.equal(describeConstraints([{ type: 'discipline', sameDiscipline: true }]), 'in the same discipline')
+})
+
 // ---------------------------------------------------------------------------
 // cross-listing resolution (slash codes + prefix aliases)
 // ---------------------------------------------------------------------------

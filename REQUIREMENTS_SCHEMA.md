@@ -155,7 +155,8 @@ Use for "any two of the following:", "three others from …", etc. Generalizes `
 - `{"type": "discipline", "prefixes": ["GER"], "atLeast": 7}` — at least 7 courses with a GER prefix.
 - `{"type": "discipline", "atMost": 2}` — no more than 2 in any single discipline.
 - `{"type": "discipline", "distinctAtLeast": 3}` — courses drawn from at least 3 different disciplines.
-- `{"type": "from", "codes": [...]}` — explicitly eligible pool.
+ - `{"type": "discipline", "sameDiscipline": true}` — every chosen course shares at least one common discipline (e.g. a 2-unit World-Language sequence in the *same* language).
+ - `{"type": "from", "codes": [...]}` — explicitly eligible pool.
 - `{"type": "from", "codes": [...], "note": "may be taken in English"}` — pool with context.
 - `{"type": "exclude", "codes": [...]}` — explicitly ineligible.
 - `{"type": "max_from", "codes": [...], "atMost": 1, "note": "may be taken in English"}` — no more than `atMost` of the chosen courses may come from this set (a cap, not a filter).

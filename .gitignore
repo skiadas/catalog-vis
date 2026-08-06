@@ -21,3 +21,8 @@ venv/
 
 # Logs
 *.log
+
+# Generated catalog audit report (rebuilt by audit_catalog.py + md_to_html.py)
+catalog_issues.json
+catalog_issues.md
+catalog_issues.html
