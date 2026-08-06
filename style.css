@@ -1030,6 +1030,67 @@ body {
   color: var(--text-muted);
 }
 
+.course-picker-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 420px;
+}
+
+.course-picker-wrap .search-input {
+  width: 100%;
+  flex: none;
+}
+
+.course-picker-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.course-picker-option {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 13px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.course-picker-option:hover,
+.course-picker-option.active {
+  background: var(--primary-light);
+}
+
+.course-picker-option .planner-pick-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-picker-empty {
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.conflict-course-name {
+  margin-left: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 /* Day view */
 .day-slot-card {
   background: var(--surface);

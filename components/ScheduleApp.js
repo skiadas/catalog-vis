@@ -6,6 +6,7 @@ import {
   selectedDepartments,
   selectedInstructors,
   filterMode,
+  allCourses,
 } from '../lib/store.js'
 import {
   departmentsInSchedule,
@@ -31,6 +32,28 @@ export default {
       return Object.keys(schedule.value.byCourse).sort()
     })
     const selectedCode = computed(() => route.value.params.code || '')
+
+    const courseQuery = ref('')
+    const courseOpen = ref(false)
+    const courseResults = computed(() => {
+      const q = courseQuery.value.trim().toLowerCase()
+      const qn = q.replace(/\s+/g, '')
+      let list = Object.keys(schedule.value?.byCourse || {}).sort()
+      if (q) {
+        list = list.filter(
+          (code) =>
+            code.replace(/\s+/g, '').toLowerCase().includes(qn) ||
+            (allCourses.value[code]?.course_name || '').toLowerCase().includes(q),
+        )
+      }
+      return list
+    })
+    const courseName = (code) => (allCourses.value[code] ? allCourses.value[code].course_name : '')
+    const pickCourse = (code) => {
+      courseQuery.value = ''
+      courseOpen.value = false
+      goScheduleCourse(code)
+    }
 
     const showHelp = ref(false)
     const toggleHelp = () => {
@@ -61,6 +84,11 @@ export default {
       view,
       sortedCourses,
       selectedCode,
+      courseQuery,
+      courseOpen,
+      courseResults,
+      courseName,
+      pickCourse,
       schedule,
       scheduleOfferings,
       selectedDepartments,
@@ -124,16 +152,31 @@ export default {
         </div>
 
         <div class="course-picker" v-if="view === 'course'">
-          <label for="schedule-course-select">Course:</label>
-          <select
-            id="schedule-course-select"
-            class="search-input"
-            style="max-width:220px; flex:0 0 auto;"
-            :value="selectedCode"
-            @change="goScheduleCourse($event.target.value)"
-          >
-            <option v-for="c in sortedCourses" :key="c" :value="c">{{ c }}</option>
-          </select>
+          <label for="schedule-course-search">Course:</label>
+          <div class="course-picker-wrap">
+            <input
+              id="schedule-course-search"
+              class="search-input"
+              type="search"
+              placeholder="Search code or name…"
+              v-model="courseQuery"
+              @focus="courseOpen = true"
+              @blur="courseOpen = false"
+            />
+            <div v-if="courseOpen" class="course-picker-dropdown">
+              <button
+                v-for="code in courseResults"
+                :key="code"
+                class="course-picker-option"
+                :class="{ active: code === selectedCode }"
+                @mousedown.prevent="pickCourse(code)"
+              >
+                <span class="planner-pick-code">{{ code }}</span>
+                <span class="planner-pick-name">{{ courseName(code) }}</span>
+              </button>
+              <div v-if="!courseResults.length" class="course-picker-empty">No courses match.</div>
+            </div>
+          </div>
         </div>
       </div>
 

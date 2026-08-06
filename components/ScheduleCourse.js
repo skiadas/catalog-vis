@@ -17,6 +17,8 @@ export default {
       schedule.value && code.value ? conflictsForCourse(code.value, schedule.value) : [],
     )
     const catalog = computed(() => (allCourses.value && code.value ? allCourses.value[code.value] : null))
+    const nameFor = (courseCode) =>
+      allCourses.value[courseCode] ? allCourses.value[courseCode].course_name : ''
     return {
       code,
       sections,
@@ -25,6 +27,7 @@ export default {
       scheduleOfferings,
       allCourses,
       catalog,
+      nameFor,
       formatTime,
       goScheduleCourse,
       goScheduleSlot,
@@ -56,14 +59,12 @@ export default {
           <div class="section-title">Conflicts ({{ conflicts.length }})</div>
           <div v-if="!conflicts.length" class="empty-state"><p>No student-side time conflicts for this course.</p></div>
           <table class="courses-table" v-else>
-            <thead><tr><th>Course</th><th>Sections</th><th>Conflicting times</th></tr></thead>
+            <thead><tr><th>Course</th><th>Conflicting times</th></tr></thead>
             <tbody>
               <tr v-for="c in conflicts" :key="c">
-                <td><span class="course-code-cell" @click="goScheduleCourse(c)">{{ c }}</span></td>
                 <td>
-                  <template v-for="(sec, i) in schedule.byCourse[c]" :key="sec.o.section">
-                    {{ sec.o.section }}<template v-if="i < schedule.byCourse[c].length - 1">, </template>
-                  </template>
+                  <span class="course-code-cell" @click="goScheduleCourse(c)">{{ c }}</span>
+                  <span class="conflict-course-name">{{ nameFor(c) }}</span>
                 </td>
                 <td>
                   <span
