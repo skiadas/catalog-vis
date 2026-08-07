@@ -33,6 +33,7 @@ import {
   colorForInstructor,
   colorForSchedule,
   compareCodes,
+  compareItems,
 } from '../lib/schedule.js'
 import ScheduleGrid from './ScheduleGrid.js'
 import ScheduleDay from './ScheduleDay.js'
@@ -125,6 +126,43 @@ export default {
     const duplicateAndEdit = (id) => {
       const newId = duplicateSchedule(id)
       if (newId) enterEdit(newId)
+    }
+
+    // CSV escaping: quote cells containing commas, quotes, or newlines.
+    const csvCell = (value) => {
+      const s = String(value ?? '')
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+    }
+    // Downloads one row per course offering across all selected (visible)
+    // schedules: schedule name, course code+section, course name, instructor,
+    // abbreviated days, and time. Offerings are ordered alphabetically by
+    // prefix, then number, then section. With a single visible schedule the
+    // file is named after that schedule.
+    const downloadCsv = () => {
+      const rows = [['Schedule', 'Course', 'Course name', 'Instructor', 'Days', 'Time']]
+      for (const s of visibleSchedules.value) {
+        const offerings = [...s.offerings].sort((a, b) => compareItems({ o: a }, { o: b }))
+        for (const o of offerings) {
+          const code = `${o.prefix} ${o.number}`
+          rows.push([
+            s.name,
+            `${o.prefix} ${o.number} ${o.section}`,
+            allCourses.value[code]?.course_name || '',
+            o.instructor || '',
+            o.days || '',
+            o.time || '',
+          ])
+        }
+      }
+      const csv = rows.map((r) => r.map(csvCell).join(',')).join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const only = visibleSchedules.value.length === 1 ? visibleSchedules.value[0].name : null
+      a.download = only ? `${only}.csv` : 'schedules.csv'
+      a.click()
+      URL.revokeObjectURL(url)
     }
 
     const editingId = editingScheduleId
@@ -252,6 +290,7 @@ export default {
       doCreate,
       removeSchedule,
       duplicateAndEdit,
+      downloadCsv,
       colorForSchedule,
       depts,
       instructors,
@@ -334,6 +373,13 @@ export default {
                 : 'Select a schedule to color it'"
             @click="setColorSchedules(!colorSchedules)"
           >{{ selectedScheduleIds.length > 1 ? 'Color by schedule' : 'See individual courses' }}</button>
+          <button
+            v-if="selectedScheduleIds.length"
+            class="filter-btn"
+            title="Download a CSV of every course in the visible schedules"
+            :disabled="!visibleSchedules.length"
+            @click="downloadCsv"
+          >Download CSV</button>
           <button v-if="!selectedScheduleIds.length" class="filter-clear" @click="showSchedules = true">No schedule selected — pick one</button>
         </div>
 
