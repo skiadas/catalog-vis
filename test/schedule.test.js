@@ -107,13 +107,19 @@ test('rescheduleDays: same group, different day swaps the dragged day', () => {
 })
 
 test('moveOfferingSmart reschedules using the drag context', () => {
-  const offerings = [{ prefix: 'CS', number: '101', section: 'A', instructor: 'Vosmeier', days: 'MW', time: '8:00-9:10' }]
-  const next = moveOfferingSmart(offerings, { prefix: 'CS', number: '101', section: 'A' }, {
-    fromDay: 'M',
-    toDay: 'F',
-    group: 'MWF',
-    time: '9:20-10:30',
-  })
+  const offerings = [
+    { prefix: 'CS', number: '101', section: 'A', instructor: 'Vosmeier', days: 'MW', time: '8:00-9:10' },
+  ]
+  const next = moveOfferingSmart(
+    offerings,
+    { prefix: 'CS', number: '101', section: 'A' },
+    {
+      fromDay: 'M',
+      toDay: 'F',
+      group: 'MWF',
+      time: '9:20-10:30',
+    },
+  )
   assert.notEqual(next, offerings)
   assert.equal(next[0].days, 'WF')
   assert.equal(next[0].time, '9:20-10:30')
@@ -124,12 +130,16 @@ test('moveOfferingSmart reschedules using the drag context', () => {
 test('moveOfferingSmart returns the same array when nothing matches', () => {
   const offerings = [{ prefix: 'CS', number: '101', section: 'A', days: 'MW', time: '8:00-9:10' }]
   assert.equal(
-    moveOfferingSmart(offerings, { prefix: 'BIO', number: '161', section: 'A' }, {
-      fromDay: 'M',
-      toDay: 'T',
-      group: 'TR',
-      time: '8:00-9:45',
-    }),
+    moveOfferingSmart(
+      offerings,
+      { prefix: 'BIO', number: '161', section: 'A' },
+      {
+        fromDay: 'M',
+        toDay: 'T',
+        group: 'TR',
+        time: '8:00-9:45',
+      },
+    ),
     offerings,
   )
 })
