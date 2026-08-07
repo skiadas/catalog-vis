@@ -20,7 +20,7 @@ A deployable static Vue 3 SPA that browses Hanover College's 55 academic program
 | `md_to_html.py` / `catalog_issues.css` | Render `catalog_issues.md` into a self-contained, styled `catalog_issues.html` (pandoc + CSS) for sharing with admins |
 | `generate_schedule.py` | Generates a synthetic schedule CSV from `majors.json` faculty (deterministic, seeded) |
 | `merge_classics.py` | One-off migration: merge the two Classics majors into a single "Classical Studies" department exposing both majors (keys `major`/`major_2`/`minor`); applied |
-| `sample-schedule.csv` | Schedule data parsed in the browser (dept-prefix,course-number,section,instructor,days,times) |
+| `sample-schedule.csv` | Seed schedule parsed in the browser (dept-prefix,course-number,section,instructor,days,times); seeds the initial schedule collection |
 | `index.html` | Vue 3 SPA entry point (CDN-loaded, type="module") |
 | `app.js` | App shell + mount point + global component registration |
 | `lib/store.js` | Shared reactive state (programs, courses, filters, schedule) |
@@ -155,11 +155,34 @@ Outputs `catalog_issues.json` (typed rows) and `catalog_issues.md` (triage table
 
 ### 5. Schedule Generation (`generate_schedule.py`)
 
-Produces `sample-schedule.csv` from `majors.json` faculty:
-- Maps each `course_prefix` to its faculty pool (including interdisciplinary programs whose courses carry those prefixes)
-- Samples ~30% of eligible courses (seeded with `random.seed(42)` for determinism)
-- Assigns instructors by fewest-load; no instructor double-booked within a slot; no two sections of the same course in the same slot
-- Writes `dept-prefix,course-number,section,instructor,days,times`
+Produces the single synthetic seed schedule from `majors.json` faculty:
+- `sample-schedule.csv`: ~30% of eligible courses (seeded with `random.seed(42)`
+  for determinism)
+- Maps `course_prefix` → faculty pool (including interdisciplinary programs whose
+  courses carry those prefixes); assigns instructors by fewest-load; no instructor
+  double-booked within a slot; no two sections of the same course in the same
+  slot; writes `dept-prefix,course-number,section,instructor,days,times`
+
+This is the seed file for the schedule **collection** in `lib/store.js`: on the
+first visit the browser parses it and stores it in localStorage
+(`major-vis.schedules`), with the set of displayed schedules persisted separately
+(`major-vis.schedule.selected`). A fresh user sees **only the Sample schedule**
+(``base``, the pre-existing single schedule) selected by default. Any subset of
+schedules may be shown at once.
+
+Users generate additional schedules directly in the browser from the schedule
+page ("Your schedules" → "New schedule"). Generation lives in `lib/generate.js`
+(`buildFacultyAndEligible` + `makeSchedule`), mirroring the Python generator: a
+`random` schedule samples ~30% of eligible courses across all departments, a
+`dept` schedule contains exclusively one department's courses (~40%), and an
+`empty` schedule starts with no courses (built by hand via edit mode). The
+collection supports add (`addSchedule`), duplicate (`duplicateSchedule`, deep-copies offerings under a
+`<name> (copy)` label, auto-selects, and returns the new id), delete
+(`deleteSchedule`), rename (`renameSchedule`), and select (`toggleSchedule`) in
+`lib/store.js`, all persisted to localStorage. The edited schedule's name is
+editable inline in the edit-mode bar (`nameDraft` + `commitRename` in
+`components/ScheduleApp.js`), and a duplicated schedule opens directly in edit
+mode (`duplicateAndEdit`).
 
 ### 6. Reprocessing Requirements (for future sessions)
 
@@ -198,6 +221,9 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 - Requirements planner: pure evaluator (`lib/planner.js`), a dedicated `#/planner` view with add/remove major+minor tracks, per-track audits + "still need" gaps, and a global course picker (session-only taken-courses)
 - Schedule generator produces a deterministic synthetic `sample-schedule.csv`
 - Schedule SPA: grid, day, slot, course, and instructor views with dept/instructor filters, conflicts, and shared `WeeklyCalendar`
+- Schedule collection: multiple named schedules (seeded with just the Sample schedule) in localStorage, selectable in any combination; the "Color by schedule"/"See individual courses" toggle (`colorSchedules` in `lib/store.js`, off by default) works whenever ≥1 schedule is shown and no dept/instructor filter is active (`buildVisual` in `lib/schedule.js`), coloring every course by its schedule — even for a single schedule this shows the actual course list instead of a count summary
+- Schedule edit mode: any schedule can be edited (`editingScheduleId` in `lib/store.js`, entered via the "Edit" action on a schedule row in "Your schedules", with a "Done" bar while active) even while other schedules stay visible; the edited schedule's courses become draggable on the grid and day views (dropped onto one of the 10 standard slots, 6 MWF + 4 TR) — that's a resolved offering whose `days`/`time` are rewritten in place through `moveOffering`/`moveOfferingSmart` (pure, in `lib/schedule.js`) and persisted. Drags are smart about day subsets (`rescheduleDays`): moving to a different day group adopts that group, moving to a different time in the same group retains the course's days, and dragging a specific day onto another day in the same group swaps that day
+- Course edit dialog (`ScheduleCourseEdit.js`): clicking an editable course on the grid, day, or slot view opens a modal (rendered at the `ScheduleApp` root so it works across all schedule views) to rewrite its offering — instructor (department list, or "All instructors" toggle, or none), section letter, and a free-form time placement (any combination of M/T/W/R/F days across one of the 10 standard time bands, e.g. MW 8:00-9:10) — persisted via `updateOffering`/`updateOfferingInSchedule`. The dialog also has a **Remove course** action (`removeCourseFromSchedule` in `lib/store.js`). The offering being edited is shared state `courseEditTarget` (in `lib/store.js`), so the edit bar's **＋ Add course** flow can open the same dialog: `addCourseToSchedule` picks from a searchable list of every catalog course (code + full name), appends it on the default slot (first MWF band) with the next free section letter via `addOfferingToSchedule`/`nextSectionLetter`, and opens its editor for immediate customization. Editable course pills (`CoursePill.js` with `editable`/`draggable` props) show an edit button and drag handle in the day and slot zoom views
 - "Classical Studies" one department exposing both majors + the minor (keys `major`/`major_2`/`minor`) via `merge_classics.py`
 - `extract_core.py` codifies the core curriculum into `core_requirements.json` (planner-shaped) and auto-reports catalog gaps
 - `audit_catalog.py` cross-checks the issue classes (CAT1 modeled-but-not-indexed, CAT2 listed-but-not-designated, CAT3 designated-but-not-listed, CAT4 required-but-unmodeled, CAT5 source-disagreement with similarity+severity, CAT6 designation-typo, CAT7 presence-disagreement) and writes `catalog_issues.{json,md}` for triage
@@ -215,7 +241,7 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 
 - **Re-scrape**: `python3 scrape_catalog.py` (updates `majors.json`)
 - **Regenerate requirements**: Use LLM with prompt from `codify_requirements.py` + schema from `REQUIREMENTS_SCHEMA.md`
-- **Regenerate schedule**: `python3 generate_schedule.py` (updates `sample-schedule.csv`; deterministic with seed 42)
+- **Regenerate schedule**: `python3 generate_schedule.py` (updates `sample-schedule.csv`; deterministic seed)
 - **Regenerate core curriculum**: `python3 extract_core.py` (updates `core_requirements.json`; prints the CCR/ACE vs catalog gap report)
 - **Audit catalog**: `python3 audit_catalog.py` (updates `catalog_issues.json`/`.md`)
 - **Render HTML report**: `python3 md_to_html.py` (pandoc + `catalog_issues.css` → self-contained `catalog_issues.html` with color-coded CAT5 severity / CAT7 side badges; use the browser copy-paste to drop the tables into an email for admins)

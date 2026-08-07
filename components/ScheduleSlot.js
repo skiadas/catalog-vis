@@ -1,6 +1,23 @@
 import { route } from '../lib/router.js'
-import { WEEKDAYS, WEEKDAY_NAMES, formatTime, slotKey, buildFilter, daySlotTimes } from '../lib/schedule.js'
-import { schedule, selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
+import {
+  WEEKDAYS,
+  WEEKDAY_NAMES,
+  formatTime,
+  slotKey,
+  buildVisual,
+  colorForSchedule,
+  daySlotTimes,
+} from '../lib/schedule.js'
+import {
+  schedule,
+  selectedDepartments,
+  selectedInstructors,
+  filterMode,
+  selectedScheduleIds,
+  colorSchedules,
+  editingScheduleId,
+  openCourseEdit,
+} from '../lib/store.js'
 import { goScheduleCourse, goScheduleDay, goScheduleSlot } from '../lib/router.js'
 import CoursePill from './CoursePill.js'
 
@@ -12,9 +29,22 @@ export default {
   setup() {
     const day = computed(() => route.value.params.day)
     const time = computed(() => route.value.params.time)
-    const filter = computed(() =>
-      buildFilter(filterMode.value, selectedDepartments.value, selectedInstructors.value),
-    )
+
+    // In edit mode the filter is overridden (like the grid) so the edited
+    // schedule's courses are all visible, individually colored, and editable.
+    const filter = computed(() => {
+      if (editingScheduleId.value) {
+        return { active: true, matches: () => true, color: (it) => colorForSchedule(it.sid) }
+      }
+      return buildVisual(
+        filterMode.value,
+        selectedDepartments.value,
+        selectedInstructors.value,
+        selectedScheduleIds.value,
+        colorSchedules.value,
+      )
+    })
+
     const items = computed(() => {
       if (!schedule.value) return []
       let list = schedule.value.bySlot[slotKey(day.value, time.value)] || []
@@ -45,6 +75,7 @@ export default {
       times.value.length
         ? goScheduleSlot(day.value, times.value[(timeIndex.value + 1) % times.value.length])
         : null
+    const isEditable = (it) => editingScheduleId.value != null && it.sid === editingScheduleId.value
     return {
       day,
       time,
@@ -60,6 +91,8 @@ export default {
       formatTime,
       goScheduleCourse,
       goScheduleDay,
+      isEditable,
+      openCourseEdit,
     }
   },
   template: `
@@ -82,6 +115,8 @@ export default {
           :item="it"
           :filter-active="filter.active"
           :color="filter.color(it)"
+          :editable="isEditable(it)"
+          @edit="openCourseEdit(it)"
         />
       </div>
     </div>

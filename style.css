@@ -85,6 +85,25 @@ body {
   gap: 4px;
 }
 
+.schedule-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-type-divider {
+  width: 1px;
+  height: 26px;
+  background: var(--border);
+}
+
+.schedule-type-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 .filter-btn {
   padding: 10px 16px;
   border: 1px solid var(--border);
@@ -105,6 +124,28 @@ body {
 .filter-btn:not(.active):hover {
   background: var(--primary-light);
   border-color: var(--accent);
+}
+
+.filter-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.filter-btn:disabled:not(.active):hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.filter-btn.primary {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.filter-btn.primary:hover {
+  background: var(--primary-dark, var(--primary));
 }
 
 .program-grid {
@@ -466,6 +507,63 @@ body {
 
 .slot-pill.filter-colored:hover {
   background: rgba(27, 73, 101, 0.9);
+}
+
+/* Editable pills (edit mode): draggable affordance + an edit button */
+.slot-pill.editable {
+  cursor: grab;
+}
+
+.slot-pill.editable:active {
+  cursor: grabbing;
+}
+
+.slot-pill-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: -2px -4px -2px 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.slot-pill-edit:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.slot-pill:not(.filter-colored) .slot-pill-edit {
+  background: var(--surface);
+  color: var(--primary);
+}
+
+.slot-pill:not(.filter-colored) .slot-pill-edit:hover {
+  background: var(--primary);
+  color: white;
+}
+
+/* Drop highlight for the day view's slot cards while dragging a course over them */
+.day-slot-card.drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(98, 182, 203, 0.25);
+}
+
+.day-slot-card.drag-over .day-slot-head {
+  background: var(--accent);
+}
+
+.day-slot-card.drag-over .day-slot-head .day-slot-time {
+  color: white;
 }
 
 .course-prereq {
@@ -1102,6 +1200,44 @@ body {
   font-style: italic;
 }
 
+/* Add-a-course modal (edit mode) */
+.schedule-add-search {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.schedule-add-list {
+  max-height: 40vh;
+  min-height: 80px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.schedule-add-option {
+  border-bottom: 1px solid var(--border);
+}
+
+.schedule-add-option:last-child {
+  border-bottom: none;
+}
+
+.remove-course-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #c62828;
+  border-color: rgba(198, 40, 40, 0.5);
+}
+
+.remove-course-btn:hover {
+  background: rgba(198, 40, 40, 0.08);
+}
+
+.controls-spacer {
+  flex: 1;
+}
+
 .conflict-course-name {
   margin-left: 6px;
   font-size: 13px;
@@ -1311,6 +1447,40 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
+/* Drop zones that accept a dragged course in edit mode. Sits above (behind) no
+   block bands, so it never overlaps a rendered course block. */
+.cal-dropzone {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  z-index: 0;
+  border-radius: 6px;
+  border: 1px dashed transparent;
+  background: transparent;
+  cursor: copy;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.cal-dropzone:hover,
+.cal-dropzone.over {
+  background: rgba(98, 182, 203, 0.12);
+  border-color: #1b4965;
+}
+
+.filter-offering.draggable {
+  cursor: grab;
+}
+
+.filter-offering.draggable:active {
+  cursor: grabbing;
+}
+
+.cal-block.over {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
 .cal-block.teach {
   background: rgba(27, 73, 101, 0.82);
   color: white;
@@ -1360,7 +1530,10 @@ body {
 
 .filter-offering {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
   line-height: 1.15;
   font-size: 10px;
   font-weight: 600;
@@ -1371,6 +1544,34 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.filter-offering-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.filter-offering-edit {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.filter-offering-edit:hover {
+  background: rgba(255, 255, 255, 0.55);
 }
 
 .filter-offering:hover {
@@ -1427,6 +1628,349 @@ body {
 
 .filter-clear:hover {
   text-decoration: underline;
+}
+
+.schedule-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.schedule-edit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: var(--primary-light);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.schedule-edit-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.schedule-edit-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-right: auto;
+}
+
+.schedule-edit-bar .filter-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+.schedule-edit-name {
+  font: inherit;
+  font-weight: 700;
+  color: var(--primary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 1px 5px;
+  max-width: 240px;
+}
+
+.schedule-edit-name:hover,
+.schedule-edit-name:focus {
+  border-color: var(--border);
+  background: var(--surface);
+  outline: none;
+}
+
+/* Course-edit modal: time-slot picker with per-group day toggles */
+.slot-time-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slot-time-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.slot-time-group-days {
+  flex: 0 0 auto;
+  width: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.day-chip {
+  width: 26px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.day-chip:hover {
+  border-color: var(--accent);
+  color: var(--primary);
+}
+
+.day-chip.on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.day-chip:disabled,
+.day-chip.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.day-chip:disabled:hover,
+.day-chip.disabled:hover {
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.slot-time-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.slot-time-btn {
+  padding: 6px 10px;
+  font-size: 11px;
+  border-radius: 8px;
+}
+
+.schedule-picker-count {
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+.schedule-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  padding: 3px 6px 3px 9px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.schedule-pill:hover {
+  opacity: 0.85;
+}
+
+.schedule-color-toggle {
+  align-self: center;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  line-height: 1.2;
+}
+
+.schedule-pill .schedule-pill-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-pill-hide {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.25);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+}
+
+.schedule-pill-edit {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.25);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+}
+
+.schedule-pill-edit:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.schedule-pill-hide:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.schedule-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.schedule-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.schedule-manage-search {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.schedule-manage-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 12px;
+}
+
+.schedule-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.schedule-manage-row .schedule-swatch {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  padding: 0;
+}
+
+.schedule-manage-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule-manage-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.schedule-manage-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.schedule-manage-eye,
+.schedule-manage-icon,
+.schedule-manage-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.schedule-manage-icon {
+  color: var(--text-muted);
+  background: var(--surface-hover, var(--surface));
+}
+
+.schedule-manage-icon:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.schedule-manage-icon.active {
+  color: var(--primary);
+}
+
+.schedule-manage-eye {
+  color: var(--text-muted);
+  background: var(--surface-hover, var(--surface));
+}
+
+.schedule-manage-eye:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.schedule-manage-eye.on {
+  color: var(--primary);
+}
+
+.schedule-manage-eye.on:hover {
+  color: #c62828;
+}
+
+.schedule-manage-del {
+  color: #c62828;
+  background: none;
+}
+
+.schedule-manage-del:hover {
+  background: #c62828;
+  color: #ffffff;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
 }
 
 /* Schedule help pop-up */
