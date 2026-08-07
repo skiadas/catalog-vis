@@ -239,6 +239,16 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 - Cross-listing is resolved in the planner: `majors.json` carries a global `catalog` (all API courses, incl. codes that appear in no single program's list, e.g. `HF 101`, `SMGT 332`, `HFA 076`), and `expandCode()` splits slash codes (`ENG/COM 251` → `ENG 251`/`COM 251`) and applies prefix aliases (`GNDR` → `GNDS`). `lib/store.js` seeds `allCourses` from `catalog` first, then per-program details.
 - Courses that a requirement (major or core) references but that have no description anywhere in our data are surfaced as **CAT4** in `catalog_issues.md` (currently `LAT 471`/`LAT 499`, plus a handful the new geology/cross-listed codes resolve to) — genuine gaps at the source catalog or missing from the `get_courses` API, not a planner bug. A designation is a known area-code token in a clause carrying a designation verb, so prerequisite prose and negated claims never count.
 
+## Development Workflow
+
+- **Commit often, in small logical units.** Finish a feature (or a coherent slice of one) and commit it before moving on. Never let unrelated work pile up in one changeset — a single feature should be one commit, not half a dozen features in one giant blob. If you notice uncommitted work growing across several distinct features, stop and commit them separately before continuing.
+- **Committing and verifying are part of completing a task.** Creating a commit (plus linting and tests passing) is the expected endpoint of any task. Run the same checks CI runs and make sure they pass *before* you commit:
+  - `npx prettier@3.3.3 --write app.js index.html lib/*.js components/*.js` then verify nothing else is left unformatted with `npx prettier@3.3.3 --check "**/*.{js,html,css}"`
+  - `cd test && node --test` (all unit tests must pass)
+  - Python: `python3 -m black <changed .py files>` then `python3 -m py_compile <changed .py files>`
+- **Amend instead of adding fixup commits.** If the latest commit has not been pushed yet and the current task is fixing issues introduced by that commit (e.g. a failed CI formatting check), amend that commit rather than creating a follow-up commit.
+- **Never push unless the user asks.** Always inspect `git status`/`git diff` before staging so only intended files are committed.
+
 ## Common Tasks
 
 - **Re-scrape**: `python3 scrape_catalog.py` (updates `majors.json`)
