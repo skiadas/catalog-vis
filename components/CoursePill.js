@@ -1,5 +1,6 @@
 import { goScheduleCourse, goScheduleInstructor } from '../lib/router.js'
 import { allCourses } from '../lib/store.js'
+import { buildDragPayload } from '../lib/scheduleDrag.js'
 
 const { computed } = Vue
 
@@ -19,16 +20,7 @@ export default {
       allCourses.value[props.item.code] ? allCourses.value[props.item.code].course_name : '',
     )
     const onDragStart = (e) => {
-      e.dataTransfer.setData(
-        'text/plain',
-        JSON.stringify({
-          sid: props.item.sid,
-          prefix: props.item.o.prefix,
-          number: props.item.o.number,
-          section: props.item.o.section,
-          fromDay: props.dragDay,
-        }),
-      )
+      e.dataTransfer.setData('text/plain', buildDragPayload(props.item, props.dragDay))
       e.dataTransfer.effectAllowed = 'move'
     }
     const onEdit = () => emit('edit')

@@ -8,21 +8,20 @@ import {
   toMinutes,
   colorForSchedule,
 } from '../lib/schedule.js'
+import { selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
 import {
   schedule,
-  selectedDepartments,
-  selectedInstructors,
-  filterMode,
   selectedScheduleIds,
   colorSchedules,
   editingScheduleId,
   moveOffering,
   openCourseEdit,
-} from '../lib/store.js'
+} from '../lib/schedules.js'
 import { goScheduleSlot, goScheduleDay, goScheduleCourse } from '../lib/router.js'
+import { useScheduleDrag } from '../lib/scheduleDrag.js'
 import WeeklyCalendar from './WeeklyCalendar.js'
 
-const { computed, ref } = Vue
+const { computed } = Vue
 
 // The day-group a weekday column belongs to: MWF days are M/W/F, TR days are T/R.
 function dayGroup(day) {
@@ -72,8 +71,11 @@ export default {
       }))
 
     // A course belonging to the schedule being edited is draggable.
-    const isEditable = (it) => editingScheduleId.value != null && it.sid === editingScheduleId.value
     const editingId = editingScheduleId
+    const { dragOver, isEditable, onDragStart, zoneOver, zoneLeave, zoneDrop } = useScheduleDrag(
+      editingScheduleId,
+      moveOffering,
+    )
 
     // The 10 standard time slots per weekday are the drop targets. Bands already
     // occupied by a block get their drop handling on the block itself; the rest
@@ -102,50 +104,6 @@ export default {
           }
         })
     }
-
-    const dragPayloadFrom = (e) => {
-      try {
-        return JSON.parse(e.dataTransfer.getData('text/plain'))
-      } catch {
-        return null
-      }
-    }
-    const onDragStart = (e, it, day) => {
-      if (!isEditable(it)) return
-      e.dataTransfer.setData(
-        'text/plain',
-        JSON.stringify({
-          sid: it.sid,
-          prefix: it.o.prefix,
-          number: it.o.number,
-          section: it.o.section,
-          fromDay: day,
-        }),
-      )
-      e.dataTransfer.effectAllowed = 'move'
-    }
-    const zoneOver = (e, z) => {
-      e.preventDefault()
-      e.dataTransfer.dropEffect = 'move'
-      dragOver.value = z.key
-    }
-    const zoneLeave = () => {
-      dragOver.value = null
-    }
-    const zoneDrop = (e, z) => {
-      e.preventDefault()
-      dragOver.value = null
-      const p = dragPayloadFrom(e)
-      if (!p || p.sid !== editingScheduleId.value) return
-      moveOffering(p.sid, p.prefix, p.number, p.section, {
-        fromDay: p.fromDay,
-        toDay: z.day,
-        group: z.days,
-        time: z.time,
-      })
-    }
-
-    const dragOver = ref(null)
 
     return {
       formatTime,

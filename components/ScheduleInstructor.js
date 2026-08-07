@@ -1,5 +1,5 @@
 import { route } from '../lib/router.js'
-import { schedule } from '../lib/store.js'
+import { schedule } from '../lib/schedules.js'
 import { instructorConflicts, compareInstructors } from '../lib/schedule.js'
 import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../lib/router.js'
 import WeeklyCalendar from './WeeklyCalendar.js'

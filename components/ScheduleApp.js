@@ -1,19 +1,21 @@
 import { route } from '../lib/router.js'
 import { goScheduleGrid, goScheduleCourse, goScheduleInstructor } from '../lib/router.js'
 import {
-  schedule,
-  scheduleOfferings,
   selectedDepartments,
   selectedInstructors,
   filterMode,
   allCourses,
+  generateSchedule,
+} from '../lib/store.js'
+import {
+  schedule,
+  scheduleOfferings,
   schedules,
   selectedScheduleIds,
   toggleSchedule,
   deleteSchedule,
   renameSchedule,
   duplicateSchedule,
-  generateSchedule,
   colorSchedules,
   setColorSchedules,
   editingScheduleId,
@@ -23,7 +25,7 @@ import {
   openCourseEdit,
   courseEditTarget,
   closeCourseEdit,
-} from '../lib/store.js'
+} from '../lib/schedules.js'
 import {
   departmentsInSchedule,
   instructorsInSchedule,

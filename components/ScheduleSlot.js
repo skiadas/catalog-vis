@@ -8,16 +8,14 @@ import {
   colorForSchedule,
   daySlotTimes,
 } from '../lib/schedule.js'
+import { selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
 import {
   schedule,
-  selectedDepartments,
-  selectedInstructors,
-  filterMode,
   selectedScheduleIds,
   colorSchedules,
   editingScheduleId,
   openCourseEdit,
-} from '../lib/store.js'
+} from '../lib/schedules.js'
 import { goScheduleCourse, goScheduleDay, goScheduleSlot } from '../lib/router.js'
 import CoursePill from './CoursePill.js'
 

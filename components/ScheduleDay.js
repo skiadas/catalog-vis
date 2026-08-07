@@ -8,21 +8,20 @@ import {
   buildVisual,
   colorForSchedule,
 } from '../lib/schedule.js'
+import { selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
 import {
   schedule,
-  selectedDepartments,
-  selectedInstructors,
-  filterMode,
   selectedScheduleIds,
   colorSchedules,
   editingScheduleId,
   moveOffering,
   openCourseEdit,
-} from '../lib/store.js'
+} from '../lib/schedules.js'
 import { goScheduleSlot, goScheduleCourse, goScheduleDay } from '../lib/router.js'
+import { useScheduleDrag } from '../lib/scheduleDrag.js'
 import CoursePill from './CoursePill.js'
 
-const { computed, ref } = Vue
+const { computed } = Vue
 
 export default {
   name: 'ScheduleDay',
@@ -55,7 +54,8 @@ export default {
       const out = []
       for (const block of SLOT_BLOCKS) {
         if (!block.label.includes(day.value)) continue
-        for (const slot of block.slots) out.push({ day: day.value, days: block.label, ...slot })
+        for (const slot of block.slots)
+          out.push({ key: slot.time, day: day.value, days: block.label, ...slot })
       }
       return out
     })
@@ -67,35 +67,10 @@ export default {
     const hasAny = computed(() => dayTimes.value.some((t) => itemsFor(t.time).length > 0))
 
     // Drag-and-drop between this day's slots (edit mode only).
-    const isEditable = (it) => editingScheduleId.value != null && it.sid === editingScheduleId.value
-    const dragOver = ref(null)
-    const dragPayloadFrom = (e) => {
-      try {
-        return JSON.parse(e.dataTransfer.getData('text/plain'))
-      } catch {
-        return null
-      }
-    }
-    const zoneOver = (e, t) => {
-      e.preventDefault()
-      e.dataTransfer.dropEffect = 'move'
-      dragOver.value = t.time
-    }
-    const zoneLeave = () => {
-      dragOver.value = null
-    }
-    const zoneDrop = (e, t) => {
-      e.preventDefault()
-      dragOver.value = null
-      const p = dragPayloadFrom(e)
-      if (!p || p.sid !== editingScheduleId.value) return
-      moveOffering(p.sid, p.prefix, p.number, p.section, {
-        fromDay: p.fromDay,
-        toDay: t.day,
-        group: t.days,
-        time: t.time,
-      })
-    }
+    const { dragOver, isEditable, zoneOver, zoneLeave, zoneDrop } = useScheduleDrag(
+      editingScheduleId,
+      moveOffering,
+    )
 
     return {
       day,
@@ -130,7 +105,7 @@ export default {
         v-for="t in dayTimes"
         :key="t.time"
         class="day-slot-card"
-        :class="{ 'drag-over': dragOver === t.time }"
+        :class="{ 'drag-over': dragOver === t.key }"
         @dragover="zoneOver($event, t)"
         @dragleave="zoneLeave"
         @drop="zoneDrop($event, t)"

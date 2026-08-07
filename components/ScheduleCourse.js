@@ -1,5 +1,5 @@
 import { route } from '../lib/router.js'
-import { schedule, scheduleOfferings } from '../lib/store.js'
+import { schedule, scheduleOfferings } from '../lib/schedules.js'
 import { allCourses } from '../lib/store.js'
 import { conflictsForCourse, formatTime } from '../lib/schedule.js'
 import { goScheduleCourse, goScheduleSlot } from '../lib/router.js'
