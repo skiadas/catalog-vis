@@ -384,6 +384,36 @@ test('evaluateProgram evaluates the full list', () => {
   assert.equal(out[1].sections[0].items[0].status, 'unknown')
 })
 
+test('independentSections lets one course satisfy multiple sections', () => {
+  // The core curriculum: ENG 172 counts for both LA and W1 independently.
+  const req = {
+    label: 'Core',
+    independentSections: true,
+    sections: [
+      { heading: 'LA', items: [{ type: 'course', code: 'ENG 251' }] },
+      { heading: 'W1', items: [{ type: 'course', code: 'ENG 251' }] },
+    ],
+  }
+  const out = evaluateRequirement(req, takenFrom(['ENG 251']), CATALOG)
+  assert.equal(out.sections[0].items[0].status, 'satisfied')
+  assert.equal(out.sections[1].items[0].status, 'satisfied')
+})
+
+test('without independentSections, one course counts for only one section', () => {
+  // Same two required courses across sections, but shared pool: ENG 251 can
+  // satisfy only the first, leaving the second unsatisfied.
+  const req = {
+    label: 'Shared',
+    sections: [
+      { heading: 'A', items: [{ type: 'course', code: 'ENG 251' }] },
+      { heading: 'B', items: [{ type: 'course', code: 'ENG 251' }] },
+    ],
+  }
+  const out = evaluateRequirement(req, takenFrom(['ENG 251']), CATALOG)
+  assert.equal(out.sections[0].items[0].status, 'satisfied')
+  assert.equal(out.sections[1].items[0].status, 'unsatisfied')
+})
+
 // ---------------------------------------------------------------------------
 // Within-track no double counting
 // ---------------------------------------------------------------------------
