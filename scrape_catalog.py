@@ -86,6 +86,10 @@ def parse_requirement_block(strong_tag):
 
 
 def normalize_prefixes_in_text(text, known_prefixes):
+    # Uppercase department prefixes only when they head a course number
+    # (e.g. "bio 161" -> "BIO 161"). Deliberately requires a following digit so
+    # plain-English words that happen to match a prefix (his, id, ml, mat, soc,
+    # com, lat) are never rewritten.
     sorted_prefixes = sorted(known_prefixes, key=len, reverse=True)
     for prefix in sorted_prefixes:
         text = re.sub(
@@ -93,9 +97,6 @@ def normalize_prefixes_in_text(text, known_prefixes):
             lambda m, p=prefix: f'{p.upper()} {m.group(1)}',
             text,
             flags=re.IGNORECASE,
-        )
-        text = re.sub(
-            rf'\b{re.escape(prefix)}\s+', lambda m, p=prefix: f'{p.upper()} ', text, flags=re.IGNORECASE
         )
     return text
 
