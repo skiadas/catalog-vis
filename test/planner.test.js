@@ -13,7 +13,6 @@ import {
   planGaps,
   gapGroups,
   describeConstraints,
-  claimedCourses,
   audit,
   assignRequirement,
 } from '../lib/planner.js'
@@ -412,14 +411,8 @@ test('a required course cannot also fill the same track electives', () => {
   assert.equal(out2.sections[1].items[0].count, 1)
 })
 
-test('claimedCourses reserves a required course from the electives pool', () => {
-  const claimed = claimedCourses(CS_TRACK, takenFrom(['CS 220', 'CS 231']), CATALOG)
-  assert.deepEqual([...claimed], ['CS 220'])
-})
-
 test('gapGroups omits claimed courses from electives options', () => {
-  const claimed = claimedCourses(CS_TRACK, takenFrom(['CS 220']), CATALOG)
-  const groups = gapGroups(CS_TRACK.sections[1].items[0], takenFrom(['CS 220']), CATALOG, claimed)
+  const groups = gapGroups(CS_TRACK.sections[1].items[0], takenFrom(['CS 220']), CATALOG, new Set(['CS 220']))
   const electives = groups.find((g) => g.expandable)
   assert.ok(electives)
   assert.ok(!electives.codes.includes('CS 220'))

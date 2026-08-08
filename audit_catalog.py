@@ -449,7 +449,15 @@ def render_md(cat1, cat2, cat3, cat4, cat5, cat6, cat7):
         lines.append('| ' + ' | '.join(headers) + ' |')
         lines.append('|' + '|'.join(['---'] * len(headers)) + '|')
         for r in rows:
-            cells = [str(r.get(f, '')).replace('|', '\\|') for f in fields]
+            cells = []
+            for f in fields:
+                # CAT4 rows carry `area` for core requirements but `program` for
+                # majors; surface whichever is present under the "Area / Program"
+                # column.
+                value = r.get(f)
+                if value is None and f == 'area':
+                    value = r.get('program', '')
+                cells.append(str(value).replace('|', '\\|'))
             lines.append('| ' + ' | '.join(cells) + ' |')
         lines.append('')
 

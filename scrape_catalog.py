@@ -100,7 +100,7 @@ def normalize_prefixes_in_text(text, known_prefixes):
     return text
 
 
-def build_program_requirements(content, program_prefix, known_prefixes=None, program_name=None):
+def build_program_requirements(content, known_prefixes=None, program_name=None):
     requirements = {}
     key_counts = {}
     strong_tags = content.find_all('strong')
@@ -329,9 +329,7 @@ def main():
             # their program-page descriptions/designations are still captured.
             prefix = derive_prefix(course_map, name)
 
-        requirements = build_program_requirements(
-            content, prefix, known_prefixes=known_prefixes, program_name=name
-        )
+        requirements = build_program_requirements(content, known_prefixes=known_prefixes, program_name=name)
 
         program_courses = []
         if prefix:

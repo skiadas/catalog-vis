@@ -133,6 +133,16 @@ export default {
       const s = String(value ?? '')
       return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
     }
+    // Turns a schedule name into a safe download filename (strip path/quote
+    // characters, collapse whitespace), falling back to a generic name.
+    const csvFileName = (name) => {
+      const safe = String(name || '')
+        .replace(/[/\\:*?"<>|]/g, '-')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/[. ]+$/g, '')
+      return safe ? `${safe}.csv` : 'schedules.csv'
+    }
     // Downloads one row per course offering across all selected (visible)
     // schedules: schedule name, course code+section, course name, instructor,
     // abbreviated days, and time. Offerings are ordered alphabetically by
@@ -160,7 +170,7 @@ export default {
       const a = document.createElement('a')
       a.href = url
       const only = visibleSchedules.value.length === 1 ? visibleSchedules.value[0].name : null
-      a.download = only ? `${only}.csv` : 'schedules.csv'
+      a.download = only ? csvFileName(only) : 'schedules.csv'
       a.click()
       URL.revokeObjectURL(url)
     }
@@ -326,7 +336,7 @@ export default {
         </div>
 
         <div class="schedule-note">
-          These are made-up, illustrative schedules. They do not reflect actual course offerings or meeting times. Pick one or more to display at once — each selected schedule's courses are color-coded (unless a department/instructor filter is active).
+          These are made-up, illustrative schedules. They do not reflect actual course offerings or meeting times. Pick one or more to display at once; the "Color by schedule" toggle color-codes each schedule's courses unless a department/instructor filter is active.
         </div>
 
         <div class="schedule-picker">

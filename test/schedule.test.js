@@ -25,7 +25,6 @@ import {
   buildVisual,
   instructorsInSchedule,
   departmentsInSchedule,
-  moveOfferingInSchedule,
   moveOfferingSmart,
   rescheduleDays,
   updateOfferingInSchedule,
@@ -53,34 +52,6 @@ test('weekday constants', () => {
   assert.deepEqual(WEEKDAYS, ['M', 'T', 'W', 'R', 'F'])
   assert.equal(WEEKDAY_NAMES.M, 'Monday')
   assert.equal(WEEKDAY_NAMES.R, 'Thursday')
-})
-
-test('moveOfferingInSchedule reschedules a matched offering, returning a new array', () => {
-  const offerings = [
-    { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' },
-    { prefix: 'BIO', number: '161', section: 'A', days: 'MWF', time: '9:20-10:30' },
-  ]
-  const next = moveOfferingInSchedule(
-    offerings,
-    { prefix: 'CS', number: '101', section: 'A' },
-    'TR',
-    '10:00-11:45',
-  )
-  assert.notEqual(next, offerings)
-  // original is untouched
-  assert.equal(offerings[0].days, 'MWF')
-  // only the matched offering changed
-  assert.equal(next[0].days, 'TR')
-  assert.equal(next[0].time, '10:00-11:45')
-  assert.equal(next[1], offerings[1])
-})
-
-test('moveOfferingInSchedule returns the same array when the offering is missing', () => {
-  const offerings = [{ prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' }]
-  assert.equal(
-    moveOfferingInSchedule(offerings, { prefix: 'BIO', number: '161', section: 'A' }, 'TR', '8:00-9:45'),
-    offerings,
-  )
 })
 
 // ---------------------------------------------------------------------------
