@@ -159,9 +159,7 @@ def main():
         parsed = json.load(f)
     validate_parsed(parsed)
 
-    print(
-        f'OK: {len(data["programs"])} programs, ids unique + derived, codes/faculty normalized'
-    )
+    print(f'OK: {len(data["programs"])} programs, ids unique + derived, codes/faculty normalized')
 
 
 if __name__ == '__main__':

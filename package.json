@@ -3,6 +3,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
+    "test:data": "python3 test/test_data.py",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,html,css}\"",

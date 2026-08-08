@@ -237,7 +237,8 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 - **Committing and verifying are part of completing a task.** Creating a commit (plus linting and tests passing) is the expected endpoint of any task. Run the same checks CI runs and make sure they pass *before* you commit:
   - `npx prettier@3.3.3 --write app.js index.html lib/*.js components/*.js` then verify nothing else is left unformatted with `npx prettier@3.3.3 --check "**/*.{js,html,css}"`
   - `cd test && node --test` (all unit tests must pass)
-  - Python: `python3 -m black <changed .py files>` then `python3 -m py_compile <changed .py files>`
+  - `npm run test:data` (Python data-integrity checks, same command CI uses)
+  - Python: `python3 -m black .` then `python3 -m compileall -q -x "node_modules|/\.git/" .` (directory-wide, so new files are covered automatically)
 - **Amend instead of adding fixup commits.** If the latest commit has not been pushed yet and the current task is fixing issues introduced by that commit (e.g. a failed CI formatting check), amend that commit rather than creating a follow-up commit.
 - **Never push unless the user asks.** Always inspect `git status`/`git diff` before staging so only intended files are committed.
 
@@ -251,3 +252,4 @@ To regenerate `requirements_parsed.json` from `majors.json`:
 - **Serve locally**: `python3 -m http.server 8080` then open `http://localhost:8080`
 - **Format JS/HTML**: `npx prettier@3.3.3 --write app.js index.html lib/*.js components/*.js`
 - **Format Python**: `python3 -m black .`
+- **Run all tests**: `npm test` (JS unit tests) + `npm run test:data` (Python data-integrity checks); CI runs both plus `npm run lint` and `npm run format:check`
