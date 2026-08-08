@@ -1,4 +1,4 @@
-import { planSlots, takenSet, allCourses, moveCourse, removeCourse } from '../lib/store.js'
+import { planSlots, takenSet, allCourses, movePlanCourse, removePlanCourse } from '../lib/store.js'
 
 const { ref } = Vue
 
@@ -51,7 +51,7 @@ export default {
       dragOverKey.value = null
       try {
         const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-        if (data && data.code) moveCourse(data.code, toKey, data.from || null)
+        if (data && data.code) movePlanCourse(data.code, toKey, data.from || null)
       } catch {
         // Not one of our course chips; ignore.
       }
@@ -70,7 +70,7 @@ export default {
       onDragOver,
       onDragLeave,
       onDrop,
-      removeCourse,
+      removePlanCourse,
     }
   },
   template: `
@@ -92,7 +92,7 @@ export default {
             draggable="true"
             @dragstart="onDragStart($event, code, SHELF)"
             :title="title(code)"
-          >{{ code }}<button class="tl-remove" @click="removeCourse(code)" title="Remove from plan">✕</button></span>
+          >{{ code }}<button class="tl-remove" @click="removePlanCourse(code)" title="Remove from plan">✕</button></span>
         </div>
         <div v-else class="tl-empty">New courses land here — drag them into a term below.</div>
       </div>
@@ -113,7 +113,7 @@ export default {
             draggable="true"
             @dragstart="onDragStart($event, code, TRANSFER)"
             :title="title(code)"
-          >{{ code }}<button class="tl-remove" @click="removeCourse(code)" title="Remove from plan">✕</button></span>
+          >{{ code }}<button class="tl-remove" @click="removePlanCourse(code)" title="Remove from plan">✕</button></span>
         </div>
         <div v-else class="tl-empty">No transfer credits yet.</div>
       </div>
@@ -141,7 +141,7 @@ export default {
               draggable="true"
               @dragstart="onDragStart($event, code, y.key + t.key)"
               :title="title(code)"
-            >{{ code }}<button class="tl-remove" @click="removeCourse(code)" title="Remove from plan">✕</button></span>
+            >{{ code }}<button class="tl-remove" @click="removePlanCourse(code)" title="Remove from plan">✕</button></span>
           </div>
         </template>
       </div>

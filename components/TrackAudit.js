@@ -1,4 +1,4 @@
-import { allCourses, takenSet, placeCourse, removeCourse } from '../lib/store.js'
+import { allCourses, takenSet, placeCourse, removePlanCourse } from '../lib/store.js'
 import { evaluateProgram, audit, gapGroups, assignRequirement } from '../lib/planner.js'
 
 const { ref, computed } = Vue
@@ -68,7 +68,7 @@ export default {
     // Clicking a suggested course adds it to the unassigned shelf; clicking one
     // already in the plan removes it.
     function togglePlaced(code) {
-      if (takenSet.value.has(code)) removeCourse(code)
+      if (takenSet.value.has(code)) removePlanCourse(code)
       else placeCourse(code)
     }
 

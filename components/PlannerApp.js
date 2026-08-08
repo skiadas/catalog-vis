@@ -10,7 +10,7 @@ import {
   programTracks,
   removeTrack,
   placeCourse,
-  removeCourse,
+  removePlanCourse,
   plans,
   currentPlanId,
   currentName,
@@ -87,7 +87,7 @@ export default {
 
     // Clicking a course toggles it into/out of the plan (lands on the shelf).
     function togglePlaced(code) {
-      if (takenSet.value.has(code)) removeCourse(code)
+      if (takenSet.value.has(code)) removePlanCourse(code)
       else placeCourse(code)
     }
 
