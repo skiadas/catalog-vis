@@ -3,7 +3,7 @@
 Codify Hanover College course requirements into structured JSON.
 
 This script implements the LLM-based approach described in REQUIREMENTS_SCHEMA.md.
-It reads majors.json and produces requirements_parsed.json.
+It reads majors.json and emits LLM prompts (one per requirement). Running it refuses to overwrite requirements_parsed.json with prompt-only entries unless --force is given, since those lack the sections arrays the planner needs.
 
 For a future session to reproduce:
   1. Read this file and REQUIREMENTS_SCHEMA.md
@@ -13,6 +13,7 @@ For a future session to reproduce:
 """
 
 import json
+import sys
 
 PROMPT_TEMPLATE = """\
 You are codifying Hanover College course requirements into structured JSON.
@@ -53,7 +54,7 @@ Rules:
 - "or equivalent" after a course => note "or equivalent".
 - Section headings ("Biology courses", "Cognate courses") => split into separate sections.
 - Only use course codes that actually appear in the text. Do NOT hallucinate.
-- If you cannot cleanly codify something => {"type": "custom", "text": "..."}.
+- If you cannot cleanly codify something => {{"type": "custom", "text": "..."}}.
 
 Output ONLY JSON for the sections array matching the schema in REQUIREMENTS_SCHEMA.md.
 No wrapper, no explanation.
@@ -61,6 +62,7 @@ No wrapper, no explanation.
 
 
 def main():
+    force = '--force' in sys.argv[1:]
     with open('majors.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
 
@@ -98,6 +100,25 @@ def main():
         )
 
         print(f'{prog["name"]}: {len(reqs_out)} requirements')
+
+    # This script only emits LLM prompts; it does not fill the `sections`
+    # arrays the planner needs. Refuse to overwrite the real
+    # requirements_parsed.json (which has sections) unless --force is given, so
+    # an accidental run can't wipe the planner's data.
+    missing_sections = [
+        f'{p["id"]} / {r["label"]}'
+        for p in output['programs']
+        for r in p['requirements']
+        if 'sections' not in r
+    ]
+    if missing_sections and not force:
+        print(
+            f'\nRefusing to write requirements_parsed.json: {len(missing_sections)} '
+            f'requirement(s) have no "sections" array (this script only generates '
+            f'prompts). Rerun with --force to overwrite anyway.'
+        )
+        print('Missing sections (first 5):', missing_sections[:5])
+        sys.exit(1)
 
     with open('requirements_parsed.json', 'w', encoding='utf-8') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
