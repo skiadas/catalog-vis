@@ -157,6 +157,18 @@ def main():
     # Requirements model vocabulary integrity.
     with open(os.path.join(ROOT, 'requirements_parsed.json'), encoding='utf-8') as f:
         parsed = json.load(f)
+
+    # Planner track identity: each parsed requirement's label must slug to a
+    # unique track key (within its program), so the planner's label-based track
+    # mapping is stable.
+    def track_slug(label):
+        return re.sub(r'[^a-z0-9]+', '_', str(label or '').lower()).strip('_') or 'track'
+
+    for p in parsed['programs']:
+        slugs = [track_slug(req.get('label', '')) for req in p['requirements']]
+        dupes = [s for s in slugs if slugs.count(s) > 1]
+        assert not dupes, f'duplicate planner track slugs in {p["id"]}: {dupes}'
+
     validate_parsed(parsed)
 
     print(f'OK: {len(data["programs"])} programs, ids unique + derived, codes/faculty normalized')
