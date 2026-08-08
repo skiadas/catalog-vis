@@ -50,9 +50,14 @@ def main():
         }
     )
 
-    idx = data["programs"].index(arch)
-    end = data["programs"].index(lit)
-    data["programs"] = data["programs"][:idx] + [merged] + data["programs"][end + 1 :]
+    # Remove both original programs and insert the merged one, regardless of
+    # which appears first in the list (a naive `[:idx] + [merged] + [end+1:]`
+    # duplicates one of them when their order is reversed).
+    first = data["programs"].index(arch)
+    second = data["programs"].index(lit)
+    before = min(first, second)
+    after = max(first, second)
+    data["programs"] = data["programs"][:before] + [merged] + data["programs"][after + 1 :]
     data["total_programs"] = len(data["programs"])
 
     with open(majors_path, "w", encoding="utf-8") as f:
