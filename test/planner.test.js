@@ -419,6 +419,42 @@ test('gapGroups omits claimed courses from electives options', () => {
   assert.deepEqual(electives.codes, ['CS 150', 'CS 231', 'CS 340', 'CS 345'])
 })
 
+test('an excluded course cannot satisfy a nested any_of/each_of/some_of alternative', () => {
+  // A course already claimed by another node in the track must not satisfy a
+  // choice nested inside any_of / each_of / some_of.
+  const anyOf = {
+    type: 'any_of',
+    items: [
+      { type: 'course', code: 'CS 220' },
+      { type: 'course', code: 'CS 231' },
+    ],
+  }
+  assert.equal(satisfied(anyOf, ['CS 220'], CATALOG, ['CS 220']).status, 'unsatisfied')
+  assert.equal(satisfied(anyOf, ['CS 220'], CATALOG).status, 'satisfied')
+
+  const eachOf = {
+    type: 'each_of',
+    items: [
+      { type: 'course', code: 'CS 220' },
+      { type: 'course', code: 'CS 231' },
+    ],
+  }
+  assert.equal(satisfied(eachOf, ['CS 220', 'CS 231'], CATALOG, ['CS 220']).status, 'unsatisfied')
+  assert.equal(satisfied(eachOf, ['CS 220', 'CS 231'], CATALOG).status, 'satisfied')
+
+  const someOf = {
+    type: 'some_of',
+    min: 3,
+    items: [
+      { type: 'course', code: 'CS 220' },
+      { type: 'course', code: 'CS 231' },
+      { type: 'course', code: 'CS 340' },
+    ],
+  }
+  assert.equal(satisfied(someOf, ['CS 220', 'CS 231', 'CS 340'], CATALOG, ['CS 220']).status, 'unsatisfied')
+  assert.equal(satisfied(someOf, ['CS 220', 'CS 231', 'CS 340'], CATALOG).status, 'satisfied')
+})
+
 test('a course may count for requirements in different tracks', () => {
   const otherTrack = {
     label: 'CS minor',
