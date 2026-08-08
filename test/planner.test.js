@@ -514,6 +514,99 @@ test('gapGroups keeps a range alternative as its two parts', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Backtracking: a course is never permanently taken by an earlier node that a
+// later sibling needs, and electives don't starve later buckets.
+// ---------------------------------------------------------------------------
+
+test('some_of defers to a sibling that needs the same course', () => {
+  // some_of min 1 [CS 220, CS 231] followed by a required CS 220. The greedy
+  // first-fit would grab CS 220 for the some_of and leave the requirement
+  // unsatisfied; backtracking must assign CS 231 to the some_of instead.
+  const track = {
+    label: 'T',
+    sections: [
+      {
+        heading: 'S',
+        items: [
+          {
+            type: 'some_of',
+            min: 1,
+            items: [
+              { type: 'course', code: 'CS 220' },
+              { type: 'course', code: 'CS 231' },
+            ],
+          },
+          { type: 'course', code: 'CS 220' },
+        ],
+      },
+    ],
+  }
+  const assignment = assignRequirement(track, takenFrom(['CS 220', 'CS 231']), CATALOG)
+  assert.ok(
+    assignment.every((e) => e.ok),
+    'both nodes should be satisfiable',
+  )
+  const someOf = assignment[0]
+  const required = assignment[1]
+  // The some_of must not have taken CS 220; the required course gets it.
+  assert.deepEqual([...someOf.used], ['CS 231'])
+  assert.deepEqual([...required.used], ['CS 220'])
+})
+
+test('backtracking tries a later any_of alternative instead of failing', () => {
+  // any_of [CS 340, CS 345] then a required CS 340. The greedy choice would
+  // pick CS 340 for the any_of, leaving the requirement unmet.
+  const track = {
+    label: 'T',
+    sections: [
+      {
+        heading: 'S',
+        items: [
+          { type: 'any_of', codes: ['CS 340', 'CS 345'] },
+          { type: 'course', code: 'CS 340' },
+        ],
+      },
+    ],
+  }
+  const assignment = assignRequirement(track, takenFrom(['CS 340', 'CS 345']), CATALOG)
+  assert.ok(
+    assignment.every((e) => e.ok),
+    'both nodes should be satisfiable',
+  )
+  assert.deepEqual([...assignment[0].used], ['CS 345'])
+  assert.deepEqual([...assignment[1].used], ['CS 340'])
+})
+
+test('an electives bucket with a failing fill does not starve a later bucket', () => {
+  // First bucket: 2 CS electives (only CS 345 is left after the required node
+  // takes CS 340, so it can't reach its count). Second bucket: 1 CS elective.
+  // The first bucket's failed fill must not consume CS 345 that the second
+  // bucket needs.
+  const track = {
+    label: 'T',
+    sections: [
+      {
+        heading: 'S',
+        items: [
+          { type: 'course', code: 'CS 340' },
+          { type: 'electives', count: 2, constraints: [{ type: 'discipline', prefixes: ['CS'] }] },
+          { type: 'electives', count: 1, constraints: [{ type: 'discipline', prefixes: ['CS'] }] },
+        ],
+      },
+    ],
+  }
+  const assignment = assignRequirement(track, takenFrom(['CS 340', 'CS 345']), CATALOG)
+  const firstBucket = assignment[1]
+  const secondBucket = assignment[2]
+  // The first (2-count) bucket can't be satisfied with only one CS course left,
+  // so it must not have consumed CS 345; the later bucket gets it.
+  assert.ok(firstBucket.plan.filled.length < 2, 'first bucket should be underfilled')
+  assert.deepEqual([...firstBucket.used], [], 'underfilled bucket must not claim courses')
+  assert.ok(secondBucket.ok, 'the later bucket should still fill from CS 345')
+  assert.deepEqual([...secondBucket.used], ['CS 345'])
+})
+
+// ---------------------------------------------------------------------------
 // filteredUniverse / passes / checkAggregates (lower-level)
 // ---------------------------------------------------------------------------
 
