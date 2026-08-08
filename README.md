@@ -21,7 +21,9 @@ python3 -m http.server 8080
 |------|--------|--------|
 | Scrape catalog | `scrape_catalog.py` | `majors.json` (54 programs, 1144 courses) |
 | Codify requirements (LLM-assisted) | `codify_requirements.py` per `REQUIREMENTS_SCHEMA.md` | `requirements_parsed.json` |
-| Generate synthetic schedule | `generate_schedule.py` (seed 42, deterministic) | `sample-schedule.csv` |
+
+The sample schedule is generated in the browser from the catalog (see
+`lib/generate.js`); the schedule collection is stored in `localStorage`.
 
 See `AGENTS.md` for the full architecture and reprocessing workflow.
 
@@ -40,13 +42,13 @@ Python tooling:
 
 ```sh
 python3 -m pip install -r requirements.txt
-python3 test/test_data.py          # data invariants + schedule determinism
+python3 test/test_data.py          # data invariants
 ```
 
 Python formatting (Black, preserves single quotes):
 
 ```sh
-python3 -m black scrape_catalog.py generate_schedule.py codify_requirements.py
+python3 -m black .
 ```
 
 ## How it's deployed

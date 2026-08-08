@@ -2,17 +2,13 @@
 """Data-integrity checks for the committed data pipeline.
 
 Validates invariants in majors.json (ids, normalized course codes and faculty
-names) and confirms the schedule generator is deterministic (matches the
-committed sample-schedule.csv under the fixed seed).
+names) and the parsed requirements model vocabulary.
 """
 
 import json
 import os
 import re
-import shutil
-import subprocess
 import sys
-import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -163,19 +159,8 @@ def main():
         parsed = json.load(f)
     validate_parsed(parsed)
 
-    # Schedule generator must be deterministic under seed 42.
-    with tempfile.TemporaryDirectory() as tmp:
-        shutil.copy(os.path.join(ROOT, 'majors.json'), os.path.join(tmp, 'majors.json'))
-        shutil.copy(os.path.join(ROOT, 'generate_schedule.py'), tmp)
-        subprocess.run([sys.executable, 'generate_schedule.py'], cwd=tmp, check=True)
-        with open(os.path.join(tmp, 'sample-schedule.csv'), encoding='utf-8') as f:
-            regenerated = f.read()
-    with open(os.path.join(ROOT, 'sample-schedule.csv'), encoding='utf-8') as f:
-        committed = f.read()
-    assert regenerated == committed, 'generate_schedule.py no longer matches committed CSV'
-
     print(
-        f'OK: {len(data["programs"])} programs, ids unique + derived, codes/faculty normalized, schedule deterministic'
+        f'OK: {len(data["programs"])} programs, ids unique + derived, codes/faculty normalized'
     )
 
 

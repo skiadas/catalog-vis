@@ -72,6 +72,13 @@ test('makeSchedule dept mode with small pool stays deterministic', () => {
   assert.deepEqual(a, b)
 })
 
+test('makeSchedule random mode is deterministic under a fixed seed', () => {
+  const { facultyByPrefix, eligible } = buildFacultyAndEligible(PROGRAMS, ALL_COURSES)
+  const a = makeSchedule('random', undefined, facultyByPrefix, eligible, 42)
+  const b = makeSchedule('random', undefined, facultyByPrefix, eligible, 42)
+  assert.deepEqual(a, b)
+})
+
 test('mulberry32 is deterministic', () => {
   const a = mulberry32(123)
   const b = mulberry32(123)
