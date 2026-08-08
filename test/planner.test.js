@@ -668,6 +668,23 @@ test('checkAggregates is true when no aggregates present', () => {
   assert.equal(checkAggregates(['BIO 161'], [{ type: 'from', codes: ['BIO 161'] }]), true)
 })
 
+test('checkAggregates counts a fixed-level band (atLeast/atMost)', () => {
+  const atLeast2 = { type: 'level', level: 300, atLeast: 2 }
+  assert.equal(checkAggregates(['GER 301', 'GER 302'], [atLeast2]), true)
+  assert.equal(checkAggregates(['GER 301', 'HIS 327'], [atLeast2]), true)
+  assert.equal(checkAggregates(['GER 301', 'GER 101'], [atLeast2]), false)
+  const atMost1 = { type: 'level', level: 100, atMost: 1 }
+  assert.equal(checkAggregates(['GER 101', 'HIS 327'], [atMost1]), true)
+  assert.equal(checkAggregates(['GER 101', 'GER 115'], [atMost1]), false)
+})
+
+test('checkAggregates counts a range band (min/max) with atLeast', () => {
+  const band = { type: 'level', min: 160, max: 169, atLeast: 2 }
+  // CATALOG's 160-169 courses: ANTH 160, BIO 161.
+  assert.equal(checkAggregates(['ANTH 160', 'BIO 161'], [band]), true)
+  assert.equal(checkAggregates(['ANTH 160', 'GER 101'], [band]), false)
+})
+
 test('sameDiscipline requires all chosen to share one common prefix', () => {
   const constraint = { type: 'discipline', sameDiscipline: true }
   assert.equal(checkAggregates(['GER 101', 'GER 222'], [constraint]), true)
