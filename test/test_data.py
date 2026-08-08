@@ -65,14 +65,11 @@ KNOWN_PREFIXES = {
 
 NODE_TYPES = {
     'course',
-    'course_group',
     'any_of',
     'each_of',
     'some_of',
     'electives',
     'custom',
-    'pair',
-    'level_gate',
 }
 CONSTRAINT_TYPES = {'level', 'from', 'exclude', 'discipline', 'max_from', 'min_from', 'note'}
 CODE_RE = re.compile(r'^[A-Z/]{2,8} \d{3}(-\d{3})?$')
