@@ -1,4 +1,5 @@
 import { planSlots, takenSet, allCourses, movePlanCourse, removePlanCourse } from '../lib/store.js'
+import { dragPayloadFrom } from '../lib/scheduleDrag.js'
 
 const { ref } = Vue
 
@@ -49,12 +50,8 @@ export default {
     function onDrop(e, toKey) {
       e.preventDefault()
       dragOverKey.value = null
-      try {
-        const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-        if (data && data.code) movePlanCourse(data.code, toKey, data.from || null)
-      } catch {
-        // Not one of our course chips; ignore.
-      }
+      const data = dragPayloadFrom(e)
+      if (data && data.code) movePlanCourse(data.code, toKey, data.from || null)
     }
 
     return {
