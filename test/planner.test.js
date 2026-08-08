@@ -488,6 +488,31 @@ test('assignRequirement reports which course goes to which node', () => {
   assert.ok(!choice.used.has([...electives.used][0]))
 })
 
+test('assignRequirement consumes every code of a range alternative together', () => {
+  const track = {
+    label: 'T',
+    sections: [{ heading: 'Choice', items: [{ type: 'any_of', codes: ['ENV 408-409', 'ENV 471'] }] }],
+  }
+  // Both halves of the range must be in the pool for the alternative to fire.
+  const full = assignRequirement(track, takenFrom(['ENV 408', 'ENV 409']), CATALOG)
+  assert.ok(full[0].ok)
+  assert.deepEqual([...full[0].used].sort(), ['ENV 408', 'ENV 409'])
+  // With only one half taken, the range alternative is unsatisfied.
+  const partial = assignRequirement(track, takenFrom(['ENV 408']), CATALOG)
+  assert.equal(partial[0].ok, false)
+  // The ENV 471 alternative still works on its own.
+  const alt = assignRequirement(track, takenFrom(['ENV 471']), CATALOG)
+  assert.ok(alt[0].ok)
+})
+
+test('gapGroups keeps a range alternative as its two parts', () => {
+  const item = { type: 'any_of', codes: ['ENV 408-409', 'ENV 471'] }
+  const groups = gapGroups(item, new Set(['ENV 408']), CATALOG)
+  const open = groups.flatMap((g) => g.codes || [])
+  assert.ok(open.includes('ENV 408-409'))
+  assert.ok(open.includes('ENV 471'))
+})
+
 // ---------------------------------------------------------------------------
 // filteredUniverse / passes / checkAggregates (lower-level)
 // ---------------------------------------------------------------------------
@@ -557,6 +582,28 @@ test('expandCode turns a cross-listed code into its concrete variants', () => {
 test('expandCode applies prefix aliases', () => {
   assert.deepEqual(expandCode('GNDR 499'), ['GNDS 499', 'GNDR 499'])
   assert.deepEqual(expandCode('GNDS 499'), ['GNDS 499'])
+})
+
+test('expandCode expands a course-number range into each concrete code', () => {
+  assert.deepEqual(expandCode('ENV 408-409'), ['ENV 408', 'ENV 409', 'ENV 408-409'])
+  // a range across a cross-listed prefix
+  assert.deepEqual(expandCode('ENG/COM 250-251'), [
+    'ENG 250',
+    'ENG 251',
+    'COM 250',
+    'COM 251',
+    'ENG/COM 250-251',
+  ])
+})
+
+test('a range code is satisfied when every course in the range is taken', () => {
+  const item = { type: 'any_of', codes: ['ENV 408-409', 'ENV 471'] }
+  // only ENV 408 taken: the range alternative is open, ENV 471 open
+  assert.equal(satisfied(item, ['ENV 408'], CATALOG).status, 'unsatisfied')
+  // both ENV 408 + ENV 409 taken: satisfied via the range
+  assert.equal(satisfied(item, ['ENV 408', 'ENV 409'], CATALOG).status, 'satisfied')
+  // ENV 471 alone also satisfies the any_of
+  assert.equal(satisfied(item, ['ENV 471'], CATALOG).status, 'satisfied')
 })
 
 test('prefixMatch matches an aliased spelling against the real prefix', () => {
