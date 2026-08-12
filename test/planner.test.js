@@ -52,6 +52,10 @@ const CATALOG = [
   'HIS 252',
   'GNDS 499',
   'HF 101',
+  'SPA 217',
+  'SPA 219',
+  'SPA 319',
+  'SPA 320',
 ]
 
 const takenFrom = (codes) => new Set(codes)
@@ -670,6 +674,49 @@ test('an electives bucket with a failing fill does not starve a later bucket', (
   assert.deepEqual([...firstBucket.used], [], 'underfilled bucket must not claim courses')
   assert.ok(secondBucket.ok, 'the later bucket should still fill from CS 345')
   assert.deepEqual([...secondBucket.used], ['CS 345'])
+})
+
+test('an unsatisfiable rigid node does not crash the electives sibling (Spanish minor)', () => {
+  // A required choice (SPA 319 or 320) with neither taken, followed by a 5-count
+  // SPA electives bucket. The rigid pass fails, but the electives must still be
+  // evaluated and reported (not crash `planResult` reading `plan.filled`).
+  const track = {
+    label: 'T',
+    sections: [
+      {
+        heading: 'Spanish courses',
+        items: [
+          { type: 'any_of', codes: ['SPA 319', 'SPA 320'] },
+          {
+            type: 'electives',
+            count: 5,
+            constraints: [
+              { type: 'discipline', prefixes: ['SPA'] },
+              { type: 'exclude', codes: ['SPA 115', 'SPA 116'] },
+            ],
+          },
+        ],
+      },
+    ],
+  }
+  const noCourses = evaluateRequirement(track, takenFrom([]), CATALOG)
+  assert.equal(noCourses.sections[0].items[0].status, 'unsatisfied')
+  assert.equal(noCourses.sections[0].items[1].status, 'unsatisfied')
+  assert.equal(noCourses.sections[0].items[1].count, 0)
+
+  // With other SPA courses taken (but not 319/320), the electives still report
+  // its own progress instead of showing 0.
+  const some = evaluateRequirement(track, takenFrom(['SPA 217', 'SPA 219']), CATALOG)
+  assert.equal(some.sections[0].items[0].status, 'unsatisfied')
+  assert.equal(some.sections[0].items[1].status, 'unsatisfied')
+  assert.equal(some.sections[0].items[1].count, 2)
+  assert.equal(some.sections[0].items[1].needed, 3)
+
+  // The full requirement evaluates without crashing; with no choice taken it
+  // reports "unsatisfied", but the electives' per-course progress is intact.
+  const audited = audit([some])
+  assert.equal(audited.requirements[0].status, 'unsatisfied')
+  assert.equal(audited.requirements[0].sections[0].satisfied, 0)
 })
 
 // ---------------------------------------------------------------------------
