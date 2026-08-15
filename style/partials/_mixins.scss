@@ -1,0 +1,21 @@
+// Shared layout/build idioms used across the app partials.
+//
+// Only two block patterns recur enough to justify mixins (the rest of the
+// codebase is genuinely distinct rules — consistency comes from the tokens):
+// the wrapping flex-row and the "surface" panel look.
+
+// A horizontal flex row that wraps onto new lines. The most-repeated layout
+// idiom in the codebase (~18 uses across all three apps).
+@mixin flex-row($gap: 6px) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $gap;
+}
+
+// The shared "surface/panel" look: a white, bordered, rounded card
+// (background/border/border-radius from the tokens).
+@mixin surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}

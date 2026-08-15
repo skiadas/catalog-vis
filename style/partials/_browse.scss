@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 // Browse app styles: program list/grid, program detail, course detail, and the
 // recursive requirement renderer.
 
@@ -8,9 +10,7 @@
 }
 
 .program-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  @include surface;
   padding: 14px 16px;
   cursor: pointer;
   transition: all 0.2s;
@@ -30,10 +30,8 @@
 }
 
 .program-card .meta {
-  display: flex;
+  @include flex-row;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
   margin-top: 6px;
 }
 
@@ -74,9 +72,7 @@
 }
 
 .course-detail-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  @include surface;
   padding: 24px;
 }
 
@@ -170,10 +166,8 @@
 }
 
 .anyof-group {
-  display: flex;
-  flex-wrap: wrap;
+  @include flex-row;
   align-items: center;
-  gap: 6px;
 }
 
 .anyof-label {
@@ -208,10 +202,8 @@
 }
 
 .anyof-subitem {
-  display: flex;
-  flex-wrap: wrap;
+  @include flex-row;
   align-items: center;
-  gap: 6px;
   padding: 4px 0;
 }
 
@@ -261,12 +253,10 @@
 }
 
 .constraint-row {
+  @include flex-row(4px);
   font-size: 12px;
   color: var(--text-muted);
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
 }
 
 .constraint-tag {
@@ -331,10 +321,8 @@
 }
 
 .course-group {
-  display: flex;
-  flex-wrap: wrap;
+  @include flex-row;
   align-items: center;
-  gap: 6px;
 }
 
 .plan-track-btn {

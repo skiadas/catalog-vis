@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 // Planner app styles: year x term timeline, planner top bar/tabs, track chips,
 // gap lists, and the planner/course modals.
 
@@ -30,10 +32,8 @@
 }
 
 .planner-section-head {
-  display: flex;
+  @include flex-row(8px);
   align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .planner-section-title {
@@ -67,16 +67,12 @@
 }
 
 .planner-section-courses {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  @include flex-row;
 }
 
 .planner-gap-alternative {
-  display: flex;
-  flex-wrap: wrap;
+  @include flex-row;
   align-items: center;
-  gap: 6px;
   padding: 3px 0;
 }
 
@@ -101,10 +97,8 @@
 }
 
 .planner-req-top {
-  display: flex;
+  @include flex-row(10px);
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 .planner-status {
@@ -154,10 +148,8 @@
 }
 
 .planner-gap-group {
-  display: flex;
+  @include flex-row(5px);
   align-items: baseline;
-  flex-wrap: wrap;
-  gap: 5px;
   margin-top: 4px;
 }
 
@@ -190,9 +182,7 @@
 }
 
 .planner-gap-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  @include flex-row;
   margin-top: 6px;
   max-height: 220px;
   overflow-y: auto;
@@ -222,9 +212,7 @@
 }
 
 .planner-pick-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  @include flex-row;
   max-height: 360px;
   overflow-y: auto;
 }
@@ -368,9 +356,7 @@
 }
 
 .add-program-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  @include flex-row;
   align-items: center;
 }
 
@@ -448,9 +434,7 @@
 }
 
 .tl-zone-courses {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  @include flex-row;
 }
 
 .tl-empty {
@@ -485,14 +469,12 @@
 }
 
 .tl-cell {
+  @include flex-row;
   min-height: 64px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #fbfcfd;
   padding: 6px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
   align-content: flex-start;
   transition:
     background 0.12s,
@@ -531,20 +513,16 @@
 /* ---- Planner top bar, tabs, and modals ---- */
 
 .planner-top {
-  display: flex;
+  @include flex-row(12px);
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
   margin: 14px 0 6px;
 }
 
 .planner-head {
-  display: flex;
+  @include flex-row(20px);
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
 }
 
 .planner-head .planner-top-left {
@@ -561,10 +539,8 @@
 
 .planner-top-left,
 .planner-top-right {
-  display: flex;
+  @include flex-row(8px);
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .planner-plan-actions {

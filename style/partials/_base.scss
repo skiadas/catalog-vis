@@ -1,3 +1,5 @@
+@use 'mixins' as *;
+
 // Shared "base" styles used by more than one app: reset, page shell, top
 // navigation, and generic UI (buttons, chips, modals, tables, forms, empty and
 // loading states). Rules that belong to a single app live in _browse.scss,
@@ -41,9 +43,7 @@ body {
 }
 
 .controls {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+  @include flex-row(12px);
   margin-top: 16px;
 }
 
@@ -69,10 +69,8 @@ body {
 }
 
 .filter-btn {
+  @include surface;
   padding: 10px var(--space-4);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: var(--radius);
   font-size: var(--font-md);
   cursor: pointer;
   transition: all 0.15s;
@@ -186,9 +184,7 @@ body {
 }
 
 .req-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  @include surface;
   padding: var(--space-4) var(--space-5);
   margin-bottom: var(--space-3);
 }
@@ -207,9 +203,7 @@ body {
 }
 
 .req-block .req-courses {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  @include flex-row;
 }
 
 .course-chip {
@@ -443,6 +437,7 @@ body {
 }
 
 .course-picker-dropdown {
+  @include surface;
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -450,9 +445,6 @@ body {
   z-index: var(--z-dropdown);
   max-height: 320px;
   overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 

@@ -73,8 +73,8 @@ body {
 
 .controls {
   display: flex;
-  gap: 12px;
   flex-wrap: wrap;
+  gap: 12px;
   margin-top: 16px;
 }
 
@@ -100,10 +100,10 @@ body {
 }
 
 .filter-btn {
-  padding: 10px var(--space-4);
-  border: 1px solid var(--border);
   background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
+  padding: 10px var(--space-4);
   font-size: var(--font-md);
   cursor: pointer;
   transition: all 0.15s;
@@ -473,6 +473,9 @@ body {
 }
 
 .course-picker-dropdown {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -480,9 +483,6 @@ body {
   z-index: var(--z-dropdown);
   max-height: 320px;
   overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
@@ -713,9 +713,9 @@ body {
 
 .planner-section-head {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
 }
 
 .planner-section-title {
@@ -757,8 +757,8 @@ body {
 .planner-gap-alternative {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 6px;
+  align-items: center;
   padding: 3px 0;
 }
 
@@ -784,9 +784,9 @@ body {
 
 .planner-req-top {
   display: flex;
-  align-items: center;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 
 .planner-status {
@@ -837,9 +837,9 @@ body {
 
 .planner-gap-group {
   display: flex;
-  align-items: baseline;
   flex-wrap: wrap;
   gap: 5px;
+  align-items: baseline;
   margin-top: 4px;
 }
 
@@ -1162,14 +1162,14 @@ body {
 }
 
 .tl-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   min-height: 64px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #fbfcfd;
   padding: 6px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
   align-content: flex-start;
   transition: background 0.12s, border-color 0.12s;
 }
@@ -1206,19 +1206,19 @@ body {
 /* ---- Planner top bar, tabs, and modals ---- */
 .planner-top {
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
   margin: 14px 0 6px;
 }
 
 .planner-head {
   display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
 }
 
 .planner-head .planner-top-left {
@@ -1236,9 +1236,9 @@ body {
 .planner-top-left,
 .planner-top-right {
   display: flex;
-  align-items: center;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .planner-plan-actions {

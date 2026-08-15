@@ -1,11 +1,11 @@
+@use 'mixins' as *;
+
 // Schedule app styles: weekly calendar grid, day/slot views, offering pills,
 // edit-mode drag, schedule picker/manage, and the schedule modals.
 
 .schedule-type-options {
-  display: flex;
-  flex-wrap: wrap;
+  @include flex-row(10px);
   align-items: center;
-  gap: 10px;
 }
 
 .schedule-type-divider {
@@ -34,6 +34,7 @@
 }
 
 .nav-arrow {
+  @include surface;
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
@@ -41,9 +42,6 @@
   align-items: center;
   justify-content: center;
   font-size: 16px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: var(--radius);
   color: var(--primary);
   cursor: pointer;
   transition: all 0.15s;
@@ -63,9 +61,7 @@
 /* Time-slot offerings as pills */
 
 .slot-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  @include flex-row(8px);
 }
 
 .slot-pill {
@@ -238,17 +234,13 @@
 }
 
 .schedule-tabs {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  @include flex-row;
 }
 
 .filter-mode {
+  @include flex-row;
   margin-left: auto;
-  display: flex;
-  gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
 }
 
 .filter-mode .filter-mode-label {
@@ -320,9 +312,7 @@
 /* Day view */
 
 .day-slot-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  @include surface;
   margin-bottom: 12px;
   overflow: hidden;
 }
@@ -352,10 +342,8 @@
 }
 
 .day-slot-items {
+  @include flex-row(8px);
   padding: 12px 16px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .day-slot-empty {
@@ -391,10 +379,8 @@
 /* ---------- Weekly calendar grid ---------- */
 
 .calendar-scroll {
+  @include surface;
   overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
 }
 
 .calendar {
@@ -647,10 +633,8 @@
 /* Schedule filter chips */
 
 .filter-panel {
-  display: flex;
-  flex-wrap: wrap;
+  @include flex-row;
   align-items: center;
-  gap: 6px;
   margin-bottom: 8px;
 }
 
@@ -698,18 +682,14 @@
 }
 
 .schedule-picker {
-  display: flex;
-  flex-wrap: wrap;
+  @include flex-row;
   align-items: center;
-  gap: 6px;
   margin-bottom: 8px;
 }
 
 .schedule-edit-bar {
-  display: flex;
-  flex-wrap: wrap;
+  @include flex-row(10px);
   align-items: center;
-  gap: 10px;
   padding: 10px 14px;
   margin-bottom: 12px;
   background: var(--primary-light);
@@ -815,9 +795,7 @@
 }
 
 .slot-time-opts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  @include flex-row;
 }
 
 .slot-time-btn {
@@ -937,13 +915,11 @@
 }
 
 .schedule-manage-row {
+  @include surface;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
 }
 
 .schedule-manage-row .schedule-swatch {
