@@ -95,10 +95,33 @@
   --radius-pill: 20px;
 
   // ---- Elevation ----
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.18);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-pop: 0 2px 8px rgba(0, 0, 0, 0.15);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
   --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.25);
   --ring: 0 0 0 3px rgba(98, 182, 203, 0.15);
+  --ring-strong: 0 0 0 2px rgba(98, 182, 203, 0.25);
+
+  // ---- Alpha tints (color-mix keeps them tracking their base token) ----
+  // White text/overlays on colored blocks.
+  --text-on-block: color-mix(in srgb, var(--text-inverse) 85%, transparent);
+  --text-on-block-dim: color-mix(in srgb, var(--text-inverse) 70%, transparent);
+  --overlay-hover: color-mix(in srgb, var(--text-inverse) 25%, transparent);
+  --overlay-subtle: color-mix(in srgb, var(--text-inverse) 45%, transparent);
+  --overlay-strong: color-mix(in srgb, var(--text-inverse) 92%, transparent);
+  // Brand tints.
+  --primary-90: color-mix(in srgb, var(--primary) 90%, transparent);
+  --primary-80: color-mix(in srgb, var(--primary) 80%, transparent);
+  --primary-35: color-mix(in srgb, var(--primary) 35%, transparent);
+  --primary-25: color-mix(in srgb, var(--primary) 25%, transparent);
+  --accent-85: color-mix(in srgb, var(--accent) 85%, transparent);
+  --accent-25: color-mix(in srgb, var(--accent) 25%, transparent);
+  --accent-12: color-mix(in srgb, var(--accent) 12%, transparent);
+  --danger-50: color-mix(in srgb, var(--danger) 50%, transparent);
+  --danger-08: color-mix(in srgb, var(--danger) 8%, transparent);
+  // The modal backdrop.
+  --scrim: rgba(15, 23, 42, 0.55);
 
   // ---- Z-index layers ----
   --z-dropdown: 20;

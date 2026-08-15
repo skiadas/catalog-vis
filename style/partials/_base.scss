@@ -213,11 +213,11 @@ body {
   line-height: 1.15;
 }
 .course-chip.filter-colored:hover {
-  background: rgba(27, 73, 101, 0.9);
+  background: var(--primary-90);
   color: var(--text-inverse);
 }
 .course-chip:hover .sep {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-on-block-dim);
 }
 .courses-table {
   width: 100%;
@@ -428,7 +428,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--scrim);
 }
 .modal {
   width: 100%;

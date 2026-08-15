@@ -202,7 +202,7 @@
   color: white;
 }
 .planner-pick.taken .planner-pick-name {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-on-block);
 }
 .planner-pick-empty {
   font-size: var(--font-md);
@@ -309,7 +309,7 @@
 .planner-plan-name:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+  box-shadow: var(--ring);
 }
 .planner-plan-select {
   padding: 6px var(--space-2);

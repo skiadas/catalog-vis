@@ -70,7 +70,7 @@
   margin-left: 1px;
 }
 .slot-pill:hover .sep {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-on-block-dim);
 }
 .slot-pill-code {
   cursor: pointer;
@@ -85,34 +85,34 @@
   white-space: nowrap;
 }
 .slot-pill:hover .slot-pill-name {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-on-block);
 }
 .slot-pill.filter-colored .slot-pill-name {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-on-block);
 }
 .slot-pill-inst {
   @include text-caption;
   cursor: pointer;
   opacity: 0.85;
-  border-left: 1px solid rgba(27, 73, 101, 0.25);
+  border-left: 1px solid var(--primary-25);
   padding-left: 8px;
 }
 .slot-pill:hover .slot-pill-inst {
   color: white;
-  border-left-color: rgba(255, 255, 255, 0.4);
+  border-left-color: var(--overlay-subtle);
 }
 .slot-pill.filter-colored {
   color: var(--text-inverse);
   border-color: transparent;
 }
 .slot-pill.filter-colored .slot-pill-inst {
-  border-left-color: rgba(255, 255, 255, 0.5);
+  border-left-color: var(--overlay-subtle);
 }
 .slot-pill.filter-colored .sep {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-on-block-dim);
 }
 .slot-pill.filter-colored:hover {
-  background: rgba(27, 73, 101, 0.9);
+  background: var(--primary-90);
 } /* Editable pills (edit mode): draggable affordance + an edit button */
 
 .slot-pill.editable {
@@ -124,9 +124,9 @@
 .slot-pill-edit {
   @include icon-btn(22px);
   margin: -2px -4px -2px 0;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--overlay-strong);
   color: var(--primary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-xs);
   transition:
     background 0.15s,
     color 0.15s;
@@ -146,7 +146,7 @@
 
 .day-slot-card.drag-over {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(98, 182, 203, 0.25);
+  box-shadow: var(--ring-strong);
 }
 .day-slot-card.drag-over .day-slot-head {
   background: var(--accent);
@@ -225,10 +225,10 @@
   align-items: center;
   gap: 6px;
   color: var(--danger);
-  border-color: rgba(198, 40, 40, 0.5);
+  border-color: var(--danger-50);
 }
 .remove-course-btn:hover {
-  background: rgba(198, 40, 40, 0.08);
+  background: var(--danger-08);
 }
 .conflict-course-name {
   margin-left: 6px;
@@ -331,7 +331,7 @@
   color: var(--text-muted);
 }
 .cal-dayhead:hover .day-name {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-on-block);
 }
 .cal-ruler {
   flex: 0 0 56px;
@@ -377,9 +377,9 @@
   justify-content: flex-start;
   align-items: center;
   gap: 2px;
-  background: rgba(98, 182, 203, 0.85);
+  background: var(--accent-85);
   color: var(--primary);
-  border: 1px solid rgba(27, 73, 101, 0.35);
+  border: 1px solid var(--primary-35);
   overflow: hidden;
   text-align: center;
   transition:
@@ -387,8 +387,8 @@
     box-shadow 0.15s;
 }
 .cal-block:hover {
-  background: rgba(98, 182, 203, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: var(--accent);
+  box-shadow: var(--shadow-pop);
 } /* Drop zones that accept a dragged course in edit mode. Sits above (behind) no
    block bands, so it never overlaps a rendered course block. */
 
@@ -407,7 +407,7 @@
 }
 .cal-dropzone:hover,
 .cal-dropzone.over {
-  background: rgba(98, 182, 203, 0.12);
+  background: var(--accent-12);
   border-color: var(--primary);
 }
 .filter-offering.draggable {
@@ -420,7 +420,7 @@
   box-shadow: inset 0 0 0 2px var(--primary);
 }
 .cal-block.teach {
-  background: rgba(27, 73, 101, 0.82);
+  background: var(--primary-80);
   color: white;
   border-color: var(--primary);
 }
@@ -441,13 +441,13 @@
 } /* Filtered block variant: white card with per-department offerings */
 
 .cal-block.filtered {
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--overlay-strong);
   border-color: var(--gray-300);
   justify-content: flex-start;
   padding-top: 6px;
 }
 .cal-block.filtered:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-pop);
 }
 .cal-block-depts {
   display: flex;
@@ -493,13 +493,13 @@
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--overlay-hover);
   color: var(--text-inverse);
   cursor: pointer;
   transition: background var(--duration-fast);
 }
 .filter-offering-edit:hover {
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--overlay-subtle);
 }
 .filter-offering:hover {
   filter: brightness(1.1);
@@ -686,20 +686,20 @@
   font-size: var(--font-xs);
   line-height: var(--leading-none);
   color: var(--text-inverse);
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--overlay-hover);
 }
 .schedule-pill-edit {
   @include icon-btn(16px);
   font-size: var(--font-xs);
   line-height: var(--leading-none);
   color: var(--text-inverse);
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--overlay-hover);
 }
 .schedule-pill-edit:hover {
-  background: rgba(255, 255, 255, 0.45);
+  background: var(--overlay-subtle);
 }
 .schedule-pill-hide:hover {
-  background: rgba(255, 255, 255, 0.45);
+  background: var(--overlay-subtle);
 }
 .schedule-swatch {
   display: inline-block;
