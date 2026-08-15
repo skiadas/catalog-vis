@@ -15,7 +15,7 @@
 }
 
 .schedule-type-label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -25,7 +25,7 @@
 .nav-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .nav-header h2 {
@@ -41,7 +41,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: var(--font-lg);
   color: var(--primary);
   cursor: pointer;
   transition: all 0.15s;
@@ -54,7 +54,7 @@
 
 .do-inst {
   font-weight: 500;
-  font-size: 9px;
+  font-size: var(--font-2xs);
   opacity: 0.9;
 }
 
@@ -65,18 +65,13 @@
 }
 
 .slot-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  @include pill(5px, 12px);
+  gap: var(--space-2);
+  font-size: var(--font-md);
   font-weight: 500;
   background: var(--primary-light);
   color: var(--primary);
-  padding: 5px 12px;
-  border-radius: 20px;
   cursor: default;
-  transition: all 0.15s;
-  border: 1px solid transparent;
 }
 
 .slot-pill:hover {
@@ -119,7 +114,7 @@
 
 .slot-pill-inst {
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   opacity: 0.85;
   border-left: 1px solid rgba(27, 73, 101, 0.25);
@@ -132,7 +127,7 @@
 }
 
 .slot-pill.filter-colored {
-  color: #ffffff;
+  color: var(--text-inverse);
   border-color: transparent;
 }
 
@@ -159,19 +154,11 @@
 }
 
 .slot-pill-edit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
+  @include icon-btn(22px);
   margin: -2px -4px -2px 0;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);
   color: var(--primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-  cursor: pointer;
   transition:
     background 0.15s,
     color 0.15s;
@@ -214,14 +201,14 @@
 }
 
 .schedule-note {
-  font-size: 12px;
-  color: #9a6b00;
-  background: #fff8e1;
-  border: 1px solid #ffe082;
-  border-left: 4px solid #f0ad2c;
+  font-size: var(--font-sm);
+  color: var(--warning);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-left: 4px solid var(--warning);
   border-radius: var(--radius);
-  padding: 6px 12px;
-  margin: 8px 0 10px;
+  padding: 6px var(--space-3);
+  margin: var(--space-2) 0 10px;
   font-weight: 500;
 }
 
@@ -229,7 +216,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 12px;
+  gap: 6px var(--space-3);
   margin-bottom: 8px;
 }
 
@@ -244,7 +231,7 @@
 }
 
 .filter-mode .filter-mode-label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -254,7 +241,7 @@
 
 .filter-mode .filter-btn {
   padding: 5px 14px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   border-radius: 999px;
   border: 1px solid var(--accent);
@@ -295,7 +282,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #c62828;
+  color: var(--danger);
   border-color: rgba(198, 40, 40, 0.5);
 }
 
@@ -305,7 +292,7 @@
 
 .conflict-course-name {
   margin-left: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--text-muted);
 }
 
@@ -321,14 +308,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   background: var(--primary-light);
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .day-slot-head:hover {
-  background: #d6e7f7;
+  background: var(--info-bg);
 }
 
 .day-slot-time {
@@ -337,18 +324,18 @@
 }
 
 .day-slot-count {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--text-muted);
 }
 
 .day-slot-items {
   @include flex-row(8px);
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
 }
 
 .day-slot-empty {
-  padding: 12px 16px;
-  font-size: 13px;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-md);
   color: var(--text-muted);
 }
 
@@ -359,21 +346,21 @@
   min-width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #c62828;
+  background: var(--danger);
   color: white;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 700;
   margin-left: 6px;
 }
 
 .conflict-alert {
-  background: #ffebee;
-  border: 1px solid #ef9a9a;
-  color: #b71c1c;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-bg);
+  color: var(--danger);
   border-radius: var(--radius);
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
 }
 
 /* ---------- Weekly calendar grid ---------- */
@@ -385,7 +372,7 @@
 
 .calendar {
   min-width: 640px;
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 
 .cal-row {
@@ -405,7 +392,7 @@
   flex: 1;
   text-align: center;
   padding: 10px 0;
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 700;
   color: var(--primary);
   background: var(--primary-light);
@@ -421,7 +408,7 @@
 
 .cal-dayhead .day-name {
   display: block;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -441,7 +428,7 @@
 .cal-ruler .cal-hour {
   position: absolute;
   right: 8px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--text-muted);
   transform: translateY(-4px);
 }
@@ -451,14 +438,14 @@
   position: relative;
   height: 480px;
   border-left: 1px solid var(--border);
-  background: #fcfcfd;
+  background: var(--gray-50);
 }
 
 /* Gentle non-white slot tint; applied when a grid filter is active so slot
    boundaries stay visible through the light filtered blocks. */
 
 .cal-daycol.slot-striped {
-  background: #eef3f5;
+  background: var(--gray-100);
 }
 
 .cal-guide {
@@ -466,7 +453,7 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: #ececf0;
+  background: var(--gray-100);
 }
 
 .cal-block {
@@ -474,8 +461,8 @@
   left: 4px;
   right: 4px;
   box-sizing: border-box;
-  border-radius: 6px;
-  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) 6px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -483,7 +470,7 @@
   align-items: center;
   gap: 2px;
   background: rgba(98, 182, 203, 0.85);
-  color: #073042;
+  color: var(--primary);
   border: 1px solid rgba(27, 73, 101, 0.35);
   overflow: hidden;
   text-align: center;
@@ -505,7 +492,7 @@
   left: 4px;
   right: 4px;
   z-index: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px dashed transparent;
   background: transparent;
   cursor: copy;
@@ -517,7 +504,7 @@
 .cal-dropzone:hover,
 .cal-dropzone.over {
   background: rgba(98, 182, 203, 0.12);
-  border-color: #1b4965;
+  border-color: var(--primary);
 }
 
 .filter-offering.draggable {
@@ -535,23 +522,23 @@
 .cal-block.teach {
   background: rgba(27, 73, 101, 0.82);
   color: white;
-  border-color: #103047;
+  border-color: var(--primary);
 }
 
 .cal-block-count {
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--font-lg);
   line-height: 1.1;
 }
 
 .cal-block-label {
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--font-xs);
   opacity: 0.85;
 }
 
 .cal-block-time {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   line-height: 1.2;
   color: inherit;
   opacity: 0.85;
@@ -562,7 +549,7 @@
 
 .cal-block.filtered {
   background: rgba(255, 255, 255, 0.82);
-  border-color: #aebac3;
+  border-color: var(--gray-300);
   justify-content: flex-start;
   padding-top: 6px;
 }
@@ -585,13 +572,13 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
+  gap: var(--space-1);
   line-height: 1.15;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-inverse);
   border-radius: 3px;
-  padding: 1px 4px;
+  padding: 1px var(--space-1);
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
@@ -617,7 +604,7 @@
   border: none;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  color: var(--text-inverse);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -639,17 +626,17 @@
 }
 
 .filter-label {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--text-muted);
   margin-right: 2px;
 }
 
 .filter-chip {
-  font-size: 12px;
+  @include pill(3px, 9px);
+  font-size: var(--font-sm);
   font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text-muted);
@@ -663,12 +650,12 @@
 }
 
 .filter-chip.on {
-  color: #ffffff;
+  color: var(--text-inverse);
   border-color: transparent;
 }
 
 .filter-clear {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--primary);
   background: none;
@@ -698,19 +685,19 @@
 }
 
 .schedule-edit-label {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--text);
 }
 
 .schedule-edit-hint {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--text-muted);
   margin-right: auto;
 }
 
 .schedule-edit-bar .filter-btn {
   padding: 6px 14px;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .schedule-edit-name {
@@ -736,7 +723,7 @@
 .slot-time-groups {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .slot-time-group {
@@ -751,7 +738,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .day-chip {
@@ -762,10 +749,10 @@
   justify-content: center;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
@@ -779,7 +766,7 @@
 .day-chip.on {
   background: var(--primary);
   border-color: var(--primary);
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .day-chip:disabled,
@@ -800,8 +787,8 @@
 
 .slot-time-btn {
   padding: 6px 10px;
-  font-size: 11px;
-  border-radius: 8px;
+  font-size: var(--font-xs);
+  border-radius: var(--radius);
 }
 
 .schedule-picker-count {
@@ -815,11 +802,11 @@
   gap: 6px;
   max-width: 220px;
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-inverse);
   padding: 3px 6px 3px 9px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition: opacity 0.15s;
 }
@@ -831,9 +818,9 @@
 .schedule-color-toggle {
   align-self: center;
   padding: 5px 10px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   line-height: 1.2;
 }
 
@@ -844,37 +831,19 @@
 }
 
 .schedule-pill-hide {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
+  @include icon-btn(16px);
+  font-size: var(--font-xs);
   line-height: 1;
-  color: #ffffff;
+  color: var(--text-inverse);
   background: rgba(255, 255, 255, 0.25);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  padding: 0;
 }
 
 .schedule-pill-edit {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
+  @include icon-btn(16px);
+  font-size: var(--font-xs);
   line-height: 1;
-  color: #ffffff;
+  color: var(--text-inverse);
   background: rgba(255, 255, 255, 0.25);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  padding: 0;
 }
 
 .schedule-pill-edit:hover {
@@ -897,7 +866,7 @@
   &-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-2);
     margin-bottom: 16px;
     max-height: 320px;
     overflow-y: auto;
@@ -909,7 +878,7 @@
   }
 
   &-empty {
-    font-size: 13px;
+    font-size: var(--font-md);
     color: var(--text-muted);
     font-style: italic;
     margin-bottom: 12px;
@@ -920,7 +889,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 10px;
+    padding: var(--space-2) 10px;
 
     .schedule-swatch {
       flex: 0 0 auto;
@@ -937,28 +906,19 @@
   }
 
   &-name {
-    font-size: 14px;
+    font-size: var(--font-base);
     font-weight: 600;
   }
 
   &-meta {
-    font-size: 12px;
+    font-size: var(--font-sm);
     color: var(--text-muted);
   }
 
   &-eye,
   &-icon,
   &-del {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
+    @include icon-btn;
     transition:
       background 0.15s,
       color 0.15s;
@@ -991,18 +951,18 @@
       color: var(--primary);
 
       &:hover {
-        color: #c62828;
+        color: var(--danger);
       }
     }
   }
 
   &-del {
-    color: #c62828;
+    color: var(--danger);
     background: none;
 
     &:hover {
-      background: #c62828;
-      color: #ffffff;
+      background: var(--danger);
+      color: var(--text-inverse);
     }
   }
 }
@@ -1014,7 +974,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 4px 12px;
+  gap: var(--space-1) var(--space-3);
 }
 
 .schedule-title-row .section-title {
@@ -1024,22 +984,19 @@
 }
 
 .schedule-sub {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--text-muted);
   margin: 0;
 }
 
 .schedule-help-toggle {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  @include icon-btn(28px);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--primary);
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 700;
   line-height: 1;
-  cursor: pointer;
   transition: all 0.15s;
 }
 
@@ -1054,8 +1011,8 @@
 }
 
 .help-section h4 {
-  margin: 0 0 4px;
-  font-size: 14px;
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-base);
   color: var(--primary);
 }
 

@@ -6,24 +6,24 @@
 .program-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .program-card {
   @include surface;
-  padding: 14px 16px;
+  padding: 14px var(--space-4);
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
 
   &:hover {
     border-color: var(--accent);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
     transform: translateY(-2px);
   }
 
   h3 {
-    font-size: 15px;
+    font-size: var(--font-lg);
     margin: 0;
     color: var(--primary);
   }
@@ -36,22 +36,22 @@
 }
 
 .detail-description {
-  font-size: 14px;
+  font-size: var(--font-base);
   line-height: 1.7;
-  color: #444;
+  color: var(--gray-800);
   margin-bottom: 28px;
   max-width: 800px;
 }
 
 .req-original {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--text-muted);
   font-style: italic;
 }
 
 .course-prereq {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--text-muted);
   margin-top: 2px;
 
@@ -73,22 +73,22 @@
 
 .course-detail-card {
   @include surface;
-  padding: 24px;
+  padding: var(--space-6);
 
   h2 {
-    font-size: 22px;
+    font-size: var(--font-2xl);
     color: var(--primary);
     margin-bottom: 4px;
   }
 
   .course-meta {
-    font-size: 14px;
+    font-size: var(--font-base);
     color: var(--text-muted);
     margin-bottom: 16px;
   }
 
   .course-desc {
-    font-size: 14px;
+    font-size: var(--font-base);
     line-height: 1.7;
     margin-bottom: 16px;
   }
@@ -97,7 +97,7 @@
     margin-bottom: 16px;
 
     h4 {
-      font-size: 13px;
+      font-size: var(--font-md);
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -105,13 +105,13 @@
     }
 
     .course-chip {
-      font-size: 14px;
+      font-size: var(--font-base);
     }
   }
 
   .programs-using {
     h4 {
-      font-size: 13px;
+      font-size: var(--font-md);
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -123,7 +123,7 @@
     }
 
     li {
-      font-size: 14px;
+      font-size: var(--font-base);
       padding: 2px 0;
 
       a {
@@ -149,7 +149,7 @@
 }
 
 .req-section-heading {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -160,7 +160,7 @@
 .req-items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .req-item {
@@ -173,14 +173,14 @@
 }
 
 .anyof-label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--text-muted);
   font-weight: 500;
   margin-right: 2px;
 }
 
 .eachof-label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--text-muted);
   font-weight: 500;
   margin-right: 2px;
@@ -190,11 +190,11 @@
 .anyof-items-group {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  padding: 10px var(--space-3);
 
   > .anyof-label {
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -206,7 +206,7 @@
 .anyof-subitem {
   @include flex-row;
   align-items: center;
-  padding: 4px 0;
+  padding: var(--space-1) 0;
 
   & + & {
     border-top: 1px dashed var(--border);
@@ -218,32 +218,32 @@
 .item-note {
   display: inline-flex;
   align-items: center;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--accent);
   font-weight: 500;
   margin-left: 4px;
 }
 
 .item-note.culminating {
-  color: #e67e22;
+  color: var(--warning);
 }
 
 .electives-group {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  padding: 10px var(--space-3);
 }
 
 .electives-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   margin-bottom: 6px;
 }
 
 .electives-count {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--primary);
 }
@@ -251,12 +251,12 @@
 .constraints-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .constraint-row {
   @include flex-row(4px);
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--text-muted);
   align-items: center;
 }
@@ -264,21 +264,21 @@
 .constraint-tag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   flex-wrap: wrap;
 
   &.level {
-    color: #7b2d8b;
+    color: var(--violet);
     font-weight: 500;
   }
 
   &.exclude {
-    color: #c62828;
+    color: var(--danger);
     font-weight: 500;
   }
 
   &.discipline {
-    color: #00796b;
+    color: var(--teal);
     font-weight: 500;
   }
 
@@ -307,16 +307,16 @@
 .level-gate-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
-  color: #7b2d8b;
-  background: #f3e5f5;
-  padding: 2px 8px;
+  color: var(--violet);
+  background: var(--violet-bg);
+  padding: 2px var(--space-2);
   border-radius: 4px;
 }
 
 .custom-text {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-style: italic;
   color: var(--text-muted);
   line-height: 1.5;
@@ -328,25 +328,25 @@
 }
 
 .plan-track-btn {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--primary);
   background: var(--primary-light);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 3px 12px;
+  border-radius: var(--radius-lg);
+  padding: 3px var(--space-3);
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s;
 
   &:hover {
     background: var(--primary);
-    color: #ffffff;
+    color: var(--text-inverse);
   }
 
   &.added {
-    background: #e5f6e6;
-    color: #1e7e34;
-    border-color: #1e7e34;
+    background: var(--success-bg);
+    color: var(--success);
+    border-color: var(--success);
   }
 }
