@@ -62,6 +62,22 @@
   --font-2xl: 22px;
   --font-3xl: 26px;
 
+  // ---- Type weight ----
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  // ---- Line height ----
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  // ---- Motion ----
+  --duration-fast: 0.15s;
+  --duration-med: 0.2s;
+
   // ---- Spacing scale ----
   --space-1: 4px;
   --space-2: 8px;

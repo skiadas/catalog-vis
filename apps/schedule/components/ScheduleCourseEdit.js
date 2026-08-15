@@ -167,7 +167,7 @@ export default {
                 class="slot-time-group"
                 v-for="g in dayGroups"
                 :key="g.label"
-                :class="{ on: timeGroupSel === g.label }"
+                :class="{ active: timeGroupSel === g.label }"
               >
                 <div class="slot-time-group-days">
                   <button
@@ -175,7 +175,7 @@ export default {
                     :key="d"
                     type="button"
                     class="day-chip"
-                    :class="{ on: daysSel.includes(d), disabled: timeGroupSel !== g.label }"
+                    :class="{ active: daysSel.includes(d), disabled: timeGroupSel !== g.label }"
                     :disabled="timeGroupSel !== g.label"
                     :title="timeGroupSel === g.label ? '' : 'Pick a ' + g.label + ' time to change its days'"
                     @click="toggleDay(g.label, d)"

@@ -115,7 +115,7 @@ export default {
               <button
                 class="schedule-manage-eye"
                 :aria-label="(selectedScheduleIds.includes(s.id) ? 'Hide' : 'Show') + ' ' + s.name"
-                :class="{ on: selectedScheduleIds.includes(s.id) }"
+                :class="{ active: selectedScheduleIds.includes(s.id) }"
                 :title="(selectedScheduleIds.includes(s.id) ? 'Hide' : 'Show') + ' ' + s.name"
                 @click="toggleSchedule(s.id)"
               >

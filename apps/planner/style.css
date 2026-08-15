@@ -43,6 +43,16 @@
   --font-xl: 18px;
   --font-2xl: 22px;
   --font-3xl: 26px;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+  --duration-fast: 0.15s;
+  --duration-med: 0.2s;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -76,7 +86,6 @@ body {
   font-size: var(--font-base);
   background: var(--bg);
   color: var(--text);
-  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -92,7 +101,7 @@ body {
 
 .header h1 {
   font-size: var(--font-3xl);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--primary);
   cursor: pointer;
   display: inline-block;
@@ -123,7 +132,7 @@ body {
   border-radius: var(--radius);
   font-size: var(--font-base);
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-med);
 }
 
 .search-input:focus {
@@ -143,7 +152,7 @@ body {
   padding: 10px var(--space-4);
   font-size: var(--font-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
   color: var(--text-muted);
 }
 
@@ -182,11 +191,11 @@ body {
 
 .tag {
   font-size: var(--font-xs);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   padding: 2px var(--space-2);
   border-radius: var(--radius-lg);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 
 .tag.major {
@@ -206,17 +215,17 @@ body {
 }
 
 .back-btn {
+  font-size: var(--font-base);
+  font-weight: var(--weight-medium);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-base);
   color: var(--primary);
   cursor: pointer;
   background: none;
   border: none;
   padding: var(--space-1) 0;
   margin-bottom: 8px;
-  font-weight: 500;
 }
 
 .back-btn:hover {
@@ -240,13 +249,12 @@ body {
 }
 
 .detail-header .faculty {
-  font-size: var(--font-base);
   color: var(--text-muted);
 }
 
 .section-title {
   font-size: var(--font-xl);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   margin-bottom: 12px;
   padding-bottom: 6px;
@@ -263,7 +271,7 @@ body {
 
 .req-block h4 {
   font-size: var(--font-lg);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   margin-bottom: 8px;
 }
@@ -285,13 +293,13 @@ body {
   align-items: center;
   gap: 2px;
   font-size: var(--font-md);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   background: var(--primary-light);
   color: var(--primary);
   padding: 3px var(--space-2);
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
   border: 1px solid transparent;
 }
 
@@ -302,7 +310,6 @@ body {
 
 .course-chip .sep {
   color: var(--text-muted);
-  font-weight: 400;
 }
 
 .course-chip.filter-colored {
@@ -325,17 +332,16 @@ body {
 .courses-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-base);
 }
 
 .courses-table th {
-  text-align: left;
-  padding: var(--space-2) var(--space-3);
-  font-weight: 600;
-  color: var(--text-muted);
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-muted);
   border-bottom: 2px solid var(--border);
 }
 
@@ -350,7 +356,7 @@ body {
 }
 
 .course-code-cell {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   cursor: pointer;
   white-space: nowrap;
@@ -384,11 +390,11 @@ body {
 }
 
 .anyof-option {
-  flex: 0 0 auto;
-  font-size: var(--font-2xs);
-  font-weight: 700;
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
+  flex: 0 0 auto;
   color: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 4px;
@@ -399,15 +405,15 @@ body {
 
 .anyof-or {
   font-size: var(--font-xs);
-  font-weight: 600;
-  color: var(--gray-300);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  color: var(--gray-300);
 }
 
 .pair-plus {
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
   margin: 0 2px;
 }
@@ -425,9 +431,7 @@ body {
 .course-chip.matched:hover {
   background: var(--danger-bg);
   color: var(--danger);
-}
-
-/* ---------- Top navigation ---------- */
+} /* ---------- Top navigation ---------- */
 .top-nav {
   display: flex;
   align-items: center;
@@ -438,11 +442,11 @@ body {
 }
 
 .nav-brand {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-bold);
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 700;
-  font-size: var(--font-lg);
   color: var(--primary);
   cursor: pointer;
 }
@@ -465,13 +469,13 @@ body {
 }
 
 .nav-links a {
+  font-size: var(--font-base);
+  font-weight: var(--weight-medium);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
-  font-size: var(--font-base);
-  font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
   border: 1px solid transparent;
 }
 
@@ -493,7 +497,7 @@ body {
 }
 .course-picker label {
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
 }
 
@@ -551,9 +555,7 @@ body {
 
 .controls-spacer {
   flex: 1;
-}
-
-/* Instructor */
+} /* Instructor */
 .section-title.alert {
   color: var(--danger);
 }
@@ -563,9 +565,9 @@ body {
 }
 
 .field label {
-  display: block;
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+  display: block;
   color: var(--text-muted);
   margin-bottom: 6px;
 }
@@ -636,7 +638,7 @@ body {
   border: none;
   background: none;
   font-size: var(--font-3xl);
-  line-height: 1;
+  line-height: var(--leading-none);
   color: var(--text-muted);
   cursor: pointer;
   padding: 0 var(--space-1);
@@ -652,7 +654,6 @@ body {
 .modal-intro {
   margin: 0 0 14px;
   color: var(--text-muted);
-  font-size: var(--font-base);
 }
 
 @media (max-width: 600px) {
@@ -679,21 +680,18 @@ body {
     flex-direction: column;
     gap: 10px;
   }
-}
-/* ---------------------------------------------------------------------------
- * Planner panel
- * --------------------------------------------------------------------------- */
+} /* ---------------------------------------------------------------------------
+* Planner panel
+* --------------------------------------------------------------------------- */
 .planner-pick-code {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .planner-pick-name {
   color: var(--text-muted);
-}
-
-/* ---------------------------------------------------------------------------
- * Planner view (PlannerApp / TrackAudit)
- * --------------------------------------------------------------------------- */
+} /* ---------------------------------------------------------------------------
+* Planner view (PlannerApp / TrackAudit)
+* --------------------------------------------------------------------------- */
 .req-block-head {
   display: flex;
   align-items: center;
@@ -703,9 +701,7 @@ body {
 
 .req-block-head h4 {
   margin-bottom: 0;
-}
-
-/* ---- Planner timeline (year x term grid) ---- */
+} /* ---- Planner timeline (year x term grid) ---- */
 .modal-wide {
   max-width: 720px;
 }
@@ -747,13 +743,13 @@ body {
 
 .planner-section-title {
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
 }
 
 .planner-section-count {
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--text-muted);
 }
 
@@ -771,7 +767,7 @@ body {
 
 .planner-section-more {
   font-size: 0.76rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--warning);
 }
 
@@ -798,7 +794,7 @@ body {
 .planner-gap-slot-label {
   font-size: var(--font-xs);
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   margin-right: 2px;
 }
 
@@ -818,9 +814,9 @@ body {
 
 .planner-status {
   font-size: var(--font-xs);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   padding: 1px var(--space-2);
   border-radius: 3px;
 }
@@ -846,8 +842,8 @@ body {
 }
 
 .planner-req-label {
-  font-weight: 600;
   font-size: var(--font-base);
+  font-weight: var(--weight-semibold);
   color: var(--text);
   flex: 1;
 }
@@ -872,7 +868,7 @@ body {
 
 .planner-gap-label {
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .planner-gap-toggle {
@@ -977,7 +973,7 @@ body {
 
 .planner-summary-item {
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .planner-plan {
@@ -988,28 +984,22 @@ body {
 }
 
 .track-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  border: 1px solid transparent;
-  transition: all 0.15s;
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--primary);
   cursor: pointer;
   text-transform: capitalize;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 
 .track-chip:hover {
   border-color: var(--primary);
 }
 
-.track-chip.on {
+.track-chip.active {
   background: var(--primary);
   color: var(--text-inverse);
   border-color: var(--primary);
@@ -1033,9 +1023,10 @@ body {
   border: none;
   border-radius: 50%;
   cursor: pointer;
+  line-height: var(--leading-none);
   margin-left: auto;
   font-size: var(--font-sm);
-  line-height: 1;
+  line-height: var(--leading-none);
   color: var(--text-muted);
   background: transparent;
   border: 1px solid var(--border);
@@ -1066,14 +1057,14 @@ body {
 }
 
 .add-program-name {
+  font-size: var(--font-base);
+  font-weight: var(--weight-semibold);
   flex-shrink: 0;
   width: 260px;
   text-align: left;
   background: none;
   border: none;
   padding: 0;
-  font-size: var(--font-base);
-  font-weight: 600;
   color: var(--primary);
   cursor: pointer;
   overflow: hidden;
@@ -1094,7 +1085,7 @@ body {
 
 .planner-plan-name {
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   padding: 6px var(--space-3);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius);
@@ -1155,7 +1146,7 @@ body {
 
 .tl-zone-title {
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--gray-600);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1183,7 +1174,7 @@ body {
 .tl-year,
 .tl-term {
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--gray-700);
   display: flex;
   align-items: center;
@@ -1234,14 +1225,12 @@ body {
   color: var(--gray-500);
   font-size: 0.7rem;
   margin-left: 4px;
-  line-height: 1;
+  line-height: var(--leading-none);
 }
 
 .tl-remove:hover {
   color: var(--danger);
-}
-
-/* ---- Planner top bar, tabs, and modals ---- */
+} /* ---- Planner top bar, tabs, and modals ---- */
 .planner-top {
   display: flex;
   flex-wrap: wrap;
@@ -1301,7 +1290,7 @@ body {
 
 .planner-add-btn {
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   background: var(--surface);
   border: 1px solid var(--primary);
@@ -1335,7 +1324,7 @@ body {
 
 .planner-tab {
   font-size: var(--font-base);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   padding: var(--space-2) var(--space-4);
   border: none;
   background: none;

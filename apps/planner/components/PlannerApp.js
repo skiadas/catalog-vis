@@ -263,7 +263,7 @@ export default {
                   v-for="t in filteredTracksFor(p)"
                   :key="t.trackKey"
                   class="track-chip"
-                  :class="{ on: activeSet.has(p.id + ':' + t.trackKey) }"
+                  :class="{ active: activeSet.has(p.id + ':' + t.trackKey) }"
                   @click="toggleTrack(p.id, t.trackKey)"
                 >{{ t.label }}</span>
                 <span v-if="!filteredTracksFor(p).length" class="track-chip disabled">No structured requirements</span>

@@ -8,7 +8,6 @@
   color: var(--success);
   text-decoration: line-through;
 }
-
 .planner-sections {
   display: flex;
   flex-direction: column;
@@ -19,145 +18,115 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
-
 .planner-section {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
-
 .planner-section + .planner-section {
   border-top: 1px dashed var(--border);
   padding-top: 6px;
 }
-
 .planner-section-head {
   @include flex-row(8px);
   align-items: baseline;
 }
-
 .planner-section-title {
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
 }
-
 .planner-section-count {
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--text-muted);
 }
-
 .planner-section-count.satisfied {
   color: var(--success);
 }
-
 .planner-section-count.partial {
   color: var(--warning);
 }
-
 .planner-section-count.unsatisfied {
   color: var(--danger);
 }
-
 .planner-section-more {
   font-size: 0.76rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--warning);
 }
-
 .planner-section-courses {
   @include flex-row;
 }
-
 .planner-gap-alternative {
   @include flex-row;
   align-items: center;
   padding: 3px 0;
 }
-
 .planner-gap-alternative + .planner-gap-alternative {
   border-top: 1px dashed var(--border);
   margin-top: 4px;
   padding-top: 6px;
 }
-
 .planner-gap-slot-label {
   font-size: var(--font-xs);
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   margin-right: 2px;
 }
-
 .planner-req {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 10px var(--space-3);
   background: var(--bg);
 }
-
 .planner-req-top {
   @include flex-row(10px);
   align-items: center;
 }
-
 .planner-status {
-  font-size: var(--font-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  @include text-eyebrow;
   padding: 1px var(--space-2);
   border-radius: 3px;
 }
-
 .planner-status.satisfied {
   background: var(--success-bg);
   color: var(--success);
 }
-
 .planner-status.partial {
   background: var(--warning-bg);
   color: var(--warning);
 }
-
 .planner-status.unsatisfied {
   background: var(--danger-bg);
   color: var(--danger);
 }
-
 .planner-status.unknown {
   background: var(--gray-100);
   color: var(--text-muted);
 }
-
 .planner-req-label {
-  font-weight: 600;
-  font-size: var(--font-base);
+  @include text-semibold;
   color: var(--text);
   flex: 1;
 }
-
 .planner-req-count {
   font-size: var(--font-sm);
   color: var(--text-muted);
 }
-
 .planner-gaps {
   margin-top: 6px;
   font-size: var(--font-md);
 }
-
 .planner-gap-group {
   @include flex-row(5px);
   align-items: baseline;
   margin-top: 4px;
 }
-
 .planner-gap-label {
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
-
 .planner-gap-toggle {
   display: inline-flex;
   align-items: center;
@@ -170,17 +139,14 @@
   color: inherit;
   text-align: left;
 }
-
 .planner-gap-count {
   color: var(--text-muted);
   font-size: var(--font-sm);
 }
-
 .planner-gap-chevron {
   color: var(--primary);
   font-size: var(--font-sm);
 }
-
 .planner-gap-options {
   @include flex-row;
   margin-top: 6px;
@@ -190,13 +156,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
-
 .planner-gap-note {
   color: var(--text-muted);
   font-style: italic;
   margin-top: 4px;
 }
-
 .planner-search {
   width: 100%;
   font-size: var(--font-base);
@@ -205,24 +169,20 @@
   border-radius: var(--radius);
   margin-bottom: 10px;
 }
-
 .planner-search:focus {
   outline: none;
   border-color: var(--accent);
 }
-
 .planner-pick-list {
   @include flex-row;
   max-height: 360px;
   overflow-y: auto;
 }
-
 .planner-pick-hint {
   color: var(--text-muted);
   font-size: var(--font-md);
   font-style: italic;
 }
-
 .planner-pick {
   display: inline-flex;
   align-items: center;
@@ -234,73 +194,60 @@
   padding: 3px var(--space-2);
   cursor: pointer;
 }
-
 .planner-pick:hover {
   background: var(--primary-light);
 }
-
 .planner-pick.taken {
   background: var(--primary);
   color: white;
 }
-
 .planner-pick.taken .planner-pick-name {
   color: rgba(255, 255, 255, 0.85);
 }
-
 .planner-pick-empty {
   font-size: var(--font-md);
   color: var(--text-muted);
   font-style: italic;
 }
-
 .planner-summary-item {
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
-
 .planner-plan {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-bottom: 24px;
 }
-
 .track-chip {
-  @include pill(3px, 10px);
-  font-size: var(--font-sm);
-  font-weight: 600;
+  @include text-label-sm;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--primary);
   cursor: pointer;
   text-transform: capitalize;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
-
 .track-chip:hover {
   border-color: var(--primary);
 }
-
-.track-chip.on {
+.track-chip.active {
   background: var(--primary);
   color: var(--text-inverse);
   border-color: var(--primary);
 }
-
 .track-chip.disabled {
   color: var(--text-muted);
   cursor: default;
   border-color: transparent;
   text-transform: none;
 }
-
 .track-remove-btn {
   @include icon-btn(22px);
   margin-left: auto;
   font-size: var(--font-sm);
-  line-height: 1;
+  line-height: var(--leading-none);
   color: var(--text-muted);
   background: transparent;
   border: 1px solid var(--border);
@@ -308,18 +255,15 @@
     background 0.15s,
     color 0.15s;
 }
-
 .track-remove-btn:hover {
   background: var(--danger);
   border-color: var(--danger);
   color: var(--text-inverse);
 }
-
 .add-program-list {
   display: flex;
   flex-direction: column;
 }
-
 .add-program-row {
   display: flex;
   align-items: baseline;
@@ -327,39 +271,33 @@
   padding: 7px 0;
   border-bottom: 1px solid var(--border);
 }
-
 .add-program-row:last-child {
   border-bottom: none;
 }
-
 .add-program-name {
+  @include text-semibold;
   flex-shrink: 0;
   width: 260px;
   text-align: left;
   background: none;
   border: none;
   padding: 0;
-  font-size: var(--font-base);
-  font-weight: 600;
   color: var(--primary);
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .add-program-name:hover {
   text-decoration: underline;
 }
-
 .add-program-chips {
   @include flex-row;
   align-items: center;
 }
-
 .planner-plan-name {
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   padding: 6px var(--space-3);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius);
@@ -367,13 +305,11 @@
   width: 260px;
   color: var(--gray-800);
 }
-
 .planner-plan-name:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
 }
-
 .planner-plan-select {
   padding: 6px var(--space-2);
   border: 1px solid var(--gray-300);
@@ -382,28 +318,23 @@
   color: var(--gray-800);
   max-width: 240px;
 }
-
 .planner-timeline {
   margin: 6px 0 10px;
 }
-
 .tl-zones {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-bottom: 6px;
 }
-
 .tl-zones .tl-zone {
   margin-bottom: 0;
 }
-
 @media (max-width: 760px) {
   .tl-zones {
     grid-template-columns: 1fr;
   }
 }
-
 .tl-zone {
   border: 1px dashed var(--gray-300);
   border-radius: 10px;
@@ -414,57 +345,48 @@
     background 0.12s,
     border-color 0.12s;
 }
-
 .tl-zone.drag-over,
 .tl-cell.drag-over {
   background: var(--info-bg);
   border-color: var(--info);
 }
-
 .tl-zone-title {
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--gray-600);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 8px;
 }
-
 .tl-zone-courses {
   @include flex-row;
 }
-
 .tl-empty {
   color: var(--gray-500);
   font-size: 0.85rem;
 }
-
 .tl-grid {
   display: grid;
   grid-template-columns: 110px 1fr 1fr 1fr;
   gap: var(--space-2);
   margin: var(--space-3) 0;
 }
-
 .tl-year,
 .tl-term {
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--gray-700);
   display: flex;
   align-items: center;
 }
-
 .tl-year {
   justify-content: flex-end;
   text-align: right;
   padding-right: 6px;
 }
-
 .tl-term {
   justify-content: center;
 }
-
 .tl-cell {
   @include flex-row;
   min-height: 64px;
@@ -477,34 +399,27 @@
     background 0.12s,
     border-color 0.12s;
 }
-
 .tl-transfer {
   border-style: solid;
   background: var(--warning-bg);
 }
-
 .tl-chip {
   position: relative;
   cursor: grab;
 }
-
 .tl-chip:active {
   cursor: grabbing;
 }
-
 .tl-remove {
   @include button-reset;
   color: var(--gray-500);
   font-size: 0.7rem;
   margin-left: 4px;
-  line-height: 1;
+  line-height: var(--leading-none);
 }
-
 .tl-remove:hover {
   color: var(--danger);
-}
-
-/* ---- Planner top bar, tabs, and modals ---- */
+} /* ---- Planner top bar, tabs, and modals ---- */
 
 .planner-top {
   @include flex-row(12px);
@@ -512,36 +427,29 @@
   justify-content: space-between;
   margin: 14px 0 6px;
 }
-
 .planner-head {
   @include flex-row(20px);
   align-items: center;
   justify-content: space-between;
 }
-
 .planner-head .planner-top-left {
   justify-content: flex-end;
 }
-
 .planner-head-title {
   min-width: 0;
 }
-
 .planner-top-spacer {
   flex: 1;
 }
-
 .planner-top-left,
 .planner-top-right {
   @include flex-row(8px);
   align-items: center;
 }
-
 .planner-plan-actions {
   display: flex;
   gap: var(--space-1);
 }
-
 .planner-icon-btn {
   font-size: var(--font-sm);
   padding: 6px 10px;
@@ -551,15 +459,12 @@
   color: var(--text-muted);
   cursor: pointer;
 }
-
 .planner-icon-btn:hover {
   color: var(--primary);
   border-color: var(--primary);
 }
-
 .planner-add-btn {
-  font-size: var(--font-md);
-  font-weight: 600;
+  @include text-label;
   color: var(--primary);
   background: var(--surface);
   border: 1px solid var(--primary);
@@ -571,31 +476,25 @@
     color 0.15s;
   white-space: nowrap;
 }
-
 .planner-add-btn:hover {
   background: var(--primary);
   color: var(--text-inverse);
 }
-
 .planner-add-btn.primary {
   color: var(--text-inverse);
   background: var(--primary);
 }
-
 .planner-add-btn.primary:hover {
   background: var(--primary-dark, var(--primary));
 }
-
 .planner-tabs {
   display: flex;
   gap: var(--space-1);
   margin: 14px 0 var(--space-4);
   border-bottom: 1px solid var(--border);
 }
-
 .planner-tab {
-  font-size: var(--font-base);
-  font-weight: 600;
+  @include text-semibold;
   padding: var(--space-2) var(--space-4);
   border: none;
   background: none;
@@ -604,11 +503,9 @@
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
-
 .planner-tab:hover {
   color: var(--primary);
 }
-
 .planner-tab.active {
   color: var(--primary);
   border-bottom-color: var(--primary);

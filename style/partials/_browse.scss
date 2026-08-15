@@ -8,12 +8,11 @@
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-4);
 }
-
 .program-card {
   @include surface;
   padding: 14px var(--space-4);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-med);
   box-shadow: var(--shadow-sm);
 
   &:hover {
@@ -34,22 +33,18 @@
     margin-top: 6px;
   }
 }
-
 .detail-description {
-  font-size: var(--font-base);
-  line-height: 1.7;
+  line-height: var(--leading-relaxed);
   color: var(--gray-800);
   margin-bottom: 28px;
   max-width: 800px;
 }
-
 .req-original {
   margin-top: 10px;
   font-size: var(--font-sm);
   color: var(--text-muted);
   font-style: italic;
 }
-
 .course-prereq {
   font-size: var(--font-sm);
   color: var(--text-muted);
@@ -58,19 +53,17 @@
   span {
     cursor: pointer;
     color: var(--primary);
-    font-weight: 500;
+    font-weight: var(--weight-medium);
 
     &:hover {
       text-decoration: underline;
     }
   }
 }
-
 .course-prereq-label {
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   color: var(--text-muted);
 }
-
 .course-detail-card {
   @include surface;
   padding: var(--space-6);
@@ -82,14 +75,12 @@
   }
 
   .course-meta {
-    font-size: var(--font-base);
     color: var(--text-muted);
     margin-bottom: 16px;
   }
 
   .course-desc {
-    font-size: var(--font-base);
-    line-height: 1.7;
+    line-height: var(--leading-relaxed);
     margin-bottom: 16px;
   }
 
@@ -123,7 +114,6 @@
     }
 
     li {
-      font-size: var(--font-base);
       padding: 2px 0;
 
       a {
@@ -138,55 +128,43 @@
     }
   }
 }
-
 .req-section {
   margin-top: 12px;
 }
-
 .req-section + .req-section {
   padding-top: 12px;
   border-top: 1px dashed var(--border);
 }
-
 .req-section-heading {
-  font-size: var(--font-md);
-  font-weight: 600;
+  @include text-eyebrow;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   margin-bottom: 8px;
 }
-
 .req-items {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
-
 .req-item {
-  line-height: 1.6;
+  line-height: var(--leading-relaxed);
 }
-
 .anyof-group {
   @include flex-row;
   align-items: center;
 }
-
 .anyof-label {
   font-size: var(--font-sm);
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   margin-right: 2px;
 }
-
 .eachof-label {
   font-size: var(--font-sm);
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   margin-right: 2px;
   margin-bottom: 6px;
 }
-
 .anyof-items-group {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -194,15 +172,11 @@
   padding: 10px var(--space-3);
 
   > .anyof-label {
-    font-size: var(--font-xs);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    @include text-eyebrow;
     color: var(--accent);
     margin-bottom: 6px;
   }
 }
-
 .anyof-subitem {
   @include flex-row;
   align-items: center;
@@ -214,53 +188,44 @@
     padding-top: 8px;
   }
 }
-
 .item-note {
   display: inline-flex;
   align-items: center;
   font-size: var(--font-xs);
   color: var(--accent);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   margin-left: 4px;
 }
-
 .item-note.culminating {
   color: var(--warning);
 }
-
 .electives-group {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 10px var(--space-3);
 }
-
 .electives-header {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin-bottom: 6px;
 }
-
 .electives-count {
-  font-size: var(--font-md);
-  font-weight: 600;
+  @include text-label;
   color: var(--primary);
 }
-
 .constraints-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
-
 .constraint-row {
   @include flex-row(4px);
   font-size: var(--font-sm);
   color: var(--text-muted);
   align-items: center;
 }
-
 .constraint-tag {
   display: inline-flex;
   align-items: center;
@@ -269,22 +234,22 @@
 
   &.level {
     color: var(--violet);
-    font-weight: 500;
+    font-weight: var(--weight-medium);
   }
 
   &.exclude {
     color: var(--danger);
-    font-weight: 500;
+    font-weight: var(--weight-medium);
   }
 
   &.discipline {
     color: var(--teal);
-    font-weight: 500;
+    font-weight: var(--weight-medium);
   }
 
   &.from {
     color: var(--primary);
-    font-weight: 500;
+    font-weight: var(--weight-medium);
 
     .constraint-note {
       font-style: italic;
@@ -298,38 +263,31 @@
 
   &.note-only {
     font-style: italic;
-    font-weight: 400;
     color: var(--text-muted);
-    line-height: 1.5;
   }
 }
-
 .level-gate-badge {
   display: inline-flex;
   align-items: center;
   font-size: var(--font-sm);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   color: var(--violet);
   background: var(--violet-bg);
   padding: 2px var(--space-2);
   border-radius: 4px;
 }
-
 .custom-text {
   font-size: var(--font-md);
   font-style: italic;
   color: var(--text-muted);
-  line-height: 1.5;
 }
-
 .course-group {
   @include flex-row;
   align-items: center;
 }
-
 .plan-track-btn {
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   background: var(--primary-light);
   border: 1px solid var(--border);
@@ -337,7 +295,7 @@
   padding: 3px var(--space-3);
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 
   &:hover {
     background: var(--primary);

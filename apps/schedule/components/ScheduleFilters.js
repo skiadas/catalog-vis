@@ -63,7 +63,7 @@ export default {
           v-for="d in depts"
           :key="d"
           class="filter-chip"
-          :class="{ on: selectedDepartments.includes(d) }"
+          :class="{ active: selectedDepartments.includes(d) }"
           :style="selectedDepartments.includes(d) ? { backgroundColor: colorForDept(d) } : {}"
           @click="toggleDept(d)"
         >{{ d }}</span>
@@ -76,7 +76,7 @@ export default {
           v-for="i in instructors"
           :key="i"
           class="filter-chip"
-          :class="{ on: selectedInstructors.includes(i) }"
+          :class="{ active: selectedInstructors.includes(i) }"
           :style="selectedInstructors.includes(i) ? { backgroundColor: colorForInstructor(i) } : {}"
           @click="toggleInstructor(i)"
         >{{ i }}</span>

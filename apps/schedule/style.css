@@ -43,6 +43,16 @@
   --font-xl: 18px;
   --font-2xl: 22px;
   --font-3xl: 26px;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+  --duration-fast: 0.15s;
+  --duration-med: 0.2s;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -76,7 +86,6 @@ body {
   font-size: var(--font-base);
   background: var(--bg);
   color: var(--text);
-  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -92,7 +101,7 @@ body {
 
 .header h1 {
   font-size: var(--font-3xl);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--primary);
   cursor: pointer;
   display: inline-block;
@@ -123,7 +132,7 @@ body {
   border-radius: var(--radius);
   font-size: var(--font-base);
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-med);
 }
 
 .search-input:focus {
@@ -143,7 +152,7 @@ body {
   padding: 10px var(--space-4);
   font-size: var(--font-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
   color: var(--text-muted);
 }
 
@@ -182,11 +191,11 @@ body {
 
 .tag {
   font-size: var(--font-xs);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   padding: 2px var(--space-2);
   border-radius: var(--radius-lg);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 
 .tag.major {
@@ -206,17 +215,17 @@ body {
 }
 
 .back-btn {
+  font-size: var(--font-base);
+  font-weight: var(--weight-medium);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-base);
   color: var(--primary);
   cursor: pointer;
   background: none;
   border: none;
   padding: var(--space-1) 0;
   margin-bottom: 8px;
-  font-weight: 500;
 }
 
 .back-btn:hover {
@@ -240,13 +249,12 @@ body {
 }
 
 .detail-header .faculty {
-  font-size: var(--font-base);
   color: var(--text-muted);
 }
 
 .section-title {
   font-size: var(--font-xl);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   margin-bottom: 12px;
   padding-bottom: 6px;
@@ -263,7 +271,7 @@ body {
 
 .req-block h4 {
   font-size: var(--font-lg);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   margin-bottom: 8px;
 }
@@ -285,13 +293,13 @@ body {
   align-items: center;
   gap: 2px;
   font-size: var(--font-md);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   background: var(--primary-light);
   color: var(--primary);
   padding: 3px var(--space-2);
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
   border: 1px solid transparent;
 }
 
@@ -302,7 +310,6 @@ body {
 
 .course-chip .sep {
   color: var(--text-muted);
-  font-weight: 400;
 }
 
 .course-chip.filter-colored {
@@ -325,17 +332,16 @@ body {
 .courses-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-base);
 }
 
 .courses-table th {
-  text-align: left;
-  padding: var(--space-2) var(--space-3);
-  font-weight: 600;
-  color: var(--text-muted);
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-muted);
   border-bottom: 2px solid var(--border);
 }
 
@@ -350,7 +356,7 @@ body {
 }
 
 .course-code-cell {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   cursor: pointer;
   white-space: nowrap;
@@ -384,11 +390,11 @@ body {
 }
 
 .anyof-option {
-  flex: 0 0 auto;
-  font-size: var(--font-2xs);
-  font-weight: 700;
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
+  flex: 0 0 auto;
   color: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 4px;
@@ -399,15 +405,15 @@ body {
 
 .anyof-or {
   font-size: var(--font-xs);
-  font-weight: 600;
-  color: var(--gray-300);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  color: var(--gray-300);
 }
 
 .pair-plus {
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
   margin: 0 2px;
 }
@@ -425,9 +431,7 @@ body {
 .course-chip.matched:hover {
   background: var(--danger-bg);
   color: var(--danger);
-}
-
-/* ---------- Top navigation ---------- */
+} /* ---------- Top navigation ---------- */
 .top-nav {
   display: flex;
   align-items: center;
@@ -438,11 +442,11 @@ body {
 }
 
 .nav-brand {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-bold);
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 700;
-  font-size: var(--font-lg);
   color: var(--primary);
   cursor: pointer;
 }
@@ -465,13 +469,13 @@ body {
 }
 
 .nav-links a {
+  font-size: var(--font-base);
+  font-weight: var(--weight-medium);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
-  font-size: var(--font-base);
-  font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
   border: 1px solid transparent;
 }
 
@@ -493,7 +497,7 @@ body {
 }
 .course-picker label {
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
 }
 
@@ -551,9 +555,7 @@ body {
 
 .controls-spacer {
   flex: 1;
-}
-
-/* Instructor */
+} /* Instructor */
 .section-title.alert {
   color: var(--danger);
 }
@@ -563,9 +565,9 @@ body {
 }
 
 .field label {
-  display: block;
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+  display: block;
   color: var(--text-muted);
   margin-bottom: 6px;
 }
@@ -636,7 +638,7 @@ body {
   border: none;
   background: none;
   font-size: var(--font-3xl);
-  line-height: 1;
+  line-height: var(--leading-none);
   color: var(--text-muted);
   cursor: pointer;
   padding: 0 var(--space-1);
@@ -652,7 +654,6 @@ body {
 .modal-intro {
   margin: 0 0 14px;
   color: var(--text-muted);
-  font-size: var(--font-base);
 }
 
 @media (max-width: 600px) {
@@ -679,21 +680,18 @@ body {
     flex-direction: column;
     gap: 10px;
   }
-}
-/* ---------------------------------------------------------------------------
- * Planner panel
- * --------------------------------------------------------------------------- */
+} /* ---------------------------------------------------------------------------
+* Planner panel
+* --------------------------------------------------------------------------- */
 .planner-pick-code {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .planner-pick-name {
   color: var(--text-muted);
-}
-
-/* ---------------------------------------------------------------------------
- * Planner view (PlannerApp / TrackAudit)
- * --------------------------------------------------------------------------- */
+} /* ---------------------------------------------------------------------------
+* Planner view (PlannerApp / TrackAudit)
+* --------------------------------------------------------------------------- */
 .req-block-head {
   display: flex;
   align-items: center;
@@ -703,9 +701,7 @@ body {
 
 .req-block-head h4 {
   margin-bottom: 0;
-}
-
-/* ---- Planner timeline (year x term grid) ---- */
+} /* ---- Planner timeline (year x term grid) ---- */
 .modal-wide {
   max-width: 720px;
 }
@@ -725,11 +721,9 @@ body {
 
 .schedule-type-label {
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
-}
-
-/* Prev/next navigation header (day / slot views) */
+} /* Prev/next navigation header (day / slot views) */
 .nav-header {
   display: flex;
   align-items: center;
@@ -754,7 +748,7 @@ body {
   font-size: var(--font-lg);
   color: var(--primary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
 }
 
 .nav-arrow:hover {
@@ -763,12 +757,10 @@ body {
 }
 
 .do-inst {
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   font-size: var(--font-2xs);
   opacity: 0.9;
-}
-
-/* Time-slot offerings as pills */
+} /* Time-slot offerings as pills */
 .slot-pills {
   display: flex;
   flex-wrap: wrap;
@@ -784,7 +776,7 @@ body {
   transition: all 0.15s;
   gap: var(--space-2);
   font-size: var(--font-md);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   background: var(--primary-light);
   color: var(--primary);
   cursor: default;
@@ -797,7 +789,6 @@ body {
 
 .slot-pill .sep {
   color: var(--text-muted);
-  font-weight: 400;
   margin-left: 1px;
 }
 
@@ -812,7 +803,6 @@ body {
 }
 
 .slot-pill-name {
-  font-weight: 400;
   color: var(--text-muted);
   max-width: 260px;
   overflow: hidden;
@@ -829,9 +819,9 @@ body {
 }
 
 .slot-pill-inst {
-  cursor: pointer;
   font-size: var(--font-xs);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
   opacity: 0.85;
   border-left: 1px solid rgba(27, 73, 101, 0.25);
   padding-left: 8px;
@@ -857,9 +847,7 @@ body {
 
 .slot-pill.filter-colored:hover {
   background: rgba(27, 73, 101, 0.9);
-}
-
-/* Editable pills (edit mode): draggable affordance + an edit button */
+} /* Editable pills (edit mode): draggable affordance + an edit button */
 .slot-pill.editable {
   cursor: grab;
 }
@@ -879,6 +867,7 @@ body {
   border: none;
   border-radius: 50%;
   cursor: pointer;
+  line-height: var(--leading-none);
   margin: -2px -4px -2px 0;
   background: rgba(255, 255, 255, 0.92);
   color: var(--primary);
@@ -899,9 +888,7 @@ body {
 .slot-pill:not(.filter-colored) .slot-pill-edit:hover {
   background: var(--primary);
   color: white;
-}
-
-/* Drop highlight for the day view's slot cards while dragging a course over them */
+} /* Drop highlight for the day view's slot cards while dragging a course over them */
 .day-slot-card.drag-over {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(98, 182, 203, 0.25);
@@ -913,9 +900,7 @@ body {
 
 .day-slot-card.drag-over .day-slot-head .day-slot-time {
   color: white;
-}
-
-/* ---------- Schedule ---------- */
+} /* ---------- Schedule ---------- */
 .schedule-header {
   margin-bottom: 10px;
 }
@@ -929,7 +914,7 @@ body {
   border-radius: var(--radius);
   padding: 6px var(--space-3);
   margin: var(--space-2) 0 10px;
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .schedule-toolbar {
@@ -955,18 +940,18 @@ body {
 }
 
 .filter-mode .filter-mode-label {
-  font-size: var(--font-sm);
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
   margin-right: 2px;
 }
 
 .filter-mode .filter-btn {
-  padding: 5px 14px;
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+  padding: 5px 14px;
   border-radius: 999px;
   border: 1px solid var(--accent);
   background: transparent;
@@ -977,9 +962,7 @@ body {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
-}
-
-/* Add-a-course modal (edit mode) */
+} /* Add-a-course modal (edit mode) */
 .schedule-add-search {
   width: 100%;
   margin-bottom: 10px;
@@ -1017,9 +1000,7 @@ body {
   margin-left: 6px;
   font-size: var(--font-md);
   color: var(--text-muted);
-}
-
-/* Day view */
+} /* Day view */
 .day-slot-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1035,7 +1016,7 @@ body {
   padding: var(--space-3) var(--space-4);
   background: var(--primary-light);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 
 .day-slot-head:hover {
@@ -1043,7 +1024,7 @@ body {
 }
 
 .day-slot-time {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
 }
 
@@ -1075,7 +1056,7 @@ body {
   background: var(--danger);
   color: white;
   font-size: var(--font-sm);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   margin-left: 6px;
 }
 
@@ -1086,10 +1067,7 @@ body {
   border-radius: var(--radius);
   padding: var(--space-3) var(--space-4);
   margin-bottom: 8px;
-  font-size: var(--font-base);
-}
-
-/* ---------- Weekly calendar grid ---------- */
+} /* ---------- Weekly calendar grid ---------- */
 .calendar-scroll {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1116,16 +1094,16 @@ body {
 }
 
 .cal-dayhead {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-bold);
   flex: 1;
   text-align: center;
   padding: 10px 0;
-  font-size: var(--font-lg);
-  font-weight: 700;
   color: var(--primary);
   background: var(--primary-light);
   cursor: pointer;
   border-left: 1px solid var(--border);
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 
 .cal-dayhead:hover {
@@ -1134,11 +1112,11 @@ body {
 }
 
 .cal-dayhead .day-name {
-  display: block;
-  font-size: var(--font-2xs);
-  font-weight: 500;
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  display: block;
   color: var(--text-muted);
 }
 
@@ -1166,10 +1144,8 @@ body {
   height: 480px;
   border-left: 1px solid var(--border);
   background: var(--gray-50);
-}
-
-/* Gentle non-white slot tint; applied when a grid filter is active so slot
-   boundaries stay visible through the light filtered blocks. */
+} /* Gentle non-white slot tint; applied when a grid filter is active so slot
+ boundaries stay visible through the light filtered blocks. */
 .cal-daycol.slot-striped {
   background: var(--gray-100);
 }
@@ -1206,10 +1182,8 @@ body {
 .cal-block:hover {
   background: rgb(98, 182, 203);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* Drop zones that accept a dragged course in edit mode. Sits above (behind) no
-   block bands, so it never overlaps a rendered course block. */
+} /* Drop zones that accept a dragged course in edit mode. Sits above (behind) no
+ block bands, so it never overlaps a rendered course block. */
 .cal-dropzone {
   position: absolute;
   left: 4px;
@@ -1247,26 +1221,24 @@ body {
 }
 
 .cal-block-count {
-  font-weight: 700;
   font-size: var(--font-lg);
-  line-height: 1.1;
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
 }
 
 .cal-block-label {
-  font-weight: 600;
   font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   opacity: 0.85;
 }
 
 .cal-block-time {
   font-size: var(--font-2xs);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
   color: inherit;
   opacity: 0.85;
   word-break: break-word;
-}
-
-/* Filtered block variant: white card with per-department offerings */
+} /* Filtered block variant: white card with per-department offerings */
 .cal-block.filtered {
   background: rgba(255, 255, 255, 0.82);
   border-color: var(--gray-300);
@@ -1295,7 +1267,7 @@ body {
   gap: var(--space-1);
   line-height: 1.15;
   font-size: var(--font-2xs);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-inverse);
   border-radius: 3px;
   padding: 1px var(--space-1);
@@ -1326,7 +1298,7 @@ body {
   background: rgba(255, 255, 255, 0.3);
   color: var(--text-inverse);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 
 .filter-offering-edit:hover {
@@ -1335,9 +1307,7 @@ body {
 
 .filter-offering:hover {
   filter: brightness(1.1);
-}
-
-/* Schedule filter chips */
+} /* Schedule filter chips */
 .filter-panel {
   display: flex;
   flex-wrap: wrap;
@@ -1348,26 +1318,20 @@ body {
 
 .filter-label {
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
   margin-right: 2px;
 }
 
 .filter-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  border: 1px solid transparent;
-  transition: all 0.15s;
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   border-radius: var(--radius-lg);
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
 }
 
 .filter-chip:hover {
@@ -1375,14 +1339,14 @@ body {
   color: var(--primary);
 }
 
-.filter-chip.on {
+.filter-chip.active {
   color: var(--text-inverse);
   border-color: transparent;
 }
 
 .filter-clear {
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   background: none;
   border: none;
@@ -1432,7 +1396,7 @@ body {
 
 .schedule-edit-name {
   font: inherit;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--primary);
   background: transparent;
   border: 1px solid transparent;
@@ -1446,9 +1410,7 @@ body {
   border-color: var(--border);
   background: var(--surface);
   outline: none;
-}
-
-/* Course-edit modal: time-slot picker with per-group day toggles */
+} /* Course-edit modal: time-slot picker with per-group day toggles */
 .slot-time-groups {
   display: flex;
   flex-direction: column;
@@ -1482,9 +1444,9 @@ body {
   background: var(--surface);
   color: var(--text-muted);
   font-size: var(--font-xs);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
 }
 
 .day-chip:hover {
@@ -1492,7 +1454,7 @@ body {
   color: var(--primary);
 }
 
-.day-chip.on {
+.day-chip.active {
   background: var(--primary);
   border-color: var(--primary);
   color: var(--text-inverse);
@@ -1524,22 +1486,22 @@ body {
 
 .schedule-picker-count {
   margin-left: 6px;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .schedule-pill {
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   display: inline-flex;
   align-items: center;
   gap: 6px;
   max-width: 220px;
   overflow: hidden;
-  font-size: var(--font-xs);
-  font-weight: 600;
   color: var(--text-inverse);
   padding: 3px 6px 3px 9px;
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-fast);
 }
 
 .schedule-pill:hover {
@@ -1547,12 +1509,12 @@ body {
 }
 
 .schedule-color-toggle {
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   align-self: center;
   padding: 5px 10px;
-  font-size: var(--font-xs);
-  font-weight: 600;
   border-radius: var(--radius-lg);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
 }
 
 .schedule-pill .schedule-pill-label {
@@ -1572,8 +1534,9 @@ body {
   border: none;
   border-radius: 50%;
   cursor: pointer;
+  line-height: var(--leading-none);
   font-size: var(--font-xs);
-  line-height: 1;
+  line-height: var(--leading-none);
   color: var(--text-inverse);
   background: rgba(255, 255, 255, 0.25);
 }
@@ -1589,8 +1552,9 @@ body {
   border: none;
   border-radius: 50%;
   cursor: pointer;
+  line-height: var(--leading-none);
   font-size: var(--font-xs);
-  line-height: 1;
+  line-height: var(--leading-none);
   color: var(--text-inverse);
   background: rgba(255, 255, 255, 0.25);
 }
@@ -1651,7 +1615,7 @@ body {
 }
 .schedule-manage-name {
   font-size: var(--font-base);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 .schedule-manage-meta {
   font-size: var(--font-sm);
@@ -1668,6 +1632,7 @@ body {
   border: none;
   border-radius: 50%;
   cursor: pointer;
+  line-height: var(--leading-none);
   transition: background 0.15s, color 0.15s;
 }
 .schedule-manage-icon {
@@ -1689,10 +1654,10 @@ body {
   background: var(--primary-light);
   color: var(--primary);
 }
-.schedule-manage-eye.on {
+.schedule-manage-eye.active {
   color: var(--primary);
 }
-.schedule-manage-eye.on:hover {
+.schedule-manage-eye.active:hover {
   color: var(--danger);
 }
 .schedule-manage-del {
@@ -1726,23 +1691,13 @@ body {
 }
 
 .schedule-help-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
+  font-size: var(--font-lg);
+  font-weight: var(--weight-bold);
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--primary);
-  font-size: var(--font-lg);
-  font-weight: 700;
-  line-height: 1;
-  transition: all 0.15s;
+  line-height: var(--leading-none);
+  transition: all var(--duration-fast);
 }
 
 .schedule-help-toggle:hover {
@@ -1757,7 +1712,6 @@ body {
 
 .help-section h4 {
   margin: 0 0 var(--space-1);
-  font-size: var(--font-base);
   color: var(--primary);
 }
 
@@ -1765,7 +1719,7 @@ body {
 .help-section ul {
   margin: 0;
   font-size: 13.5px;
-  line-height: 1.55;
+  line-height: var(--leading-normal);
   color: var(--text);
 }
 

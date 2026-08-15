@@ -43,6 +43,16 @@
   --font-xl: 18px;
   --font-2xl: 22px;
   --font-3xl: 26px;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+  --duration-fast: 0.15s;
+  --duration-med: 0.2s;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -76,7 +86,6 @@ body {
   font-size: var(--font-base);
   background: var(--bg);
   color: var(--text);
-  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -92,7 +101,7 @@ body {
 
 .header h1 {
   font-size: var(--font-3xl);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--primary);
   cursor: pointer;
   display: inline-block;
@@ -123,7 +132,7 @@ body {
   border-radius: var(--radius);
   font-size: var(--font-base);
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-med);
 }
 
 .search-input:focus {
@@ -143,7 +152,7 @@ body {
   padding: 10px var(--space-4);
   font-size: var(--font-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
   color: var(--text-muted);
 }
 
@@ -182,11 +191,11 @@ body {
 
 .tag {
   font-size: var(--font-xs);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   padding: 2px var(--space-2);
   border-radius: var(--radius-lg);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 
 .tag.major {
@@ -206,17 +215,17 @@ body {
 }
 
 .back-btn {
+  font-size: var(--font-base);
+  font-weight: var(--weight-medium);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-base);
   color: var(--primary);
   cursor: pointer;
   background: none;
   border: none;
   padding: var(--space-1) 0;
   margin-bottom: 8px;
-  font-weight: 500;
 }
 
 .back-btn:hover {
@@ -240,13 +249,12 @@ body {
 }
 
 .detail-header .faculty {
-  font-size: var(--font-base);
   color: var(--text-muted);
 }
 
 .section-title {
   font-size: var(--font-xl);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   margin-bottom: 12px;
   padding-bottom: 6px;
@@ -263,7 +271,7 @@ body {
 
 .req-block h4 {
   font-size: var(--font-lg);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   margin-bottom: 8px;
 }
@@ -285,13 +293,13 @@ body {
   align-items: center;
   gap: 2px;
   font-size: var(--font-md);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   background: var(--primary-light);
   color: var(--primary);
   padding: 3px var(--space-2);
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
   border: 1px solid transparent;
 }
 
@@ -302,7 +310,6 @@ body {
 
 .course-chip .sep {
   color: var(--text-muted);
-  font-weight: 400;
 }
 
 .course-chip.filter-colored {
@@ -325,17 +332,16 @@ body {
 .courses-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-base);
 }
 
 .courses-table th {
-  text-align: left;
-  padding: var(--space-2) var(--space-3);
-  font-weight: 600;
-  color: var(--text-muted);
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-muted);
   border-bottom: 2px solid var(--border);
 }
 
@@ -350,7 +356,7 @@ body {
 }
 
 .course-code-cell {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   cursor: pointer;
   white-space: nowrap;
@@ -384,11 +390,11 @@ body {
 }
 
 .anyof-option {
-  flex: 0 0 auto;
-  font-size: var(--font-2xs);
-  font-weight: 700;
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
+  flex: 0 0 auto;
   color: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 4px;
@@ -399,15 +405,15 @@ body {
 
 .anyof-or {
   font-size: var(--font-xs);
-  font-weight: 600;
-  color: var(--gray-300);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  color: var(--gray-300);
 }
 
 .pair-plus {
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
   margin: 0 2px;
 }
@@ -425,9 +431,7 @@ body {
 .course-chip.matched:hover {
   background: var(--danger-bg);
   color: var(--danger);
-}
-
-/* ---------- Top navigation ---------- */
+} /* ---------- Top navigation ---------- */
 .top-nav {
   display: flex;
   align-items: center;
@@ -438,11 +442,11 @@ body {
 }
 
 .nav-brand {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-bold);
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 700;
-  font-size: var(--font-lg);
   color: var(--primary);
   cursor: pointer;
 }
@@ -465,13 +469,13 @@ body {
 }
 
 .nav-links a {
+  font-size: var(--font-base);
+  font-weight: var(--weight-medium);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
-  font-size: var(--font-base);
-  font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
   border: 1px solid transparent;
 }
 
@@ -493,7 +497,7 @@ body {
 }
 .course-picker label {
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--text-muted);
 }
 
@@ -551,9 +555,7 @@ body {
 
 .controls-spacer {
   flex: 1;
-}
-
-/* Instructor */
+} /* Instructor */
 .section-title.alert {
   color: var(--danger);
 }
@@ -563,9 +565,9 @@ body {
 }
 
 .field label {
-  display: block;
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+  display: block;
   color: var(--text-muted);
   margin-bottom: 6px;
 }
@@ -636,7 +638,7 @@ body {
   border: none;
   background: none;
   font-size: var(--font-3xl);
-  line-height: 1;
+  line-height: var(--leading-none);
   color: var(--text-muted);
   cursor: pointer;
   padding: 0 var(--space-1);
@@ -652,7 +654,6 @@ body {
 .modal-intro {
   margin: 0 0 14px;
   color: var(--text-muted);
-  font-size: var(--font-base);
 }
 
 @media (max-width: 600px) {
@@ -679,21 +680,18 @@ body {
     flex-direction: column;
     gap: 10px;
   }
-}
-/* ---------------------------------------------------------------------------
- * Planner panel
- * --------------------------------------------------------------------------- */
+} /* ---------------------------------------------------------------------------
+* Planner panel
+* --------------------------------------------------------------------------- */
 .planner-pick-code {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .planner-pick-name {
   color: var(--text-muted);
-}
-
-/* ---------------------------------------------------------------------------
- * Planner view (PlannerApp / TrackAudit)
- * --------------------------------------------------------------------------- */
+} /* ---------------------------------------------------------------------------
+* Planner view (PlannerApp / TrackAudit)
+* --------------------------------------------------------------------------- */
 .req-block-head {
   display: flex;
   align-items: center;
@@ -703,9 +701,7 @@ body {
 
 .req-block-head h4 {
   margin-bottom: 0;
-}
-
-/* ---- Planner timeline (year x term grid) ---- */
+} /* ---- Planner timeline (year x term grid) ---- */
 .modal-wide {
   max-width: 720px;
 }
@@ -722,7 +718,7 @@ body {
   border-radius: var(--radius);
   padding: 14px var(--space-4);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-med);
   box-shadow: var(--shadow-sm);
 }
 .program-card:hover {
@@ -744,8 +740,7 @@ body {
 }
 
 .detail-description {
-  font-size: var(--font-base);
-  line-height: 1.7;
+  line-height: var(--leading-relaxed);
   color: var(--gray-800);
   margin-bottom: 28px;
   max-width: 800px;
@@ -766,14 +761,14 @@ body {
 .course-prereq span {
   cursor: pointer;
   color: var(--primary);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 .course-prereq span:hover {
   text-decoration: underline;
 }
 
 .course-prereq-label {
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   color: var(--text-muted);
 }
 
@@ -789,13 +784,11 @@ body {
   margin-bottom: 4px;
 }
 .course-detail-card .course-meta {
-  font-size: var(--font-base);
   color: var(--text-muted);
   margin-bottom: 16px;
 }
 .course-detail-card .course-desc {
-  font-size: var(--font-base);
-  line-height: 1.7;
+  line-height: var(--leading-relaxed);
   margin-bottom: 16px;
 }
 .course-detail-card .prereq-section {
@@ -822,7 +815,6 @@ body {
   list-style: none;
 }
 .course-detail-card .programs-using li {
-  font-size: var(--font-base);
   padding: 2px 0;
 }
 .course-detail-card .programs-using li a {
@@ -844,11 +836,11 @@ body {
 }
 
 .req-section-heading {
-  font-size: var(--font-md);
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
@@ -859,7 +851,7 @@ body {
 }
 
 .req-item {
-  line-height: 1.6;
+  line-height: var(--leading-relaxed);
 }
 
 .anyof-group {
@@ -872,14 +864,14 @@ body {
 .anyof-label {
   font-size: var(--font-sm);
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   margin-right: 2px;
 }
 
 .eachof-label {
   font-size: var(--font-sm);
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   margin-right: 2px;
   margin-bottom: 6px;
 }
@@ -892,7 +884,7 @@ body {
 }
 .anyof-items-group > .anyof-label {
   font-size: var(--font-xs);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--accent);
@@ -917,7 +909,7 @@ body {
   align-items: center;
   font-size: var(--font-xs);
   color: var(--accent);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   margin-left: 4px;
 }
 
@@ -941,7 +933,7 @@ body {
 
 .electives-count {
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
 }
 
@@ -968,19 +960,19 @@ body {
 }
 .constraint-tag.level {
   color: var(--violet);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 .constraint-tag.exclude {
   color: var(--danger);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 .constraint-tag.discipline {
   color: var(--teal);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 .constraint-tag.from {
   color: var(--primary);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 .constraint-tag.from .constraint-note {
   font-style: italic;
@@ -991,16 +983,14 @@ body {
 }
 .constraint-tag.note-only {
   font-style: italic;
-  font-weight: 400;
   color: var(--text-muted);
-  line-height: 1.5;
 }
 
 .level-gate-badge {
   display: inline-flex;
   align-items: center;
   font-size: var(--font-sm);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   color: var(--violet);
   background: var(--violet-bg);
   padding: 2px var(--space-2);
@@ -1011,7 +1001,6 @@ body {
   font-size: var(--font-md);
   font-style: italic;
   color: var(--text-muted);
-  line-height: 1.5;
 }
 
 .course-group {
@@ -1023,7 +1012,7 @@ body {
 
 .plan-track-btn {
   font-size: var(--font-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   background: var(--primary-light);
   border: 1px solid var(--border);
@@ -1031,7 +1020,7 @@ body {
   padding: 3px var(--space-3);
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 }
 .plan-track-btn:hover {
   background: var(--primary);

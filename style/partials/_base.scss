@@ -13,9 +13,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-
-// ==== Base: typography ====
+} // ==== Base: typography ====
 // Bare-element type decisions. Component-specific sizes use the --font-* tokens.
 
 body {
@@ -23,45 +21,35 @@ body {
   font-size: var(--font-base);
   background: var(--bg);
   color: var(--text);
-  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-}
-
-// ==== Base: page shell ====
+} // ==== Base: page shell ====
 
 #app {
   max-width: 1100px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-5);
 }
-
 .header {
   margin-bottom: 32px;
 }
-
 .header h1 {
-  font-size: var(--font-3xl);
-  font-weight: 700;
+  @include text-display;
   color: var(--primary);
   cursor: pointer;
   display: inline-block;
 }
-
 .header h1:hover {
   opacity: 0.85;
 }
-
 .header-sub {
   font-size: var(--font-md);
   color: var(--text-muted);
   margin-top: 2px;
 }
-
 .controls {
   @include flex-row(12px);
   margin-top: 16px;
 }
-
 .search-input {
   flex: 1;
   min-width: 200px;
@@ -70,182 +58,148 @@ body {
   border-radius: var(--radius);
   font-size: var(--font-base);
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-med);
 }
-
 .search-input:focus {
   border-color: var(--accent);
   box-shadow: var(--ring);
 }
-
 .filter-group {
   display: flex;
   gap: var(--space-1);
 }
-
 .filter-btn {
   @include surface;
   padding: 10px var(--space-4);
   font-size: var(--font-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
   color: var(--text-muted);
 }
-
 .filter-btn.active {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
 }
-
 .filter-btn:not(.active):hover {
   background: var(--primary-light);
   border-color: var(--accent);
 }
-
 .filter-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   background: var(--surface);
   border-color: var(--border);
 }
-
 .filter-btn:disabled:not(.active):hover {
   background: var(--surface);
   border-color: var(--border);
 }
-
 .filter-btn.primary {
   color: var(--text-inverse);
   background: var(--primary);
   border-color: var(--primary);
 }
-
 .filter-btn.primary:hover {
   background: var(--primary-dark, var(--primary));
 }
-
 .tag {
-  font-size: var(--font-xs);
-  font-weight: 600;
+  @include text-eyebrow;
   padding: 2px var(--space-2);
   border-radius: var(--radius-lg);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
-
 .tag.major {
   background: var(--tag-major);
   color: white;
 }
-
 .tag.minor {
   background: var(--info-bg);
   color: var(--tag-minor);
   border: 1px solid var(--tag-minor);
 }
-
 .tag.program {
   background: var(--gray-100);
   color: var(--text-muted);
 }
-
 .back-btn {
+  @include text-medium;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-base);
   color: var(--primary);
   cursor: pointer;
   background: none;
   border: none;
   padding: var(--space-1) 0;
   margin-bottom: 8px;
-  font-weight: 500;
 }
-
 .back-btn:hover {
   opacity: 0.75;
 }
-
 .detail-header {
   margin-bottom: 24px;
 }
-
 .detail-header h2 {
   font-size: var(--font-3xl);
   color: var(--primary);
   margin-bottom: 6px;
 }
-
 .detail-header .types {
   display: flex;
   gap: 6px;
   margin-bottom: 6px;
 }
-
 .detail-header .faculty {
-  font-size: var(--font-base);
   color: var(--text-muted);
 }
-
 .section-title {
   font-size: var(--font-xl);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   margin-bottom: 12px;
   padding-bottom: 6px;
   border-bottom: 2px solid var(--accent);
 }
-
 .req-block {
   @include surface;
   padding: var(--space-4) var(--space-5);
   margin-bottom: var(--space-3);
 }
-
 .req-block h4 {
   font-size: var(--font-lg);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   margin-bottom: 8px;
 }
-
 .req-block .req-total {
   font-size: var(--font-md);
   color: var(--text-muted);
   margin-bottom: 8px;
 }
-
 .req-block .req-courses {
   @include flex-row;
 }
-
 .course-chip {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   font-size: var(--font-md);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   background: var(--primary-light);
   color: var(--primary);
   padding: 3px var(--space-2);
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
   border: 1px solid transparent;
 }
-
 .course-chip:hover {
   background: var(--primary);
   color: white;
 }
-
 .course-chip .sep {
   color: var(--text-muted);
-  font-weight: 400;
 }
-
 .course-chip.filter-colored {
   color: var(--text-inverse);
   border-color: transparent;
@@ -253,83 +207,63 @@ body {
   align-items: center;
   line-height: 1.15;
 }
-
 .course-chip.filter-colored:hover {
   background: rgba(27, 73, 101, 0.9);
   color: var(--text-inverse);
 }
-
 .course-chip:hover .sep {
   color: rgba(255, 255, 255, 0.7);
 }
-
 .courses-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-base);
 }
-
 .courses-table th {
+  @include text-eyebrow;
   text-align: left;
   padding: var(--space-2) var(--space-3);
-  font-weight: 600;
   color: var(--text-muted);
-  font-size: var(--font-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   border-bottom: 2px solid var(--border);
 }
-
 .courses-table td {
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border);
   vertical-align: top;
 }
-
 .courses-table tr:hover td {
   background: var(--primary-light);
 }
-
 .course-code-cell {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--primary);
   cursor: pointer;
   white-space: nowrap;
 }
-
 .course-code-cell:hover {
   text-decoration: underline;
 }
-
 .empty-state {
   text-align: center;
   padding: 60px var(--space-5);
   color: var(--text-muted);
 }
-
 .empty-state p {
   font-size: var(--font-lg);
 }
-
 .loading {
   text-align: center;
   padding: 60px var(--space-5);
   color: var(--text-muted);
   font-size: var(--font-lg);
 }
-
 .results-count {
   font-size: var(--font-md);
   color: var(--text-muted);
   margin-bottom: 12px;
 }
-
 .anyof-option {
+  @include text-eyebrow;
   flex: 0 0 auto;
-  font-size: var(--font-2xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   color: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 4px;
@@ -337,38 +271,27 @@ body {
   margin-right: 4px;
   background: var(--surface);
 }
-
 .anyof-or {
-  font-size: var(--font-xs);
-  font-weight: 600;
+  @include text-eyebrow;
   color: var(--gray-300);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
-
 .pair-plus {
-  font-size: var(--font-md);
-  font-weight: 600;
+  @include text-label;
   color: var(--text-muted);
   margin: 0 2px;
 }
-
 .course-chip.mini {
   font-size: var(--font-xs);
   padding: 1px 6px;
 }
-
 .course-chip.matched {
   background: var(--success-bg);
   color: var(--success);
 }
-
 .course-chip.matched:hover {
   background: var(--danger-bg);
   color: var(--danger);
-}
-
-/* ---------- Top navigation ---------- */
+} /* ---------- Top navigation ---------- */
 
 .top-nav {
   display: flex;
@@ -378,17 +301,14 @@ body {
   margin-bottom: 24px;
   border-bottom: 2px solid var(--border);
 }
-
 .nav-brand {
+  @include text-title;
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 700;
-  font-size: var(--font-lg);
   color: var(--primary);
   cursor: pointer;
 }
-
 .nav-logo {
   display: inline-flex;
   align-items: center;
@@ -400,33 +320,27 @@ body {
   border-radius: var(--radius);
   font-size: var(--font-base);
 }
-
 .nav-links {
   display: flex;
   gap: 6px;
 }
-
 .nav-links a {
+  @include text-medium;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
-  font-size: var(--font-base);
-  font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--duration-fast);
   border: 1px solid transparent;
 }
-
 .nav-links a:hover {
   background: var(--primary-light);
   color: var(--primary);
 }
-
 .nav-links a.active {
   background: var(--primary);
   color: white;
 }
-
 .course-picker {
   display: flex;
   align-items: center;
@@ -434,12 +348,10 @@ body {
   margin-bottom: 16px;
 
   label {
-    font-size: var(--font-md);
-    font-weight: 600;
+    @include text-label;
     color: var(--text-muted);
   }
 }
-
 .course-picker-wrap {
   position: relative;
   flex: 1;
@@ -450,7 +362,6 @@ body {
     flex: none;
   }
 }
-
 .course-picker-dropdown {
   @include surface;
   position: absolute;
@@ -462,7 +373,6 @@ body {
   overflow-y: auto;
   box-shadow: var(--shadow-md);
 }
-
 .course-picker-option {
   @include button-reset;
   display: flex;
@@ -483,36 +393,28 @@ body {
     white-space: nowrap;
   }
 }
-
 .course-picker-empty {
   padding: var(--space-2) 10px;
   font-size: var(--font-md);
   color: var(--text-muted);
   font-style: italic;
 }
-
 .controls-spacer {
   flex: 1;
-}
-
-/* Instructor */
+} /* Instructor */
 
 .section-title.alert {
   color: var(--danger);
 }
-
 .field {
   margin-bottom: 14px;
 }
-
 .field label {
+  @include text-label;
   display: block;
-  font-size: var(--font-md);
-  font-weight: 600;
   color: var(--text-muted);
   margin-bottom: 6px;
 }
-
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -523,7 +425,6 @@ body {
   padding: var(--space-5);
   background: rgba(15, 23, 42, 0.55);
 }
-
 .modal {
   width: 100%;
   max-width: 560px;
@@ -560,7 +461,6 @@ body {
     margin-bottom: 20px;
   }
 }
-
 .modal-head {
   display: flex;
   align-items: center;
@@ -579,12 +479,11 @@ body {
     color: var(--primary);
   }
 }
-
 .modal-close {
   border: none;
   background: none;
   font-size: var(--font-3xl);
-  line-height: 1;
+  line-height: var(--leading-none);
   color: var(--text-muted);
   cursor: pointer;
   padding: 0 var(--space-1);
@@ -593,17 +492,13 @@ body {
     color: var(--primary);
   }
 }
-
 .modal-body {
   padding: var(--space-4) 18px var(--space-5);
 }
-
 .modal-intro {
   margin: 0 0 14px;
   color: var(--text-muted);
-  font-size: var(--font-base);
 }
-
 @media (max-width: 600px) {
   #app {
     padding: var(--space-4) var(--space-3);
@@ -628,21 +523,16 @@ body {
     flex-direction: column;
     gap: 10px;
   }
-}
-
-/* ---------------------------------------------------------------------------
+} /* ---------------------------------------------------------------------------
  * Planner panel
  * --------------------------------------------------------------------------- */
 
 .planner-pick-code {
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
-
 .planner-pick-name {
   color: var(--text-muted);
-}
-
-/* ---------------------------------------------------------------------------
+} /* ---------------------------------------------------------------------------
  * Planner view (PlannerApp / TrackAudit)
  * --------------------------------------------------------------------------- */
 
@@ -652,12 +542,9 @@ body {
   gap: 10px;
   margin-bottom: 8px;
 }
-
 .req-block-head h4 {
   margin-bottom: 0;
-}
-
-/* ---- Planner timeline (year x term grid) ---- */
+} /* ---- Planner timeline (year x term grid) ---- */
 
 .modal-wide {
   max-width: 720px;
