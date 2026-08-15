@@ -42,12 +42,17 @@ as long as the JSON contract holds.
 
 ## The four mechanisms a newcomer can't guess
 
-### 1. No build step; Vue is a CDN global
+### 1. No runtime build; Vue is a CDN global
 
-There is no bundler. Each `index.html` loads Vue from unpkg as a global
-(`<script src="...vue.global.prod.js">`), and app code uses it via
-`const { ref, computed } = Vue`. That is why `catalog-client` and the app stores
-are "browser-only" while the pure packages never import Vue.
+There is no bundler and no server-side compilation at runtime. Each `index.html`
+loads Vue from unpkg as a global (`<script src="...vue.global.prod.js">`), and
+app code uses it via `const { ref, computed } = Vue`. That is why
+`catalog-client` and the app stores are "browser-only" while the pure packages
+never import Vue.
+
+The one preprocessing step is **CSS**: it is authored in SCSS under `style/`
+and compiled to committed `apps/<name>/style.css` via `npm run build:css` —
+a developer-time step, never something the deployed apps run.
 
 ### 2. Per-app import maps
 

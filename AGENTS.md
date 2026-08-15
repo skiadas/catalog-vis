@@ -168,8 +168,9 @@ source-disagreement (similarity + severity) · CAT6 designation-typo
 
 ## Frontend Architecture
 
-- Vue 3 CDN global; ES modules; no build step. Package `exports` are used by
-  Node tests; browsers resolve `@major-vis/*` via each app's import map.
+- Vue 3 CDN global; ES modules; no runtime build. Package `exports` are used by
+  Node tests; browsers resolve `@major-vis/*` via each app's import map. The
+  only preprocessing is CSS (SCSS in `style/` → committed per-app `style.css`).
 - `RequirementItem` renders the requirement model recursively; the planner
   reuse the same `requirements_parsed.json`/`core_requirements.json` shapes.
 - The weekly calendar views (`ScheduleGrid`, `ScheduleInstructor`) share a
@@ -179,10 +180,14 @@ source-disagreement (similarity + severity) · CAT6 designation-typo
 
 ## Formatting
 
-- JS/HTML: `npx prettier@3.3.3 --write "**/*.{js,html,css}"` (config in
-  `.prettierrc.json`; `*.json` ignored).
+- JS/HTML: `npx prettier@3.3.3 --write "**/*.{js,html,css,scss}"` (config in
+  `.prettierrc.json`; `*.json` and the compiled `apps/*/style.css` ignored).
 - Python: `python3 -m black .` (config in `pyproject.toml`, keeps single
   quotes). `.editorconfig` covers indents/line endings.
+- **CSS**: authored in SCSS under `style/` (`_tokens.scss` = design tokens,
+  `_base.scss` = shared, `_{browse,schedule,planner}.scss` = per-app). Compile
+  with `npm run build:css` and commit the generated `apps/<name>/style.css`
+  alongside the source.
 
 ## Development Workflow
 
@@ -191,11 +196,12 @@ source-disagreement (similarity + severity) · CAT6 designation-typo
   one changeset.
 - **Committing and verifying are part of completing a task.** Run the same
   checks CI runs, all must pass *before* you commit:
-  - `npx prettier@3.3.3 --write "**/*.{js,html,css}"` then
-    `npx prettier@3.3.3 --check "**/*.{js,html,css}"`
+  - `npx prettier@3.3.3 --write "**/*.{js,html,css,scss}"` then
+    `npx prettier@3.3.3 --check "**/*.{js,html,css,scss}"`
   - `npm test` (workspaces: degree-audit, schedule-core, catalog-contract)
   - `npm run validate:catalog` (contract schemas)
   - `npm run test:data` (Python data-integrity)
+  - `npm run check:css` (rebuilds `apps/*/style.css` and fails on drift)
   - `npm run lint` (eslint)
   - `python3 -m black .` then `python3 -m compileall -q -x "node_modules|/\.git/" .`
 - **Amend instead of adding fixup commits** if the latest commit is unpushed

@@ -32,8 +32,11 @@ own host or reimplemented elsewhere. `AGENTS.md` is the piece map. For newcomers
 
 ## Quick start
 
-The apps are zero-build static sites (Vue loaded from CDN, workspace packages
-resolved by per-app import maps). Serve the repo root:
+The apps are static sites with **no runtime build**: Vue loads from a CDN
+global, workspace packages resolve via per-app import maps, and each app
+styles itself with a compiled `apps/<name>/style.css`. The CSS *source* is
+SCSS in `style/` (compiled to the per-app files via `npm run build:css`).
+Serve the repo root:
 
 ```sh
 python3 -m http.server 8080
@@ -67,6 +70,8 @@ Requirements: Node ≥ 20 (tooling only; not used by the apps) and Python 3.
 npm install              # tooling + workspace packages
 npm test                 # unit tests (degree-audit, schedule-core, catalog-contract)
 npm run validate:catalog # committed JSON conforms to the contract schemas
+npm run build:css        # compile style/*.scss -> apps/<name>/style.css (commit both)
+npm run check:css        # rebuild + verify committed CSS is up to date (runs in CI)
 npm run lint             # eslint
 npm run format           # prettier --write
 ```
