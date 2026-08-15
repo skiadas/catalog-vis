@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://catalog.hanover.edu/schemas/requirements.schema.json",
+  "title": "Codified program requirements (requirements_parsed.json)",
+  "description": "Structured requirement nodes per program, per the vocabulary documented in REQUIREMENTS_SCHEMA.md. Consumed by the planner's degree-audit engine and the catalog browse view.",
+  "type": "object",
+  "required": ["schema_version", "programs"],
+  "properties": {
+    "schema_version": { "const": "2.0" },
+    "generated_at": { "type": "string" },
+    "source": { "type": "string" },
+    "programs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/program" }
+    }
+  },
+  "$defs": {
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z/]{2,8} \\d{3}(-\\d{3})?$"
+    },
+    "program": {
+      "type": "object",
+      "required": ["id", "name", "requirements"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "requirements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/requirement" }
+        }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "required": ["label", "sections"],
+      "properties": {
+        "label": { "type": "string" },
+        "sections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/section" }
+        }
+      }
+    },
+    "section": {
+      "type": "object",
+      "required": ["heading", "items"],
+      "properties": {
+        "heading": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/item" }
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["course", "any_of", "each_of", "some_of", "electives", "custom"] }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "course" } } },
+          "then": {
+            "required": ["code"],
+            "properties": { "code": { "$ref": "#/$defs/code" } }
+          }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "any_of" } } },
+          "then": {
+            "oneOf": [{ "required": ["codes"] }, { "required": ["items"] }],
+            "properties": {
+              "codes": { "type": "array", "items": { "$ref": "#/$defs/code" } },
+              "items": { "type": "array", "items": { "$ref": "#/$defs/item" } }
+            }
+          }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "some_of" } } },
+          "then": {
+            "required": ["items"],
+            "properties": {
+              "items": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+              "min": { "type": "integer" }
+            }
+          }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "each_of" } } },
+          "then": {
+            "required": ["items"],
+            "properties": {
+              "items": { "type": "array", "items": { "$ref": "#/$defs/item" } }
+            }
+          }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "electives" } } },
+          "then": {
+            "required": ["count"],
+            "properties": {
+              "count": { "type": "integer" },
+              "label": { "type": "string" },
+              "constraints": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/constraint" }
+              }
+            }
+          }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "custom" } } },
+          "then": {
+            "required": ["text"],
+            "properties": { "text": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "constraint": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["level", "discipline", "from", "exclude", "max_from", "min_from", "note"] }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "level" } } },
+          "then": {
+            "oneOf": [{ "required": ["level"] }, { "required": ["min", "max"] }],
+            "properties": {
+              "level": { "type": "integer" },
+              "min": { "type": "integer" },
+              "max": { "type": "integer" },
+              "atLeast": { "type": "integer" },
+              "atMost": { "type": "integer" },
+              "orAbove": { "type": "boolean" }
+            }
+          }
+        },
+        {
+          "if": { "required": ["type"], "properties": { "type": { "const": "discipline" } } },
+          "then": {
+            "properties": {
+              "prefixes": { "type": "array", "items": { "type": "string" } },
+              "atLeast": { "type": "integer" },
+              "atMost": { "type": "integer" },
+              "distinctAtLeast": { "type": "integer" },
+              "sameDiscipline": { "type": "boolean" }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["type"],
+            "properties": { "type": { "const": "from" } }
+          },
+          "then": {
+            "properties": {
+              "codes": { "type": "array", "items": { "$ref": "#/$defs/code" } },
+              "note": { "type": "string" }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["type"],
+            "properties": { "type": { "enum": ["exclude", "max_from", "min_from"] } }
+          },
+          "then": {
+            "required": ["codes"],
+            "properties": {
+              "codes": { "type": "array", "items": { "$ref": "#/$defs/code" } },
+              "atLeast": { "type": "integer" },
+              "atMost": { "type": "integer" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

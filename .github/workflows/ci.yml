@@ -46,3 +46,6 @@ jobs:
 
       - name: Data integrity
         run: npm run test:data
+
+      - name: Validate catalog data contract
+        run: npm run validate:catalog

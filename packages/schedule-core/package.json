@@ -9,7 +9,7 @@
     "./generate": "./generate.js"
   },
   "scripts": {
-    "test": "node --test test/"
+    "test": "node --test"
   },
   "license": "UNLICENSED",
   "private": true

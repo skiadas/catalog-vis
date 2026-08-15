@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://catalog.hanover.edu/schemas/majors.schema.json",
+  "title": "Scraped catalog (majors.json)",
+  "description": "Raw scraped catalog output: programs, their courses, requirement text, plus the cross-referenced course index and source/presence discrepancy reports.",
+  "type": "object",
+  "required": ["catalog_year", "total_programs", "total_courses", "catalog", "programs"],
+  "properties": {
+    "catalog_year": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "source_url": { "type": "string" },
+    "total_programs": { "type": "integer" },
+    "total_courses": { "type": "integer" },
+    "source_discrepancies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "program"],
+        "properties": {
+          "code": { "$ref": "#/$defs/code" },
+          "program": { "type": "string" },
+          "program_description": { "type": "string" },
+          "search_description": { "type": "string" }
+        }
+      }
+    },
+    "presence_discrepancies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "side"],
+        "properties": {
+          "code": { "$ref": "#/$defs/code" },
+          "side": { "enum": ["search-only", "program-only"] },
+          "program": { "type": "string" },
+          "title": { "type": "string" }
+        }
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/course" }
+    },
+    "programs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/program" }
+    }
+  },
+  "$defs": {
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,4} \\d{3}$"
+    },
+    "course": {
+      "type": "object",
+      "required": ["course_code", "course_name"],
+      "properties": {
+        "course_code": { "$ref": "#/$defs/code" },
+        "course_name": { "type": "string" },
+        "description": { "type": "string" },
+        "prerequisites": { "type": "array", "items": { "type": "string" } },
+        "credit_hours": { "type": "number" },
+        "program": { "type": "string" },
+        "alt_description": { "type": "string" }
+      }
+    },
+    "program": {
+      "type": "object",
+      "required": ["id", "name", "type", "courses"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "type": { "type": "array", "items": { "type": "string" } },
+        "faculty": { "type": "array", "items": { "type": "string" } },
+        "description": { "type": "string" },
+        "course_prefix": { "type": "string" },
+        "course_count": { "type": "integer" },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["label", "text"],
+            "properties": {
+              "label": { "type": "string" },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        "courses": { "type": "array", "items": { "$ref": "#/$defs/course" } }
+      }
+    }
+  }
+}
