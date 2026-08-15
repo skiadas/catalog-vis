@@ -34,6 +34,10 @@ a relative `<script type="importmap">` mapping `@major-vis/*` → `../packages/*
 Pure packages never import Vue (testable under `node --test`); `catalog-client`
 and the app stores use the Vue global.
 
+For newcomers, `docs/ARCHITECTURE.md` explains how the pieces fit and offers a
+reading order; `docs/GLOSSARY.md` maps the terminology (program vs `majors.json`,
+course code vs `code`, offerings vs courses, track keys, join keys).
+
 ## The Pieces
 
 ### 1. Catalog pipeline (`tools/catalog-pipeline/`)
