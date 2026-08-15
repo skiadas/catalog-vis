@@ -17,4 +17,33 @@
   --tag-minor: #62b6cb;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --radius: 8px;
+
+  // Spacing scale — prefer var(--space-N) over ad-hoc px in padding/margin.
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  // Type scale.
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-md: 13px;
+  --font-base: 14px;
+  --font-lg: 18px;
+  --font-xl: 26px;
+
+  // Radii (--radius is the 8px default).
+  --radius-sm: 6px;
+  --radius-lg: 12px;
+
+  // Elevation.
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.25);
+
+  // Z-index layers.
+  --z-dropdown: 20;
+  --z-modal: 100;
 }
