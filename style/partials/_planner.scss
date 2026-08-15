@@ -220,6 +220,7 @@
   margin-bottom: 24px;
 }
 .track-chip {
+  @include pill(3px, 10px);
   @include text-label-sm;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);

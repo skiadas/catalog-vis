@@ -984,6 +984,12 @@ body {
 }
 
 .track-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  transition: all 0.15s;
   font-size: var(--font-sm);
   font-weight: var(--weight-semibold);
   border-radius: var(--radius-lg);

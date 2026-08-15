@@ -1263,7 +1263,7 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: var(--space-1);
   line-height: 1.15;
   font-size: var(--font-2xs);
@@ -1324,6 +1324,12 @@ body {
 }
 
 .filter-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  transition: all 0.15s;
   font-size: var(--font-sm);
   font-weight: var(--weight-semibold);
   border-radius: var(--radius-lg);
@@ -1691,6 +1697,17 @@ body {
 }
 
 .schedule-help-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: var(--leading-none);
   font-size: var(--font-lg);
   font-weight: var(--weight-bold);
   border: 1px solid var(--border);
