@@ -1,29 +1,10 @@
-// Shared edit-mode drag-and-drop helpers for the schedule views (grid + day).
-// Both views let a course from the schedule being edited be dragged onto one of
-// the standard time slots; the drop rewrites the offering's days/time through
-// the schedule's moveOffering action (smart day handling lives in rescheduleDays).
+// Schedule app edit-mode drag helpers. The drag payload serialization
+// (`buildDragPayload`/`dragPayloadFrom`) lives in `@major-vis/schedule-core` —
+// it's the shared drag contract (the planner timeline parses the same payload).
+
+import { buildDragPayload, dragPayloadFrom } from '@major-vis/schedule-core'
 
 const { ref } = Vue
-
-// The drag payload for an offering, carrying its identity plus the day column
-// the drag started from (so a same-group drop can swap that day).
-export function buildDragPayload(it, fromDay) {
-  return JSON.stringify({
-    sid: it.sid,
-    prefix: it.o.prefix,
-    number: it.o.number,
-    section: it.o.section,
-    fromDay: fromDay || '',
-  })
-}
-
-export function dragPayloadFrom(e) {
-  try {
-    return JSON.parse(e.dataTransfer.getData('text/plain'))
-  } catch {
-    return null
-  }
-}
 
 // Returns the shared edit-mode drag state + handlers, parameterized by the
 // schedule being edited (`editingId`, a ref) and the store's moveOffering

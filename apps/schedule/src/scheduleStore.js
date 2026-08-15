@@ -12,9 +12,9 @@ import {
   nextSectionLetter,
   addOfferingToSchedule,
   removeOfferingFromSchedule,
-} from '../../../packages/schedule-core/schedule.js'
-import { buildFacultyAndEligible, makeSchedule } from '../../../packages/schedule-core/generate.js'
-import { programs, allCourses } from '../../../packages/catalog-client/index.js'
+} from '@major-vis/schedule-core'
+import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
+import { programs, allCourses } from '@major-vis/catalog-client'
 
 const { ref, computed } = Vue
 

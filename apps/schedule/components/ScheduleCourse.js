@@ -1,8 +1,8 @@
-import { route } from '../lib/router.js'
-import { schedule, scheduleOfferings } from '../apps/schedule/src/scheduleStore.js'
-import { allCourses } from '../packages/catalog-client/index.js'
-import { conflictsForCourse, formatTime } from '../packages/schedule-core/schedule.js'
-import { goScheduleCourse, goScheduleSlot } from '../lib/router.js'
+import { route } from '../router.js'
+import { schedule, scheduleOfferings } from '../src/scheduleStore.js'
+import { allCourses } from '@major-vis/catalog-client'
+import { conflictsForCourse, formatTime } from '@major-vis/schedule-core'
+import { goScheduleCourse, goScheduleSlot } from '../router.js'
 
 const { computed } = Vue
 

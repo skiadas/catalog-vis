@@ -1,4 +1,4 @@
-import { route } from '../lib/router.js'
+import { route } from '../router.js'
 import {
   WEEKDAYS,
   WEEKDAY_NAMES,
@@ -7,16 +7,16 @@ import {
   buildVisual,
   colorForSchedule,
   daySlotTimes,
-} from '../packages/schedule-core/schedule.js'
-import { selectedDepartments, selectedInstructors, filterMode } from '../apps/schedule/src/scheduleStore.js'
+} from '@major-vis/schedule-core'
+import { selectedDepartments, selectedInstructors, filterMode } from '../src/scheduleStore.js'
 import {
   schedule,
   selectedScheduleIds,
   colorSchedules,
   editingScheduleId,
   openCourseEdit,
-} from '../apps/schedule/src/scheduleStore.js'
-import { goScheduleCourse, goScheduleDay, goScheduleSlot } from '../lib/router.js'
+} from '../src/scheduleStore.js'
+import { goScheduleCourse, goScheduleDay, goScheduleSlot } from '../router.js'
 import CoursePill from './CoursePill.js'
 
 const { computed } = Vue

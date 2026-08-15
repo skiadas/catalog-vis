@@ -83,3 +83,43 @@ export const filteredPrograms = computed(() => {
   }
   return list
 })
+
+// ---- Planner track identity (derived from catalog data) ------------------
+// A program's addable planner units are its "tracks" — one per parsed
+// requirement, keyed by a slug of the requirement's label (stable across
+// re-scrapes). Shared by the browse app (for planner deep links) and the
+// planner store (which re-exports it).
+
+// The core curriculum is modeled as a planner-only "program" — not part of the
+// browseable catalog (`programs`) — but appears in the planner's add-track
+// picker. It is a single addable track ("General Degree Requirements") whose
+// sections are the CCR/ACE areas.
+export const CORE_ID = 'core-curriculum'
+export const CORE_TRACK = 'core'
+export const CORE_LABEL = 'General Degree Requirements'
+
+// Slug for a track's label, used as its stable planner key.
+export function trackSlug(label) {
+  const slug = String(label || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return slug || 'track'
+}
+
+// The addable planner tracks for a program (`{ programId, trackKey, label }`).
+export function programTracks(programId) {
+  if (programId === CORE_ID) {
+    return coreRequirements.value.length
+      ? [{ programId: CORE_ID, trackKey: CORE_TRACK, label: CORE_LABEL }]
+      : []
+  }
+  const program = programs.value.find((p) => p.id === programId)
+  const parsed = parsedRequirements.value[programId] || []
+  if (!program || !parsed.length) return []
+  return parsed.map((req) => ({
+    programId,
+    trackKey: trackSlug(req.label),
+    label: req.label,
+  }))
+}

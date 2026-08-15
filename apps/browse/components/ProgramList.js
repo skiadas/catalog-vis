@@ -1,11 +1,5 @@
-import {
-  filteredPrograms,
-  programs,
-  loading,
-  searchQuery,
-  filterType,
-} from '../packages/catalog-client/index.js'
-import { goToProgram } from '../lib/router.js'
+import { filteredPrograms, programs, loading, searchQuery, filterType } from '@major-vis/catalog-client'
+import { goToProgram } from '../router.js'
 
 export default {
   name: 'ProgramList',

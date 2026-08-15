@@ -7,8 +7,8 @@ import {
   SLOT_BLOCKS,
   toMinutes,
   colorForSchedule,
-} from '../packages/schedule-core/schedule.js'
-import { selectedDepartments, selectedInstructors, filterMode } from '../apps/schedule/src/scheduleStore.js'
+} from '@major-vis/schedule-core'
+import { selectedDepartments, selectedInstructors, filterMode } from '../src/scheduleStore.js'
 import {
   schedule,
   selectedScheduleIds,
@@ -16,9 +16,9 @@ import {
   editingScheduleId,
   moveOffering,
   openCourseEdit,
-} from '../apps/schedule/src/scheduleStore.js'
-import { goScheduleSlot, goScheduleDay, goScheduleCourse } from '../lib/router.js'
-import { useScheduleDrag } from '../lib/scheduleDrag.js'
+} from '../src/scheduleStore.js'
+import { goScheduleSlot, goScheduleDay, goScheduleCourse } from '../router.js'
+import { useScheduleDrag } from '../scheduleDrag.js'
 import WeeklyCalendar from './WeeklyCalendar.js'
 
 const { computed } = Vue

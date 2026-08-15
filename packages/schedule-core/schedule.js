@@ -206,6 +206,29 @@ export function removeOfferingFromSchedule(offerings, { prefix, number, section 
   return next.length === list.length ? list : next
 }
 
+// The drag-and-drop payload contract for moving an offering between slots
+// (edit mode). A serialized `{ sid, prefix, number, section, fromDay }` — the
+// offering's identity plus the day column the drag started from, so a same-group
+// drop can swap that specific day (see `rescheduleDays`). Shared by the schedule
+// grid/day views and the planner timeline (which only parses).
+export function buildDragPayload(it, fromDay) {
+  return JSON.stringify({
+    sid: it.sid,
+    prefix: it.o.prefix,
+    number: it.o.number,
+    section: it.o.section,
+    fromDay: fromDay || '',
+  })
+}
+
+export function dragPayloadFrom(e) {
+  try {
+    return JSON.parse(e.dataTransfer.getData('text/plain'))
+  } catch {
+    return null
+  }
+}
+
 // Build derived index once schedule data is available.
 export function buildIndex(offerings) {
   const byCourse = {}

@@ -3,23 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hanover College Academic Catalog</title>
+    <title>Hanover College — Academic Catalog</title>
+    <meta http-equiv="refresh" content="0; url=apps/browse/" />
     <script>
       ;(function () {
-        var loopback = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|::1|\[::1\])$/i.test(location.hostname)
-        document.write(
-          '<script src="' +
-            (loopback
-              ? 'https://unpkg.com/vue@3.5.40/dist/vue.global.js' /* dev build (warnings) */
-              : 'https://unpkg.com/vue@3.5.40/dist/vue.global.prod.js') /* prod build */ +
-            '"><\/script>',
-        )
+        var path = window.location.pathname
+        var hash = window.location.hash
+        if (path && !path.endsWith('/')) window.location.replace(path + '/' + hash)
+        else window.location.replace('apps/browse/' + hash)
       })()
     </script>
-    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="app.js"></script>
+    <p>Redirecting to the <a href="apps/browse/">program catalog</a>…</p>
   </body>
 </html>

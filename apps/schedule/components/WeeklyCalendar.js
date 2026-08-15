@@ -1,4 +1,4 @@
-import { WEEKDAYS, WEEKDAY_NAMES, hourMarks, DAY_START_MIN } from '../packages/schedule-core/schedule.js'
+import { WEEKDAYS, WEEKDAY_NAMES, hourMarks, DAY_START_MIN } from '@major-vis/schedule-core'
 
 export default {
   name: 'WeeklyCalendar',

@@ -1,6 +1,6 @@
-import { route } from '../lib/router.js'
-import { goScheduleGrid, goScheduleCourse, goScheduleInstructor } from '../lib/router.js'
-import { allCourses } from '../packages/catalog-client/index.js'
+import { route } from '../router.js'
+import { goScheduleGrid, goScheduleCourse, goScheduleInstructor } from '../router.js'
+import { allCourses } from '@major-vis/catalog-client'
 import {
   selectedDepartments,
   selectedInstructors,
@@ -23,7 +23,7 @@ import {
   openCourseEdit,
   courseEditTarget,
   closeCourseEdit,
-} from '../apps/schedule/src/scheduleStore.js'
+} from '../src/scheduleStore.js'
 import {
   departmentsInSchedule,
   instructorsInSchedule,
@@ -32,7 +32,7 @@ import {
   colorForSchedule,
   compareCodes,
   compareItems,
-} from '../packages/schedule-core/schedule.js'
+} from '@major-vis/schedule-core'
 import ScheduleGrid from './ScheduleGrid.js'
 import ScheduleDay from './ScheduleDay.js'
 import ScheduleSlot from './ScheduleSlot.js'

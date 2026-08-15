@@ -1,5 +1,5 @@
-import { allCourses } from '../packages/catalog-client/index.js'
-import { goToCourse } from '../lib/router.js'
+import { allCourses } from '@major-vis/catalog-client'
+import { goToCourse } from '../router.js'
 
 const { computed } = Vue
 

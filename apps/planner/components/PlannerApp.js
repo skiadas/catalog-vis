@@ -18,10 +18,10 @@ import {
   newPlan,
   duplicatePlan,
   deletePlan,
-} from '../apps/planner/src/plannerStore.js'
-import { allCourses } from '../packages/catalog-client/index.js'
-import { goToProgram, goToCourse } from '../lib/router.js'
-import { evaluateProgram, audit } from '../packages/degree-audit/planner.js'
+} from '../src/plannerStore.js'
+import { allCourses } from '@major-vis/catalog-client'
+import { browseProgramUrl } from '../router.js'
+import { evaluateProgram, audit } from '@major-vis/degree-audit'
 import TrackAudit from './TrackAudit.js'
 import PlannerTimeline from './PlannerTimeline.js'
 
@@ -136,8 +136,7 @@ export default {
       newPlan,
       duplicatePlan,
       deletePlan,
-      goToProgram,
-      goToCourse,
+      browseProgramUrl,
       allCourses,
       CORE_ID,
     }
@@ -257,7 +256,7 @@ export default {
 
           <div class="add-program-list">
             <div class="add-program-row" v-for="p in filteredPrograms" :key="p.id">
-              <button v-if="p.id !== CORE_ID" class="add-program-name" @click="goToProgram(p.id)">{{ p.name }}</button>
+              <a v-if="p.id !== CORE_ID" class="add-program-name" :href="browseProgramUrl(p.id)">{{ p.name }}</a>
               <span v-else class="add-program-name" style="cursor: default">{{ p.name }}</span>
               <div class="add-program-chips">
                 <span

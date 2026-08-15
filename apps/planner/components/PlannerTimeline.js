@@ -1,6 +1,6 @@
-import { planSlots, takenSet, movePlanCourse, removePlanCourse } from '../apps/planner/src/plannerStore.js'
-import { allCourses } from '../packages/catalog-client/index.js'
-import { dragPayloadFrom } from '../lib/scheduleDrag.js'
+import { planSlots, takenSet, movePlanCourse, removePlanCourse } from '../src/plannerStore.js'
+import { allCourses } from '@major-vis/catalog-client'
+import { dragPayloadFrom } from '@major-vis/schedule-core'
 
 const { ref } = Vue
 

@@ -5,7 +5,17 @@
 // The pure evaluation happens in `@major-vis/degree-audit`, called by the
 // planner components — this store holds only the user's plan state.
 
-import { programs, parsedRequirements, coreRequirements } from '../../../packages/catalog-client/index.js'
+import {
+  programs,
+  parsedRequirements,
+  coreRequirements,
+  CORE_ID,
+  CORE_TRACK,
+  CORE_LABEL,
+  trackSlug,
+} from '@major-vis/catalog-client'
+
+export { CORE_ID, CORE_TRACK, programTracks } from '@major-vis/catalog-client'
 
 const { ref, computed } = Vue
 
@@ -32,9 +42,6 @@ export const PLAN_SLOT_KEYS = [
 // sections are the CCR/ACE areas; its requirement is marked `independentSections`
 // so a course can satisfy several areas at once (e.g. `ENG 172` is both LA and
 // W1). It is present by default on newly created plans.
-export const CORE_ID = 'core-curriculum'
-export const CORE_TRACK = 'core'
-const CORE_LABEL = 'General Degree Requirements'
 const coreProgram = { id: CORE_ID, name: 'Core Curriculum', type: [] }
 
 const LS_PLANS = 'major-vis.planner.plans'
@@ -199,35 +206,6 @@ export function initPlanner() {
   } else {
     newPlan('My Plan')
   }
-}
-
-// A program's addable planner units are its "tracks" — one per parsed
-// requirement, keyed by a slug of the requirement's label (stable across
-// re-scrapes, since it no longer depends on majors.json requirement-key
-// ordering). A track is `{ programId, trackKey, label }`.
-export function programTracks(programId) {
-  if (programId === CORE_ID) {
-    return coreRequirements.value.length
-      ? [{ programId: CORE_ID, trackKey: CORE_TRACK, label: CORE_LABEL }]
-      : []
-  }
-  const program = programs.value.find((p) => p.id === programId)
-  const parsed = parsedRequirements.value[programId] || []
-  if (!program || !parsed.length) return []
-  return parsed.map((req) => ({
-    programId,
-    trackKey: trackSlug(req.label),
-    label: req.label,
-  }))
-}
-
-// Slug for a track's label, used as its stable planner key.
-function trackSlug(label) {
-  const slug = String(label || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-  return slug || 'track'
 }
 
 // List of tracks the user has added to their plan.

@@ -1,6 +1,5 @@
-import { programs, allCourses, parsedRequirements } from '../packages/catalog-client/index.js'
-import { programTracks, addTrack, addedTracks } from '../apps/planner/src/plannerStore.js'
-import { route, goToCourse, goHome, goPlanner } from '../lib/router.js'
+import { programs, allCourses, parsedRequirements, programTracks } from '@major-vis/catalog-client'
+import { route, goToCourse, goHome, plannerUrl } from '../router.js'
 
 const { computed } = Vue
 
@@ -14,20 +13,14 @@ export default {
       return parsedRequirements.value[route.value.params.id] || null
     })
     const tracks = computed(() => programTracks(route.value.params.id))
-    const addedSet = computed(() => new Set(addedTracks.value.map((t) => `${t.programId}:${t.trackKey}`)))
-    function planTrack(track) {
-      addTrack(track.programId, track.trackKey)
-      goPlanner()
-    }
     return {
       currentProgram,
       currentParsed,
       tracks,
-      addedSet,
-      planTrack,
       allCourses,
       goToCourse,
       goHome,
+      plannerUrl,
     }
   },
   template: `
@@ -58,14 +51,13 @@ export default {
         >
           <div class="req-block-head">
             <h4>{{ req.label }}</h4>
-            <button
+            <a
               v-if="tracks[ri]"
               class="plan-track-btn"
-              :class="{ added: addedSet.has(tracks[ri].programId + ':' + tracks[ri].trackKey) }"
-              @click="planTrack(tracks[ri])"
+              :href="plannerUrl(tracks[ri].programId, tracks[ri].trackKey)"
             >
-              {{ addedSet.has(tracks[ri].programId + ':' + tracks[ri].trackKey) ? 'In planner ✓' : 'Add to planner' }}
-            </button>
+              Add to planner
+            </a>
           </div>
           <RequirementSection
             v-for="(section, si) in req.sections"

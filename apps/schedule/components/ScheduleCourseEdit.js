@@ -1,6 +1,6 @@
-import { SLOT_BLOCKS, WEEKDAYS, formatTime, compareInstructors } from '../packages/schedule-core/schedule.js'
-import { scheduleById, updateOffering, removeCourseFromSchedule } from '../apps/schedule/src/scheduleStore.js'
-import { allCourses } from '../packages/catalog-client/index.js'
+import { SLOT_BLOCKS, WEEKDAYS, formatTime, compareInstructors } from '@major-vis/schedule-core'
+import { scheduleById, updateOffering, removeCourseFromSchedule } from '../src/scheduleStore.js'
+import { allCourses } from '@major-vis/catalog-client'
 
 const { computed, ref } = Vue
 

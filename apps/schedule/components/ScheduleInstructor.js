@@ -1,7 +1,7 @@
-import { route } from '../lib/router.js'
-import { schedule } from '../apps/schedule/src/scheduleStore.js'
-import { instructorConflicts, compareInstructors } from '../packages/schedule-core/schedule.js'
-import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../lib/router.js'
+import { route } from '../router.js'
+import { schedule } from '../src/scheduleStore.js'
+import { instructorConflicts, compareInstructors } from '@major-vis/schedule-core'
+import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../router.js'
 import WeeklyCalendar from './WeeklyCalendar.js'
 
 const { computed } = Vue
