@@ -44,15 +44,15 @@ course code vs `code`, offerings vs courses, track keys, join keys).
 
 Batch scripts (run from the repo root; they read/write the root JSON):
 
-| Script | Purpose |
-|--------|---------|
-| `scrape_catalog.py` | Fetch catalog HTML + API data → `majors.json` |
+| Script                   | Purpose                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
+| `scrape_catalog.py`      | Fetch catalog HTML + API data → `majors.json`                                            |
 | `codify_requirements.py` | LLM prompt template → `requirements_parsed.json` (refuses to overwrite unless `--force`) |
-| `extract_core.py` | CCR/ACE areas → `core_requirements.json` (+ gap report) |
-| `audit_catalog.py` | Cross-check the three artifacts → `catalog_issues.{json,md}` |
-| `md_to_html.py` | pandoc + CSS → self-contained `catalog_issues.html` |
-| `merge_classics.py` | One-off migration (Classics → Classical Studies) |
-| `test_data.py` | Data-integrity invariants (`npm run test:data`) |
+| `extract_core.py`        | CCR/ACE areas → `core_requirements.json` (+ gap report)                                  |
+| `audit_catalog.py`       | Cross-check the three artifacts → `catalog_issues.{json,md}`                             |
+| `md_to_html.py`          | pandoc + CSS → self-contained `catalog_issues.html`                                      |
+| `merge_classics.py`      | One-off migration (Classics → Classical Studies)                                         |
+| `test_data.py`           | Data-integrity invariants (`npm run test:data`)                                          |
 
 All scripts anchor data files to the repo root via `ROOT` (parents[2]), so they
 work from any cwd. **Output = the three JSON artifacts**, which are the catalog
@@ -99,7 +99,7 @@ requirement's label), core area id (`LA`, `HS`, …).
   (`buildDragPayload`/`dragPayloadFrom`), and generation (`./generate`:
   `makeSchedule(mode, prefix, facultyByPrefix, eligible, seed)` with a
   mulberry32 PRNG). The offering record `{prefix, number, section, instructor,
-  days, time}` is registrar-shaped.
+days, time}` is registrar-shaped.
 - **`router`** (`@major-vis/router`) — `createRouter(routes, fallback)`: each
   app registers a route table (`{ view, parse(parts, query), href(params) }`)
   and re-exports its own `route`/nav helpers.
@@ -109,13 +109,13 @@ requirement's label), core area id (`LA`, `HS`, …).
 Each app's README documents its input contract, localStorage persistence, and
 cross-app links. Summary:
 
-| | browse | schedule | planner |
-|---|--------|----------|---------|
-| Catalog inputs | all refs | courses + faculty pools | programs + parsed + core |
-| Persistence | none | `major-vis.schedules`, `.schedule.selected`, `.schedule.color` | `major-vis.planner.plans`, `.planner.active` |
-| Routes | `#/`, `#/program/:id`, `#/course/:code` | `#/`, `#/day/:d`, `#/slot/:d/:t`, `#/course/:c`, `#/instructor/:i` | `#/` (+ deep-link query) |
-| Emits links | → planner (`plannerUrl`) | — | → browse (`browseProgramUrl`/`browseCourseUrl`) |
-| Consumes links | — | — | `?program=&track=` |
+|                | browse                                  | schedule                                                           | planner                                         |
+| -------------- | --------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------- |
+| Catalog inputs | all refs                                | courses + faculty pools                                            | programs + parsed + core                        |
+| Persistence    | none                                    | `major-vis.schedules`, `.schedule.selected`, `.schedule.color`     | `major-vis.planner.plans`, `.planner.active`    |
+| Routes         | `#/`, `#/program/:id`, `#/course/:code` | `#/`, `#/day/:d`, `#/slot/:d/:t`, `#/course/:c`, `#/instructor/:i` | `#/` (+ deep-link query)                        |
+| Emits links    | → planner (`plannerUrl`)                | —                                                                  | → browse (`browseProgramUrl`/`browseCourseUrl`) |
+| Consumes links | —                                       | —                                                                  | `?program=&track=`                              |
 
 `apps/schedule/src/scheduleStore.js` holds the schedule collection/filters/
 generation/seeding; `apps/planner/src/plannerStore.js` holds plans/tracks/
@@ -184,10 +184,14 @@ source-disagreement (similarity + severity) · CAT6 designation-typo
   `.prettierrc.json`; `*.json` and the compiled `apps/*/style.css` ignored).
 - Python: `python3 -m black .` (config in `pyproject.toml`, keeps single
   quotes). `.editorconfig` covers indents/line endings.
-- **CSS**: authored in SCSS under `style/` (`_tokens.scss` = design tokens,
-  `_base.scss` = shared, `_{browse,schedule,planner}.scss` = per-app). Compile
-  with `npm run build:css` and commit the generated `apps/<name>/style.css`
-  alongside the source.
+- **CSS**: authored in SCSS under `style/` with **decisions centralized**:
+  `_tokens.scss` is the single source of truth for color/type/spacing/radius/
+  shadow (never hard-code these in rules); `_mixins.scss` holds the repeated
+  looks (`surface`, `flex-row`, `pill`, `icon-btn`, `button-reset`); `_base.scss`
+  has the reset + typography + shared components; `_{browse,schedule,planner}.scss`
+  are thin component assemblies referencing tokens/mixins. Compile with
+  `npm run build:css` and commit the generated `apps/<name>/style.css` alongside
+  the source.
 
 ## Development Workflow
 
@@ -195,7 +199,7 @@ source-disagreement (similarity + severity) · CAT6 designation-typo
   slice) and commit it before moving on; never let unrelated work pile up in
   one changeset.
 - **Committing and verifying are part of completing a task.** Run the same
-  checks CI runs, all must pass *before* you commit:
+  checks CI runs, all must pass _before_ you commit:
   - `npx prettier@3.3.3 --write "**/*.{js,html,css,scss}"` then
     `npx prettier@3.3.3 --check "**/*.{js,html,css,scss}"`
   - `npm test` (workspaces: degree-audit, schedule-core, catalog-contract)
