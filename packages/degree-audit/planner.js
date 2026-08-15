@@ -18,6 +18,22 @@
 //   `discipline.atLeast/atMost/distinctAtLeast`, `max_from`, `min_from`).
 // Aggregates never scope the universe — e.g. `discipline{GER atLeast 7}`
 // still lets non-GER courses fill the remainder of an electives bucket.
+//
+// How to read this file (in order):
+//   1. "Code helpers" — how course codes are parsed/matched (`courseInfo`,
+//      `expandCode`, `prefixMatch`). The join-key layer.
+//   2. "Filters & aggregates" — `passes`, `filteredUniverse`, `checkAggregates`:
+//      which courses an electives bucket can draw from, and whether chosen
+//      courses satisfy count rules. Filters scope; aggregates verify.
+//   3. "Recursive evaluation" — `satisfied`: one item against the taken set.
+//      The status vocabulary (`satisfied`/`unsatisfied`/`unknown`) comes from here.
+//   4. "Per-track course assignment" — `assignRequirement` (the hard part): a
+//      two-pass backtracking solver so each course satisfies at most one node
+//      per track. Read `rigidOptions` → `assignItems` → `fillElectives`.
+//   5. "Planning / audit helpers" — `planGaps`/`gapGroups` (what to take next)
+//      and `audit` (status rollup for the UI).
+// The exported entry points for consumers are `satisfied`, `evaluateRequirement`,
+// `evaluateProgram`, `assignRequirement`, `planGaps`, `gapGroups`, and `audit`.
 
 const CODE_RE = /^([A-Z/]+)\s+(\S+)$/
 
