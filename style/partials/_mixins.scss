@@ -19,3 +19,38 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+
+// The rounded "pill/chip" silhouette: an inline-flex centered element with pill
+// padding + radius and a transparent border (so the active/hover border doesn't
+// shift layout). Pill-like components vary only in their token values after the
+// include.
+@mixin pill($pad-y: 4px, $pad-x: 12px) {
+  display: inline-flex;
+  align-items: center;
+  padding: $pad-y $pad-x;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+
+// A round icon button: fixed-size square, centered icon, no chrome.
+@mixin icon-btn($size: 32px) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: $size;
+  height: $size;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+// Strips browser button chrome for custom-styled clickable elements.
+@mixin button-reset {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}

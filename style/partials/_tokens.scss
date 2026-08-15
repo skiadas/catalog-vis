@@ -1,24 +1,68 @@
-// Design tokens for the catalog visualizer.
+// Design tokens — the single source of truth for color, type, spacing, radius,
+// elevation, and z-index decisions.
 //
-// Emitted as CSS custom properties on `:root` so app rules reference them via
-// `var(--...)`. The palette and base tokens were lifted verbatim from the old
-// single style.css; the consistency pass (tokens scale) extends this file.
+// Component rules reference these via var(--...); hard-coded values belong
+// here, not in the app partials. Sections mirror the concerns a rule mixes.
 
 :root {
-  --bg: #f8f9fa;
-  --surface: #ffffff;
-  --text: #1a1a2e;
-  --text-muted: #6c757d;
+  // ---- Brand ----
   --primary: #1b4965;
   --primary-light: #e8f0fe;
   --accent: #62b6cb;
+
+  // ---- Text ----
+  --text: #1a1a2e;
+  --text-muted: #6c757d;
+  --text-inverse: #ffffff;
+
+  // ---- Surfaces ----
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --surface-hover: #f8fafc;
+
+  // ---- Borders & dividers ----
   --border: #dee2e6;
+  --divider: #e2e8f0;
+
+  // ---- Status ----
+  --success: #1e7e34;
+  --success-bg: #e5f6e6;
+  --danger: #c62828;
+  --danger-bg: #fdecea;
+  --warning: #b45309;
+  --warning-bg: #fff8e1;
+  --info: #0284c7;
+  --info-bg: #d6e7f7;
+
+  // ---- Requirement-tag colors ----
+  --violet: #7b2d8b;
+  --violet-bg: #f3e5f5;
+  --teal: #00796b;
   --tag-major: #1b4965;
   --tag-minor: #62b6cb;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --radius: 8px;
 
-  // Spacing scale — prefer var(--space-N) over ad-hoc px in padding/margin.
+  // ---- Neutral ramp (slate) ----
+  --gray-50: #f8fafc;
+  --gray-100: #f0f0f0;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd2d9;
+  --gray-500: #94a3b8;
+  --gray-600: #64748b;
+  --gray-700: #475569;
+  --gray-800: #1f2933;
+
+  // ---- Type scale (canonical; strays fold to nearest step) ----
+  --font-2xs: 10px;
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-md: 13px;
+  --font-base: 14px;
+  --font-lg: 15px;
+  --font-xl: 18px;
+  --font-2xl: 22px;
+  --font-3xl: 26px;
+
+  // ---- Spacing scale ----
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -28,22 +72,19 @@
   --space-7: 32px;
   --space-8: 48px;
 
-  // Type scale.
-  --font-xs: 11px;
-  --font-sm: 12px;
-  --font-md: 13px;
-  --font-base: 14px;
-  --font-lg: 18px;
-  --font-xl: 26px;
-
-  // Radii (--radius is the 8px default).
+  // ---- Radii ----
   --radius-sm: 6px;
+  --radius: 8px;
   --radius-lg: 12px;
+  --radius-pill: 20px;
 
-  // Elevation.
+  // ---- Elevation ----
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
   --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.25);
+  --ring: 0 0 0 3px rgba(98, 182, 203, 0.15);
 
-  // Z-index layers.
+  // ---- Z-index layers ----
   --z-dropdown: 20;
   --z-modal: 100;
 }
