@@ -1,7 +1,7 @@
 import { route } from '../lib/router.js'
-import { schedule, scheduleOfferings } from '../lib/schedules.js'
-import { allCourses } from '../lib/store.js'
-import { conflictsForCourse, formatTime } from '../lib/schedule.js'
+import { schedule, scheduleOfferings } from '../apps/schedule/src/scheduleStore.js'
+import { allCourses } from '../packages/catalog-client/index.js'
+import { conflictsForCourse, formatTime } from '../packages/schedule-core/schedule.js'
 import { goScheduleCourse, goScheduleSlot } from '../lib/router.js'
 
 const { computed } = Vue

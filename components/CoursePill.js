@@ -1,5 +1,5 @@
 import { goScheduleCourse, goScheduleInstructor } from '../lib/router.js'
-import { allCourses } from '../lib/store.js'
+import { allCourses } from '../packages/catalog-client/index.js'
 import { buildDragPayload } from '../lib/scheduleDrag.js'
 
 const { computed } = Vue

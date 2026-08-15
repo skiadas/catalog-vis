@@ -7,15 +7,15 @@ import {
   buildVisual,
   colorForSchedule,
   daySlotTimes,
-} from '../lib/schedule.js'
-import { selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
+} from '../packages/schedule-core/schedule.js'
+import { selectedDepartments, selectedInstructors, filterMode } from '../apps/schedule/src/scheduleStore.js'
 import {
   schedule,
   selectedScheduleIds,
   colorSchedules,
   editingScheduleId,
   openCourseEdit,
-} from '../lib/schedules.js'
+} from '../apps/schedule/src/scheduleStore.js'
 import { goScheduleCourse, goScheduleDay, goScheduleSlot } from '../lib/router.js'
 import CoursePill from './CoursePill.js'
 

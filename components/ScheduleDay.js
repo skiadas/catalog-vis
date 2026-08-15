@@ -7,8 +7,8 @@ import {
   slotKey,
   buildVisual,
   colorForSchedule,
-} from '../lib/schedule.js'
-import { selectedDepartments, selectedInstructors, filterMode } from '../lib/store.js'
+} from '../packages/schedule-core/schedule.js'
+import { selectedDepartments, selectedInstructors, filterMode } from '../apps/schedule/src/scheduleStore.js'
 import {
   schedule,
   selectedScheduleIds,
@@ -16,7 +16,7 @@ import {
   editingScheduleId,
   moveOffering,
   openCourseEdit,
-} from '../lib/schedules.js'
+} from '../apps/schedule/src/scheduleStore.js'
 import { goScheduleSlot, goScheduleCourse, goScheduleDay } from '../lib/router.js'
 import { useScheduleDrag } from '../lib/scheduleDrag.js'
 import CoursePill from './CoursePill.js'

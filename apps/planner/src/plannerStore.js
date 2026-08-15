@@ -1,62 +1,13 @@
-// Transitional app-level store.
+// Planner app store: plans, year x term timeline slots, and added tracks.
 //
-// The catalog data layer now lives in the `@major-vis/catalog-client` package
-// (re-exported below). The planner state and schedule seeding that still live
-// here are being split into per-app stores in the monorepo restructure.
-import { buildFacultyAndEligible, makeSchedule } from './generate.js'
-import { addSchedule, seedSchedules } from './schedules.js'
-import {
-  loadCatalog,
-  programs,
-  allCourses,
-  parsedRequirements,
-  coreRequirements,
-} from '../packages/catalog-client/index.js'
+// Persists to localStorage (`major-vis.planner.*`) and depends on the catalog
+// data layer (`@major-vis/catalog-client`) for programs/requirements/core.
+// The pure evaluation happens in `@major-vis/degree-audit`, called by the
+// planner components — this store holds only the user's plan state.
 
-export {
-  loadCatalog,
-  programs,
-  allCourses,
-  parsedRequirements,
-  coreRequirements,
-  loading,
-  searchQuery,
-  filterType,
-  filteredPrograms,
-  programsUsingCourse,
-} from '../packages/catalog-client/index.js'
+import { programs, parsedRequirements, coreRequirements } from '../../../packages/catalog-client/index.js'
 
 const { ref, computed } = Vue
-
-export const selectedDepartments = ref([])
-export const selectedInstructors = ref([])
-export const filterMode = ref('dept')
-
-// Generates a new schedule from the live catalog. `mode` is 'random' (all
-// departments), 'dept' (exclusively `dept`'s courses), or 'empty' (a blank
-// schedule you fill in by hand). Names the schedule from the deed unless `name`
-// is provided; the new schedule is auto-selected.
-export function generateSchedule({ mode, dept, name } = {}) {
-  let offerings
-  let fallback
-  if (mode === 'empty') {
-    offerings = []
-    fallback = 'Empty schedule'
-  } else {
-    const { facultyByPrefix, eligible } = buildFacultyAndEligible(programs.value, allCourses.value)
-    const seed = Math.floor(Math.random() * 2 ** 31)
-    offerings = makeSchedule(mode, dept, facultyByPrefix, eligible, seed)
-    fallback = mode === 'dept' ? `Schedule for ${dept}` : 'Random schedule'
-  }
-  const label = name && name.trim() ? name.trim() : fallback
-  return addSchedule(label, offerings)
-}
-
-// ---- Planner state --------------------------------------------------------
-// Courses are organized on a year x term timeline (4 years, Fall/Winter/Spring)
-// plus a transfer-credit bucket, with an "unassigned" shelf for courses not yet
-// dragged into a cell. Plans autosave to localStorage; multiple named plans are
-// kept and can be loaded/renamed/deleted.
 
 export const PLAN_SLOT_KEYS = [
   'y1f',
@@ -121,8 +72,8 @@ export const planSlots = ref(emptySlots())
 export const currentPlan = computed(() => plans.value.find((p) => p.id === currentPlanId.value) || null)
 
 // Union of every slot's codes — what the planner treats as "taken". Timing is
-// organizational; the requirements evaluator only ever sees this set, so
-// lib/planner.js is unchanged.
+// organizational; the requirements evaluator only ever sees this set, so the
+// degree-audit engine is unchanged.
 export const takenSet = computed(() => new Set(Object.values(planSlots.value).flat()))
 export const takenCourses = computed(() => [...takenSet.value])
 
@@ -341,23 +292,6 @@ export const addedTracksDetailed = computed(() =>
 // Programs shown in the planner's add-track picker: the core curriculum plus
 // every browseable program.
 export const plannerPrograms = computed(() => [coreProgram, ...programs.value])
-
-// Loads the catalog, then seeds the schedule collection with a deterministic
-// "Sample schedule" generated from the live catalog (seed 42 for
-// reproducibility); seedSchedules prefers any schedules already saved in
-// localStorage. (The seeding side effect moves to the schedule app in the
-// restructure.)
-export async function loadData() {
-  await loadCatalog()
-  const { facultyByPrefix, eligible } = buildFacultyAndEligible(programs.value, allCourses.value)
-  seedSchedules([
-    {
-      id: 'base',
-      name: 'Sample schedule',
-      offerings: makeSchedule('random', undefined, facultyByPrefix, eligible, 42),
-    },
-  ])
-}
 
 // Initialize planner state after all refs (incl. addedTracks) are declared.
 if (typeof window !== 'undefined') initPlanner()

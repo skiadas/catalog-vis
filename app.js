@@ -1,5 +1,5 @@
-import { loading } from './lib/store.js'
-import { loadData } from './lib/store.js'
+import { loading, loadCatalog } from './packages/catalog-client/index.js'
+import { seedSampleSchedule } from './apps/schedule/src/scheduleStore.js'
 import { initRouter, route, goSchedule, goHome, goPlanner } from './lib/router.js'
 import ProgramList from './components/ProgramList.js'
 import ProgramDetail from './components/ProgramDetail.js'
@@ -13,7 +13,7 @@ import WeeklyCalendar from './components/WeeklyCalendar.js'
 const app = Vue.createApp({
   setup() {
     Vue.onMounted(() => {
-      loadData()
+      loadCatalog().then(seedSampleSchedule)
       initRouter()
     })
     return { route, loading, goSchedule, goHome, goPlanner }

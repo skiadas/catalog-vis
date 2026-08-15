@@ -1,5 +1,6 @@
-import { allCourses, takenSet, placeCourse, removePlanCourse } from '../lib/store.js'
-import { evaluateProgram, audit, gapGroups, assignRequirement } from '../lib/planner.js'
+import { takenSet, placeCourse, removePlanCourse } from '../apps/planner/src/plannerStore.js'
+import { allCourses } from '../packages/catalog-client/index.js'
+import { evaluateProgram, audit, gapGroups, assignRequirement } from '../packages/degree-audit/planner.js'
 
 const { ref, computed } = Vue
 

@@ -1,4 +1,10 @@
-import { filteredPrograms, programs, loading, searchQuery, filterType } from '../lib/store.js'
+import {
+  filteredPrograms,
+  programs,
+  loading,
+  searchQuery,
+  filterType,
+} from '../packages/catalog-client/index.js'
 import { goToProgram } from '../lib/router.js'
 
 export default {

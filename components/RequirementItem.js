@@ -1,4 +1,4 @@
-import { allCourses } from '../lib/store.js'
+import { allCourses } from '../packages/catalog-client/index.js'
 import { goToCourse } from '../lib/router.js'
 
 const { computed } = Vue

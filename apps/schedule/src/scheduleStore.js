@@ -1,3 +1,9 @@
+// Schedule app store: the schedule collection, display filters, generation, and
+// editing state. Persists to localStorage (`major-vis.schedule.*`) and depends
+// on the catalog data layer (`@major-vis/catalog-client`) for course names and
+// faculty pools (generation). Pure domain logic lives in
+// `@major-vis/schedule-core`.
+
 import {
   buildIndex,
   moveOfferingSmart,
@@ -6,9 +12,15 @@ import {
   nextSectionLetter,
   addOfferingToSchedule,
   removeOfferingFromSchedule,
-} from './schedule.js'
+} from '../../../packages/schedule-core/schedule.js'
+import { buildFacultyAndEligible, makeSchedule } from '../../../packages/schedule-core/generate.js'
+import { programs, allCourses } from '../../../packages/catalog-client/index.js'
 
 const { ref, computed } = Vue
+
+export const selectedDepartments = ref([])
+export const selectedInstructors = ref([])
+export const filterMode = ref('dept')
 
 // ---- Schedule collection state ------------------------------------------
 // Schedules are named, editable collections of offerings, persisted to
@@ -241,7 +253,7 @@ function loadSelectedSchedules() {
 // otherwise populates from the freshly fetched sample schedule. A fresh user sees
 // only the Sample schedule (the pre-existing single schedule users already see)
 // selected by default; additional schedules are generated on demand.
-export function seedSchedules(seedList) {
+function seedSchedules(seedList) {
   const stored = loadSchedules()
   schedules.value = stored && stored.length ? stored : seedList
   if (!stored || !stored.length) persistSchedules()
@@ -259,4 +271,38 @@ export function seedSchedules(seedList) {
     const c = localStorage.getItem(LS_COLOR)
     if (c !== null) colorSchedules.value = c === '1'
   }
+}
+
+// Bootstraps the collection with the deterministic "Sample schedule" generated
+// from the live catalog (seed 42 for reproducibility). Call after the catalog
+// has loaded (`loadCatalog`).
+export function seedSampleSchedule() {
+  const { facultyByPrefix, eligible } = buildFacultyAndEligible(programs.value, allCourses.value)
+  seedSchedules([
+    {
+      id: 'base',
+      name: 'Sample schedule',
+      offerings: makeSchedule('random', undefined, facultyByPrefix, eligible, 42),
+    },
+  ])
+}
+
+// Generates a new schedule from the live catalog. `mode` is 'random' (all
+// departments), 'dept' (exclusively `dept`'s courses), or 'empty' (a blank
+// schedule you fill in by hand). Names the schedule from the deed unless `name`
+// is provided; the new schedule is auto-selected.
+export function generateSchedule({ mode, dept, name } = {}) {
+  let offerings
+  let fallback
+  if (mode === 'empty') {
+    offerings = []
+    fallback = 'Empty schedule'
+  } else {
+    const { facultyByPrefix, eligible } = buildFacultyAndEligible(programs.value, allCourses.value)
+    const seed = Math.floor(Math.random() * 2 ** 31)
+    offerings = makeSchedule(mode, dept, facultyByPrefix, eligible, seed)
+    fallback = mode === 'dept' ? `Schedule for ${dept}` : 'Random schedule'
+  }
+  const label = name && name.trim() ? name.trim() : fallback
+  return addSchedule(label, offerings)
 }

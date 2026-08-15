@@ -1,7 +1,6 @@
 import {
   plannerPrograms,
   CORE_ID,
-  allCourses,
   takenSet,
   takenCourses,
   addedTracks,
@@ -19,9 +18,10 @@ import {
   newPlan,
   duplicatePlan,
   deletePlan,
-} from '../lib/store.js'
+} from '../apps/planner/src/plannerStore.js'
+import { allCourses } from '../packages/catalog-client/index.js'
 import { goToProgram, goToCourse } from '../lib/router.js'
-import { evaluateProgram, audit } from '../lib/planner.js'
+import { evaluateProgram, audit } from '../packages/degree-audit/planner.js'
 import TrackAudit from './TrackAudit.js'
 import PlannerTimeline from './PlannerTimeline.js'
 

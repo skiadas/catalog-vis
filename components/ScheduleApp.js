@@ -1,13 +1,11 @@
 import { route } from '../lib/router.js'
 import { goScheduleGrid, goScheduleCourse, goScheduleInstructor } from '../lib/router.js'
+import { allCourses } from '../packages/catalog-client/index.js'
 import {
   selectedDepartments,
   selectedInstructors,
   filterMode,
-  allCourses,
   generateSchedule,
-} from '../lib/store.js'
-import {
   schedule,
   scheduleOfferings,
   schedules,
@@ -25,7 +23,7 @@ import {
   openCourseEdit,
   courseEditTarget,
   closeCourseEdit,
-} from '../lib/schedules.js'
+} from '../apps/schedule/src/scheduleStore.js'
 import {
   departmentsInSchedule,
   instructorsInSchedule,
@@ -34,7 +32,7 @@ import {
   colorForSchedule,
   compareCodes,
   compareItems,
-} from '../lib/schedule.js'
+} from '../packages/schedule-core/schedule.js'
 import ScheduleGrid from './ScheduleGrid.js'
 import ScheduleDay from './ScheduleDay.js'
 import ScheduleSlot from './ScheduleSlot.js'

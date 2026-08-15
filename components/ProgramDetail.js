@@ -1,11 +1,5 @@
-import {
-  programs,
-  allCourses,
-  parsedRequirements,
-  programTracks,
-  addTrack,
-  addedTracks,
-} from '../lib/store.js'
+import { programs, allCourses, parsedRequirements } from '../packages/catalog-client/index.js'
+import { programTracks, addTrack, addedTracks } from '../apps/planner/src/plannerStore.js'
 import { route, goToCourse, goHome, goPlanner } from '../lib/router.js'
 
 const { computed } = Vue
