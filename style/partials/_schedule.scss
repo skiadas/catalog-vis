@@ -47,6 +47,10 @@
   font-weight: var(--weight-medium);
   font-size: var(--font-2xs);
   opacity: 0.9;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 } /* Time-slot offerings as pills */
 
 .slot-pills {
@@ -476,8 +480,10 @@
 }
 .filter-offering-main {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  justify-content: center;
+  gap: 2px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
