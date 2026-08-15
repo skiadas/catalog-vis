@@ -63,6 +63,11 @@ An **offering** is the primitive record, in the shape `parseCsv` produces:
 - `buildVisual(mode, depts, instructors, scheduleIds, colorSchedules)` →
   filter-first, then schedule coloring, else inactive
 
+### Drag payload (shared with the planner timeline)
+
+- `buildDragPayload(it, fromDay)` → serialized `{ sid, prefix, number, section, fromDay }`
+- `dragPayloadFrom(e)` → parsed payload (or `null`) from a `dataTransfer`
+
 ## Contract — `./generate` (generate.js)
 
 Deterministic (seeded) schedule generation from the catalog.
