@@ -458,6 +458,10 @@
   flex-direction: column;
   gap: 2px;
   width: 100%;
+  // A concrete min-height (not the flex default auto) lets this area shrink to
+  // the block's remaining space and scroll its offerings instead of clipping,
+  // while still keeping at least one course/instructor line visible.
+  min-height: 18px;
   overflow-y: auto;
   flex: 1;
 }

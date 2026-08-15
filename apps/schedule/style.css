@@ -1277,6 +1277,7 @@ body {
   flex-direction: column;
   gap: 2px;
   width: 100%;
+  min-height: 18px;
   overflow-y: auto;
   flex: 1;
 }
