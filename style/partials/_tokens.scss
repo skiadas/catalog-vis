@@ -1,0 +1,20 @@
+// Design tokens for the catalog visualizer.
+//
+// Emitted as CSS custom properties on `:root` so app rules reference them via
+// `var(--...)`. The palette and base tokens were lifted verbatim from the old
+// single style.css; the consistency pass (tokens scale) extends this file.
+
+:root {
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --text: #1a1a2e;
+  --text-muted: #6c757d;
+  --primary: #1b4965;
+  --primary-light: #e8f0fe;
+  --accent: #62b6cb;
+  --border: #dee2e6;
+  --tag-major: #1b4965;
+  --tag-minor: #62b6cb;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --radius: 8px;
+}

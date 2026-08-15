@@ -1,3 +1,5 @@
 package-lock.json
 node_modules/
 *.json
+# Compiled Sass output — the .scss source is authoritative (npm run build:css).
+apps/*/style.css

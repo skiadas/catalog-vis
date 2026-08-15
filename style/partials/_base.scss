@@ -1,0 +1,5 @@
+// Shared "base" styles used by more than one app: reset, page shell, top
+// navigation, and generic UI (buttons, chips, modals, tables, forms, empty and
+// loading states). Rules that belong to a single app live in _browse.scss,
+// _schedule.scss, or _planner.scss. Bucketing was decided by grepping each
+// selector's usage across apps/*/components.

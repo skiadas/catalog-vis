@@ -1,0 +1,17 @@
+@charset "UTF-8";
+/*! Generated from style/schedule.scss — do not edit directly. Edit the .scss
+    source and run `npm run build:css`. */
+:root {
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --text: #1a1a2e;
+  --text-muted: #6c757d;
+  --primary: #1b4965;
+  --primary-light: #e8f0fe;
+  --accent: #62b6cb;
+  --border: #dee2e6;
+  --tag-major: #1b4965;
+  --tag-minor: #62b6cb;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --radius: 8px;
+}

@@ -8,14 +8,17 @@
     "test": "node --test",
     "test:data": "python3 tools/catalog-pipeline/test_data.py",
     "validate:catalog": "node packages/catalog-contract/validate.mjs",
+    "build:css": "sass style/browse.scss:apps/browse/style.css style/schedule.scss:apps/schedule/style.css style/planner.scss:apps/planner/style.css --no-source-map",
+    "check:css": "npm run build:css && git diff --exit-code -- apps/browse/style.css apps/schedule/style.css apps/planner/style.css",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"**/*.{js,html,css}\"",
-    "format:check": "prettier --check \"**/*.{js,html,css}\""
+    "format": "prettier --write \"**/*.{js,html,css,scss}\"",
+    "format:check": "prettier --check \"**/*.{js,html,css,scss}\""
   },
   "devDependencies": {
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
-    "prettier": "3.3.3"
+    "prettier": "3.3.3",
+    "sass": "^1.102.0"
   }
 }
