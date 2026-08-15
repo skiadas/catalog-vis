@@ -1,0 +1,12 @@
+{
+  "name": "@major-vis/catalog-client",
+  "version": "0.1.0",
+  "description": "Browser catalog data layer: fetches the three catalog artifacts into Vue-reactive refs and derives browse filters. The baseUrl seam is where a college-hosted catalog API plugs in.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
