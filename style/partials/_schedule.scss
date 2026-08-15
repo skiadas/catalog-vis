@@ -471,6 +471,10 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1);
+  // Never shrink vertically: its content is overflow:hidden, so the flex
+  // automatic minimum is 0 and it would otherwise crush to a sliver before the
+  // depts area scrolls. Keep it full size so scroll engages at the right point.
+  flex-shrink: 0;
   line-height: 1.15;
   font-size: var(--font-2xs);
   font-weight: var(--weight-semibold);

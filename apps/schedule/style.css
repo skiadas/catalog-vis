@@ -1288,6 +1288,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1);
+  flex-shrink: 0;
   line-height: 1.15;
   font-size: var(--font-2xs);
   font-weight: var(--weight-semibold);
