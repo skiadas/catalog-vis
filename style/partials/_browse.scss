@@ -1,2 +1,362 @@
 // Browse app styles: program list/grid, program detail, course detail, and the
 // recursive requirement renderer.
+
+.program-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.program-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--shadow);
+}
+
+.program-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.program-card h3 {
+  font-size: 15px;
+  margin: 0;
+  color: var(--primary);
+}
+
+.program-card .meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.detail-description {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #444;
+  margin-bottom: 28px;
+  max-width: 800px;
+}
+
+.req-original {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.course-prereq {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.course-prereq span {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.course-prereq span:hover {
+  text-decoration: underline;
+}
+
+.course-prereq-label {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.course-detail-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.course-detail-card h2 {
+  font-size: 22px;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.course-detail-card .course-meta {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.course-detail-card .course-desc {
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.course-detail-card .prereq-section {
+  margin-bottom: 16px;
+}
+
+.course-detail-card .prereq-section h4 {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.course-detail-card .prereq-section .course-chip {
+  font-size: 14px;
+}
+
+.course-detail-card .programs-using h4 {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.course-detail-card .programs-using ul {
+  list-style: none;
+}
+
+.course-detail-card .programs-using li {
+  font-size: 14px;
+  padding: 2px 0;
+}
+
+.course-detail-card .programs-using li a {
+  color: var(--primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.course-detail-card .programs-using li a:hover {
+  text-decoration: underline;
+}
+
+.req-section {
+  margin-top: 12px;
+}
+
+.req-section + .req-section {
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.req-section-heading {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.req-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.req-item {
+  line-height: 1.6;
+}
+
+.anyof-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.anyof-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-right: 2px;
+}
+
+.anyof-items-group > .anyof-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.eachof-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-right: 2px;
+  margin-bottom: 6px;
+}
+
+.anyof-items-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.anyof-subitem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.anyof-subitem + .anyof-subitem {
+  border-top: 1px dashed var(--border);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.item-note {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.item-note.culminating {
+  color: #e67e22;
+}
+
+.electives-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.electives-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.electives-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.constraints-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.constraint-row {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.constraint-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.constraint-tag.level {
+  color: #7b2d8b;
+  font-weight: 500;
+}
+
+.constraint-tag.exclude {
+  color: #c62828;
+  font-weight: 500;
+}
+
+.constraint-tag.discipline {
+  color: #00796b;
+  font-weight: 500;
+}
+
+.constraint-tag.from {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.constraint-tag.from .constraint-note {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.constraint-tag.from .constraint-from-label {
+  color: var(--text-muted);
+}
+
+.constraint-tag.note-only {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.level-gate-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: #7b2d8b;
+  background: #f3e5f5;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.custom-text {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.course-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-track-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 3px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.plan-track-btn:hover {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.plan-track-btn.added {
+  background: #e5f6e6;
+  color: #1e7e34;
+  border-color: #1e7e34;
+}

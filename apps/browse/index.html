@@ -6,8 +6,8 @@
     <title>Hanover College — Programs</title>
     <!-- Vue as a global (no build step); app modules use `const { ref, computed } = Vue`. -->
     <script src="https://unpkg.com/vue@3.5.40/dist/vue.global.prod.js"></script>
-    <!-- Shared stylesheet lives two levels up, at the repo root. -->
-    <link rel="stylesheet" href="../../style.css" />
+    <!-- App stylesheet (compiled from style/*.scss via `npm run build:css`). -->
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div id="app"></div>
