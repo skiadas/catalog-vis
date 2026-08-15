@@ -20,10 +20,10 @@ Plus generated reports that are **not** part of the runtime contract:
 
 Formal JSON Schemas (draft 2020-12) live in `schemas/`. They are a **parallel
 artifact** to the human-oriented `REQUIREMENTS_SCHEMA.md` and the imperative
-invariants in `test/test_data.py` — the schema covers structure and
-vocabulary; `test_data.py` keeps the derived/relational rules (program `id`
-derived from name, track-slug uniqueness, cross-file code integrity). Keep all
-three in sync when the contract changes.
+invariants in `tools/catalog-pipeline/test_data.py` — the schema covers
+structure and vocabulary; `test_data.py` keeps the derived/relational rules
+(program `id` derived from name, track-slug uniqueness, cross-file code
+integrity). Keep all three in sync when the contract changes.
 
 ### Validate
 

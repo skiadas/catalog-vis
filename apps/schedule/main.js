@@ -1,3 +1,6 @@
+// Schedule app bootstrap: parse the hash route, load the catalog (baseUrl
+// reaches the repo-root JSON when co-deployed), then seed the "Sample
+// schedule" collection once the catalog is available.
 import { loading, loadCatalog } from '@major-vis/catalog-client'
 import { route, initRouter } from './router.js'
 import { seedSampleSchedule } from './src/scheduleStore.js'

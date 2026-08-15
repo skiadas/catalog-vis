@@ -1,3 +1,6 @@
+// Planner app bootstrap: parse the hash route (including the cross-app deep
+// link from browse — ?program=<id>&track=<key> — which is added before the
+// catalog loads), then load the catalog into the shared refs.
 import { loading, loadCatalog } from '@major-vis/catalog-client'
 import { route, initRouter } from './router.js'
 import { addTrack } from './src/plannerStore.js'

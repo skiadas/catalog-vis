@@ -4,11 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hanover College — Schedule</title>
+    <!-- Vue as a global (no build step); app modules use `const { ref, computed } = Vue`. -->
     <script src="https://unpkg.com/vue@3.5.40/dist/vue.global.prod.js"></script>
+    <!-- Shared stylesheet lives two levels up, at the repo root. -->
     <link rel="stylesheet" href="../../style.css" />
   </head>
   <body>
     <div id="app"></div>
+    <!--
+      No build step: the import map resolves bare @major-vis/* specifiers to the
+      workspace packages (two levels up, at the repo root). This is how app code
+      imports @major-vis/catalog-client, the pure engines, and the router.
+    -->
     <script type="importmap">
       {
         "imports": {

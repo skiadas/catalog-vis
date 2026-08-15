@@ -1,3 +1,6 @@
+// Browse app bootstrap: parse the hash route, then load the catalog into the
+// shared refs (baseUrl reaches the repo-root JSON when co-deployed). Views are
+// switched by route.view; components are registered globally for the template.
 import { loading, loadCatalog } from '@major-vis/catalog-client'
 import { route, initRouter } from './router.js'
 import ProgramList from './components/ProgramList.js'
