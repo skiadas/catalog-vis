@@ -4,7 +4,7 @@ import { seedSampleSchedule } from './src/scheduleStore.js'
 import ScheduleApp from './components/ScheduleApp.js'
 
 initRouter()
-loadCatalog().then(seedSampleSchedule)
+loadCatalog({ baseUrl: '../../' }).then(seedSampleSchedule)
 
 const app = Vue.createApp({
   setup() {

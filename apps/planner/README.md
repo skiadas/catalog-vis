@@ -7,8 +7,9 @@ timeline, and audit progress against parsed requirements via the
 ## Inputs
 
 Catalog data via `@major-vis/catalog-client` (programs, `requirements_parsed.json`,
-`core_requirements.json`, `allCourses`). `loadCatalog()` defaults to
-page-relative JSON at the repo root; override `baseUrl` in `main.js`.
+`core_requirements.json`, `allCourses`). `main.js` calls
+`loadCatalog({ baseUrl: '../../' })` (the repo-root JSON when co-deployed);
+override that `baseUrl` in `main.js`.
 
 ## Persistence (localStorage)
 

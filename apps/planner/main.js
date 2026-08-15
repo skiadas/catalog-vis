@@ -10,7 +10,7 @@ initRouter()
 if (route.value.params.program && route.value.params.track) {
   addTrack(route.value.params.program, route.value.params.track)
 }
-loadCatalog()
+loadCatalog({ baseUrl: '../../' })
 
 const app = Vue.createApp({
   setup() {

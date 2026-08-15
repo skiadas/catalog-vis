@@ -5,10 +5,9 @@ the catalog data contract.
 
 ## Inputs
 
-Catalog data via `@major-vis/catalog-client`. `loadCatalog()` defaults to
-page-relative `majors.json` / `requirements_parsed.json` / `core_requirements.json`
-at the repo root; point it at a college-hosted catalog source by changing
-`baseUrl` in `main.js`.
+Catalog data via `@major-vis/catalog-client`. `main.js` calls
+`loadCatalog({ baseUrl: '../../' })` (the repo-root JSON when co-deployed);
+point it at a college-hosted catalog source by changing that `baseUrl`.
 
 ## Routes
 

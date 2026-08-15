@@ -7,8 +7,9 @@ edit-mode drag/course editing.
 ## Inputs
 
 Catalog data via `@major-vis/catalog-client` (course names, faculty pools for
-generation). `loadCatalog()` defaults to page-relative JSON at the repo root;
-override `baseUrl` in `main.js` for a college-hosted source.
+generation). `main.js` calls `loadCatalog({ baseUrl: '../../' })` (the
+repo-root JSON when co-deployed); override that `baseUrl` for a
+college-hosted source.
 
 ## Persistence (localStorage)
 

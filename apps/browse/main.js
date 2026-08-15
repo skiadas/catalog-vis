@@ -7,7 +7,7 @@ import RequirementSection from './components/RequirementSection.js'
 import RequirementItem from './components/RequirementItem.js'
 
 initRouter()
-loadCatalog()
+loadCatalog({ baseUrl: '../../' })
 
 const app = Vue.createApp({
   setup() {

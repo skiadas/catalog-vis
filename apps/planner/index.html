@@ -4,30 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hanover College — Planner</title>
-    <script>
-      ;(function () {
-        var loopback = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|::1|\[::1\])$/i.test(location.hostname)
-        document.write(
-          '<script src="' +
-            (loopback
-              ? 'https://unpkg.com/vue@3.5.40/dist/vue.global.js' /* dev build (warnings) */
-              : 'https://unpkg.com/vue@3.5.40/dist/vue.global.prod.js') /* prod build */ +
-            '"><\/script>',
-        )
-      })()
-    </script>
-    <link rel="stylesheet" href="../style.css" />
+    <script src="https://unpkg.com/vue@3.5.40/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="../../style.css" />
   </head>
   <body>
     <div id="app"></div>
     <script type="importmap">
       {
         "imports": {
-          "@major-vis/catalog-client": "../packages/catalog-client/index.js",
-          "@major-vis/degree-audit": "../packages/degree-audit/planner.js",
-          "@major-vis/schedule-core": "../packages/schedule-core/schedule.js",
-          "@major-vis/schedule-core/generate": "../packages/schedule-core/generate.js",
-          "@major-vis/router": "../packages/router/index.js"
+          "@major-vis/catalog-client": "../../packages/catalog-client/index.js",
+          "@major-vis/degree-audit": "../../packages/degree-audit/planner.js",
+          "@major-vis/schedule-core": "../../packages/schedule-core/schedule.js",
+          "@major-vis/schedule-core/generate": "../../packages/schedule-core/generate.js",
+          "@major-vis/router": "../../packages/router/index.js"
         }
       }
     </script>
