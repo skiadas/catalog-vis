@@ -32,7 +32,7 @@ import {
   nextSectionLetter,
   addOfferingToSchedule,
   removeOfferingFromSchedule,
-} from '../lib/schedule.js'
+} from '../schedule.js'
 
 const CSV = [
   'dept-prefix,course-number,section,instructor,days,times',

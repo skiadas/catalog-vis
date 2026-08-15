@@ -1,0 +1,16 @@
+{
+  "name": "@major-vis/schedule-core",
+  "version": "0.1.0",
+  "description": "Pure schedule domain model for Hanover's catalog: offering parsing/index, conflict detection, calendar layout, and deterministic schedule generation.",
+  "type": "module",
+  "main": "./schedule.js",
+  "exports": {
+    ".": "./schedule.js",
+    "./generate": "./generate.js"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

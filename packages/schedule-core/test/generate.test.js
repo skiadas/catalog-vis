@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildFacultyAndEligible, makeSchedule, mulberry32 } from '../lib/generate.js'
+import { buildFacultyAndEligible, makeSchedule, mulberry32 } from '../generate.js'
 
 const PROGRAMS = [
   {

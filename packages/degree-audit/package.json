@@ -1,0 +1,15 @@
+{
+  "name": "@major-vis/degree-audit",
+  "version": "0.1.0",
+  "description": "Pure requirements evaluator for Hanover's catalog: satisfies requirement nodes against a taken-course set, assigns courses, and derives still-needed gaps.",
+  "type": "module",
+  "main": "./planner.js",
+  "exports": {
+    ".": "./planner.js"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

@@ -15,7 +15,7 @@ import {
   describeConstraints,
   audit,
   assignRequirement,
-} from '../lib/planner.js'
+} from '../planner.js'
 
 // Small synthetic catalog the way majors.json exposes courses.
 const CATALOG = [

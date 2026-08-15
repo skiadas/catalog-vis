@@ -1,6 +1,9 @@
 {
   "private": true,
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "test": "node --test",
     "test:data": "python3 test/test_data.py",
