@@ -4,6 +4,11 @@
 // reset -> typography -> page shell -> shared components (nav, buttons, chips,
 // modals, tables, forms, empty/loading states). App-specific rules live in
 // _browse.scss, _schedule.scss, or _planner.scss.
+//
+// The rules for authoring styles, applied across the codebase:
+//   inherit before you set  ·  token before you repeat  ·  name a repeated
+//   look once (mixin).  Typographic choices are the @mixin text-* styles in
+//   _mixins.scss; every value they need comes from _tokens.scss.
 
 // ==== Base: reset ====
 

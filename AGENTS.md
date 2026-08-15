@@ -185,11 +185,14 @@ source-disagreement (similarity + severity) · CAT6 designation-typo
 - Python: `python3 -m black .` (config in `pyproject.toml`, keeps single
   quotes). `.editorconfig` covers indents/line endings.
 - **CSS**: authored in SCSS under `style/` with **decisions centralized**:
-  `_tokens.scss` is the single source of truth for color/type/spacing/radius/
-  shadow (never hard-code these in rules); `_mixins.scss` holds the repeated
-  looks (`surface`, `flex-row`, `pill`, `icon-btn`, `button-reset`); `_base.scss`
-  has the reset + typography + shared components; `_{browse,schedule,planner}.scss`
-  are thin component assemblies referencing tokens/mixins. Compile with
+  `_tokens.scss` is the single source of truth for color/type/weight/leading/
+  spacing/radius/shadow/duration (never hard-code these in rules); `_mixins.scss`
+  holds the repeated looks (`surface`, `flex-row`, `pill`, `icon-btn`,
+  `button-reset`) and the **type styles** (`text-*` — bundle size+weight so a
+  typographic choice is one line); `_base.scss` has the reset + typography +
+  shared components; `_{browse,schedule,planner}.scss` are thin component
+  assemblies referencing tokens/mixins. The style rule: **inherit before you
+  set · token before you repeat · name a repeated look once**. Compile with
   `npm run build:css` and commit the generated `apps/<name>/style.css` alongside
   the source.
 
