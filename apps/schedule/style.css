@@ -454,7 +454,6 @@ body {
   gap: 8px;
   margin-bottom: 16px;
 }
-
 .course-picker label {
   font-size: 13px;
   font-weight: 600;
@@ -466,7 +465,6 @@ body {
   flex: 1;
   max-width: 420px;
 }
-
 .course-picker-wrap .search-input {
   width: 100%;
   flex: none;
@@ -497,12 +495,9 @@ body {
   border: none;
   cursor: pointer;
 }
-
-.course-picker-option:hover,
-.course-picker-option.active {
+.course-picker-option:hover, .course-picker-option.active {
   background: var(--primary-light);
 }
-
 .course-picker-option .planner-pick-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -557,6 +552,29 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
 }
+.modal > .controls,
+.modal > .planner-search,
+.modal > .add-program-list,
+.modal > .planner-pick-list,
+.modal > .planner-pick-hint,
+.modal > .planner-pick-empty,
+.modal > .empty-state {
+  margin-left: 18px;
+  margin-right: 18px;
+}
+.modal > .controls {
+  margin-top: 14px;
+}
+.modal > .planner-search {
+  margin-top: 14px;
+}
+.modal > .add-program-list,
+.modal > .planner-pick-list,
+.modal > .planner-pick-hint,
+.modal > .planner-pick-empty,
+.modal > .empty-state {
+  margin-bottom: 20px;
+}
 
 .modal-head {
   display: flex;
@@ -570,7 +588,6 @@ body {
   background: var(--surface);
   z-index: 1;
 }
-
 .modal-head h3 {
   margin: 0;
   font-size: 17px;
@@ -586,7 +603,6 @@ body {
   cursor: pointer;
   padding: 0 4px;
 }
-
 .modal-close:hover {
   color: var(--primary);
 }
@@ -654,33 +670,6 @@ body {
 /* ---- Planner timeline (year x term grid) ---- */
 .modal-wide {
   max-width: 720px;
-}
-
-.modal > .controls,
-.modal > .planner-search,
-.modal > .add-program-list,
-.modal > .planner-pick-list,
-.modal > .planner-pick-hint,
-.modal > .planner-pick-empty,
-.modal > .empty-state {
-  margin-left: 18px;
-  margin-right: 18px;
-}
-
-.modal > .controls {
-  margin-top: 14px;
-}
-
-.modal > .planner-search {
-  margin-top: 14px;
-}
-
-.modal > .add-program-list,
-.modal > .planner-pick-list,
-.modal > .planner-pick-hint,
-.modal > .planner-pick-empty,
-.modal > .empty-state {
-  margin-bottom: 20px;
 }
 
 .schedule-type-options {
@@ -1586,19 +1575,16 @@ body {
   max-height: 320px;
   overflow-y: auto;
 }
-
 .schedule-manage-search {
   width: 100%;
   margin-bottom: 12px;
 }
-
 .schedule-manage-empty {
   font-size: 13px;
   color: var(--text-muted);
   font-style: italic;
   margin-bottom: 12px;
 }
-
 .schedule-manage-row {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1608,7 +1594,6 @@ body {
   gap: 10px;
   padding: 8px 10px;
 }
-
 .schedule-manage-row .schedule-swatch {
   flex: 0 0 auto;
   width: 10px;
@@ -1616,25 +1601,19 @@ body {
   border-radius: 50%;
   padding: 0;
 }
-
 .schedule-manage-main {
   flex: 1;
   min-width: 0;
 }
-
 .schedule-manage-name {
   font-size: 14px;
   font-weight: 600;
 }
-
 .schedule-manage-meta {
   font-size: 12px;
   color: var(--text-muted);
 }
-
-.schedule-manage-eye,
-.schedule-manage-icon,
-.schedule-manage-del {
+.schedule-manage-eye, .schedule-manage-icon, .schedule-manage-del {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1647,44 +1626,35 @@ body {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-
 .schedule-manage-icon {
   color: var(--text-muted);
   background: var(--surface-hover, var(--surface));
 }
-
 .schedule-manage-icon:hover {
   background: var(--primary-light);
   color: var(--primary);
 }
-
 .schedule-manage-icon.active {
   color: var(--primary);
 }
-
 .schedule-manage-eye {
   color: var(--text-muted);
   background: var(--surface-hover, var(--surface));
 }
-
 .schedule-manage-eye:hover {
   background: var(--primary-light);
   color: var(--primary);
 }
-
 .schedule-manage-eye.on {
   color: var(--primary);
 }
-
 .schedule-manage-eye.on:hover {
   color: #c62828;
 }
-
 .schedule-manage-del {
   color: #c62828;
   background: none;
 }
-
 .schedule-manage-del:hover {
   background: #c62828;
   color: #ffffff;

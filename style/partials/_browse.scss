@@ -15,24 +15,24 @@
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: var(--shadow);
-}
 
-.program-card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-}
+  &:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
 
-.program-card h3 {
-  font-size: 15px;
-  margin: 0;
-  color: var(--primary);
-}
+  h3 {
+    font-size: 15px;
+    margin: 0;
+    color: var(--primary);
+  }
 
-.program-card .meta {
-  @include flex-row;
-  align-items: center;
-  margin-top: 6px;
+  .meta {
+    @include flex-row;
+    align-items: center;
+    margin-top: 6px;
+  }
 }
 
 .detail-description {
@@ -54,16 +54,16 @@
   font-size: 12px;
   color: var(--text-muted);
   margin-top: 2px;
-}
 
-.course-prereq span {
-  cursor: pointer;
-  color: var(--primary);
-  font-weight: 500;
-}
+  span {
+    cursor: pointer;
+    color: var(--primary);
+    font-weight: 500;
 
-.course-prereq span:hover {
-  text-decoration: underline;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
 .course-prereq-label {
@@ -74,67 +74,69 @@
 .course-detail-card {
   @include surface;
   padding: 24px;
-}
 
-.course-detail-card h2 {
-  font-size: 22px;
-  color: var(--primary);
-  margin-bottom: 4px;
-}
+  h2 {
+    font-size: 22px;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
 
-.course-detail-card .course-meta {
-  font-size: 14px;
-  color: var(--text-muted);
-  margin-bottom: 16px;
-}
+  .course-meta {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
 
-.course-detail-card .course-desc {
-  font-size: 14px;
-  line-height: 1.7;
-  margin-bottom: 16px;
-}
+  .course-desc {
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
 
-.course-detail-card .prereq-section {
-  margin-bottom: 16px;
-}
+  .prereq-section {
+    margin-bottom: 16px;
 
-.course-detail-card .prereq-section h4 {
-  font-size: 13px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 6px;
-}
+    h4 {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
 
-.course-detail-card .prereq-section .course-chip {
-  font-size: 14px;
-}
+    .course-chip {
+      font-size: 14px;
+    }
+  }
 
-.course-detail-card .programs-using h4 {
-  font-size: 13px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 6px;
-}
+  .programs-using {
+    h4 {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
 
-.course-detail-card .programs-using ul {
-  list-style: none;
-}
+    ul {
+      list-style: none;
+    }
 
-.course-detail-card .programs-using li {
-  font-size: 14px;
-  padding: 2px 0;
-}
+    li {
+      font-size: 14px;
+      padding: 2px 0;
 
-.course-detail-card .programs-using li a {
-  color: var(--primary);
-  text-decoration: none;
-  cursor: pointer;
-}
+      a {
+        color: var(--primary);
+        text-decoration: none;
+        cursor: pointer;
 
-.course-detail-card .programs-using li a:hover {
-  text-decoration: underline;
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
 }
 
 .req-section {
@@ -177,15 +179,6 @@
   margin-right: 2px;
 }
 
-.anyof-items-group > .anyof-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--accent);
-  margin-bottom: 6px;
-}
-
 .eachof-label {
   font-size: 12px;
   color: var(--text-muted);
@@ -199,18 +192,27 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px 12px;
+
+  > .anyof-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
 }
 
 .anyof-subitem {
   @include flex-row;
   align-items: center;
   padding: 4px 0;
-}
 
-.anyof-subitem + .anyof-subitem {
-  border-top: 1px dashed var(--border);
-  margin-top: 4px;
-  padding-top: 8px;
+  & + & {
+    border-top: 1px dashed var(--border);
+    margin-top: 4px;
+    padding-top: 8px;
+  }
 }
 
 .item-note {
@@ -264,42 +266,42 @@
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
-}
 
-.constraint-tag.level {
-  color: #7b2d8b;
-  font-weight: 500;
-}
+  &.level {
+    color: #7b2d8b;
+    font-weight: 500;
+  }
 
-.constraint-tag.exclude {
-  color: #c62828;
-  font-weight: 500;
-}
+  &.exclude {
+    color: #c62828;
+    font-weight: 500;
+  }
 
-.constraint-tag.discipline {
-  color: #00796b;
-  font-weight: 500;
-}
+  &.discipline {
+    color: #00796b;
+    font-weight: 500;
+  }
 
-.constraint-tag.from {
-  color: var(--primary);
-  font-weight: 500;
-}
+  &.from {
+    color: var(--primary);
+    font-weight: 500;
 
-.constraint-tag.from .constraint-note {
-  font-style: italic;
-  color: var(--text-muted);
-}
+    .constraint-note {
+      font-style: italic;
+      color: var(--text-muted);
+    }
 
-.constraint-tag.from .constraint-from-label {
-  color: var(--text-muted);
-}
+    .constraint-from-label {
+      color: var(--text-muted);
+    }
+  }
 
-.constraint-tag.note-only {
-  font-style: italic;
-  font-weight: 400;
-  color: var(--text-muted);
-  line-height: 1.5;
+  &.note-only {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
 }
 
 .level-gate-badge {
@@ -336,15 +338,15 @@
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s;
-}
 
-.plan-track-btn:hover {
-  background: var(--primary);
-  color: #ffffff;
-}
+  &:hover {
+    background: var(--primary);
+    color: #ffffff;
+  }
 
-.plan-track-btn.added {
-  background: #e5f6e6;
-  color: #1e7e34;
-  border-color: #1e7e34;
+  &.added {
+    background: #e5f6e6;
+    color: #1e7e34;
+    border-color: #1e7e34;
+  }
 }

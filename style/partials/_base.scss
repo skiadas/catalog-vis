@@ -417,23 +417,23 @@ body {
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
-}
 
-.course-picker label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted);
+  label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
 }
 
 .course-picker-wrap {
   position: relative;
   flex: 1;
   max-width: 420px;
-}
 
-.course-picker-wrap .search-input {
-  width: 100%;
-  flex: none;
+  .search-input {
+    width: 100%;
+    flex: none;
+  }
 }
 
 .course-picker-dropdown {
@@ -458,17 +458,17 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-}
 
-.course-picker-option:hover,
-.course-picker-option.active {
-  background: var(--primary-light);
-}
+  &:hover,
+  &.active {
+    background: var(--primary-light);
+  }
 
-.course-picker-option .planner-pick-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  .planner-pick-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .course-picker-empty {
@@ -519,6 +519,33 @@ body {
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
+
+  > .controls,
+  > .planner-search,
+  > .add-program-list,
+  > .planner-pick-list,
+  > .planner-pick-hint,
+  > .planner-pick-empty,
+  > .empty-state {
+    margin-left: 18px;
+    margin-right: 18px;
+  }
+
+  > .controls {
+    margin-top: 14px;
+  }
+
+  > .planner-search {
+    margin-top: 14px;
+  }
+
+  > .add-program-list,
+  > .planner-pick-list,
+  > .planner-pick-hint,
+  > .planner-pick-empty,
+  > .empty-state {
+    margin-bottom: 20px;
+  }
 }
 
 .modal-head {
@@ -532,12 +559,12 @@ body {
   top: 0;
   background: var(--surface);
   z-index: 1;
-}
 
-.modal-head h3 {
-  margin: 0;
-  font-size: 17px;
-  color: var(--primary);
+  h3 {
+    margin: 0;
+    font-size: 17px;
+    color: var(--primary);
+  }
 }
 
 .modal-close {
@@ -548,10 +575,10 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   padding: 0 4px;
-}
 
-.modal-close:hover {
-  color: var(--primary);
+  &:hover {
+    color: var(--primary);
+  }
 }
 
 .modal-body {
@@ -621,31 +648,4 @@ body {
 
 .modal-wide {
   max-width: 720px;
-}
-
-.modal > .controls,
-.modal > .planner-search,
-.modal > .add-program-list,
-.modal > .planner-pick-list,
-.modal > .planner-pick-hint,
-.modal > .planner-pick-empty,
-.modal > .empty-state {
-  margin-left: 18px;
-  margin-right: 18px;
-}
-
-.modal > .controls {
-  margin-top: 14px;
-}
-
-.modal > .planner-search {
-  margin-top: 14px;
-}
-
-.modal > .add-program-list,
-.modal > .planner-pick-list,
-.modal > .planner-pick-hint,
-.modal > .planner-pick-empty,
-.modal > .empty-state {
-  margin-bottom: 20px;
 }

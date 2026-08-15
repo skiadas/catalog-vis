@@ -454,7 +454,6 @@ body {
   gap: 8px;
   margin-bottom: 16px;
 }
-
 .course-picker label {
   font-size: 13px;
   font-weight: 600;
@@ -466,7 +465,6 @@ body {
   flex: 1;
   max-width: 420px;
 }
-
 .course-picker-wrap .search-input {
   width: 100%;
   flex: none;
@@ -497,12 +495,9 @@ body {
   border: none;
   cursor: pointer;
 }
-
-.course-picker-option:hover,
-.course-picker-option.active {
+.course-picker-option:hover, .course-picker-option.active {
   background: var(--primary-light);
 }
-
 .course-picker-option .planner-pick-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -557,6 +552,29 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
 }
+.modal > .controls,
+.modal > .planner-search,
+.modal > .add-program-list,
+.modal > .planner-pick-list,
+.modal > .planner-pick-hint,
+.modal > .planner-pick-empty,
+.modal > .empty-state {
+  margin-left: 18px;
+  margin-right: 18px;
+}
+.modal > .controls {
+  margin-top: 14px;
+}
+.modal > .planner-search {
+  margin-top: 14px;
+}
+.modal > .add-program-list,
+.modal > .planner-pick-list,
+.modal > .planner-pick-hint,
+.modal > .planner-pick-empty,
+.modal > .empty-state {
+  margin-bottom: 20px;
+}
 
 .modal-head {
   display: flex;
@@ -570,7 +588,6 @@ body {
   background: var(--surface);
   z-index: 1;
 }
-
 .modal-head h3 {
   margin: 0;
   font-size: 17px;
@@ -586,7 +603,6 @@ body {
   cursor: pointer;
   padding: 0 4px;
 }
-
 .modal-close:hover {
   color: var(--primary);
 }
@@ -654,33 +670,6 @@ body {
 /* ---- Planner timeline (year x term grid) ---- */
 .modal-wide {
   max-width: 720px;
-}
-
-.modal > .controls,
-.modal > .planner-search,
-.modal > .add-program-list,
-.modal > .planner-pick-list,
-.modal > .planner-pick-hint,
-.modal > .planner-pick-empty,
-.modal > .empty-state {
-  margin-left: 18px;
-  margin-right: 18px;
-}
-
-.modal > .controls {
-  margin-top: 14px;
-}
-
-.modal > .planner-search {
-  margin-top: 14px;
-}
-
-.modal > .add-program-list,
-.modal > .planner-pick-list,
-.modal > .planner-pick-hint,
-.modal > .planner-pick-empty,
-.modal > .empty-state {
-  margin-bottom: 20px;
 }
 
 .planner-gap-group .course-chip.taken {
