@@ -14,7 +14,8 @@ their requirement text + parsed requirement objects. No network / re-scrape.
 import json
 import os
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+# Repo root (this script lives in tools/catalog-pipeline/).
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 IDS = ["classicsarchaeologyandhistory", "classicslanguageandliterature"]
 

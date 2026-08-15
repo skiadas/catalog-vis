@@ -6,7 +6,7 @@
   ],
   "scripts": {
     "test": "node --test",
-    "test:data": "python3 test/test_data.py",
+    "test:data": "python3 tools/catalog-pipeline/test_data.py",
     "validate:catalog": "node packages/catalog-contract/validate.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

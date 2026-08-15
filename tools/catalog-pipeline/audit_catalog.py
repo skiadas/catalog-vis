@@ -44,11 +44,14 @@ import json
 import os
 import re
 
-MAJORS_JSON = 'majors.json'
-CORE_JSON = 'core_requirements.json'
-PARSED_JSON = 'requirements_parsed.json'
-ISSUES_JSON = 'catalog_issues.json'
-ISSUES_MD = 'catalog_issues.md'
+# Repo root (this script lives in tools/catalog-pipeline/).
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+MAJORS_JSON = os.path.join(ROOT, 'majors.json')
+CORE_JSON = os.path.join(ROOT, 'core_requirements.json')
+PARSED_JSON = os.path.join(ROOT, 'requirements_parsed.json')
+ISSUES_JSON = os.path.join(ROOT, 'catalog_issues.json')
+ISSUES_MD = os.path.join(ROOT, 'catalog_issues.md')
 
 CCR_AREAS = ['LA', 'HS', 'PP', 'RP', 'SM', 'SL', 'WL', 'AF']
 ACE_AREAS = ['W1', 'W2', 'S', 'CP', 'QL']

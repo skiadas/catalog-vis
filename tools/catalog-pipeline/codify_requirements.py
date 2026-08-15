@@ -13,7 +13,11 @@ For a future session to reproduce:
 """
 
 import json
+import os
 import sys
+
+# Repo root (this script lives in tools/catalog-pipeline/).
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 PROMPT_TEMPLATE = """\
 You are codifying Hanover College course requirements into structured JSON.
@@ -63,7 +67,7 @@ No wrapper, no explanation.
 
 def main():
     force = '--force' in sys.argv[1:]
-    with open('majors.json', 'r', encoding='utf-8') as f:
+    with open(os.path.join(ROOT, 'majors.json'), 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     output = {
@@ -120,7 +124,7 @@ def main():
         print('Missing sections (first 5):', missing_sections[:5])
         sys.exit(1)
 
-    with open('requirements_parsed.json', 'w', encoding='utf-8') as f:
+    with open(os.path.join(ROOT, 'requirements_parsed.json'), 'w', encoding='utf-8') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
     print(f'\nWritten requirements_parsed.json ({len(output["programs"])} programs)')

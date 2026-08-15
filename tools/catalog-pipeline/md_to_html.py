@@ -10,13 +10,17 @@ resulting `catalog_issues.html` is a single readable file. Run after
 Usage: python3 md_to_html.py
 """
 
+import os
 import re
 import shutil
 import subprocess
 
-MD = 'catalog_issues.md'
-HTML = 'catalog_issues.html'
-CSS = 'catalog_issues.css'
+# Repo root (this script lives in tools/catalog-pipeline/).
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+MD = os.path.join(ROOT, 'catalog_issues.md')
+HTML = os.path.join(ROOT, 'catalog_issues.html')
+CSS = os.path.join(ROOT, 'catalog_issues.css')
 TITLE = 'Hanover Catalog Data Issues'
 
 TABLE_RE = re.compile(r'<table>.*?</table>', re.S)

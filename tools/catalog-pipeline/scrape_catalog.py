@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import re
 import time
 from collections import Counter
@@ -7,6 +8,10 @@ from datetime import date
 
 import requests
 from bs4 import BeautifulSoup
+
+# Repo root (this script lives in tools/catalog-pipeline/): data files are
+# committed at the root so the static apps can fetch them.
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 BASE_URL = 'https://catalog.hanover.edu'
 # Pause between requests to the catalog host to avoid flooding it.
@@ -417,7 +422,7 @@ def main():
         'programs': programs_data,
     }
 
-    with open('majors.json', 'w', encoding='utf-8') as f:
+    with open(os.path.join(ROOT, 'majors.json'), 'w', encoding='utf-8') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
     print(f'\nWritten majors.json ({len(programs_data)} programs, {len(catalog)} total courses)')
     if discrepancies:

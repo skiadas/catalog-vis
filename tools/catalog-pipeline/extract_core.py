@@ -22,15 +22,19 @@ Output: `core_requirements.json`.
 
 import argparse
 import json
+import os
 import re
 
 import requests
 from bs4 import BeautifulSoup
 
+# Repo root (this script lives in tools/catalog-pipeline/).
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 BASE_URL = 'https://catalog.hanover.edu'
 SOURCE_URL = BASE_URL + '#curriculum'
-OUTPUT = 'core_requirements.json'
-MAJORS_JSON = 'majors.json'
+OUTPUT = os.path.join(ROOT, 'core_requirements.json')
+MAJORS_JSON = os.path.join(ROOT, 'majors.json')
 
 CODE_RE = re.compile(r'^([A-Z][A-Z/]*)\s+(\d{3})\b')
 
