@@ -1,6 +1,6 @@
 import { route } from '../router.js'
 import { goScheduleGrid, goScheduleCourse, goScheduleInstructor } from '../router.js'
-import { allCourses } from '@major-vis/catalog-client'
+import { allCourses, courseName } from '@major-vis/catalog-client'
 import {
   selectedDepartments,
   selectedInstructors,
@@ -69,13 +69,11 @@ export default {
       if (q) {
         list = list.filter(
           (code) =>
-            code.replace(/\s+/g, '').toLowerCase().includes(qn) ||
-            (allCourses.value[code]?.course_name || '').toLowerCase().includes(q),
+            code.replace(/\s+/g, '').toLowerCase().includes(qn) || courseName(code).toLowerCase().includes(q),
         )
       }
       return list
     })
-    const courseName = (code) => (allCourses.value[code] ? allCourses.value[code].course_name : '')
     const pickCourse = (code) => {
       courseQuery.value = ''
       courseOpen.value = false
@@ -155,7 +153,7 @@ export default {
           rows.push([
             s.name,
             `${o.prefix} ${o.number} ${o.section}`,
-            allCourses.value[code]?.course_name || '',
+            courseName(code),
             o.instructor || '',
             o.days || '',
             o.time || '',
@@ -206,8 +204,7 @@ export default {
       if (q) {
         list = list.filter(
           (code) =>
-            code.replace(/\s+/g, '').toLowerCase().includes(qn) ||
-            (allCourses.value[code]?.course_name || '').toLowerCase().includes(q),
+            code.replace(/\s+/g, '').toLowerCase().includes(qn) || courseName(code).toLowerCase().includes(q),
         )
       }
       return list

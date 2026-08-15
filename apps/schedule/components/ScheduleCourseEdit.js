@@ -1,6 +1,6 @@
 import { SLOT_BLOCKS, WEEKDAYS, formatTime, compareInstructors } from '@major-vis/schedule-core'
 import { scheduleById, updateOffering, removeCourseFromSchedule } from '../src/scheduleStore.js'
-import { allCourses } from '@major-vis/catalog-client'
+import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 
 const { computed, ref } = Vue
 
@@ -83,7 +83,7 @@ export default {
 
     const canSave = computed(() => activeDays.value.length > 0 && Boolean(timeSel.value))
 
-    const courseName = computed(() => allCourses.value[props.offering.code]?.course_name || '')
+    const courseName = computed(() => catalogCourseName(props.offering.code))
 
     const save = () => {
       if (!canSave.value) return

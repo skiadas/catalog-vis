@@ -1,4 +1,4 @@
-import { allCourses, programsUsingCourse } from '@major-vis/catalog-client'
+import { courseByCode, programsUsingCourse } from '@major-vis/catalog-client'
 import { route, goToCourse, goToProgram, goHome } from '../router.js'
 
 const { computed } = Vue
@@ -6,14 +6,12 @@ const { computed } = Vue
 export default {
   name: 'CourseDetail',
   setup() {
-    const currentCourse = computed(() => {
-      return allCourses.value[route.value.params.code] || null
-    })
+    const currentCourse = computed(() => courseByCode(route.value.params.code))
     const usage = computed(() => {
       if (!currentCourse.value) return []
       return programsUsingCourse(currentCourse.value.course_code)
     })
-    return { currentCourse, usage, goToCourse, goToProgram, goHome }
+    return { currentCourse, usage, courseByCode, goToCourse, goToProgram, goHome }
   },
   template: `
     <div v-if="currentCourse">
@@ -40,7 +38,7 @@ export default {
               <span
                 class="course-chip"
                 @click="goToCourse(pr.trim())"
-                v-if="allCourses[pr.trim()]"
+                v-if="courseByCode(pr.trim())"
               >{{ pr.trim() }}</span>
               <span class="course-chip" v-else style="cursor:default;">{{ pr }}</span>
             </template>

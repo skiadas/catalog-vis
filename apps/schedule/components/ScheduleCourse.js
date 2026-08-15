@@ -1,6 +1,6 @@
 import { route } from '../router.js'
 import { schedule, scheduleOfferings } from '../src/scheduleStore.js'
-import { allCourses } from '@major-vis/catalog-client'
+import { courseByCode, courseName } from '@major-vis/catalog-client'
 import { conflictsForCourse, formatTime } from '@major-vis/schedule-core'
 import { goScheduleCourse, goScheduleSlot } from '../router.js'
 
@@ -16,16 +16,14 @@ export default {
     const conflicts = computed(() =>
       schedule.value && code.value ? conflictsForCourse(code.value, schedule.value) : [],
     )
-    const catalog = computed(() => (allCourses.value && code.value ? allCourses.value[code.value] : null))
-    const nameFor = (courseCode) =>
-      allCourses.value[courseCode] ? allCourses.value[courseCode].course_name : ''
+    const catalog = computed(() => courseByCode(code.value))
+    const nameFor = courseName
     return {
       code,
       sections,
       conflicts,
       schedule,
       scheduleOfferings,
-      allCourses,
       catalog,
       nameFor,
       formatTime,

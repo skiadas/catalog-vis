@@ -1,5 +1,5 @@
 import { takenSet, placeCourse, removePlanCourse } from '../src/plannerStore.js'
-import { allCourses } from '@major-vis/catalog-client'
+import { allCourses, courseName } from '@major-vis/catalog-client'
 import { evaluateProgram, audit, gapGroups, assignRequirement } from '@major-vis/degree-audit'
 
 const { ref, computed } = Vue
@@ -91,7 +91,7 @@ export default {
       sections,
       gaps,
       statusLabel,
-      allCourses,
+      courseName,
       takenSet,
       togglePlaced,
       expanded,
@@ -127,7 +127,7 @@ export default {
               :key="code"
               class="course-chip mini matched"
               @click="togglePlaced(code)"
-              :title="(allCourses[code] ? allCourses[code].course_name + ' — ' : '') + 'click to remove from plan'"
+              :title="(courseName(code) ? courseName(code) + ' — ' : '') + 'click to remove from plan'"
             >{{ code }}</span>
           </div>
         </div>
@@ -146,7 +146,7 @@ export default {
                 :key="code"
                 class="course-chip mini"
                 @click="togglePlaced(code)"
-                :title="allCourses[code] ? allCourses[code].course_name : ''"
+                :title="courseName(code)"
                 :class="{ taken: takenSet.has(code) }"
               >{{ code }}</span>
             </div>
@@ -166,7 +166,7 @@ export default {
                   <span
                     class="course-chip mini"
                     @click="togglePlaced(code)"
-                    :title="allCourses[code] ? allCourses[code].course_name : ''"
+                    :title="courseName(code)"
                     :class="{ taken: takenSet.has(code) }"
                   >{{ code }}</span>
                   <span v-if="slot.label && ci < slot.codes.length - 1" class="anyof-or">or</span>
@@ -181,7 +181,7 @@ export default {
               :key="code"
               class="course-chip mini"
               @click="togglePlaced(code)"
-              :title="allCourses[code] ? allCourses[code].course_name : ''"
+              :title="courseName(code)"
               :class="{ taken: takenSet.has(code) }"
             >{{ code }}</span>
             <span class="planner-gap-note" v-if="g.note && !g.codes">{{ g.note }}</span>

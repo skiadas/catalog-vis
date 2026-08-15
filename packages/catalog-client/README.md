@@ -42,6 +42,9 @@ sends `Access-Control-Allow-Origin: *`).
 ### Helpers
 
 - `programsUsingCourse(code)` → `[{ program }]`
+- `courseByCode(code)` → the course record or `null`
+- `courseName(code)` → the course's `course_name` or `''` (the one way
+  components look up a course name)
 - `filteredPrograms` (computed, via `searchQuery`/`filterType`)
 
 ## Consumers

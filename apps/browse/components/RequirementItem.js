@@ -1,4 +1,4 @@
-import { allCourses } from '@major-vis/catalog-client'
+import { courseName } from '@major-vis/catalog-client'
 import { goToCourse } from '../router.js'
 
 const { computed } = Vue
@@ -69,7 +69,7 @@ export default {
     }
 
     return {
-      allCourses,
+      courseName,
       goToCourse,
       formatLevelConstraint,
       formatDiscipline,
@@ -83,21 +83,21 @@ export default {
   template: `
     <div v-if="item.type === 'course_group'" class="course-group">
       <template v-for="(course, ci) in item.courses" :key="ci">
-        <span class="course-chip" @click="goToCourse(course.code)" :title="allCourses[course.code] ? allCourses[course.code].course_name : ''">{{ course.code }}</span>
+        <span class="course-chip" @click="goToCourse(course.code)" :title="courseName(course.code)">{{ course.code }}</span>
         <span v-if="isCulminating(course.note)" class="item-note culminating">★ {{ course.note }}</span>
         <span v-else-if="course.note" class="item-note">{{ course.note }}</span>
       </template>
     </div>
 
     <template v-else-if="item.type === 'course'">
-      <span class="course-chip" @click="goToCourse(item.code)" :title="allCourses[item.code] ? allCourses[item.code].course_name : ''">{{ item.code }}</span>
+      <span class="course-chip" @click="goToCourse(item.code)" :title="courseName(item.code)">{{ item.code }}</span>
       <span v-if="isCulminating(item.note)" class="item-note culminating">★ {{ item.note }}</span>
       <span v-else-if="item.note" class="item-note">{{ item.note }}</span>
     </template>
 
     <div v-else-if="item.type === 'pair'" class="pair-group">
       <template v-for="(code, pi) in item.codes" :key="code">
-        <span class="course-chip" @click="goToCourse(code)" :title="allCourses[code] ? allCourses[code].course_name : ''">{{ code }}</span>
+        <span class="course-chip" @click="goToCourse(code)" :title="courseName(code)">{{ code }}</span>
         <span v-if="pi < item.codes.length - 1" class="pair-plus">+</span>
       </template>
       <span v-if="item.note" class="item-note">{{ item.note }}</span>
@@ -106,7 +106,7 @@ export default {
     <div v-else-if="item.type === 'any_of' && item.codes" class="anyof-group">
       <span class="anyof-label">Choose one:</span>
       <template v-for="(code, ci) in item.codes" :key="code">
-        <span class="course-chip" @click="goToCourse(code)" :title="allCourses[code] ? allCourses[code].course_name : ''">{{ code }}</span>
+        <span class="course-chip" @click="goToCourse(code)" :title="courseName(code)">{{ code }}</span>
         <span v-if="ci < item.codes.length - 1" class="anyof-or">OR</span>
       </template>
       <span v-if="item.note && !isCulminating(item.note)" class="item-note">{{ item.note }}</span>
@@ -123,7 +123,7 @@ export default {
 
     <div v-else-if="eachOfInline" class="pair-group">
       <template v-for="(sub, di) in item.items" :key="di">
-        <span class="course-chip" @click="goToCourse(sub.code)" :title="allCourses[sub.code] ? allCourses[sub.code].course_name : ''">{{ sub.code }}</span>
+        <span class="course-chip" @click="goToCourse(sub.code)" :title="courseName(sub.code)">{{ sub.code }}</span>
         <span v-if="di < item.items.length - 1" class="pair-plus">+</span>
       </template>
       <span v-if="item.note" class="item-note">{{ item.note }}</span>
@@ -160,7 +160,7 @@ export default {
             <span class="constraint-tag exclude">
               Not including:
               <template v-for="(code, ei) in c.codes" :key="code">
-                <span class="course-chip mini" @click="goToCourse(code)" :title="allCourses[code] ? allCourses[code].course_name : ''">{{ code }}</span>
+                <span class="course-chip mini" @click="goToCourse(code)" :title="courseName(code)">{{ code }}</span>
                 <template v-if="ei < c.codes.length - 1">, </template>
               </template>
             </span>
@@ -170,7 +170,7 @@ export default {
               <span class="constraint-note" v-if="c.note">{{ c.note }}</span>
               <span class="constraint-from-label">Choose from:</span>
               <template v-for="(code, fi) in c.codes" :key="code">
-                <span class="course-chip mini" @click="goToCourse(code)" :title="allCourses[code] ? allCourses[code].course_name : ''">{{ code }}</span>
+                <span class="course-chip mini" @click="goToCourse(code)" :title="courseName(code)">{{ code }}</span>
                 <template v-if="fi < c.codes.length - 1">, </template>
               </template>
             </span>
@@ -182,7 +182,7 @@ export default {
             <span class="constraint-tag from">
               <span class="constraint-note">{{ 'At most ' + c.atMost + ' of:' }}</span>
               <template v-for="(code, xi) in c.codes" :key="code">
-                <span class="course-chip mini" @click="goToCourse(code)" :title="allCourses[code] ? allCourses[code].course_name : ''">{{ code }}</span>
+                <span class="course-chip mini" @click="goToCourse(code)" :title="courseName(code)">{{ code }}</span>
                 <template v-if="xi < c.codes.length - 1">, </template>
               </template>
               <span v-if="c.note" class="constraint-note">{{ c.note }}</span>
@@ -192,7 +192,7 @@ export default {
             <span class="constraint-tag from">
               <span class="constraint-note">{{ 'At least ' + c.atLeast + ' of:' }}</span>
               <template v-for="(code, yi) in c.codes" :key="code">
-                <span class="course-chip mini" @click="goToCourse(code)" :title="allCourses[code] ? allCourses[code].course_name : ''">{{ code }}</span>
+                <span class="course-chip mini" @click="goToCourse(code)" :title="courseName(code)">{{ code }}</span>
                 <template v-if="yi < c.codes.length - 1">, </template>
               </template>
               <span v-if="c.note" class="constraint-note">{{ c.note }}</span>

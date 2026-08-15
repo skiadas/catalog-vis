@@ -69,6 +69,19 @@ export function programsUsingCourse(courseCode) {
     .map((p) => ({ program: p }))
 }
 
+// Convenience lookups over `allCourses` — the codebase's one way to fetch a
+// course's record or name. Returns null/'' for codes not in the catalog, so
+// components don't hand-roll the `allCourses[code] ? allCourses[code].x : ''`
+// pattern.
+export function courseByCode(code) {
+  return allCourses.value[code] || null
+}
+
+export function courseName(code) {
+  const c = allCourses.value[code]
+  return c ? c.course_name : ''
+}
+
 export const filteredPrograms = computed(() => {
   let list = programs.value
   if (filterType.value !== 'all') {

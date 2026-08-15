@@ -1,5 +1,5 @@
 import { goScheduleCourse, goScheduleInstructor } from '../router.js'
-import { allCourses } from '@major-vis/catalog-client'
+import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 import { buildDragPayload } from '@major-vis/schedule-core'
 
 const { computed } = Vue
@@ -16,9 +16,7 @@ export default {
   },
   emits: ['edit'],
   setup(props, { emit }) {
-    const courseName = computed(() =>
-      allCourses.value[props.item.code] ? allCourses.value[props.item.code].course_name : '',
-    )
+    const courseName = computed(() => catalogCourseName(props.item.code))
     const onDragStart = (e) => {
       e.dataTransfer.setData('text/plain', buildDragPayload(props.item, props.dragDay))
       e.dataTransfer.effectAllowed = 'move'

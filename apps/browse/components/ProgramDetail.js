@@ -1,4 +1,10 @@
-import { programs, allCourses, parsedRequirements, programTracks } from '@major-vis/catalog-client'
+import {
+  programs,
+  courseByCode,
+  courseName,
+  parsedRequirements,
+  programTracks,
+} from '@major-vis/catalog-client'
 import { route, goToCourse, goHome, plannerUrl } from '../router.js'
 
 const { computed } = Vue
@@ -17,7 +23,8 @@ export default {
       currentProgram,
       currentParsed,
       tracks,
-      allCourses,
+      courseByCode,
+      courseName,
       goToCourse,
       goHome,
       plannerUrl,
@@ -83,7 +90,7 @@ export default {
               <span
                 class="course-chip"
                 @click="goToCourse(cn)"
-                :title="allCourses[cn] ? allCourses[cn].course_name : ''"
+                :title="courseName(cn)"
               >
                 {{ cn }}
               </span>
@@ -118,7 +125,7 @@ export default {
                 <div class="course-prereq" v-if="c.prerequisites && c.prerequisites.length">
                   <span class="course-prereq-label">Prereq:</span>
                   <template v-for="(pr, pi) in c.prerequisites" :key="pi">
-                    <span @click="goToCourse(pr.trim())" v-if="allCourses[pr.trim()]">{{ pr.trim() }}</span>
+                    <span @click="goToCourse(pr.trim())" v-if="courseByCode(pr.trim())">{{ pr.trim() }}</span>
                     <span v-else>{{ pr }}</span>
                     <template v-if="pi < c.prerequisites.length - 1">, </template>
                   </template>

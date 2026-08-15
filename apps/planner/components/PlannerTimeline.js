@@ -1,5 +1,5 @@
 import { planSlots, takenSet, movePlanCourse, removePlanCourse } from '../src/plannerStore.js'
-import { allCourses } from '@major-vis/catalog-client'
+import { courseName } from '@major-vis/catalog-client'
 import { dragPayloadFrom } from '@major-vis/schedule-core'
 
 const { ref } = Vue
@@ -30,8 +30,7 @@ export default {
     }
 
     function title(code) {
-      const c = allCourses.value[code]
-      return c ? c.course_name : code
+      return courseName(code) || code
     }
 
     function onDragStart(e, code, fromKey) {
