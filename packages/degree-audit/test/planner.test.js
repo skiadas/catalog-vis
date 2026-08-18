@@ -15,6 +15,8 @@ import {
   describeConstraints,
   audit,
   assignRequirement,
+  prereqGroups,
+  prereqStatus,
 } from '../planner.js'
 
 // Small synthetic catalog the way majors.json exposes courses.
@@ -265,6 +267,64 @@ test('discipline distinctAtLeast (variegated disciplines)', () => {
   }
   assert.equal(satisfied(it, takenFrom(['GER 101', 'ANTH 160', 'MUS 232']), CATALOG).status, 'satisfied')
   assert.equal(satisfied(it, takenFrom(['GER 101', 'GER 222', 'MUS 232']), CATALOG).status, 'unsatisfied')
+})
+
+test('electives with distinctAtLeast treat two same-discipline courses as one slot', () => {
+  const it = {
+    type: 'electives',
+    count: 3,
+    constraints: [{ type: 'discipline', distinctAtLeast: 3 }],
+  }
+  // A second CS course can't fill a second slot, but a valid 3-discipline
+  // triple exists -> satisfied, and only the valid courses are "matched".
+  const r = satisfied(it, takenFrom(['CS 220', 'CS 231', 'BIO 161', 'SPA 217']), CATALOG)
+  assert.equal(r.status, 'satisfied')
+  assert.ok(!r.matched.includes('CS 231'), 'the surplus same-discipline course is not claimed')
+  assert.ok(r.matched.includes('BIO 161') && r.matched.includes('SPA 217'))
+})
+
+test('electives with sameDiscipline demand a common discipline (WL shape)', () => {
+  const it = {
+    type: 'electives',
+    count: 2,
+    constraints: [{ type: 'discipline', sameDiscipline: true }],
+  }
+  // Two courses in a single language satisfy the bucket.
+  const ok = satisfied(it, takenFrom(['SPA 217', 'SPA 219']), CATALOG)
+  assert.equal(ok.status, 'satisfied')
+  assert.deepEqual(new Set(ok.matched), new Set(['SPA 217', 'SPA 219']))
+  // A mixed-language pair must NOT satisfy, and must not read as "2/2 matched".
+  const bad = satisfied(it, takenFrom(['SPA 217', 'GER 222']), CATALOG)
+  assert.equal(bad.status, 'unsatisfied')
+  assert.deepEqual(bad.matched, [])
+})
+
+test('electives with sameDiscipline ignore a stray other-language course', () => {
+  const it = {
+    type: 'electives',
+    count: 2,
+    constraints: [{ type: 'discipline', sameDiscipline: true }],
+  }
+  const r = satisfied(it, takenFrom(['SPA 217', 'SPA 219', 'GER 222']), CATALOG)
+  assert.equal(r.status, 'satisfied')
+  assert.deepEqual(new Set(r.matched), new Set(['SPA 217', 'SPA 219']))
+})
+
+test('assignRequirement never surfaces an invalid same-discipline selection', () => {
+  const it = {
+    type: 'electives',
+    count: 2,
+    constraints: [{ type: 'discipline', sameDiscipline: true }],
+  }
+  const req = { label: 'WL', sections: [{ heading: '', items: [it] }] }
+  const bad = assignRequirement(req, ['SPA 217', 'GER 222'], CATALOG)[0]
+  assert.equal(bad.plan.aggOk, false)
+  assert.deepEqual(bad.plan.filled, [])
+  assert.equal(bad.used.size, 0)
+  // A valid pair is what gets claimed.
+  const ok = assignRequirement(req, ['SPA 217', 'SPA 219', 'GER 222'], CATALOG)[0]
+  assert.equal(ok.plan.aggOk, true)
+  assert.deepEqual([...ok.used], ['SPA 217', 'SPA 219'])
 })
 
 test('discipline atMost without prefixes caps any single discipline (Asian Studies shape)', () => {
@@ -1200,4 +1260,142 @@ test('audit rolls up requirement statuses', () => {
   assert.equal(out.requirements[1].status, 'partial')
   assert.equal(out.requirements[1].sections[0].status, 'satisfied')
   assert.equal(out.requirements[1].sections[1].status, 'unsatisfied')
+})
+
+// ---------------------------------------------------------------------------
+// prerequisites — parsing raw catalog strings into checkable groups
+// ---------------------------------------------------------------------------
+
+// The catalog used for prerequisite parsing — an array of codes (the same
+// shape `allCourses` derives from majors.json).
+const PREREQ_CATALOG = [
+  ...CATALOG,
+  'CS 223',
+  'MAT 113',
+  'ANTH 162',
+  'INS 161',
+  'PLS 160',
+  'CHE 161',
+  'BIO 185',
+  'KIP 161',
+  'FRE 115',
+  'MAT 121',
+]
+
+const ORDER = ['y1f', 'y1w', 'y1s', 'y2f', 'y2w', 'y2s', 'y3f', 'y3w', 'y3s', 'y4f', 'y4w', 'y4s']
+
+test('prereqGroups resolves a bare-number prerequisite against the own prefix', () => {
+  const course = { course_code: 'CS 223', prerequisites: ['220'] }
+  assert.deepEqual(prereqGroups(course, PREREQ_CATALOG), [{ kind: 'all', codes: ['CS 220'] }])
+})
+
+test('prereqGroups parses an explicit code', () => {
+  const course = { course_code: 'MAT 121', prerequisites: ['MAT 113'] }
+  assert.deepEqual(prereqGroups(course, PREREQ_CATALOG), [{ kind: 'all', codes: ['MAT 113'] }])
+})
+
+test('prereqGroups treats "X or …" clauses as any-of groups', () => {
+  const course = { course_code: 'ANTH 259', prerequisites: ['162 or a sociology gateway course'] }
+  assert.deepEqual(prereqGroups(course, PREREQ_CATALOG), [{ kind: 'any', codes: ['ANTH 162'] }])
+})
+
+test('prereqGroups aliases CHEM to CHE', () => {
+  const course = { course_code: 'BIO 223', prerequisites: ['CHEM 161 and one of BIO 185 or KIP 161'] }
+  assert.deepEqual(prereqGroups(course, PREREQ_CATALOG), [
+    { kind: 'all', codes: ['CHE 161'] },
+    { kind: 'any', codes: ['BIO 185', 'KIP 161'] },
+  ])
+})
+
+test('prereqGroups drops except-clauses and level-band noise', () => {
+  const course = {
+    course_code: 'PLS 212',
+    prerequisites: ['a 100-level Political Science course (except PLS 160) or INS 161'],
+  }
+  assert.deepEqual(prereqGroups(course, PREREQ_CATALOG), [{ kind: 'any', codes: ['INS 161'] }])
+})
+
+test('prereqGroups ignores courses not in the catalog', () => {
+  const course = { course_code: 'ENGR 325', prerequisites: ['305'] }
+  assert.deepEqual(prereqGroups(course, PREREQ_CATALOG), [])
+})
+
+test('prereqGroups drops standing/permission/placement prose', () => {
+  const course = {
+    course_code: 'ARTD 210',
+    prerequisites: ['Sophomore standing or above or instructor permission'],
+  }
+  const placement = {
+    course_code: 'CS 231',
+    prerequisites: ['placement at the Ready for Precalculus level or above'],
+  }
+  assert.deepEqual(prereqGroups(course, PREREQ_CATALOG), [])
+  assert.deepEqual(prereqGroups(placement, PREREQ_CATALOG), [])
+})
+
+test('prereqGroups leaves a course without prerequisites empty', () => {
+  assert.deepEqual(prereqGroups({ course_code: 'BIO 161', prerequisites: [] }, PREREQ_CATALOG), [])
+})
+
+// ---------------------------------------------------------------------------
+// prereqStatus — presence and timing against planner slots
+// ---------------------------------------------------------------------------
+
+const slotted = (object) => object
+
+test('prereqStatus is met when the prerequisite is scheduled earlier', () => {
+  const course = { course_code: 'CS 223', prerequisites: ['220'] }
+  const status = prereqStatus(slotted({ y1f: ['CS 220'], y2f: ['CS 223'] }), course, PREREQ_CATALOG, ORDER)
+  assert.equal(status.met, true)
+  assert.deepEqual(status.missing, [])
+  assert.deepEqual(status.outOfOrder, [])
+})
+
+test('prereqStatus flags a prerequisite missing from the plan', () => {
+  const course = { course_code: 'CS 223', prerequisites: ['220'] }
+  const status = prereqStatus(slotted({ y2f: ['CS 223'] }), course, PREREQ_CATALOG, ORDER)
+  assert.equal(status.met, false)
+  assert.deepEqual(status.missing, ['CS 220'])
+})
+
+test('prereqStatus flags a prerequisite scheduled too late', () => {
+  const course = { course_code: 'CS 223', prerequisites: ['220'] }
+  const status = prereqStatus(slotted({ y1f: ['CS 223'], y2f: ['CS 220'] }), course, PREREQ_CATALOG, ORDER)
+  assert.equal(status.met, false)
+  assert.deepEqual(status.outOfOrder, ['CS 220'])
+})
+
+test('prereqStatus flags a prerequisite in the same term', () => {
+  const course = { course_code: 'CS 223', prerequisites: ['220'] }
+  const status = prereqStatus(slotted({ y1f: ['CS 220', 'CS 223'] }), course, PREREQ_CATALOG, ORDER)
+  assert.equal(status.met, false)
+  assert.deepEqual(status.outOfOrder, ['CS 220'])
+})
+
+test('prereqStatus skips ordering checks for unassigned courses', () => {
+  const course = { course_code: 'CS 223', prerequisites: ['220'] }
+  const status = prereqStatus(slotted({ unassigned: ['CS 220', 'CS 223'] }), course, PREREQ_CATALOG, ORDER)
+  assert.equal(status.met, true)
+  assert.deepEqual(status.missing, [])
+  assert.deepEqual(status.outOfOrder, [])
+})
+
+test('prereqStatus treats transfer credit as earlier than any term', () => {
+  const course = { course_code: 'CS 223', prerequisites: ['220'] }
+  const status = prereqStatus(
+    slotted({ transfer: ['CS 220'], y1f: ['CS 223'] }),
+    course,
+    PREREQ_CATALOG,
+    ORDER,
+  )
+  assert.equal(status.met, true)
+})
+
+test('prereqStatus honors any-of groups for both presence and timing', () => {
+  const course = { course_code: 'CS 223', prerequisites: ['220 or MAT 121'] }
+  const earlier = prereqStatus(slotted({ y1f: ['MAT 121'], y2f: ['CS 223'] }), course, PREREQ_CATALOG, ORDER)
+  assert.equal(earlier.met, true)
+  const late = prereqStatus(slotted({ y1f: ['CS 223'], y2f: ['MAT 121'] }), course, PREREQ_CATALOG, ORDER)
+  assert.equal(late.met, false)
+  assert.deepEqual(late.outOfOrder, ['MAT 121'])
 })

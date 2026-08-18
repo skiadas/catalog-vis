@@ -37,9 +37,10 @@
 
 const CODE_RE = /^([A-Z/]+)\s+(\S+)$/
 
-// Prefix spellings that appear in requirement text but not in the catalog.
-// `GNDR` is a variant of `GNDS` in the gender-studies requirement text.
-const PREFIX_ALIASES = { GNDR: 'GNDS' }
+// Prefix spellings that appear in requirement/prerequisite text but not in the
+// catalog. `GNDR` is a variant of `GNDS` in the gender-studies requirement
+// text; `CHEM`/`MATH`/`BSP` are department spellings found in prerequisite text.
+const PREFIX_ALIASES = { GNDR: 'GNDS', CHEM: 'CHE', MATH: 'MAT', BSP: 'BUSN' }
 
 const hasCount = (c) =>
   c.atLeast != null || c.atMost != null || c.distinctAtLeast != null || c.sameDiscipline === true
@@ -338,14 +339,18 @@ export function satisfied(item, taken, catalog, excluded) {
       const constraints = item.constraints || []
       const pool = filteredUniverse(constraints, catalog)
       const chosen = [...pool].filter((code) => takenSet.has(code) && !excludedSet.has(code))
-      const baseOk = chosen.length >= (item.count || 0)
-      const aggOk = checkAggregates(chosen, constraints)
-      const ok = baseOk && aggOk
+      const missingPool = [...pool].filter((code) => !takenSet.has(code))
+      const { found, selected } = findValidSelection(chosen, item.count || 0, constraints)
+      // `matched` is only ever a *valid* selection (a subset that passes the
+      // bucket's count rules like distinct disciplines / same discipline), so a
+      // course never reads as "counted" when it isn't. `count` stays the raw
+      // number of eligible courses taken so "still needed" bookkeeping is
+      // unchanged.
       return {
-        status: ok ? 'satisfied' : 'unsatisfied',
-        matched: chosen,
-        missing: ok ? [] : [...pool].filter((code) => !takenSet.has(code)),
-        needed: (item.count || 0) - chosen.length,
+        status: found ? 'satisfied' : 'unsatisfied',
+        matched: selected,
+        missing: found ? [] : missingPool,
+        needed: found ? 0 : Math.max(0, (item.count || 0) - chosen.length),
         count: chosen.length,
         min: item.count || 0,
         max: item.count || 0,
@@ -544,6 +549,62 @@ function failedPlan(item) {
   }
 }
 
+// True when a constraint is a count rule that `checkAggregates` actually
+// verifies over the chosen set (as opposed to a scope filter like `from`).
+function isAggregate(c) {
+  return (
+    ((c.type === 'discipline' || c.type === 'level') &&
+      (c.atLeast != null || c.atMost != null || c.distinctAtLeast != null || c.sameDiscipline === true)) ||
+    c.type === 'min_from' ||
+    c.type === 'max_from'
+  )
+}
+
+// Finds a subset of `available` of size `count` that passes every count rule in
+// `constraints` (`checkAggregates`). Returns `{ found, selected }`:
+// - `found: true`  -> `selected` is a valid subset (favors higher-weight courses).
+// - `found: false`, `available.length < count` -> `selected` = everything taken
+//   so far, so a partially-filled bucket still reports progress.
+// - `found: false`, enough courses but no valid subset -> `selected` = [] so the
+//   bucket never *shows* a selection it can't legally make (e.g. a WL mix that
+//   isn't in the same language surfacing as "2/2").
+//
+// Search is depth-first over candidates ordered by `electivesWeight`. Candidate
+// sets are small (only taken-but-unclaimed courses), and an aggregate-free
+// bucket short-circuits; a node budget guards the pathological case.
+function findValidSelection(available, count, constraints) {
+  const ordered = [...available].sort(
+    (a, b) => electivesWeight(b, constraints) - electivesWeight(a, constraints) || a.localeCompare(b),
+  )
+  if (count <= 0) return { found: true, selected: [] }
+  if (ordered.length < count) return { found: false, selected: ordered }
+  if (!constraints.some(isAggregate)) return { found: true, selected: ordered.slice(0, count) }
+
+  const nodeLimit = 200000
+  let nodes = 0
+  const result = []
+  function search(start, chosen) {
+    if (nodes++ > nodeLimit) return false
+    if (chosen.length === count) {
+      if (checkAggregates(chosen, constraints)) {
+        result.push(...chosen)
+        return true
+      }
+      return false
+    }
+    const remaining = count - chosen.length
+    for (let i = start; i <= ordered.length - remaining; i++) {
+      chosen.push(ordered[i])
+      if (search(i + 1, chosen)) return true
+      chosen.pop()
+    }
+    return false
+  }
+  const found = search(0, [])
+  if (found) return { found: true, selected: result }
+  return { found: false, selected: [] }
+}
+
 function fillElectives(plan, pool, catalog) {
   if (plan.type === 'electives') {
     const item = plan.item
@@ -553,14 +614,14 @@ function fillElectives(plan, pool, catalog) {
     const eligible = [...pool]
       .filter((code) => poolSet.has(code))
       .sort((a, b) => electivesWeight(b, constraints) - electivesWeight(a, constraints) || a.localeCompare(b))
-    const filled = eligible.slice(0, count)
-    plan.filled = filled
-    plan.aggOk = checkAggregates(filled, constraints)
+    const { found, selected } = findValidSelection(eligible, count, constraints)
+    plan.filled = selected
+    plan.aggOk = found
     // Only consume from the pool when the bucket is actually satisfied; a bucket
     // that can't reach its count or fails its aggregate must not hoard courses a
     // later bucket needs.
-    if (filled.length >= count && plan.aggOk) {
-      for (const c of filled) pool.delete(c)
+    if (found) {
+      for (const c of selected) pool.delete(c)
     }
     return
   }
@@ -989,4 +1050,186 @@ export function audit(evaluatedProgram) {
     unknown: requirements.filter((r) => r.status === 'unknown').length,
     total: requirements.length,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Course prerequisites
+// ---------------------------------------------------------------------------
+
+// Course records carry `prerequisites` as raw catalog strings, e.g. "220",
+// "MAT 113", "ANTH 162 or a sociology gateway course", "CHEM 161 and one of
+// BIO 185 or KIP 161", "a 100-level Political Science course (except PLS 160)
+// or INS 161", or "permission of instructor". `prereqGroups` normalizes those
+// into checkable code groups the planner can highlight against, and
+// `prereqStatus` judges whether a placed course's prerequisites are present and
+// (when the plan has timing) scheduled earlier.
+
+// The catalog's discipline prefixes — the only spellings we trust as course
+// codes in prerequisite prose.
+const KNOWN_PREFIXES = new Set([
+  'ANTH',
+  'ARTD',
+  'ARTH',
+  'AST',
+  'BCH',
+  'BIO',
+  'BUSN',
+  'CHE',
+  'CLA',
+  'COM',
+  'CS',
+  'DSCI',
+  'ECO',
+  'EDU',
+  'ENG',
+  'ENGR',
+  'ENV',
+  'FRE',
+  'GEO',
+  'GER',
+  'GNDS',
+  'GRE',
+  'HIS',
+  'HMS',
+  'ID',
+  'INS',
+  'KIP',
+  'LAT',
+  'MAT',
+  'ML',
+  'MRS',
+  'MUS',
+  'NUR',
+  'PHI',
+  'PHY',
+  'PLS',
+  'PSY',
+  'SMGT',
+  'SOC',
+  'SPA',
+  'THR',
+  'THS',
+])
+
+const PREREQ_CODE_RE = /[A-Za-z]{2,4}\s+\d{3}\b/g
+const BARE_NUMBER_RE = /\b\d{3}\b/g
+const EXCEPT_RE = /\bexcept\b[^;,.()]*/gi
+// The word immediately around a bare number that marks a course-number *band*
+// ("a 100-level course", "218 or above") rather than a specific course code.
+const NOISE_AROUND_RE = /\b(level|above|below|standing)\b/
+
+function normalizePrereqPrefix(token) {
+  return PREFIX_ALIASES[token.toUpperCase()] || token.toUpperCase()
+}
+
+// The code(s) mentioned in one prereq clause, normalized and filtered to codes
+// that actually exist in the catalog (drops noise like "PLS 100" from a
+// "100-level" band, and "PHI 117" from a bare number that isn't a course).
+function codesInPrereqClause(clause, ownPrefix, catalogSet) {
+  const seen = new Set()
+  const codes = []
+  const pushCode = (code) => {
+    if (!seen.has(code) && catalogSet.has(code)) {
+      seen.add(code)
+      codes.push(code)
+    }
+  }
+  const explicitRanges = []
+  for (const m of clause.matchAll(PREREQ_CODE_RE)) {
+    const [token, number] = m[0].split(/\s+/)
+    const prefix = normalizePrereqPrefix(token)
+    if (KNOWN_PREFIXES.has(prefix)) {
+      pushCode(`${prefix} ${number}`)
+      explicitRanges.push([m.index, m.index + m[0].length])
+    }
+  }
+  // Bare three-digit numbers resolve against the course's own prefix, unless
+  // they sit inside a level/standing phrase or were part of an explicit code.
+  for (const m of clause.matchAll(BARE_NUMBER_RE)) {
+    if (explicitRanges.some(([s, e]) => m.index >= s && m.index < e)) continue
+    const around = clause.slice(Math.max(0, m.index - 4), m.index + 6).toLowerCase()
+    if (NOISE_AROUND_RE.test(around)) continue
+    pushCode(`${ownPrefix} ${m[0]}`)
+  }
+  return codes
+}
+
+// Parses a course record's `prerequisites` strings into `{ kind, codes }`
+// groups. `kind` is `'all'` (every code required) or `'any'` (at least one);
+// strings with no recognizable course code (standing, permission, placement)
+// are dropped — they can't be checked against a plan.
+export function prereqGroups(course, catalog) {
+  const catalogSet = toSet(catalog)
+  const courseCode = (course && (course.course_code || course.code)) || ''
+  const ownPrefix = courseInfo(courseCode).prefixes[0] || ''
+  const strings = (course && course.prerequisites) || []
+  const groups = []
+  for (const raw of strings) {
+    // Clauses split on "and"/";" are independent requirements; a clause whose
+    // alternatives are joined by "or" is satisfied by any one of them.
+    const clauses = raw
+      .split(/\s+and\s+|\s*;\s*/i)
+      .map((s) => s.replace(EXCEPT_RE, '').trim())
+      .filter(Boolean)
+    for (const clause of clauses) {
+      const codes = codesInPrereqClause(clause, ownPrefix, catalogSet)
+      if (!codes.length) continue
+      groups.push({ kind: /\bor\b/i.test(clause) ? 'any' : 'all', codes: [...new Set(codes)] })
+    }
+  }
+  return groups
+}
+
+function slotIndex(key, order) {
+  if (key === 'transfer') return -Infinity
+  if (key === 'unassigned' || !order.includes(key)) return null
+  return order.indexOf(key)
+}
+
+// Checks a placed course's prerequisites against a plan. `slots` maps each
+// timeline slot key to the codes in it and `order` lists the slot keys from
+// earliest to latest. Returns `{ met, missing, outOfOrder }`:
+// - `missing`     — codes not in the plan at all.
+// - `outOfOrder`  — codes in the plan but on or after the course's own slot
+//   (a prerequisite must be taken *before* the course). `transfer` counts as
+//   before every term; `unassigned` courses carry no timing, so ordering isn't
+//   judged against them.
+export function prereqStatus(slots, course, catalog, order) {
+  const groups = prereqGroups(course, catalog)
+  // Map each placed code to its timeline index (null when unassigned — present
+  // in the plan but carrying no timing).
+  const where = {}
+  for (const key of Object.keys(slots || {})) {
+    const index = slotIndex(key, order)
+    for (const code of slots[key] || []) where[code] = index
+  }
+  const present = (c) => Object.prototype.hasOwnProperty.call(where, c)
+  const courseCode = (course && (course.course_code || course.code)) || ''
+  const courseRank = present(courseCode) ? where[courseCode] : null
+
+  const missing = []
+  const outOfOrder = []
+  for (const g of groups) {
+    const taken = g.codes.filter(present)
+    const satisfied = g.kind === 'any' ? taken.length > 0 : taken.length === g.codes.length
+    if (!satisfied) {
+      missing.push(...g.codes.filter((c) => !present(c)))
+      continue
+    }
+    if (courseRank == null) continue
+    if (g.kind === 'any') {
+      const inTime = taken.some((c) => where[c] != null && where[c] < courseRank)
+      const unknownTiming = taken.some((c) => where[c] == null)
+      if (!inTime && !unknownTiming) {
+        outOfOrder.push(...taken.filter((c) => where[c] != null && where[c] >= courseRank))
+      }
+    } else {
+      for (const c of g.codes) {
+        if (where[c] == null) continue
+        if (where[c] < courseRank) continue
+        outOfOrder.push(c)
+      }
+    }
+  }
+  return { met: missing.length === 0 && outOfOrder.length === 0, missing, outOfOrder }
 }
