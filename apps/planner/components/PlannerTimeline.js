@@ -1,8 +1,9 @@
-import { planSlots, takenSet, movePlanCourse, removePlanCourse } from '../src/plannerStore.js'
-import { courseName } from '@major-vis/catalog-client'
+import { planSlots, takenSet, movePlanCourse, removePlanCourse, PLAN_SLOT_KEYS } from '../src/plannerStore.js'
+import { allCourses, courseName } from '@major-vis/catalog-client'
 import { dragPayloadFrom } from '@major-vis/schedule-core'
+import { prereqStatus } from '@major-vis/degree-audit'
 
-const { ref } = Vue
+const { ref, computed } = Vue
 
 const YEARS = [
   { key: 'y1', label: 'First Year' },
@@ -33,6 +34,37 @@ export default {
       return courseName(code) || code
     }
 
+    // Per-placed-course prerequisite flags: `{ missing, outOfOrder }` keyed by
+    // course code. A course with no parsed prereqs gets no entry.
+    const prereqFlags = computed(() => {
+      const map = {}
+      for (const key of Object.keys(planSlots.value)) {
+        for (const code of planSlots.value[key] || []) {
+          const course = allCourses.value[code]
+          if (!course || !(course.prerequisites && course.prerequisites.length)) continue
+          const st = prereqStatus(planSlots.value, course, allCourses.value, PLAN_SLOT_KEYS)
+          if (!st.met) map[code] = st
+        }
+      }
+      return map
+    })
+
+    function chipTitle(code) {
+      const base = title(code)
+      const st = prereqFlags.value[code]
+      if (!st) return base
+      const bits = []
+      if (st.missing.length) bits.push(`Missing prereq: ${st.missing.join(', ')}`)
+      if (st.outOfOrder.length) bits.push(`Take prereq earlier: ${st.outOfOrder.join(', ')}`)
+      return `${base} — ${bits.join(' · ')}`
+    }
+
+    function chipClass(code) {
+      const st = prereqFlags.value[code]
+      if (!st) return {}
+      return { 'prereq-missing': st.missing.length > 0, 'prereq-order': st.outOfOrder.length > 0 }
+    }
+
     function onDragStart(e, code, fromKey) {
       e.dataTransfer.effectAllowed = 'move'
       e.dataTransfer.setData('text/plain', JSON.stringify({ code, from: fromKey || null }))
@@ -61,6 +93,8 @@ export default {
       TRANSFER,
       slot,
       title,
+      chipTitle,
+      chipClass,
       takenSet,
       dragOverKey,
       onDragStart,
@@ -86,9 +120,10 @@ export default {
             v-for="code in slot(SHELF)"
             :key="code"
             class="course-chip tl-chip"
+            :class="chipClass(code)"
             draggable="true"
             @dragstart="onDragStart($event, code, SHELF)"
-            :title="title(code)"
+            :title="chipTitle(code)"
           >{{ code }}<button class="tl-remove" @click="removePlanCourse(code)" title="Remove from plan">✕</button></span>
         </div>
         <div v-else class="tl-empty">New courses land here — drag them into a term below.</div>
@@ -107,9 +142,10 @@ export default {
             v-for="code in slot(TRANSFER)"
             :key="code"
             class="course-chip tl-chip"
+            :class="chipClass(code)"
             draggable="true"
             @dragstart="onDragStart($event, code, TRANSFER)"
-            :title="title(code)"
+            :title="chipTitle(code)"
           >{{ code }}<button class="tl-remove" @click="removePlanCourse(code)" title="Remove from plan">✕</button></span>
         </div>
         <div v-else class="tl-empty">No transfer credits yet.</div>
@@ -135,9 +171,10 @@ export default {
               v-for="code in slot(y.key + t.key)"
               :key="code"
               class="course-chip tl-chip"
+              :class="chipClass(code)"
               draggable="true"
               @dragstart="onDragStart($event, code, y.key + t.key)"
-              :title="title(code)"
+              :title="chipTitle(code)"
             >{{ code }}<button class="tl-remove" @click="removePlanCourse(code)" title="Remove from plan">✕</button></span>
           </div>
         </template>

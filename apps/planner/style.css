@@ -1254,6 +1254,32 @@ body {
 
 .tl-remove:hover {
   color: var(--danger);
+}
+
+/* Prerequisite warnings on timeline chips. A course whose prerequisites are
+   missing entirely reads as danger; one whose prereq is merely scheduled too
+   late reads as warning. Both keep their highlight on hover so the tooltip
+   stays the place to read the detail. */
+.tl-chip.prereq-missing {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+}
+
+.tl-chip.prereq-missing:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.tl-chip.prereq-order {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+}
+
+.tl-chip.prereq-order:hover {
+  background: var(--warning-bg);
+  color: var(--warning);
 } /* ---- Planner top bar, tabs, and modals ---- */
 .planner-top {
   display: flex;
