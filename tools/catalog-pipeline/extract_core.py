@@ -119,7 +119,10 @@ def parse_areas(html):
 
 def build_item(area_id, courses, lab_codes):
     """Planner-compatible `electives` item for a distribution area."""
-    from_scope = {'type': 'from', 'codes': courses}
+    # The SM pool includes the SL (lab/field-study) courses — they count toward
+    # the 3 units too; `min_from` just enforces that at least one is a lab.
+    pool = courses + lab_codes if area_id == 'SM' else courses
+    from_scope = {'type': 'from', 'codes': pool}
     if area_id in ('LA', 'HS'):
         return {
             'type': 'electives',
