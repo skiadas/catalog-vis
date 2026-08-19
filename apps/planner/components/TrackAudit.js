@@ -1,12 +1,6 @@
 import { takenSet, placeCourse, removePlanCourse } from '../src/plannerStore.js'
 import { allCourses, courseName } from '@major-vis/catalog-client'
-import {
-  evaluateProgram,
-  audit,
-  gapGroups,
-  assignRequirement,
-  describeConstraints,
-} from '@major-vis/degree-audit'
+import { trackReport } from '@major-vis/degree-audit'
 
 const { ref, computed } = Vue
 
@@ -19,85 +13,20 @@ export default {
     label: { type: String, default: '' },
   },
   setup(props) {
-    // The fully evaluated requirement (per-section matched courses, statuses).
-    const evaluated = computed(() => {
-      const ev = evaluateProgram(props.parsed || [], takenSet.value, allCourses.value)
-      return ev[0] || { label: '', sections: [] }
-    })
-
+    // The whole track status — roll-up, per-section course chips, and the
+    // still-needed suggestions — is computed in pure degree-audit code
+    // (trackReport) so the component is a thin renderer. Keep a stable {} when
+    // there's no parsed requirement yet.
     const report = computed(
       () =>
-        audit([evaluated.value]).requirements[0] || {
+        trackReport((props.parsed || [])[0], takenSet.value, allCourses.value) || {
           status: 'unknown',
           sections: [],
+          gaps: [],
           satisfied: 0,
           total: 0,
         },
     )
-
-    // Per-section course-level progress: how many courses of the section's
-    // requirement are currently counted (`done`/`total`), the courses that count
-    // (`counted`), the placed courses in the bucket (`codes`), and the placed
-    // courses that can't count under the current constraints (`extra`, rendered
-    // as distinctly incompatible chips). A section is never hidden while any of
-    // its bucket courses are placed — that's how a placed-but-unqualified course
-    // stays visible and removable from the requirements page.
-    const sections = computed(() => {
-      const rec = report.value.sections || []
-      const parsedSections = ((props.parsed || [])[0] || {}).sections || []
-      return (evaluated.value.sections || []).map((s, si) => {
-        const items = s.items || []
-        const counted = []
-        const placed = []
-        let total = 0
-        const parsedItems = (parsedSections[si] || {}).items || []
-        const electivesConstraints = parsedItems
-          .filter((i) => i.type === 'electives')
-          .flatMap((i) => i.constraints || [])
-        const reason = describeConstraints(
-          electivesConstraints.filter((c) => c.type !== 'from'),
-          true,
-        )
-        for (let ii = 0; ii < items.length; ii++) {
-          const it = items[ii]
-          total += Number.isFinite(it.min) ? it.min : 0
-          for (const c of it.matched || []) if (!counted.includes(c)) counted.push(c)
-          const pool = it.type === 'electives' ? it.pool || [] : it.matched || []
-          for (const c of pool) if (!placed.includes(c)) placed.push(c)
-        }
-        const extra = placed.filter((c) => !counted.includes(c))
-        const codes = [...counted, ...extra]
-        const done = counted.length
-        // Course-level status: any placed course in the bucket counts as progress
-        // even when nothing is counted yet, so a started-but-incompatible mix
-        // reads as "partial" rather than vanishing the whole section.
-        const status =
-          codes.length === 0
-            ? rec[si] || 'unsatisfied'
-            : done < total
-              ? 'partial'
-              : rec[si] && rec[si].status === 'satisfied'
-                ? 'satisfied'
-                : rec[si] || 'unsatisfied'
-        return { heading: s.heading, status, done, total, codes, counted, extra, reason }
-      })
-    })
-
-    const gaps = computed(() => {
-      const requirement = (props.parsed || [])[0]
-      const assignment = assignRequirement(requirement, takenSet.value, allCourses.value)
-      const independent = requirement && requirement.independentSections === true
-      const totalUsed = new Set(assignment.flatMap((a) => [...a.used]))
-      const groups = []
-      for (const a of assignment) {
-        // Core-curriculum sections are independent: a course may satisfy several
-        // areas at once (e.g. MAT 121 counts for both QL and SM), so a course
-        // claimed by another core area must not be subtracted from this one.
-        const excluded = independent ? new Set() : new Set([...totalUsed].filter((c) => !a.used.has(c)))
-        groups.push(...gapGroups(a.item, takenSet.value, allCourses.value, excluded))
-      }
-      return groups
-    })
 
     // Clicking a suggested course adds it to the unassigned shelf; clicking one
     // already in the plan removes it.
@@ -121,8 +50,6 @@ export default {
 
     return {
       report,
-      sections,
-      gaps,
       statusLabel,
       courseName,
       takenSet,
@@ -141,7 +68,7 @@ export default {
       </div>
       <div class="planner-sections">
         <div
-          v-for="(sec, si) in sections"
+          v-for="(sec, si) in report.sections"
           :key="si"
           class="planner-section"
           :class="sec.status"
@@ -181,7 +108,7 @@ export default {
         </div>
       </div>
       <div class="planner-gaps" v-if="report.status !== 'satisfied'">
-        <div class="planner-gap-group" v-for="(g, gi) in gaps" :key="gi">
+        <div class="planner-gap-group" v-for="(g, gi) in report.gaps" :key="gi">
           <template v-if="g.expandable">
             <button class="planner-gap-toggle" @click="toggleExpand(gi)">
               <span class="planner-gap-label">{{ g.label }}</span>

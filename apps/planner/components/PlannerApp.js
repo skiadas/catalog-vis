@@ -21,7 +21,7 @@ import {
 } from '../src/plannerStore.js'
 import { allCourses } from '@major-vis/catalog-client'
 import { browseProgramUrl } from '../router.js'
-import { evaluateProgram, audit } from '@major-vis/degree-audit'
+import { trackReport } from '@major-vis/degree-audit'
 import TrackAudit from './TrackAudit.js'
 import PlannerTimeline from './PlannerTimeline.js'
 
@@ -64,8 +64,7 @@ export default {
         total: addedTracksDetailed.value.length,
       }
       for (const t of addedTracksDetailed.value) {
-        const s = audit(evaluateProgram([t.requirement], takenSet.value, allCourses.value)).requirements[0]
-          .status
+        const s = trackReport(t.requirement, takenSet.value, allCourses.value, { gaps: false }).status
         if (s in st) st[s] += 1
       }
       return st

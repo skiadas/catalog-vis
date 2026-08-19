@@ -14,6 +14,8 @@ import {
   gapGroups,
   describeConstraints,
   audit,
+  trackReport,
+  trackGaps,
   assignRequirement,
   prereqGroups,
   prereqStatus,
@@ -1420,6 +1422,116 @@ test('audit rolls up requirement statuses', () => {
   assert.equal(out.requirements[1].status, 'partial')
   assert.equal(out.requirements[1].sections[0].status, 'satisfied')
   assert.equal(out.requirements[1].sections[1].status, 'unsatisfied')
+})
+
+test('trackReport composes a render-ready requirement status', () => {
+  const req = {
+    label: 'WL',
+    sections: [
+      {
+        heading: '2-unit sequence in the same language',
+        items: [
+          {
+            type: 'electives',
+            count: 2,
+            constraints: [{ type: 'discipline', sameDiscipline: true }],
+          },
+        ],
+      },
+    ],
+  }
+  // Empty: unsatisfied, nothing placed, section still reported with no codes.
+  const empty = trackReport(req, takenFrom([]), CATALOG)
+  assert.equal(empty.status, 'unsatisfied')
+  assert.equal(empty.total, 1)
+  assert.deepEqual(empty.sections[0], {
+    heading: '2-unit sequence in the same language',
+    status: 'unsatisfied',
+    done: 0,
+    total: 2,
+    codes: [],
+    counted: [],
+    extra: [],
+    reason: 'in the same discipline',
+  })
+  // Mixed languages: one counted, one extra chip, partial, gaps offered.
+  const mixed = trackReport(req, takenFrom(['SPA 217', 'GER 222']), CATALOG)
+  assert.equal(mixed.status, 'unsatisfied')
+  assert.equal(mixed.sections[0].status, 'partial')
+  assert.equal(mixed.sections[0].done, 1)
+  assert.equal(mixed.sections[0].total, 2)
+  assert.equal(mixed.sections[0].counted.length, 1)
+  assert.equal(mixed.sections[0].extra.length, 1)
+  assert.match(mixed.gaps[0].label, /Need 1 more/)
+  // Met: satisfied, and gaps are computed (caller filters by status).
+  const met = trackReport(req, takenFrom(['SPA 217', 'SPA 219']), CATALOG)
+  assert.equal(met.status, 'satisfied')
+  assert.equal(met.sections[0].status, 'satisfied')
+  assert.deepEqual(met.sections[0].codes, ['SPA 217', 'SPA 219'])
+  // opts.gaps === false skips the second assignment pass entirely.
+  const noGaps = trackReport(req, takenFrom([]), CATALOG, { gaps: false })
+  assert.deepEqual(noGaps.gaps, [])
+})
+
+test('trackReport independent sections do not exclude cross-claimed courses (core shape)', () => {
+  const mk = (independent) => ({
+    label: 'Core',
+    ...(independent ? { independentSections: true } : {}),
+    sections: [
+      {
+        heading: 'A',
+        items: [
+          { type: 'electives', count: 1, constraints: [{ type: 'from', codes: ['CS 220', 'ANTH 160'] }] },
+        ],
+      },
+      {
+        heading: 'B',
+        items: [
+          { type: 'electives', count: 1, constraints: [{ type: 'from', codes: ['CS 220', 'BIO 161'] }] },
+        ],
+      },
+    ],
+  })
+  // The same CS 220 may satisfy both core sections at once (like MAT 121 counting
+  // for QL and SM): no gap remains, both sections read satisfied.
+  const indep = trackReport(mk(true), takenFrom(['CS 220']), CATALOG)
+  assert.deepEqual(
+    indep.sections.map((s) => s.status),
+    ['satisfied', 'satisfied'],
+  )
+  assert.deepEqual(indep.gaps, [])
+  // In a regular track a course claimed by a sibling section is reserved, so the
+  // second section still needs its own course.
+  const regular = trackReport(mk(false), takenFrom(['CS 220']), CATALOG)
+  assert.equal(regular.sections[1].status, 'partial')
+  assert.equal(regular.sections[1].counted.length, 0)
+  assert.ok(regular.gaps.flatMap((g) => g.codes || []).includes('BIO 161'))
+})
+
+test('trackGaps hides a course a sibling section already claimed (regular track)', () => {
+  const req = {
+    label: 'CS program',
+    sections: [
+      {
+        heading: 'Core',
+        items: [
+          { type: 'electives', count: 1, constraints: [{ type: 'from', codes: ['CS 220', 'ANTH 160'] }] },
+        ],
+      },
+      {
+        heading: 'Electives',
+        items: [
+          { type: 'electives', count: 1, constraints: [{ type: 'from', codes: ['CS 220', 'BIO 161'] }] },
+        ],
+      },
+    ],
+  }
+  // CS 220 is claimed by the first section, so it must leave the second
+  // section's suggestions even though it sits in that section's pool.
+  const gaps = trackGaps(req, takenFrom(['CS 220']), CATALOG)
+  const options = gaps.flatMap((g) => g.codes || [])
+  assert.ok(!options.includes('CS 220'), 'claimed course is not re-suggested')
+  assert.ok(options.includes('BIO 161'), 'unclaimed pool course is suggested')
 })
 
 // ---------------------------------------------------------------------------

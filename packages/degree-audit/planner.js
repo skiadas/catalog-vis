@@ -662,9 +662,7 @@ function diversityCap(ordered, count, constraints) {
 // could finish either one, so continuations of every already-started language
 // must stay offerable even though only one language can ever satisfy the bucket.
 function countableAnchors(eligibleTaken, count, constraints) {
-  const div = (constraints || []).filter(
-    (c) => c.type === 'discipline' && c.sameDiscipline === true,
-  )
+  const div = (constraints || []).filter((c) => c.type === 'discipline' && c.sameDiscipline === true)
   if (!div.length) return [diversityCap(eligibleTaken, count, constraints)]
   const byPrefix = new Map()
   for (const code of eligibleTaken) {
@@ -959,6 +957,7 @@ export function evaluateRequirement(requirement, taken, catalog) {
       .filter((e) => e.sectionIndex === si)
       .map((e) => {
         const res = planResult(e.item, e.plan)
+        res.type = e.item.type
         if (e.item.type === 'electives') {
           // All placed courses that pool into this bucket, so the UI can show
           // matched (`matched`) and placed-but-unmatched (`pool` minus matched)
@@ -1197,6 +1196,88 @@ function electivesWeight(code, constraints) {
     else if (c.type === 'exclude' && c.codes.includes(code)) weight -= 3
   }
   return weight
+}
+
+// A self-contained, render-ready status for one parsed requirement — the exact
+// shape the planner's TrackAudit (and its summary header) consumed from a
+// composition of evaluateProgram + audit + assignRequirement + gapGroups. Pulling
+// that assembly into the pure lib so the component is a thin renderer:
+//
+//   {
+//     status,                    // satisfied | partial | unsatisfied | unknown
+//     satisfied,                 // # of fully-met sections
+//     total,                     // # of sections
+//     sections: [{ heading, status, done, total, codes, counted, extra, reason }],
+//     gaps: [...gapGroups...]    // [] when `opts.gaps === false`
+//   }
+//
+// Section `codes` (counted + extra) keeps a placed-but-unqualified bucket
+// visible and removable; `reason` is the compact electives-constraint text shown
+// next to partial sections. `gaps: false` skips the second assignment pass, for
+// callers (like the summary header) that only need the roll-up status.
+export function trackReport(requirement, taken, catalog, opts) {
+  if (!requirement) return { status: 'unknown', satisfied: 0, total: 0, sections: [], gaps: [] }
+  const evaluated = evaluateRequirement(requirement, taken, catalog)
+  const rec = audit([evaluated]).requirements[0]
+  const parsedSections = requirement.sections || []
+  const sections = (evaluated.sections || []).map((s, si) => {
+    const items = s.items || []
+    const counted = []
+    const placed = []
+    let total = 0
+    const parsedItems = (parsedSections[si] || {}).items || []
+    const electivesConstraints = parsedItems
+      .filter((i) => i.type === 'electives')
+      .flatMap((i) => i.constraints || [])
+    const reason = describeConstraints(
+      electivesConstraints.filter((c) => c.type !== 'from'),
+      true,
+    )
+    for (let ii = 0; ii < items.length; ii++) {
+      const it = items[ii]
+      total += Number.isFinite(it.min) ? it.min : 0
+      for (const c of it.matched || []) if (!counted.includes(c)) counted.push(c)
+      const pool = it.type === 'electives' ? it.pool || [] : it.matched || []
+      for (const c of pool) if (!placed.includes(c)) placed.push(c)
+    }
+    const extra = placed.filter((c) => !counted.includes(c))
+    const codes = [...counted, ...extra]
+    const done = counted.length
+    const auditStatus = (rec.sections[si] || {}).status
+    const status =
+      codes.length === 0
+        ? auditStatus || 'unsatisfied'
+        : done < total
+          ? 'partial'
+          : auditStatus === 'satisfied'
+            ? 'satisfied'
+            : auditStatus || 'unsatisfied'
+    return { heading: s.heading, status, done, total, codes, counted, extra, reason }
+  })
+  return {
+    status: rec.status,
+    satisfied: rec.satisfied,
+    total: rec.total,
+    sections,
+    gaps: opts && opts.gaps === false ? [] : trackGaps(requirement, taken, catalog),
+  }
+}
+
+// The "what's left to do" gap groups for a parsed requirement. Core-curriculum
+// sections are independent (a course may satisfy several areas at once, e.g.
+// MAT 121 for both QL and SM), so courses claimed by a sibling section are not
+// excluded there; within one regular track, a course a sibling section already
+// claimed drops out of this section's suggestions.
+export function trackGaps(requirement, taken, catalog) {
+  const assignment = assignRequirement(requirement, taken, catalog)
+  const independent = requirement && requirement.independentSections === true
+  const totalUsed = new Set(assignment.flatMap((a) => [...a.used]))
+  const groups = []
+  for (const a of assignment) {
+    const excluded = independent ? new Set() : new Set([...totalUsed].filter((c) => !a.used.has(c)))
+    groups.push(...gapGroups(a.item, taken, catalog, excluded))
+  }
+  return groups
 }
 
 // Rolls a program's evaluation up to section / requirement / program status.
