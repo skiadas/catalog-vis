@@ -80,7 +80,10 @@ function deterministicSample(catalog, count) {
 
 function assertReportShape(report, catalog, requirement, taken, known) {
   assert.ok(STATUSES.includes(report.status), `${requirement.label || '?'}: bad status ${report.status}`)
-  assert.ok(Number.isInteger(report.satisfied) && Number.isInteger(report.total), 'satisfied/total are integers')
+  assert.ok(
+    Number.isInteger(report.satisfied) && Number.isInteger(report.total),
+    'satisfied/total are integers',
+  )
   assert.ok(report.total >= 0 && report.satisfied >= 0, 'tallies are non-negative')
   assert.ok(report.total === report.sections.length, 'total matches section count')
   const isKnown = known || ((c) => catalog.has(c))
@@ -89,7 +92,10 @@ function assertReportShape(report, catalog, requirement, taken, known) {
     assert.ok(STATUSES.includes(sec.status), `section ${si}: bad status ${sec.status}`)
     assert.ok(sec.done >= 0 && sec.total >= 0, `section ${si}: non-negative counts`)
     assert.ok(sec.done <= sec.total, `section ${si}: done (${sec.done}) ≤ total (${sec.total})`)
-    assert.ok(Array.isArray(sec.counted) && Array.isArray(sec.extra) && Array.isArray(sec.codes), 'arrays present')
+    assert.ok(
+      Array.isArray(sec.counted) && Array.isArray(sec.extra) && Array.isArray(sec.codes),
+      'arrays present',
+    )
     assert.ok(
       sec.counted.every((c) => isKnown(c)),
       `section ${si}: counted code not in catalog`,
@@ -126,90 +132,115 @@ function assertGapShape(g, catalog, label, isKnown) {
   if (g.alternatives) {
     for (const alt of g.alternatives) {
       assert.ok(Array.isArray(alt.slots), `${context}: alternative has slots`)
-      for (const slot of alt.slots) for (const c of slot.codes || []) {
-        assert.ok(isKnown(c), `${context}: slot code ${c} not in catalog`)
-      }
+      for (const slot of alt.slots)
+        for (const c of slot.codes || []) {
+          assert.ok(isKnown(c), `${context}: slot code ${c} not in catalog`)
+        }
     }
   }
 }
 
-test('real parsed requirements evaluate without throwing or producing malformed output', { skip: !present && 'catalog artifacts not present at repo root' }, () => {
-  const catalog = realCatalog()
-  const parsed = load('requirements_parsed.json')
-  const core = load('core_requirements.json')
-  const requirements = [
-    ...parsed.programs.flatMap((p) => p.requirements || []),
-    ...(core.programs || []).flatMap((p) => p.requirements || []),
-  ]
-  assert.ok(requirements.length > 0, 'expected real requirements to load')
-  const sample = deterministicSample(catalog, 24)
-  const takenSets = [new Set(), new Set(sample)]
-  for (const requirement of requirements) {
-    const label = requirement.label || '?'
-    // Gap candidates may come from the requirement's own text or an aliased
-    // spelling (e.g. GNDR 499 → GNDS 499) even when the canonical code isn't
-    // the indexed course, so accept codes that expand to a catalog or declared
-    // code.
-    const declared = requirementCodes(requirement)
-    const known = (code) =>
-      catalog.has(code) || declared.has(code) || [...expandCode(code)].some((c) => catalog.has(c) || declared.has(c))
-    for (const taken of takenSets) {
-      let report
-      // gaps: false keeps this fast: the candidates loop in gapGroups walks
-      // every untaken universe course (an open Gender Studies pool is the whole
-      // catalog), which the per-candidate completion search makes pathologically
-      // slow on large pools. Section/evaluation shape is still fully checked;
-      // gap shape is covered by the bounded test below.
-      assert.doesNotThrow(() => {
-        report = trackReport(requirement, taken, catalog, { gaps: false })
-      }, `${label} with ${taken.size} taken`)
-      assertReportShape(report, catalog, requirement, taken, known)
+test(
+  'real parsed requirements evaluate without throwing or producing malformed output',
+  { skip: !present && 'catalog artifacts not present at repo root' },
+  () => {
+    const catalog = realCatalog()
+    const parsed = load('requirements_parsed.json')
+    const core = load('core_requirements.json')
+    const requirements = [
+      ...parsed.programs.flatMap((p) => p.requirements || []),
+      ...(core.programs || []).flatMap((p) => p.requirements || []),
+    ]
+    assert.ok(requirements.length > 0, 'expected real requirements to load')
+    const sample = deterministicSample(catalog, 24)
+    const takenSets = [new Set(), new Set(sample)]
+    for (const requirement of requirements) {
+      const label = requirement.label || '?'
+      // Gap candidates may come from the requirement's own text or an aliased
+      // spelling (e.g. GNDR 499 → GNDS 499) even when the canonical code isn't
+      // the indexed course, so accept codes that expand to a catalog or declared
+      // code.
+      const declared = requirementCodes(requirement)
+      const known = (code) =>
+        catalog.has(code) ||
+        declared.has(code) ||
+        [...expandCode(code)].some((c) => catalog.has(c) || declared.has(c))
+      for (const taken of takenSets) {
+        let report
+        // gaps: false keeps this fast: every requirement is evaluated against
+        // several taken sets, and gap enumeration over the whole catalog (an open
+        // Gender Studies / discipline pool) adds meaningful work on top. Gap shape
+        // is covered by the bounded test below.
+        assert.doesNotThrow(() => {
+          report = trackReport(requirement, taken, catalog, { gaps: false })
+        }, `${label} with ${taken.size} taken`)
+        assertReportShape(report, catalog, requirement, taken, known)
+      }
+      // Taken = a capped slice of the codes the requirement references: walks a
+      // requirement toward satisfied/partial on its own vocabulary without the
+      // exhaustive DFS cost of feeding it everything at once.
+      const refs = requirementCodes(requirement)
+      const refTaken = new Set([...refs].filter((c) => catalog.has(c)).slice(0, 24))
+      if (refTaken.size > 0) {
+        let report
+        assert.doesNotThrow(() => {
+          report = trackReport(requirement, refTaken, catalog, { gaps: false })
+        }, `${label} with all referenced codes taken`)
+        assertReportShape(report, catalog, requirement, refTaken, known)
+      }
     }
-    // Taken = a capped slice of the codes the requirement references: walks a
-    // requirement toward satisfied/partial on its own vocabulary without the
-    // exhaustive DFS cost of feeding it everything at once.
-    const refs = requirementCodes(requirement)
-    const refTaken = new Set([...refs].filter((c) => catalog.has(c)).slice(0, 24))
-    if (refTaken.size > 0) {
-      let report
-      assert.doesNotThrow(() => {
-        report = trackReport(requirement, refTaken, catalog, { gaps: false })
-      }, `${label} with all referenced codes taken`)
-      assertReportShape(report, catalog, requirement, refTaken, known)
-    }
-  }
-})
+  },
+)
 
-test('real-track gap suggestions stay within the known universe (bounded subset)', { skip: !present && 'catalog artifacts not present at repo root' }, () => {
-  const catalog = realCatalog()
-  const parsed = load('requirements_parsed.json')
-  const core = load('core_requirements.json')
-  const all = [
-    ...parsed.programs.flatMap((p) => p.requirements || []),
-    ...(core.programs || []).flatMap((p) => p.requirements || []),
-  ]
-  assert.ok(all.length > 0, 'expected real requirements to load')
-  // An electives pool declared by note (no explicit codes) is the whole catalog,
-  // and gap enumeration pays per-candidate DFS across it — check gap shape only
-  // where the pool is bounded, plus a deterministic index-based subset, so the
-  // gate stays fast while the evaluate test above still runs every requirement.
-  const hasOpenPool = (req) =>
-    (req.sections || []).some((s) =>
-      (s.items || []).some(
-        (it) => it.type === 'electives' && (it.constraints || []).some((c) => c.type === 'from' && !Array.isArray(c.codes)),
-      ),
+test(
+  'real-track gap suggestions stay within the known universe (bounded subset)',
+  { skip: !present && 'catalog artifacts not present at repo root' },
+  () => {
+    const catalog = realCatalog()
+    const parsed = load('requirements_parsed.json')
+    const core = load('core_requirements.json')
+    const all = [
+      ...parsed.programs.flatMap((p) => p.requirements || []),
+      ...(core.programs || []).flatMap((p) => p.requirements || []),
+    ]
+    assert.ok(all.length > 0, 'expected real requirements to load')
+    // An electives pool declared by note (no explicit codes) is the whole catalog.
+    // Completion over such pools used to run a per-candidate DFS and was too slow
+    // to gate; the counting/witness fast paths now handle every real open-pool
+    // shape (level floors, distinct-discipline floors, or flooress), so check
+    // their gap shape too. A wall-clock bound guards against regression to the
+    // per-candidate explosion.
+    const hasOpenPool = (req) =>
+      (req.sections || []).some((s) =>
+        (s.items || []).some(
+          (it) =>
+            it.type === 'electives' &&
+            (it.constraints || []).some((c) => c.type === 'from' && !Array.isArray(c.codes)),
+        ),
+      )
+    const sample = new Set(deterministicSample(catalog, 24))
+    let checked = 0
+    let worstMs = 0
+    const start = performance.now()
+    for (const [i, req] of all.entries()) {
+      const hash = (i * 2654435761) % 4
+      if (!hasOpenPool(req) && hash !== 0) continue
+      const t0 = performance.now()
+      const gaps = trackGaps(req, sample, catalog)
+      worstMs = Math.max(worstMs, performance.now() - t0)
+      const declared = requirementCodes(req)
+      const isKnown = (c) =>
+        catalog.has(c) || declared.has(c) || [...expandCode(c)].some((x) => catalog.has(x) || declared.has(x))
+      for (const g of gaps) assertGapShape(g, catalog, req.label || 'core', isKnown)
+      checked += 1
+    }
+    const totalMs = performance.now() - start
+    assert.ok(checked >= 8, `expected a meaningful subset (${checked} checked)`)
+    // Generous but not idle: the old per-candidate DFS was ~100s per open pool,
+    // the fast paths are single-digit ms to a few hundred ms on this machine.
+    assert.ok(
+      worstMs < 5000,
+      `open-pool gap enumeration regressed (worst requirement ${worstMs.toFixed(0)}ms, total ${totalMs.toFixed(0)}ms)`,
     )
-  const sample = new Set(deterministicSample(catalog, 24))
-  let checked = 0
-  for (const [i, req] of all.entries()) {
-    const hash = (i * 2654435761) % 4
-    if (hasOpenPool(req) || hash !== 0) continue
-    const gaps = trackGaps(req, sample, catalog)
-    const declared = requirementCodes(req)
-    const isKnown = (c) =>
-      catalog.has(c) || declared.has(c) || [...expandCode(c)].some((x) => catalog.has(x) || declared.has(x))
-    for (const g of gaps) assertGapShape(g, catalog, req.label || 'core', isKnown)
-    checked += 1
-  }
-  assert.ok(checked >= 8, `expected a meaningful subset (${checked} checked)`)
-})
+  },
+)

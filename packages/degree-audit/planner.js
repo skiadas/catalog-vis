@@ -707,14 +707,156 @@ function electedSubsetWith(committed, c, count, constraints) {
   return ok
 }
 
-function validCompletion(committed, universe, count, constraints) {
+// Aggregates that only impose floors (level/discipline `atLeast`,
+// `distinctAtLeast`, `sameDiscipline`, `min_from`) are monotone: adding a
+// course to a valid selection can never invalidate it. Completion of an open
+// pool against such constraints is therefore provable on a bounded witness
+// universe — keep at most `cap` representatives per (prefix-set, level-band)
+// bucket — and any feasible selection over the full pool stays representable.
+// This keeps the completion DFS away from 1000+ element pools for requirement
+// models like "5 courses, 4 at 200+, 3 distinct disciplines" scoped only by a
+// note (`from` with no codes), which used to burn the 50k-node budget *per
+// candidate* and came back empty.
+function reducedUniverseFor(universe, constraints, cap) {
+  const reducible = (constraints || []).every(
+    (c) =>
+      c.type === 'from' ||
+      c.type === 'exclude' ||
+      c.type === 'min_from' ||
+      (c.type === 'level' && c.atMost == null) ||
+      (c.type === 'discipline' && c.atMost == null),
+  )
+  if (!reducible) return null
+  const bands = (constraints || [])
+    .filter((c) => c.type === 'level' && c.atLeast != null)
+    .map((c) => (code) => {
+      const number = courseInfo(code).number
+      if (number == null) return false
+      if (c.min != null && c.max != null) return number >= c.min && number <= c.max
+      if (c.orAbove) return number >= c.level
+      return number >= c.level && number < c.level + 100
+    })
+  const buckets = new Map()
+  for (const code of universe) {
+    const prefixes = courseInfo(code).prefixes.slice().sort().join('/')
+    let mask = 0
+    for (let i = 0; i < bands.length; i++) if (bands[i](code)) mask |= 1 << i
+    const key = `${prefixes}|${mask}`
+    const list = buckets.get(key)
+    if (!list) buckets.set(key, [code])
+    else if (list.length < cap) list.push(code)
+  }
+  // Interleave buckets (round-robin) instead of emitting them bucket-major:
+  // completion DFS enumerates combinations in array order, so spreading
+  // distinct (prefix, band) buckets across the array surfaces prefixes in the
+  // first few picks and keeps the search from wading bucket-by-bucket.
+  const lists = [...buckets.values()]
+  const interleaved = []
+  let index = 0
+  let emitted = true
+  while (emitted) {
+    emitted = false
+    for (const list of lists) {
+      if (index < list.length) {
+        interleaved.push(list[index])
+        emitted = true
+      }
+    }
+    index += 1
+  }
+  return interleaved
+}
+
+function validCompletion(
+  committed,
+  universe,
+  count,
+  constraints,
+  levelTotals = null,
+  reducedUniverse = null,
+) {
   // Does a valid selection of exactly `count` courses exist that includes every
   // committed course, drawing the remainder from `universe`? DFS with budget.
   if (committed.length > count) return false
   const wanted = count - committed.length
   if (wanted === 0) return checkAggregates(committed, constraints)
-  const extra = universe.filter((c) => !committed.includes(c))
+  if (universe.length < count) return false
+  // Fast path: when the only aggregates are `level` atLeast/orAbove (no
+  // discipline, exclude, max_from, or level atMost), completion is a pure
+  // counting argument. `levelTotals` precomputes each band's whole-universe
+  // in-band headcount once per item; per candidate only the committed rows
+  // need re-scanning. Two checks per band, both O(band × committed):
+  //   need  = atLeast − inBand(committed)              // in-band slots still owed
+  //   extra = totalInBand − inBand(committed)          // in-band rows left to pay
+  // feasible ⇔ need ≤ wanted (the selection can hold that many) AND
+  // extra ≥ need (enough in-band rows remain). This avoids the per-candidate
+  // DFS that made open pools (a note-only `from` spanning the whole catalog)
+  // pathologically slow: a six-course Gender Studies bucket over ~1100
+  // candidates used to burn the 50k-node budget per candidate.
+  if (levelTotals) {
+    for (const band of levelTotals) {
+      const inBandCommitted = committed.filter(band.inBand).length
+      const need = Math.max(0, band.atLeast - inBandCommitted)
+      if (need > wanted) return false
+      if (band.totalInBand < band.atLeast) return false
+    }
+    return true
+  }
+  let extra = universe.filter((c) => !committed.includes(c))
+  // The reduced witness universe is a subset of `universe`, so it can only
+  // shorten the search; fall back to the full pool when it can't field the
+  // requested count (pathological buckets the cap can't cover).
+  if (reducedUniverse) {
+    const reduced = reducedUniverse.filter((c) => !committed.includes(c))
+    if (reduced.length >= wanted) extra = reduced
+  }
   if (extra.length < wanted) return false
+  // Floor-reachability pruning: whenever a minimum aggregate can no longer be
+  // met even by spending every remaining slot on it, the branch is dead. This
+  // turns budget-blind enumeration (the open-pool discipline case used to burn
+  // 50k nodes per candidate) into a search that fails fast.
+  const floors = []
+  for (const c of constraints || []) {
+    if (c.type === 'level' && c.atLeast != null) {
+      const inBand = (code) => {
+        const number = courseInfo(code).number
+        if (number == null) return false
+        if (c.min != null && c.max != null) return number >= c.min && number <= c.max
+        if (c.orAbove) return number >= c.level
+        return number >= c.level && number < c.level + 100
+      }
+      floors.push({
+        kind: 'level',
+        atLeast: c.atLeast,
+        inBand,
+        available: extra.filter(inBand).length,
+        committed: committed.filter(inBand).length,
+      })
+    } else if (c.type === 'discipline' && c.atLeast != null && c.prefixes) {
+      const match = (code) => prefixMatch(code, c.prefixes)
+      floors.push({
+        kind: 'prefix',
+        atLeast: c.atLeast,
+        match,
+        available: extra.filter(match).length,
+        committed: committed.filter(match).length,
+      })
+    } else if (c.type === 'min_from' && c.atLeast != null && c.codes) {
+      const match = (code) => c.codes.includes(code)
+      floors.push({
+        kind: 'prefix',
+        atLeast: c.atLeast,
+        match,
+        available: extra.filter(match).length,
+        committed: committed.filter(match).length,
+      })
+    } else if (c.type === 'discipline' && c.distinctAtLeast != null) {
+      const union = new Set()
+      for (const code of extra) for (const p of courseInfo(code).prefixes) union.add(p)
+      for (const code of committed) for (const p of courseInfo(code).prefixes) union.add(p)
+      floors.push({ kind: 'distinct', atLeast: c.distinctAtLeast, union })
+    }
+  }
   const nodeLimit = 50000
   let nodes = 0
   let ok = false
@@ -725,6 +867,18 @@ function validCompletion(committed, universe, count, constraints) {
       return
     }
     const remaining = wanted - pool.length
+    for (const f of floors) {
+      let reachable
+      if (f.kind === 'distinct') {
+        const have = new Set([...committed, ...pool].flatMap((code) => courseInfo(code).prefixes)).size
+        reachable = have + remaining
+        if (reachable > f.union.size) reachable = f.union.size
+      } else {
+        const have = f.committed + pool.filter(f.match || f.inBand).length
+        reachable = have + Math.min(remaining, f.available)
+      }
+      if (reachable < f.atLeast) return
+    }
     for (let i = start; i <= extra.length - remaining && !ok; i++) {
       pool.push(extra[i])
       search(i + 1, pool)
@@ -742,6 +896,36 @@ function electiveOptions(item, taken, catalog, excluded) {
   const takenSet = toSet(taken)
   const universe = filteredUniverse(constraints, catalog)
   const universeList = [...universe].sort((a, b) => a.localeCompare(b))
+  // Precompute the counting rows the completion fast path needs (whole-universe
+  // in-band headcounts) so validCompletion never re-scans the catalog per
+  // candidate — open pools make that O(n²) over >1000 courses.
+  const fastComputable = constraints.every(
+    (c) =>
+      c.type === 'from' ||
+      (c.type === 'level' && c.atLeast != null && c.atMost == null && c.min == null && c.max == null),
+  )
+  const levelTotals = fastComputable
+    ? constraints
+        .filter((c) => c.type === 'level')
+        .map((c) => {
+          const inBand = (code) => {
+            const number = courseInfo(code).number
+            if (number == null) return false
+            if (c.orAbove) return number >= c.level
+            return number >= c.level && number < c.level + 100
+          }
+          return {
+            atLeast: c.atLeast,
+            inBand,
+            totalInBand: universeList.filter(inBand).length,
+          }
+        })
+    : null
+  // Open pools that still need the completion DFS (discipline aggregates) are
+  // searched over a bounded witness universe instead of the whole catalog.
+  const reducedUniverse = levelTotals
+    ? null
+    : reducedUniverseFor(universeList, constraints, Math.max(2, count))
   const anchors = countableAnchors(
     universeList.filter((c) => takenSet.has(c) && !forbidden.has(c)),
     count,
@@ -757,7 +941,7 @@ function electiveOptions(item, taken, catalog, excluded) {
           helpful.push(c)
           break
         }
-      } else if (validCompletion(committed, universeList, count, constraints)) {
+      } else if (validCompletion(committed, universeList, count, constraints, levelTotals, reducedUniverse)) {
         helpful.push(c)
         break
       }

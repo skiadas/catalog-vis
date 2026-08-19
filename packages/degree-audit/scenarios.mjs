@@ -396,6 +396,111 @@ export const scenarios = [
     catalog: [...CATALOG, { course_code: 'CS 231', prerequisites: ['CS 220'] }],
     expect: { prereq: ['CS 220'] },
   },
+  {
+    sourceShape: 'program:open-pool-level',
+    name: 'note-only electives pool with level floor offers every completable course',
+    requirement: {
+      label: 'Open pool',
+      sections: [
+        {
+          heading: 'pick 2, 1 at 200+',
+          items: [
+            {
+              type: 'electives',
+              count: 2,
+              constraints: [
+                { type: 'from', note: 'courses from the list below' },
+                { type: 'level', level: 200, orAbove: true, atLeast: 1 },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    // Over the synthetic catalog the open pool spans everything; the level
+    // floor is satisfiable by plenty of courses, so every untaken course is a
+    // valid completion (the counting fast path in validCompletion, NOT a
+    // per-candidate DFS — this is what makes 1000+ course pools fast).
+    taken: [],
+    expect: {
+      status: 'unsatisfied',
+      sectionStatus: 'unsatisfied',
+      done: 0,
+      total: 2,
+      offers: ['FRE 115', 'HIS 327', 'BIO 301'],
+    },
+  },
+  {
+    sourceShape: 'program:open-pool-level',
+    name: 'open pool hides candidates that break the level floor',
+    requirement: {
+      label: 'Open pool',
+      sections: [
+        {
+          heading: 'pick 2, 2 at 300+',
+          items: [
+            {
+              type: 'electives',
+              count: 2,
+              constraints: [
+                { type: 'from', note: 'courses from the list below' },
+                { type: 'level', level: 300, orAbove: true, atLeast: 2 },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    // A sub-300 candidate alone leaves only one in-band slot (wanted = 1 while
+    // the floor needs 2), so the counting path correctly refuses it; a 300+
+    // candidate completes with another 300+ course.
+    taken: [],
+    expect: {
+      status: 'unsatisfied',
+      sectionStatus: 'unsatisfied',
+      done: 0,
+      total: 2,
+      offers: ['FRE 309', 'BIO 301', 'ENG 300'],
+      offersNone: ['FRE 115', 'GER 115', 'MAT 113', 'BIO 161', 'ANTH 160', 'CS 150'],
+    },
+  },
+  {
+    sourceShape: 'program:open-pool-discipline',
+    name: 'open pool with level floor and distinct-discipline floor offers every completable course',
+    requirement: {
+      label: 'Open pool',
+      sections: [
+        {
+          heading: 'pick 5, 4 at 200+, 3 distinct disciplines',
+          items: [
+            {
+              type: 'electives',
+              count: 5,
+              constraints: [
+                { type: 'from', note: 'courses from the list below' },
+                { type: 'level', level: 200, orAbove: true, atLeast: 4 },
+                { type: 'discipline', distinctAtLeast: 3 },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    // The real Minor this models spans the whole catalog (from-note pool) with
+    // three floors at once. Completion is decided on the bounded witness
+    // universe (per prefix × band reps) with reachability pruning — every
+    // catalog course pairs with 200+-level courses from other disciplines, so
+    // all are offers. This is a regression lock: the exhaustive per-candidate
+    // DFS used to burn its node budget and offer NOTHING.
+    taken: [],
+    expect: {
+      status: 'unsatisfied',
+      sectionStatus: 'unsatisfied',
+      done: 0,
+      total: 5,
+      offers: ['ANTH 160', 'FRE 217', 'BIO 301', 'HIS 327'],
+    },
+  },
 ]
 
 // --- Runner --------------------------------------------------------------
