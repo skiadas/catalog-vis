@@ -293,10 +293,14 @@ test('electives with sameDiscipline demand a common discipline (WL shape)', () =
   const ok = satisfied(it, takenFrom(['SPA 217', 'SPA 219']), CATALOG)
   assert.equal(ok.status, 'satisfied')
   assert.deepEqual(new Set(ok.matched), new Set(['SPA 217', 'SPA 219']))
-  // A mixed-language pair must NOT satisfy, and must not read as "2/2 matched".
+  // A mixed-language pair must NOT satisfy, must not read as "2/2 matched", and
+  // must not read as empty either — the largest same-discipline subset is
+  // surfaced so the planner shows "1/2" partial progress.
   const bad = satisfied(it, takenFrom(['SPA 217', 'GER 222']), CATALOG)
   assert.equal(bad.status, 'unsatisfied')
-  assert.deepEqual(bad.matched, [])
+  assert.equal(bad.matched.length, 1)
+  assert.ok(['SPA 217', 'GER 222'].includes(bad.matched[0]), 'only one (same-discipline) course is claimed')
+  assert.equal(bad.count, 2, 'raw eligible count is unchanged for gap bookkeeping')
 })
 
 test('electives with sameDiscipline ignore a stray other-language course', () => {
@@ -310,7 +314,7 @@ test('electives with sameDiscipline ignore a stray other-language course', () =>
   assert.deepEqual(new Set(r.matched), new Set(['SPA 217', 'SPA 219']))
 })
 
-test('assignRequirement never surfaces an invalid same-discipline selection', () => {
+test('assignRequirement surfaces a valid partial subset without claiming the pool', () => {
   const it = {
     type: 'electives',
     count: 2,
@@ -319,12 +323,32 @@ test('assignRequirement never surfaces an invalid same-discipline selection', ()
   const req = { label: 'WL', sections: [{ heading: '', items: [it] }] }
   const bad = assignRequirement(req, ['SPA 217', 'GER 222'], CATALOG)[0]
   assert.equal(bad.plan.aggOk, false)
-  assert.deepEqual(bad.plan.filled, [])
-  assert.equal(bad.used.size, 0)
+  assert.equal(bad.plan.filled.length, 1, 'the largest same-discipline subset is surfaced')
+  assert.ok(['SPA 217', 'GER 222'].includes(bad.plan.filled[0]))
+  assert.equal(bad.used.size, 0, 'an unsatisfied bucket must not claim courses from the pool')
   // A valid pair is what gets claimed.
   const ok = assignRequirement(req, ['SPA 217', 'SPA 219', 'GER 222'], CATALOG)[0]
   assert.equal(ok.plan.aggOk, true)
   assert.deepEqual([...ok.used], ['SPA 217', 'SPA 219'])
+})
+
+test('evaluateRequirement reports partial WL progress so the group never vanishes', () => {
+  const it = {
+    type: 'electives',
+    count: 2,
+    constraints: [{ type: 'discipline', sameDiscipline: true }],
+  }
+  const req = { label: 'WL', sections: [{ heading: '2-unit sequence', items: [it] }] }
+  // This is the exact shape TrackAudit renders: one French and one German course
+  // leaves the bucket unsatisfied but must show "1/2" (one course claimed), not
+  // an empty matched list that hides the whole section.
+  const result = evaluateRequirement(req, ['SPA 217', 'GER 222'], CATALOG)
+  const res = result.sections[0].items[0]
+  assert.equal(res.status, 'unsatisfied')
+  assert.equal(res.matched.length, 1)
+  assert.equal(res.count, 1)
+  assert.equal(res.min, 2)
+  assert.equal(res.max, 2)
 })
 
 test('discipline atMost without prefixes caps any single discipline (Asian Studies shape)', () => {

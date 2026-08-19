@@ -565,9 +565,11 @@ function isAggregate(c) {
 // - `found: true`  -> `selected` is a valid subset (favors higher-weight courses).
 // - `found: false`, `available.length < count` -> `selected` = everything taken
 //   so far, so a partially-filled bucket still reports progress.
-// - `found: false`, enough courses but no valid subset -> `selected` = [] so the
-//   bucket never *shows* a selection it can't legally make (e.g. a WL mix that
-//   isn't in the same language surfacing as "2/2").
+// - `found: false`, enough courses but no full valid subset -> `selected` = the
+//   largest aggregate-valid subset found, so a bucket that can't be completed
+//   still surfaces the courses that genuinely count (a same-language pair reads
+//   "1/2"); if even singletons pass no rule it stays empty rather than ever
+//   claiming a selection the bucket can't legally make (surface as "2/2").
 //
 // Search is depth-first over candidates ordered by `electivesWeight`. Candidate
 // sets are small (only taken-but-unclaimed courses), and an aggregate-free
@@ -583,6 +585,16 @@ function findValidSelection(available, count, constraints) {
   const nodeLimit = 200000
   let nodes = 0
   const result = []
+  // The largest aggregate-valid subset seen so far. When no exact-count
+  // selection exists we fall back to this so a bucket that can't be completed
+  // still reports the courses that genuinely count (e.g. one course of a
+  // same-language pair reads "1/2" rather than the whole group vanishing).
+  let best = []
+  function record(chosen) {
+    if (chosen.length > best.length && checkAggregates(chosen, constraints)) {
+      best = [...chosen]
+    }
+  }
   function search(start, chosen) {
     if (nodes++ > nodeLimit) return false
     if (chosen.length === count) {
@@ -595,6 +607,7 @@ function findValidSelection(available, count, constraints) {
     const remaining = count - chosen.length
     for (let i = start; i <= ordered.length - remaining; i++) {
       chosen.push(ordered[i])
+      record(chosen)
       if (search(i + 1, chosen)) return true
       chosen.pop()
     }
@@ -602,7 +615,7 @@ function findValidSelection(available, count, constraints) {
   }
   const found = search(0, [])
   if (found) return { found: true, selected: result }
-  return { found: false, selected: [] }
+  return { found: false, selected: best }
 }
 
 function fillElectives(plan, pool, catalog) {
