@@ -64,6 +64,7 @@ Each app's `index.html` declares a `<script type="importmap">` that maps bare
 <script type="importmap">
   {
     "imports": {
+      "@major-vis/app-config": "../../packages/app-config/index.js",
       "@major-vis/catalog-client": "../../packages/catalog-client/index.js",
       "@major-vis/degree-audit": "../../packages/degree-audit/planner.js",
       ...
@@ -81,6 +82,16 @@ under any GitHub Pages subpath or local server root.
 the catalog source. Today each app passes `baseUrl: '../../'` to reach the
 repo-root JSON when co-deployed. Pointing an app at a college-hosted catalog API
 (or a separate host) means changing that one value.
+
+### 3b. Service config: `loadConfig` + the root launcher
+
+A deployment decides which of `program` / `schedule` / `planner` appear by
+serving a services list (`@major-vis/app-config`). Each app's `main.js` calls
+`loadConfig({ endpoint: '../../api/config', staticPath: '../../config.json' })`
+and renders the nav from `SERVICE_DEFS` filtered by `isEnabled(key)`. The root
+`index.html` is a launcher that resolves the same list (backend `/api/config`,
+else `config.json`, else all) and redirects to the first enabled service — so
+for a schedule-only deployment, visiting `/` lands directly in `apps/schedule`.
 
 ### 4. Cross-app navigation is URLs, not calls
 

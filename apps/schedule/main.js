@@ -1,17 +1,33 @@
-// Schedule app bootstrap: parse the hash route, load the catalog (baseUrl
-// reaches the repo-root JSON when co-deployed), then seed the "Sample
-// schedule" collection once the catalog is available.
+// Schedule app bootstrap: resolve service config, parse the hash route, load
+// the catalog (baseUrl reaches the repo-root JSON when co-deployed), then seed
+// the "Sample schedule" collection once the catalog is available.
+//
+// The nav renders only the services the deployment enables. Schedule is today's
+// default service, so it links to its own route; other services link to their
+// app directories (relative URLs keep apps liftable).
 import { loading, loadCatalog } from '@major-vis/catalog-client'
+import { loadConfig, isEnabled, SERVICE_DEFS } from '@major-vis/app-config'
 import { route, initRouter } from './router.js'
 import { seedSampleSchedule } from './src/scheduleStore.js'
 import ScheduleApp from './components/ScheduleApp.js'
 
 initRouter()
+// Resolve which services are enabled (server /api/config, else ../config.json,
+// else all services). The schedule app is the planned default, but the nav
+// reflects whatever the deployment enables.
+loadConfig({ endpoint: '../../api/config', staticPath: '../../config.json' })
+
 loadCatalog({ baseUrl: '../../' }).then(seedSampleSchedule)
 
 const app = Vue.createApp({
   setup() {
-    return { route, loading }
+    const serviceDefs = Vue.computed(() =>
+      SERVICE_DEFS.filter((s) => isEnabled(s.key)).map((s) => ({
+        ...s,
+        href: s.key === 'schedule' ? '#/' : `../${s.dir}/`,
+      })),
+    )
+    return { route, loading, serviceDefs }
   },
   template: `
     <nav class="top-nav">
@@ -20,9 +36,12 @@ const app = Vue.createApp({
         <span>Hanover Catalog</span>
       </div>
       <div class="nav-links">
-        <a href="../browse/">Programs</a>
-        <a href="#/" :class="{ active: route.view.startsWith('schedule') }">Schedule</a>
-        <a href="../planner/">Planner</a>
+        <a
+          v-for="s in serviceDefs"
+          :key="s.key"
+          :href="s.href"
+          :class="{ active: s.key === 'schedule' && route.view.startsWith('schedule') }"
+        >{{ s.label }}</a>
       </div>
     </nav>
 

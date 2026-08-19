@@ -4,17 +4,128 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hanover College — Academic Catalog</title>
-    <meta http-equiv="refresh" content="0; url=apps/browse/" />
     <script>
       ;(function () {
-        var path = window.location.pathname
-        var hash = window.location.hash
-        if (path && !path.endsWith('/')) window.location.replace(path + '/' + hash)
-        else window.location.replace('apps/browse/' + hash)
+        // The service registry: key -> app directory relative to this page. A
+        // deployment enables a subset via config.json / the /api/config endpoint
+        // (SERVICES env on the backend); this launcher redirects to the first
+        // enabled service's app (or shows a chooser when several are enabled).
+        var SERVICES = {
+          program: { label: 'Programs', dir: 'apps/browse' },
+          schedule: { label: 'Schedule', dir: 'apps/schedule' },
+          planner: { label: 'Planner', dir: 'apps/planner' },
+        }
+        var ORDER = ['program', 'schedule', 'planner']
+
+        function hrefFor(dir, hash) {
+          var base = window.location.pathname.replace(/\/+$/, '') + '/' + dir
+          if (!base.endsWith('/')) base += '/'
+          return base + (hash || '')
+        }
+
+        function redirect(dir) {
+          var path = window.location.pathname.replace(/\/+$/, '')
+          var hash = window.location.hash
+          var base = path + '/' + dir
+          if (!base.endsWith('/')) base += '/'
+          window.location.replace(base + hash)
+        }
+
+        function parseServices(data) {
+          if (!data || !Array.isArray(data.services)) return null
+          var out = []
+          for (var i = 0; i < ORDER.length; i++) {
+            if (data.services.indexOf(ORDER[i]) !== -1) out.push(ORDER[i])
+          }
+          return out.length ? out : null
+        }
+
+        function showChooser(keys) {
+          var links = keys
+            .map(function (k) {
+              return '<li><a href="' + hrefFor(SERVICES[k].dir) + '">' + SERVICES[k].label + '</a></li>'
+            })
+            .join('')
+          var el = document.getElementById('launcher')
+          el.innerHTML = '<p>Choose a service:</p><ul class="launcher-links">' + links + '</ul>'
+        }
+
+        // Try the backend config endpoint first, then the static config.json.
+        // Both fall back to enabling every service when unavailable (the launcher
+        // then just shows the chooser, matching the pre-config behavior).
+        function fail() {
+          var enabled = []
+          for (var i = 0; i < ORDER.length; i++) enabled.push(ORDER[i])
+          showChooser(enabled)
+        }
+
+        function onConfig(data) {
+          var keys = parseServices(data)
+          if (!keys) return fail()
+          if (keys.length === 1) redirect(SERVICES[keys[0]].dir)
+          else showChooser(keys)
+        }
+
+        function fetchJson(url, next) {
+          fetch(url)
+            .then(function (r) {
+              if (!r.ok) throw new Error('bad status')
+              return r.json()
+            })
+            .then(next)
+            .catch(function () {
+              // Continue down the source chain.
+              failToNext()
+            })
+        }
+
+        // Chain the config sources: the backend /api/config (production, driven by
+        // the SERVICES env), then the static config.json at the deployment root
+        // (highlight the static GitHub-Pages deployment), then default-all.
+        var sourceIdx = 0
+        var sources = ['api/config', 'config.json']
+        function failToNext() {
+          sourceIdx++
+          if (sourceIdx < sources.length) fetchJson(sources[sourceIdx], onConfig)
+          else fail()
+        }
+
+        fetchJson(sources[0], onConfig)
       })()
     </script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background: #f4f6f8;
+        color: #1b2a3a;
+      }
+      .launcher {
+        text-align: center;
+        padding: 2rem;
+      }
+      .launcher-links {
+        list-style: none;
+        padding: 0;
+        display: inline-flex;
+        gap: 0.75rem;
+      }
+      .launcher-links a {
+        display: inline-block;
+        padding: 0.6rem 1.1rem;
+        border-radius: 8px;
+        background: #1b4965;
+        color: #fff;
+        text-decoration: none;
+      }
+    </style>
   </head>
   <body>
-    <p>Redirecting to the <a href="apps/browse/">program catalog</a>…</p>
+    <div id="launcher" class="launcher">
+      <p>Redirecting…</p>
+    </div>
   </body>
 </html>

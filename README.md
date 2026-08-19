@@ -14,6 +14,7 @@ Live site: <https://skiadas.github.io/catalog-vis/> (redirects to
 packages/                    shared, build-free packages (npm workspaces)
   catalog-contract/          the data contract: JSON Schemas + validator + schema docs
   catalog-client/            browser catalog data layer (loadCatalog, refs, filters)
+  app-config/                browser service + auth configuration (loadConfig, isEnabled)
   degree-audit/              pure requirements evaluator
   schedule-core/             pure schedule domain model + generator
   router/                    tiny hash-router factory
@@ -34,7 +35,7 @@ own host or reimplemented elsewhere. `AGENTS.md` is the piece map. For newcomers
 
 The apps are static sites with **no runtime build**: Vue loads from a CDN
 global, workspace packages resolve via per-app import maps, and each app
-styles itself with a compiled `apps/<name>/style.css`. The CSS *source* is
+styles itself with a compiled `apps/<name>/style.css`. The CSS _source_ is
 SCSS in `style/` (compiled to the per-app files via `npm run build:css`).
 Serve the repo root:
 
@@ -47,13 +48,13 @@ python3 -m http.server 8080
 
 ## Data pipeline
 
-| Step | Script | Output |
-|------|--------|--------|
-| Scrape catalog | `tools/catalog-pipeline/scrape_catalog.py` | `majors.json` (54 programs, 1144 courses) |
-| Codify requirements (LLM-assisted) | `tools/catalog-pipeline/codify_requirements.py` per `packages/catalog-contract/REQUIREMENTS_SCHEMA.md` | `requirements_parsed.json` |
-| Extract core curriculum | `tools/catalog-pipeline/extract_core.py` | `core_requirements.json` |
-| Audit cross-references | `tools/catalog-pipeline/audit_catalog.py` | `catalog_issues.{json,md}` |
-| Render admin report | `tools/catalog-pipeline/md_to_html.py` (pandoc) | `catalog_issues.html` |
+| Step                               | Script                                                                                                 | Output                                    |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| Scrape catalog                     | `tools/catalog-pipeline/scrape_catalog.py`                                                             | `majors.json` (54 programs, 1144 courses) |
+| Codify requirements (LLM-assisted) | `tools/catalog-pipeline/codify_requirements.py` per `packages/catalog-contract/REQUIREMENTS_SCHEMA.md` | `requirements_parsed.json`                |
+| Extract core curriculum            | `tools/catalog-pipeline/extract_core.py`                                                               | `core_requirements.json`                  |
+| Audit cross-references             | `tools/catalog-pipeline/audit_catalog.py`                                                              | `catalog_issues.{json,md}`                |
+| Render admin report                | `tools/catalog-pipeline/md_to_html.py` (pandoc)                                                        | `catalog_issues.html`                     |
 
 The three JSON artifacts are the **catalog data contract** — validated by
 `packages/catalog-contract` (`npm run validate:catalog`). See
@@ -88,7 +89,14 @@ python3 tools/catalog-pipeline/test_data.py  # data invariants (npm run test:dat
 
 GitHub Actions runs lint/format/tests/schema-validation on every push
 (`.github/workflows/ci.yml`). The site is published to GitHub Pages from the
-`main` branch (repo root); the root `index.html` redirects to
-`apps/browse/`. GitHub Pages sends `Access-Control-Allow-Origin: *`, so the
-apps could be lifted onto separate hosts and still fetch the catalog JSON
-cross-origin.
+`main` branch (repo root); the root `index.html` is a **launcher** that resolves
+which services are enabled (backend `/api/config`, else `config.json`, else all)
+and redirects to the first enabled app. GitHub Pages sends
+`Access-Control-Allow-Origin: *`, so the apps could be lifted onto separate hosts
+and still fetch the catalog JSON cross-origin.
+
+Services are toggled via a comma-separated list of `program | schedule |
+planner`. The committed `config.json` at the root (currently `["schedule"]`) is
+the static-deployment source of truth; the college backend will eventually drive
+it from a `SERVICES` env var. See `packages/app-config/README.md` and
+`docs/INTEGRATION_PLAN.md`.

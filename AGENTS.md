@@ -19,6 +19,7 @@ college-hosted catalog API.
 packages/
   catalog-contract/          THE DATA CONTRACT: JSON Schemas + validator + REQUIREMENTS_SCHEMA.md
   catalog-client/            browser catalog data layer (loadCatalog + refs + filters + tracks)
+  app-config/                browser service + auth config (loadConfig/isEnabled + launcher contract)
   degree-audit/              pure requirements evaluator (node --test-able)
   schedule-core/             pure schedule domain model + generator (node --test-able)
   router/                    tiny hash-router factory (createRouter)
@@ -88,6 +89,13 @@ requirement's label), core area id (`LA`, `HS`, …).
   identity helpers `programTracks`/`trackSlug`/`CORE_ID`/`CORE_TRACK`. **The
   `baseUrl` argument is the single seam** for pointing an app at a
   college-hosted catalog source. Full contract in its README.
+- **`app-config`** (`@major-vis/app-config`) — browser-only. `loadConfig({
+endpoint, staticPath, fallback })` resolves which services
+  (`program`/`schedule`/`planner`) are enabled plus auth metadata, and
+  `isEnabled(key)` gates the app navs. Sources in order: a backend `/api/config`
+  (driven by a `SERVICES` env var), a static `config.json`, or an all-services
+  default. The root `index.html` is a launcher built on the same contract
+  (`packages/app-config/README.md`).
 - **`degree-audit`** (`@major-vis/degree-audit`) — pure evaluator:
   `satisfied`, `assignRequirement`, `evaluateRequirement/Program`, `audit`,
   `planGaps`, `gapGroups`, `describeConstraints`, `expandCode`, `prefixMatch`,

@@ -2,11 +2,13 @@
 // link from browse — ?program=<id>&track=<key> — which is added before the
 // catalog loads), then load the catalog into the shared refs.
 import { loading, loadCatalog } from '@major-vis/catalog-client'
+import { loadConfig, isEnabled, SERVICE_DEFS } from '@major-vis/app-config'
 import { route, initRouter } from './router.js'
 import { addTrack } from './src/plannerStore.js'
 import PlannerApp from './components/PlannerApp.js'
 
 initRouter()
+loadConfig({ endpoint: '../../api/config', staticPath: '../../config.json' })
 // Cross-app deep link from the browse app: #/?program=<id>&track=<trackKey>.
 // The track is added here (idempotent) so the audit picks it up once the
 // catalog data loads.
@@ -17,7 +19,13 @@ loadCatalog({ baseUrl: '../../' })
 
 const app = Vue.createApp({
   setup() {
-    return { route, loading }
+    const serviceDefs = Vue.computed(() =>
+      SERVICE_DEFS.filter((s) => isEnabled(s.key)).map((s) => ({
+        ...s,
+        href: s.key === 'planner' ? '#/' : `../${s.dir}/`,
+      })),
+    )
+    return { route, loading, serviceDefs }
   },
   template: `
     <nav class="top-nav">
@@ -26,9 +34,12 @@ const app = Vue.createApp({
         <span>Hanover Catalog</span>
       </div>
       <div class="nav-links">
-        <a href="../browse/">Programs</a>
-        <a href="../schedule/">Schedule</a>
-        <a href="#/" :class="{ active: route.view === 'planner' }">Planner</a>
+        <a
+          v-for="s in serviceDefs"
+          :key="s.key"
+          :href="s.href"
+          :class="{ active: s.key === 'planner' && route.view === 'planner' }"
+        >{{ s.label }}</a>
       </div>
     </nav>
 

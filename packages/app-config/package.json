@@ -1,0 +1,15 @@
+{
+  "name": "@major-vis/app-config",
+  "version": "0.1.0",
+  "description": "Client-side service + auth configuration for the major-vis apps. Resolves which services (program/schedule/planner) are enabled from a server endpoint or a static config.json, and exposes isEnabled() for the app shells.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
