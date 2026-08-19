@@ -789,6 +789,12 @@ body {
   color: var(--warning);
 }
 
+.planner-section-reason {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 .planner-section-courses {
   display: flex;
   flex-wrap: wrap;

@@ -295,12 +295,14 @@ test('electives with sameDiscipline demand a common discipline (WL shape)', () =
   assert.deepEqual(new Set(ok.matched), new Set(['SPA 217', 'SPA 219']))
   // A mixed-language pair must NOT satisfy, must not read as "2/2 matched", and
   // must not read as empty either — the largest same-discipline subset is
-  // surfaced so the planner shows "1/2" partial progress.
+  // surfaced so the planner shows "1/2" partial progress. `count` mirrors the
+  // countable courses (not the raw number taken), so "still needed" math
+  // (3 - 1 = 2 more, not 0 more) stays honest.
   const bad = satisfied(it, takenFrom(['SPA 217', 'GER 222']), CATALOG)
   assert.equal(bad.status, 'unsatisfied')
   assert.equal(bad.matched.length, 1)
   assert.ok(['SPA 217', 'GER 222'].includes(bad.matched[0]), 'only one (same-discipline) course is claimed')
-  assert.equal(bad.count, 2, 'raw eligible count is unchanged for gap bookkeeping')
+  assert.equal(bad.count, 1, 'count is the countable set, not the raw taken count')
 })
 
 test('electives with sameDiscipline ignore a stray other-language course', () => {
@@ -405,6 +407,60 @@ test('gap suggestions exclude courses that cannot close an unmet aggregate (SM s
   // course, since any of them fills a slot.
   const short = gapGroups(it, takenFrom(['CS 220']), CATALOG)[0]
   assert.ok(short.codes.length > 5, 'all remaining eligible courses help a count-short bucket')
+})
+
+test('electives progress counts only courses that can form a valid diversified set (SM shape)', () => {
+  const it = {
+    type: 'electives',
+    count: 3,
+    constraints: [
+      { type: 'discipline', distinctAtLeast: 3 },
+      { type: 'min_from', codes: ['BIO 161'], atLeast: 1 },
+    ],
+  }
+  // One CS course is real progress: it can sit inside a valid 3-subject set.
+  const one = satisfied(it, takenFrom(['CS 220']), CATALOG)
+  assert.equal(one.count, 1)
+  assert.deepEqual(one.matched, ['CS 220'])
+  // A second CS course is dead weight: it never adds a second slot, so the
+  // bucket reads 1/3 (not 2/3) and two more are genuinely needed.
+  const two = satisfied(it, takenFrom(['CS 220', 'CS 231']), CATALOG)
+  assert.equal(two.count, 1)
+  assert.deepEqual(two.matched, ['CS 220'])
+  assert.equal(two.needed, 2)
+  // A second distinct discipline makes a second course countable; the surplus
+  // CS course stays unclaimed.
+  const three = satisfied(it, takenFrom(['CS 220', 'CS 231', 'ANTH 160']), CATALOG)
+  assert.equal(three.count, 2)
+  assert.ok(three.matched.includes('CS 220'))
+  assert.ok(three.matched.includes('ANTH 160'))
+  assert.ok(!three.matched.includes('CS 231'))
+  assert.equal(three.needed, 1)
+})
+
+test('gapGroups for a diversified electives bucket uses countable progress for need', () => {
+  const it = {
+    type: 'electives',
+    count: 3,
+    constraints: [
+      { type: 'discipline', distinctAtLeast: 3 },
+      { type: 'min_from', codes: ['BIO 161'], atLeast: 1 },
+    ],
+  }
+  // Three courses but only two distinct disciplines: one slot left, and only
+  // the lab (the missing min_from course) can close both.
+  const g = gapGroups(it, takenFrom(['CS 220', 'CS 231', 'ANTH 160']), CATALOG)
+  assert.equal(g.length, 1, 'one gap group')
+  assert.match(g[0].label, /^Need 1 more/)
+  assert.deepEqual(g[0].codes, ['BIO 161'])
+  // Two CS courses only: two are genuinely needed, and the options are the
+  // courses that add a second distinct discipline (never more CS).
+  const short = gapGroups(it, takenFrom(['CS 220', 'CS 231']), CATALOG)[0]
+  assert.match(short.label, /^Need 2 more/)
+  assert.ok(short.codes.length > 5)
+  for (const out of ['CS 150', 'CS 340', 'CS 345']) {
+    assert.ok(!short.codes.includes(out), `${out} cannot add a second distinct discipline`)
+  }
 })
 
 test('describeConstraints explains distinctAtLeast', () => {

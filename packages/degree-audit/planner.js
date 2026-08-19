@@ -341,17 +341,18 @@ export function satisfied(item, taken, catalog, excluded) {
       const chosen = [...pool].filter((code) => takenSet.has(code) && !excludedSet.has(code))
       const missingPool = [...pool].filter((code) => !takenSet.has(code))
       const { found, selected } = findValidSelection(chosen, item.count || 0, constraints)
-      // `matched` is only ever a *valid* selection (a subset that passes the
-      // bucket's count rules like distinct disciplines / same discipline), so a
-      // course never reads as "counted" when it isn't. `count` stays the raw
-      // number of eligible courses taken so "still needed" bookkeeping is
-      // unchanged.
+      // `matched`/`count` report the taken courses that can still coexist in a
+      // valid selection under the bucket's diversity rules, so a second
+      // same-discipline course never reads as a second slot of progress (two CS
+      // courses can't fill "3 distinct disciplines"). A course outside an
+      // abundance rule (level/prefix/lab floors) still counts toward the base;
+      // that shortfall surfaces as a "still need" note instead.
       return {
         status: found ? 'satisfied' : 'unsatisfied',
         matched: selected,
         missing: found ? [] : missingPool,
-        needed: found ? 0 : Math.max(0, (item.count || 0) - chosen.length),
-        count: chosen.length,
+        needed: found ? 0 : Math.max(0, (item.count || 0) - selected.length),
+        count: selected.length,
         min: item.count || 0,
         max: item.count || 0,
       }
@@ -574,48 +575,84 @@ function isAggregate(c) {
 // Search is depth-first over candidates ordered by `electivesWeight`. Candidate
 // sets are small (only taken-but-unclaimed courses), and an aggregate-free
 // bucket short-circuits; a node budget guards the pathological case.
+//
+// When no exact-count valid selection exists, `selected` is the largest subset
+// of the available courses that can still count as progress. Only the *diversity*
+// rules cap this: `distinctAtLeast` (distinct disciplines) and `sameDiscipline`
+// keep courses out of every valid selection (a second CS course can never be
+// part of a 3-distinct-discipline set), so they cap progress per discipline.
+// Abundance aggregates (level/prefix floors, min_from/max_from) do not cap
+// progress — a course outside a band still counts toward the base count, and the
+// remaining shortfall surfaces as a "still need" note instead.
 function findValidSelection(available, count, constraints) {
   const ordered = [...available].sort(
     (a, b) => electivesWeight(b, constraints) - electivesWeight(a, constraints) || a.localeCompare(b),
   )
   if (count <= 0) return { found: true, selected: [] }
-  if (ordered.length < count) return { found: false, selected: ordered }
-  if (!constraints.some(isAggregate)) return { found: true, selected: ordered.slice(0, count) }
-
-  const nodeLimit = 200000
-  let nodes = 0
-  const result = []
-  // The largest aggregate-valid subset seen so far. When no exact-count
-  // selection exists we fall back to this so a bucket that can't be completed
-  // still reports the courses that genuinely count (e.g. one course of a
-  // same-language pair reads "1/2" rather than the whole group vanishing).
-  let best = []
-  function record(chosen) {
-    if (chosen.length > best.length && checkAggregates(chosen, constraints)) {
-      best = [...chosen]
-    }
+  if (!constraints.some(isAggregate)) {
+    return { found: ordered.length >= count, selected: ordered.slice(0, count) }
   }
-  function search(start, chosen) {
-    if (nodes++ > nodeLimit) return false
-    if (chosen.length === count) {
-      if (checkAggregates(chosen, constraints)) {
-        result.push(...chosen)
-        return true
+  if (ordered.length >= count) {
+    const nodeLimit = 200000
+    let nodes = 0
+    const result = []
+    function search(start, chosen) {
+      if (nodes++ > nodeLimit) return false
+      if (chosen.length === count) {
+        if (checkAggregates(chosen, constraints)) {
+          result.push(...chosen)
+          return true
+        }
+        return false
+      }
+      const remaining = count - chosen.length
+      for (let i = start; i <= ordered.length - remaining; i++) {
+        chosen.push(ordered[i])
+        if (search(i + 1, chosen)) return true
+        chosen.pop()
       }
       return false
     }
-    const remaining = count - chosen.length
-    for (let i = start; i <= ordered.length - remaining; i++) {
-      chosen.push(ordered[i])
-      record(chosen)
-      if (search(i + 1, chosen)) return true
-      chosen.pop()
-    }
-    return false
+    if (search(0, [])) return { found: true, selected: result }
   }
-  const found = search(0, [])
-  if (found) return { found: true, selected: result }
-  return { found: false, selected: best }
+  return { found: false, selected: diversityCap(ordered, count, constraints) }
+}
+
+// The largest subset of `ordered` (preference order preserved) that can coexist
+// under the bucket's diversity rules, capped at `count`. `distinctAtLeast`
+// allows at most `count - distinct + 1` courses from any one discipline;
+// `sameDiscipline` keeps only the discipline with the most courses.
+function diversityCap(ordered, count, constraints) {
+  const div = (constraints || []).filter(
+    (c) => c.type === 'discipline' && (c.distinctAtLeast != null || c.sameDiscipline === true),
+  )
+  if (!div.length) return ordered.slice(0, count)
+  if (div.some((c) => c.sameDiscipline === true)) {
+    // All courses must share one discipline: the largest same-discipline block.
+    const byPrefix = new Map()
+    for (const code of ordered) {
+      for (const p of courseInfo(code).prefixes) {
+        if (!byPrefix.has(p)) byPrefix.set(p, [])
+        byPrefix.get(p).push(code)
+      }
+    }
+    let best = []
+    for (const list of byPrefix.values()) if (list.length > best.length) best = list
+    return best.slice(0, count)
+  }
+  const d = Math.max(...div.map((c) => c.distinctAtLeast || 0))
+  const cap = Math.max(1, count - d + 1)
+  const perPrefixCount = {}
+  const kept = []
+  for (const code of ordered) {
+    if (kept.length >= count) break
+    const underCap = courseInfo(code).prefixes.some((p) => (perPrefixCount[p] || 0) < cap)
+    if (underCap) {
+      kept.push(code)
+      for (const p of courseInfo(code).prefixes) perPrefixCount[p] = (perPrefixCount[p] || 0) + 1
+    }
+  }
+  return kept
 }
 
 // Untaken pool courses that can actually move an unsatisfied electives bucket
@@ -684,7 +721,11 @@ function electiveOptions(item, taken, catalog, excluded) {
   const takenSet = toSet(taken)
   const universe = filteredUniverse(constraints, catalog)
   const universeList = [...universe].sort((a, b) => a.localeCompare(b))
-  const placed = universeList.filter((c) => takenSet.has(c) && !forbidden.has(c))
+  const placed = diversityCap(
+    universeList.filter((c) => takenSet.has(c) && !forbidden.has(c)),
+    count,
+    constraints,
+  )
   const helpful = []
   for (const c of universeList) {
     if (takenSet.has(c) || forbidden.has(c)) continue
@@ -991,7 +1032,7 @@ function gapsOfChildren(item, taken, catalog) {
 //   - `{ note: '…' }` (unstructured requirement or a failed aggregate).
 // Each returned group is `{ label?, codes?: string[], note?: string }`.
 
-export function describeConstraints(constraints) {
+export function describeConstraints(constraints, compact) {
   const parts = []
   for (const c of constraints || []) {
     if (c.type === 'discipline' && c.sameDiscipline) {
@@ -1013,9 +1054,11 @@ export function describeConstraints(constraints) {
     } else if (c.type === 'exclude' && c.codes) {
       parts.push(`excluding ${c.codes.join(', ')}`)
     } else if (c.type === 'min_from' && c.codes) {
-      parts.push(`at least ${c.atLeast ?? 1} of ${c.codes.join(', ')}`)
+      if (compact) parts.push(`at least ${c.atLeast ?? 1} from a listed set (${c.codes.length} options)`)
+      else parts.push(`at least ${c.atLeast ?? 1} of ${c.codes.join(', ')}`)
     } else if (c.type === 'max_from' && c.codes) {
-      parts.push(`at most ${c.atMost ?? 1} of ${c.codes.join(', ')}`)
+      if (compact) parts.push(`at most ${c.atMost ?? 1} from a listed set (${c.codes.length} options)`)
+      else parts.push(`at most ${c.atMost ?? 1} of ${c.codes.join(', ')}`)
     }
   }
   return parts.join(' · ')

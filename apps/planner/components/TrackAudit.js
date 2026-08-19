@@ -54,7 +54,10 @@ export default {
         const electivesConstraints = parsedItems
           .filter((i) => i.type === 'electives')
           .flatMap((i) => i.constraints || [])
-        const reason = describeConstraints(electivesConstraints.filter((c) => c.type !== 'from'))
+        const reason = describeConstraints(
+          electivesConstraints.filter((c) => c.type !== 'from'),
+          true,
+        )
         for (let ii = 0; ii < items.length; ii++) {
           const it = items[ii]
           total += Number.isFinite(it.min) ? it.min : 0
@@ -83,10 +86,14 @@ export default {
     const gaps = computed(() => {
       const requirement = (props.parsed || [])[0]
       const assignment = assignRequirement(requirement, takenSet.value, allCourses.value)
+      const independent = requirement && requirement.independentSections === true
       const totalUsed = new Set(assignment.flatMap((a) => [...a.used]))
       const groups = []
       for (const a of assignment) {
-        const excluded = new Set([...totalUsed].filter((c) => !a.used.has(c)))
+        // Core-curriculum sections are independent: a course may satisfy several
+        // areas at once (e.g. MAT 121 counts for both QL and SM), so a course
+        // claimed by another core area must not be subtracted from this one.
+        const excluded = independent ? new Set() : new Set([...totalUsed].filter((c) => !a.used.has(c)))
         groups.push(...gapGroups(a.item, takenSet.value, allCourses.value, excluded))
       }
       return groups
@@ -146,6 +153,9 @@ export default {
             <span v-if="sec.status === 'partial'" class="planner-section-more">
               need {{ sec.total - sec.done }} more
             </span>
+          </div>
+          <div v-if="sec.status === 'partial' && sec.reason" class="planner-section-reason">
+            {{ sec.reason }}
           </div>
           <div v-if="sec.codes.length" class="planner-section-courses">
             <span

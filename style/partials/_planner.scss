@@ -55,6 +55,11 @@
   font-weight: var(--weight-semibold);
   color: var(--warning);
 }
+.planner-section-reason {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
 .planner-section-courses {
   @include flex-row;
 }
