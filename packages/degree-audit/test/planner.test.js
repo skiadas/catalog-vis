@@ -386,6 +386,24 @@ test('gap suggestions exclude discipline-conflict courses (WL shape)', () => {
   assert.ok(!withGerman.codes.includes('SPA 217'))
 })
 
+test('gap suggestions keep both language threads open when both are started (WL shape)', () => {
+  const it = {
+    type: 'electives',
+    count: 2,
+    constraints: [{ type: 'discipline', sameDiscipline: true }],
+  }
+  // One Spanish and one German course placed: the two-unit sequence could still
+  // be completed in EITHER language, so continuations of both threads must be
+  // offered (regression: only the larger thread was offered before).
+  const g = gapGroups(it, takenFrom(['SPA 217', 'GER 222']), CATALOG)[0]
+  assert.match(g.label, /Need 1 more/)
+  assert.ok(g.codes.includes('SPA 219') || g.codes.includes('SPA 319'), 'a Spanish continuation is offered')
+  assert.ok(g.codes.includes('GER 243') || g.codes.includes('GER 301'), 'a German continuation is offered')
+  for (const out of ['HIS 327', 'BIO 161', 'ENG 243', 'ANTH 160']) {
+    assert.ok(!g.codes.includes(out), `${out} cannot complete either thread`)
+  }
+})
+
 test('gap suggestions exclude courses that cannot close an unmet aggregate (SM shape)', () => {
   // SM: 3 courses, at least 3 distinct disciplines and one lab (BIO 161).
   const it = {

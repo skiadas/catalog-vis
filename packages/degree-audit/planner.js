@@ -655,14 +655,37 @@ function diversityCap(ordered, count, constraints) {
   return kept
 }
 
+// Every reference subset a bucket can be completed from, given the eligible
+// courses already placed. Ordinary buckets have one anchor — the single
+// `diversityCap` selection. `sameDiscipline` buckets instead get one anchor per
+// placed discipline: a student who has started a French AND a German sequence
+// could finish either one, so continuations of every already-started language
+// must stay offerable even though only one language can ever satisfy the bucket.
+function countableAnchors(eligibleTaken, count, constraints) {
+  const div = (constraints || []).filter(
+    (c) => c.type === 'discipline' && c.sameDiscipline === true,
+  )
+  if (!div.length) return [diversityCap(eligibleTaken, count, constraints)]
+  const byPrefix = new Map()
+  for (const code of eligibleTaken) {
+    for (const p of courseInfo(code).prefixes) {
+      if (!byPrefix.has(p)) byPrefix.set(p, [])
+      byPrefix.get(p).push(code)
+    }
+  }
+  const anchors = [...byPrefix.values()].map((list) => list.slice(0, count))
+  return anchors.length ? anchors : [[]]
+}
+
 // Untaken pool courses that can actually move an unsatisfied electives bucket
 // toward completion, given the courses already placed. A candidate counts as
-// helpful when it can be part of a valid selection reachable with the placed
-// set: when the student is still filling slots the placed courses stay
-// committed (so a German course next to a placed French one is never offered),
-// and when they already have a surplus of eligible courses it must be countable
-// in some valid selection (so another MAT/CS course can't help a bucket that
-// needs a third distinct discipline).
+// helpful when it can be part of a valid selection reachable with some anchor
+// (see `countableAnchors`): while the student is still filling slots the
+// anchor's courses stay committed (so a German course next to a placed French
+// one is never offered until a German thread exists), and when they already
+// have a surplus of eligible courses it must be countable in some valid
+// selection (so another MAT/CS course can't help a bucket that needs a third
+// distinct discipline).
 function electedSubsetWith(committed, c, count, constraints) {
   // A valid size-`count` subset of `committed` that includes `c` (surplus case).
   const rest = committed.filter((x) => x !== c)
@@ -721,7 +744,7 @@ function electiveOptions(item, taken, catalog, excluded) {
   const takenSet = toSet(taken)
   const universe = filteredUniverse(constraints, catalog)
   const universeList = [...universe].sort((a, b) => a.localeCompare(b))
-  const placed = diversityCap(
+  const anchors = countableAnchors(
     universeList.filter((c) => takenSet.has(c) && !forbidden.has(c)),
     count,
     constraints,
@@ -729,11 +752,17 @@ function electiveOptions(item, taken, catalog, excluded) {
   const helpful = []
   for (const c of universeList) {
     if (takenSet.has(c) || forbidden.has(c)) continue
-    const committed = [...placed, c]
-    if (committed.length > count) {
-      if (electedSubsetWith(committed, c, count, constraints)) helpful.push(c)
-    } else if (validCompletion(committed, universeList, count, constraints)) {
-      helpful.push(c)
+    for (const anchor of anchors) {
+      const committed = [...anchor, c]
+      if (committed.length > count) {
+        if (electedSubsetWith(committed, c, count, constraints)) {
+          helpful.push(c)
+          break
+        }
+      } else if (validCompletion(committed, universeList, count, constraints)) {
+        helpful.push(c)
+        break
+      }
     }
   }
   return helpful
