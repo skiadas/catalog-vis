@@ -618,6 +618,86 @@ function findValidSelection(available, count, constraints) {
   return { found: false, selected: best }
 }
 
+// Untaken pool courses that can actually move an unsatisfied electives bucket
+// toward completion, given the courses already placed. A candidate counts as
+// helpful when it can be part of a valid selection reachable with the placed
+// set: when the student is still filling slots the placed courses stay
+// committed (so a German course next to a placed French one is never offered),
+// and when they already have a surplus of eligible courses it must be countable
+// in some valid selection (so another MAT/CS course can't help a bucket that
+// needs a third distinct discipline).
+function electedSubsetWith(committed, c, count, constraints) {
+  // A valid size-`count` subset of `committed` that includes `c` (surplus case).
+  const rest = committed.filter((x) => x !== c)
+  if (rest.length < count - 1) return false
+  if (rest.length > 12) return true // too many to enumerate; don't over-filter
+  let ok = false
+  function pick(start, chosen) {
+    if (ok) return
+    if (chosen.length === count - 1) {
+      if (checkAggregates([...chosen, c], constraints)) ok = true
+      return
+    }
+    const remaining = count - 1 - chosen.length
+    for (let i = start; i <= rest.length - remaining && !ok; i++) {
+      chosen.push(rest[i])
+      pick(i + 1, chosen)
+      chosen.pop()
+    }
+  }
+  pick(0, [])
+  return ok
+}
+
+function validCompletion(committed, universe, count, constraints) {
+  // Does a valid selection of exactly `count` courses exist that includes every
+  // committed course, drawing the remainder from `universe`? DFS with budget.
+  if (committed.length > count) return false
+  const wanted = count - committed.length
+  if (wanted === 0) return checkAggregates(committed, constraints)
+  const extra = universe.filter((c) => !committed.includes(c))
+  if (extra.length < wanted) return false
+  const nodeLimit = 50000
+  let nodes = 0
+  let ok = false
+  function search(start, pool) {
+    if (ok || nodes++ > nodeLimit) return
+    if (pool.length === wanted) {
+      if (checkAggregates([...committed, ...pool], constraints)) ok = true
+      return
+    }
+    const remaining = wanted - pool.length
+    for (let i = start; i <= extra.length - remaining && !ok; i++) {
+      pool.push(extra[i])
+      search(i + 1, pool)
+      pool.pop()
+    }
+  }
+  search(0, [])
+  return ok
+}
+
+function electiveOptions(item, taken, catalog, excluded) {
+  const forbidden = excluded || new Set()
+  const constraints = item.constraints || []
+  const count = item.count || 0
+  const takenSet = toSet(taken)
+  const universe = filteredUniverse(constraints, catalog)
+  const universeList = [...universe].sort((a, b) => a.localeCompare(b))
+  const placed = universeList.filter((c) => takenSet.has(c) && !forbidden.has(c))
+  const helpful = []
+  for (const c of universeList) {
+    if (takenSet.has(c) || forbidden.has(c)) continue
+    const committed = [...placed, c]
+    if (committed.length > count) {
+      if (electedSubsetWith(committed, c, count, constraints)) helpful.push(c)
+    } else if (validCompletion(committed, universeList, count, constraints)) {
+      helpful.push(c)
+    }
+  }
+  return helpful
+}
+
 function fillElectives(plan, pool, catalog) {
   if (plan.type === 'electives') {
     const item = plan.item
@@ -802,9 +882,22 @@ export function assignRequirement(requirement, taken, catalog) {
 export function evaluateRequirement(requirement, taken, catalog) {
   const entries = assignRequirement(requirement, taken, catalog)
   const sections = (requirement && requirement.sections) || []
+  const takenSet = toSet(taken)
   const perSection = sections.map((s, si) => ({
     heading: s.heading,
-    items: entries.filter((e) => e.sectionIndex === si).map((e) => planResult(e.item, e.plan)),
+    items: entries
+      .filter((e) => e.sectionIndex === si)
+      .map((e) => {
+        const res = planResult(e.item, e.plan)
+        if (e.item.type === 'electives') {
+          // All placed courses that pool into this bucket, so the UI can show
+          // matched (`matched`) and placed-but-unmatched (`pool` minus matched)
+          // courses side by side instead of hiding a partially-started bucket.
+          const universe = filteredUniverse(e.item.constraints || [], catalog)
+          res.pool = [...universe].filter((c) => takenSet.has(c)).sort()
+        }
+        return res
+      }),
   }))
   return { label: requirement.label, sections: perSection }
 }
@@ -860,17 +953,17 @@ export function planGaps(item, taken, catalog) {
       }
     }
     case 'electives': {
-      if (result.count < (item.count || 0)) {
-        // Base count short — recommend eligible courses, preferring those that
-        // also help close unmet aggregate rules (e.g. "at least 7 GER",
-        // "N at the 300-level", a min_from floor).
-        const constraints = item.constraints || []
-        const weighted = [...result.missing].sort(
+      const constraints = item.constraints || []
+      // Only courses that can still help with the placed set are recommended;
+      // a discipline-conflicted or aggregate-useless course is never offered.
+      const options = electiveOptions(item, taken, catalog)
+        .sort(
           (a, b) => electivesWeight(b, constraints) - electivesWeight(a, constraints) || a.localeCompare(b),
         )
-        return { need: result.needed, courses: weighted.slice(0, result.needed) }
+        .slice(0, result.needed || Infinity)
+      if (result.count < (item.count || 0)) {
+        return { need: result.needed, courses: options }
       }
-      // Count is enough but an aggregate (level/discipline/min_from) fails.
       return { need: 0, courses: [], aggregate: true }
     }
     default:
@@ -903,6 +996,8 @@ export function describeConstraints(constraints) {
   for (const c of constraints || []) {
     if (c.type === 'discipline' && c.sameDiscipline) {
       parts.push('in the same discipline')
+    } else if (c.type === 'discipline' && c.distinctAtLeast != null) {
+      parts.push(`at least ${c.distinctAtLeast} distinct disciplines`)
     } else if (c.type === 'discipline' && c.prefixes && c.prefixes.length) {
       parts.push(`${c.prefixes.join('/')} courses`)
     } else if (c.type === 'level') {
@@ -993,13 +1088,14 @@ export function gapGroups(item, taken, catalog, excluded) {
     }
     case 'electives': {
       const constraints = item.constraints || []
-      // Every eligible course not yet taken, alphabetically, for browsing.
-      const options = [...result.missing].filter((c) => !excluded.has(c)).sort((a, b) => a.localeCompare(b))
+      // Only courses compatible with the placed set are offered; discipline
+      // conflicts and courses that can't close an unmet aggregate are omitted.
+      const options = electiveOptions(item, taken, catalog, excluded).sort((a, b) => a.localeCompare(b))
       if (result.count < (item.count || 0)) {
         const need = (item.count || 0) - result.count
         const scope = item.label
           ? `from ${item.label}`
-          : describeConstraints(constraints) || 'eligible courses'
+          : describeConstraints(constraints.filter((c) => c.type !== 'from')) || 'eligible courses'
         return [{ label: `Need ${need} more ${scope}`, codes: options, expandable: true }]
       }
       const aggText = describeConstraints((constraints || []).filter((c) => hasCount(c)))

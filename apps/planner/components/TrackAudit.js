@@ -1,6 +1,12 @@
 import { takenSet, placeCourse, removePlanCourse } from '../src/plannerStore.js'
 import { allCourses, courseName } from '@major-vis/catalog-client'
-import { evaluateProgram, audit, gapGroups, assignRequirement } from '@major-vis/degree-audit'
+import {
+  evaluateProgram,
+  audit,
+  gapGroups,
+  assignRequirement,
+  describeConstraints,
+} from '@major-vis/degree-audit'
 
 const { ref, computed } = Vue
 
@@ -30,27 +36,47 @@ export default {
     )
 
     // Per-section course-level progress: how many courses of the section's
-    // requirement are currently satisfied (`done`/`total`), the courses used,
-    // and the section's status. For an electives that needs 2, picking 1 shows
-    // "1/2" partial rather than the item-level "0/1".
+    // requirement are currently counted (`done`/`total`), the courses that count
+    // (`counted`), the placed courses in the bucket (`codes`), and the placed
+    // courses that can't count under the current constraints (`extra`, rendered
+    // as distinctly incompatible chips). A section is never hidden while any of
+    // its bucket courses are placed — that's how a placed-but-unqualified course
+    // stays visible and removable from the requirements page.
     const sections = computed(() => {
       const rec = report.value.sections || []
+      const parsedSections = ((props.parsed || [])[0] || {}).sections || []
       return (evaluated.value.sections || []).map((s, si) => {
         const items = s.items || []
-        const codes = [...new Set(items.flatMap((i) => i.matched || []))]
-        const total = items.reduce((sum, i) => sum + (Number.isFinite(i.min) ? i.min : 0), 0)
-        const done = codes.length
-        // Course-level status: an electives that needs 2 and has 1 chosen reads
-        // as "partial" even though the underlying item is `unsatisfied`.
+        const counted = []
+        const placed = []
+        let total = 0
+        const parsedItems = (parsedSections[si] || {}).items || []
+        const electivesConstraints = parsedItems
+          .filter((i) => i.type === 'electives')
+          .flatMap((i) => i.constraints || [])
+        const reason = describeConstraints(electivesConstraints.filter((c) => c.type !== 'from'))
+        for (let ii = 0; ii < items.length; ii++) {
+          const it = items[ii]
+          total += Number.isFinite(it.min) ? it.min : 0
+          for (const c of it.matched || []) if (!counted.includes(c)) counted.push(c)
+          const pool = it.type === 'electives' ? it.pool || [] : it.matched || []
+          for (const c of pool) if (!placed.includes(c)) placed.push(c)
+        }
+        const extra = placed.filter((c) => !counted.includes(c))
+        const codes = [...counted, ...extra]
+        const done = counted.length
+        // Course-level status: any placed course in the bucket counts as progress
+        // even when nothing is counted yet, so a started-but-incompatible mix
+        // reads as "partial" rather than vanishing the whole section.
         const status =
-          done === 0
+          codes.length === 0
             ? rec[si] || 'unsatisfied'
             : done < total
               ? 'partial'
               : rec[si] && rec[si].status === 'satisfied'
                 ? 'satisfied'
                 : rec[si] || 'unsatisfied'
-        return { heading: s.heading, status, done, total, codes }
+        return { heading: s.heading, status, done, total, codes, counted, extra, reason }
       })
     })
 
@@ -123,12 +149,24 @@ export default {
           </div>
           <div v-if="sec.codes.length" class="planner-section-courses">
             <span
-              v-for="code in sec.codes"
+              v-for="code in sec.counted"
               :key="code"
               class="course-chip mini matched"
               @click="togglePlaced(code)"
               :title="(courseName(code) ? courseName(code) + ' — ' : '') + 'click to remove from plan'"
             >{{ code }}</span>
+            <span
+              v-for="code in sec.extra"
+              :key="code"
+              class="course-chip mini incompatible"
+              @click="togglePlaced(code)"
+              :title="
+                (courseName(code) ? courseName(code) + ' — ' : '') +
+                'in your plan but does not count toward this yet' +
+                (sec.reason ? ' (' + sec.reason + ')' : '') +
+                '. Click to remove.'
+              "
+            >{{ code }} ✕</span>
           </div>
         </div>
       </div>

@@ -58,6 +58,21 @@
 .planner-section-courses {
   @include flex-row;
 }
+/* A course placed in the plan that pools into this bucket but can't count under
+   its constraints (e.g. the wrong language in a same-language sequence, or a
+   course from an already-overrepresented discipline). Kept visible so the
+   student can remove it from the requirements page; dashed + muted to read as
+   "distinctly incompatible" against the solid counted chips. */
+.planner-section-courses .course-chip.incompatible {
+  background: var(--gray-100);
+  color: var(--text-muted);
+  border: 1px dashed var(--gray-500);
+}
+.planner-section-courses .course-chip.incompatible:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-style: solid;
+}
 .planner-gap-alternative {
   @include flex-row;
   align-items: center;

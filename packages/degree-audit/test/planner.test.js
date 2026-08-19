@@ -351,6 +351,67 @@ test('evaluateRequirement reports partial WL progress so the group never vanishe
   assert.equal(res.max, 2)
 })
 
+test('evaluateRequirement exposes placed-but-unmatched courses via pool (WL shape)', () => {
+  const it = {
+    type: 'electives',
+    count: 2,
+    constraints: [{ type: 'discipline', sameDiscipline: true }],
+  }
+  const req = { label: 'WL', sections: [{ heading: '2-unit sequence', items: [it] }] }
+  const res = evaluateRequirement(req, ['SPA 217', 'GER 222'], CATALOG).sections[0].items[0]
+  // Both placed courses pool into the bucket; only the same-discipline one is
+  // matched. The UI renders `pool` minus `matched` as an "incompatible" chip.
+  assert.deepEqual(res.pool, ['GER 222', 'SPA 217'])
+  assert.ok(res.matched.length === 1 && res.pool.includes(res.matched[0]))
+})
+
+test('gap suggestions exclude discipline-conflict courses (WL shape)', () => {
+  const it = {
+    type: 'electives',
+    count: 2,
+    constraints: [{ type: 'discipline', sameDiscipline: true }],
+  }
+  // With a Spanish course placed, only more Spanish courses can complete the
+  // same-language pair; a German or other-language course can never join it.
+  const withSpanish = gapGroups(it, takenFrom(['SPA 217']), CATALOG)[0]
+  assert.ok(withSpanish.codes.includes('SPA 219'), 'same-discipline option is offered')
+  for (const out of ['GER 222', 'HIS 327', 'BIO 161', 'ENG 243']) {
+    assert.ok(!withSpanish.codes.includes(out), `${out} cannot help a Spanish pair`)
+  }
+  // Symmetric: the reciprocal placement offers only German courses.
+  const withGerman = gapGroups(it, takenFrom(['GER 222']), CATALOG)[0]
+  assert.ok(withGerman.codes.includes('GER 243'))
+  assert.ok(!withGerman.codes.includes('SPA 217'))
+})
+
+test('gap suggestions exclude courses that cannot close an unmet aggregate (SM shape)', () => {
+  // SM: 3 courses, at least 3 distinct disciplines and one lab (BIO 161).
+  const it = {
+    type: 'electives',
+    count: 3,
+    constraints: [
+      { type: 'discipline', distinctAtLeast: 3 },
+      { type: 'min_from', codes: ['BIO 161'], atLeast: 1 },
+    ],
+  }
+  // Two CS courses + one Spanish course already placed: distinct=2, no lab.
+  // The only single next course that makes the bucket satisfiable is the lab.
+  const g = gapGroups(it, takenFrom(['CS 220', 'CS 231', 'SPA 217']), CATALOG)[0]
+  assert.deepEqual(g.codes, ['BIO 161'])
+  for (const out of ['CS 150', 'CS 340', 'CS 345', 'SPA 219', 'BIO 221', 'ANTH 160', 'GER 101']) {
+    assert.ok(!g.codes.includes(out), `${out} cannot make the SM bucket satisfiable`)
+  }
+  // A count-short bucket (only one course placed) still offers every eligible
+  // course, since any of them fills a slot.
+  const short = gapGroups(it, takenFrom(['CS 220']), CATALOG)[0]
+  assert.ok(short.codes.length > 5, 'all remaining eligible courses help a count-short bucket')
+})
+
+test('describeConstraints explains distinctAtLeast', () => {
+  const text = describeConstraints([{ type: 'discipline', distinctAtLeast: 3 }])
+  assert.equal(text, 'at least 3 distinct disciplines')
+})
+
 test('discipline atMost without prefixes caps any single discipline (Asian Studies shape)', () => {
   const it = {
     type: 'electives',
@@ -1209,7 +1270,7 @@ test('gapGroups for some_of is a single pick-N-of group', () => {
   ])
 })
 
-test('gapGroups for an electives shortfall lists the full eligible pool, expandable', () => {
+test('gapGroups for an electives shortfall offers only courses that can complete it', () => {
   const it = {
     type: 'electives',
     count: 3,
@@ -1222,8 +1283,9 @@ test('gapGroups for an electives shortfall lists the full eligible pool, expanda
   assert.equal(groups.length, 1)
   assert.match(groups[0].label, /^Need 2 more GER courses/)
   assert.equal(groups[0].expandable, true)
-  // All eligible GER courses not yet taken, alphabetically.
-  assert.deepEqual(groups[0].codes, ['GER 115', 'GER 222', 'GER 243', 'GER 301', 'GER 302'])
+  // With GER 101 committed, only the 300-level courses can complete the "at
+  // least 2 at 300-level" rule; the other GER courses would never count.
+  assert.deepEqual(groups[0].codes, ['GER 301', 'GER 302'])
 })
 
 test('gapGroups for electives with count met but aggregate short flags an expandable pool', () => {
