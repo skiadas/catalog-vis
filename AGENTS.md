@@ -102,12 +102,15 @@ endpoint, staticPath, fallback })` resolves which services
   `passes`, `filteredUniverse`, `checkAggregates`. Data passed in as args; no
   framework. Could run as a server-side degree-audit service.
 - **`schedule-core`** (`@major-vis/schedule-core`) — pure schedule domain:
-  offering parsing (`parseCsv`), index (`buildIndex`), conflicts, calendar
-  layout, colors, filters, editing (`moveOfferingSmart` …), drag payload
-  (`buildDragPayload`/`dragPayloadFrom`), and generation (`./generate`:
-  `makeSchedule(mode, prefix, facultyByPrefix, eligible, seed)` with a
-  mulberry32 PRNG). The offering record `{prefix, number, section, instructor,
-days, time}` is registrar-shaped.
+  offering parsing + round-trip (`parseCsv`/`renderCsv`), term slot configs
+  (`TERM_CONFIGS`/`termSlotOptions`, incl. Spring's consecutive-pair slots),
+  index with unscheduled-offering support (`buildIndex`/`calendarDayRange`),
+  conflicts, calendar layout, colors, filters, editing
+  (`moveOfferingSmart` …), drag payload (`buildDragPayload`/`dragPayloadFrom`),
+  and generation (`./generate`: `makeSchedule(mode, prefix, facultyByPrefix,
+eligible, seed, termKey)` with a mulberry32 PRNG). The offering record
+  `{prefix, number, section, instructor, days, time}` is registrar-shaped;
+  blank `days`/`time` mark an unscheduled (independent-study) offering.
 - **`router`** (`@major-vis/router`) — `createRouter(routes, fallback)`: each
   app registers a route table (`{ view, parse(parts, query), href(params) }`)
   and re-exports its own `route`/nav helpers.
@@ -117,13 +120,13 @@ days, time}` is registrar-shaped.
 Each app's README documents its input contract, localStorage persistence, and
 cross-app links. Summary:
 
-|                | browse                                  | schedule                                                           | planner                                         |
-| -------------- | --------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------- |
-| Catalog inputs | all refs                                | courses + faculty pools                                            | programs + parsed + core                        |
-| Persistence    | none                                    | `major-vis.schedules`, `.schedule.selected`, `.schedule.color`     | `major-vis.planner.plans`, `.planner.active`    |
-| Routes         | `#/`, `#/program/:id`, `#/course/:code` | `#/`, `#/day/:d`, `#/slot/:d/:t`, `#/course/:c`, `#/instructor/:i` | `#/` (+ deep-link query)                        |
-| Emits links    | → planner (`plannerUrl`)                | —                                                                  | → browse (`browseProgramUrl`/`browseCourseUrl`) |
-| Consumes links | —                                       | —                                                                  | `?program=&track=`                              |
+|                | browse                                  | schedule                                                                                             | planner                                         |
+| -------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Catalog inputs | all refs                                | courses + faculty pools                                                                              | programs + parsed + core                        |
+| Persistence    | none                                    | `major-vis.schedules` (+`.selected`,`.color`,`.term`), yearly schedule with Fall/Winter/Spring parts | `major-vis.planner.plans`, `.planner.active`    |
+| Routes         | `#/`, `#/program/:id`, `#/course/:code` | `#/`, `#/day/:d`, `#/slot/:d/:t`, `#/course/:c`, `#/instructor/:i`                                   | `#/` (+ deep-link query)                        |
+| Emits links    | → planner (`plannerUrl`)                | —                                                                                                    | → browse (`browseProgramUrl`/`browseCourseUrl`) |
+| Consumes links | —                                       | —                                                                                                    | `?program=&track=`                              |
 
 `apps/schedule/src/scheduleStore.js` holds the schedule collection/filters/
 generation/seeding; `apps/planner/src/plannerStore.js` holds plans/tracks/

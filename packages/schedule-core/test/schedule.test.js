@@ -7,6 +7,7 @@ import {
   toMinutes,
   formatTime,
   parseCsv,
+  renderCsv,
   buildIndex,
   conflictsBetween,
   conflictsForCourse,
@@ -32,6 +33,12 @@ import {
   nextSectionLetter,
   addOfferingToSchedule,
   removeOfferingFromSchedule,
+  TERM_CONFIGS,
+  TERM_KEYS,
+  TERM_LABELS,
+  termConfig,
+  termSlotOptions,
+  calendarDayRange,
 } from '../schedule.js'
 
 const CSV = [
@@ -251,6 +258,56 @@ test('parseCsv skips blank lines', () => {
   assert.equal(rows.length, 1)
 })
 
+test('parseCsv accepts a `time` column synonym and blank times as unscheduled', () => {
+  const rows = parseCsv('dept-prefix,course-number,section,instructor,days,time\nCS,220,A,Wahl,,\n')
+  assert.equal(rows.length, 1)
+  assert.deepEqual(rows[0], {
+    prefix: 'CS',
+    number: '220',
+    section: 'A',
+    instructor: 'Wahl',
+    days: '',
+    time: '',
+  })
+})
+
+test('parseCsv handles quoted fields with commas and quotes', () => {
+  const rows = parseCsv(
+    'dept-prefix,course-number,section,instructor,days,times\nCS,101,A,"O\'Brien, Jr.","M,W",9:20-10:30\n',
+  )
+  assert.equal(rows[0].instructor, "O'Brien, Jr.")
+  assert.equal(rows[0].days, 'M,W')
+})
+
+test('parseCsv includes term only when the source has a term column', () => {
+  const rows = parseCsv(
+    'dept-prefix,course-number,section,instructor,days,times,term\nCS,101,A,Vosmeier,MWF,9:20-10:30,S\n',
+  )
+  assert.equal(rows[0].term, 'S')
+})
+
+test('renderCsv round-trips parseCsv output', () => {
+  const rows = parseCsv(CSV)
+  const csv = renderCsv(rows)
+  assert.deepEqual(parseCsv(csv), rows)
+})
+
+test('renderCsv writes term only when present on an offering', () => {
+  const csv = renderCsv([
+    {
+      prefix: 'CS',
+      number: '101',
+      section: 'A',
+      instructor: 'Vosmeier',
+      days: 'MWF',
+      time: '9:20-10:30',
+      term: 'S',
+    },
+  ])
+  assert.ok(csv.startsWith('dept-prefix,course-number,section,instructor,days,times,term'))
+  assert.ok(csv.includes(',S'))
+})
+
 test('buildIndex groups by course, day, slot, instructor', () => {
   const index = buildIndex(parseCsv(CSV))
   assert.equal(index.byCourse['CS 101'].length, 2)
@@ -401,4 +458,95 @@ test('buildVisual is inactive only when no schedule is shown or a filter is acti
     buildVisual('dept', ['CS'], [], ['cs'], true).color({ o: { prefix: 'CS' } }),
     colorForDept('CS'),
   )
+})
+
+// ---------------------------------------------------------------------------
+// Term configs + calendar range
+// ---------------------------------------------------------------------------
+
+test('term configs: F/W share the standard groups, S has one MTWRF group', () => {
+  assert.deepEqual(TERM_KEYS, ['F', 'W', 'S'])
+  assert.equal(TERM_CONFIGS.length, 3)
+  assert.equal(TERM_LABELS.F, 'Fall')
+  assert.equal(TERM_LABELS.S, 'Spring')
+  assert.deepEqual(termConfig('F').dayGroups, SLOT_BLOCKS)
+  assert.deepEqual(termConfig('W').dayGroups, SLOT_BLOCKS)
+  assert.equal(termConfig('S').dayGroups.length, 1)
+  assert.equal(termConfig('S').dayGroups[0].label, 'MTWRF')
+  assert.equal(termConfig('S').maxConsecutiveSlots, 2)
+  // unknown key falls back to Fall
+  assert.equal(termConfig('Z').key, 'F')
+})
+
+test('spring has 4 base slots across the day', () => {
+  const spring = termConfig('S')
+  const slots = spring.dayGroups[0].slots
+  assert.equal(slots.length, 4)
+  assert.deepEqual(
+    slots.map((s) => s.time),
+    ['8:00-10:15', '10:15-12:30', '12:30-14:45', '14:45-17:00'],
+  )
+})
+
+test('termSlotOptions yields base slots for maxConsecutiveSlots 1 (F/W)', () => {
+  const mondayMWF = termSlotOptions('F', 'M')
+  assert.deepEqual(
+    mondayMWF.map((s) => s.time),
+    ['8:00-9:10', '9:20-10:30', '10:40-11:50', '12:00-13:10', '13:20-14:30', '14:40-15:50'],
+  )
+  // Tuesday falls in the TR group
+  assert.deepEqual(
+    termSlotOptions('F', 'T').map((s) => s.time),
+    ['8:00-9:45', '10:00-11:45', '12:20-14:05', '14:15-16:00'],
+  )
+})
+
+test('spring termSlotOptions includes consecutive pairs', () => {
+  const m = termSlotOptions('S', 'M')
+  assert.deepEqual(
+    m.map((s) => s.time),
+    ['8:00-10:15', '8:00-12:30', '10:15-12:30', '10:15-14:45', '12:30-14:45', '12:30-17:00', '14:45-17:00'],
+  )
+  // every day has the same options in spring
+  assert.deepEqual(termSlotOptions('S', 'W'), m)
+})
+
+test('termSlotOptions returns empty for a day not in the group', () => {
+  assert.deepEqual(termSlotOptions('F', 'S'), [])
+})
+
+test('rescheduleDays uses the term day groups for a spring course', () => {
+  // A spring course dragged within its single MTWRF group keeps/sets that group.
+  assert.equal(rescheduleDays('', 'M', 'MTWRF', 'T', 'S'), 'MTWRF')
+  // swapping a specific day within the group
+  assert.equal(rescheduleDays('MTWR', 'M', 'MTWRF', 'F', 'S'), 'TWRF')
+})
+
+test('calendarDayRange expands to arbitrary early/late times', () => {
+  const index = buildIndex([
+    { prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '8:00-9:10' },
+    { prefix: 'BIO', number: '410', section: 'A', days: 'MWF', time: '20:00-21:30' },
+  ])
+  const range = calendarDayRange(index)
+  assert.equal(range.start, 480)
+  assert.equal(range.end, 1290)
+  // empty index falls back to the standard range
+  assert.deepEqual(calendarDayRange(buildIndex([])), { start: DAY_START_MIN, end: DAY_END_MIN })
+})
+
+test('unscheduled offerings are excluded from calendar and conflicts', () => {
+  const index = buildIndex([
+    { prefix: 'CS', number: '220', section: 'A', days: '', time: '', instructor: 'Wahl' },
+    { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30', instructor: 'Vosmeier' },
+  ])
+  // still grouped by course and instructor
+  assert.equal(index.byCourse['CS 220'].length, 1)
+  assert.equal(index.byInstructor.Wahl.length, 1)
+  // but not placed on any day/slot and listed as unscheduled
+  assert.equal(index.byDay.M.length, 1)
+  assert.deepEqual(
+    index.unscheduled.map((it) => it.code),
+    ['CS 220'],
+  )
+  assert.deepEqual(conflictsForCourse('CS 220', index), [])
 })

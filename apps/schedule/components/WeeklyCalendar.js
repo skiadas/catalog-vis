@@ -1,14 +1,19 @@
-import { WEEKDAYS, WEEKDAY_NAMES, hourMarks, DAY_START_MIN } from '@major-vis/schedule-core'
+import { WEEKDAYS, WEEKDAY_NAMES, hourMarks, DAY_START_MIN, DAY_END_MIN } from '@major-vis/schedule-core'
 
 export default {
   name: 'WeeklyCalendar',
   props: {
     onDayClick: { type: Function, default: null },
     striped: { type: Boolean, default: false },
+    // { start, end } minutes of the visible day range (defaults to the standard
+    // working day); a class extending past 16:00 renders via this range.
+    range: { type: Object, default: null },
   },
-  setup() {
-    const hours = hourMarks()
-    const topOffset = (min) => min - DAY_START_MIN + 'px'
+  setup(props) {
+    const range =
+      props.range && props.range.start != null ? props.range : { start: DAY_START_MIN, end: DAY_END_MIN }
+    const hours = hourMarks(range.start, range.end)
+    const topOffset = (min) => min - range.start + 'px'
     return { WEEKDAYS, WEEKDAY_NAMES, hours, topOffset }
   },
   template: `

@@ -6,9 +6,9 @@ import {
   slotKey,
   buildVisual,
   colorForSchedule,
-  daySlotTimes,
+  termSlotOptions,
 } from '@major-vis/schedule-core'
-import { selectedDepartments, selectedInstructors, filterMode } from '../src/scheduleStore.js'
+import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
 import {
   schedule,
   selectedScheduleIds,
@@ -51,16 +51,16 @@ export default {
       }
       return list
     })
-    const times = computed(() => daySlotTimes(day.value))
+    const times = computed(() => termSlotOptions(activeTerm.value, day.value).map((s) => s.time))
     const timeIndex = computed(() => times.value.indexOf(time.value))
     const dayIndex = computed(() => WEEKDAYS.indexOf(day.value))
     const prevDay = () => {
       const d = WEEKDAYS[(dayIndex.value + WEEKDAYS.length - 1) % WEEKDAYS.length]
-      goScheduleSlot(d, daySlotTimes(d)[0])
+      goScheduleSlot(d, termSlotOptions(activeTerm.value, d)[0]?.time)
     }
     const nextDay = () => {
       const d = WEEKDAYS[(dayIndex.value + 1) % WEEKDAYS.length]
-      goScheduleSlot(d, daySlotTimes(d)[0])
+      goScheduleSlot(d, termSlotOptions(activeTerm.value, d)[0]?.time)
     }
     const prevSlot = () =>
       times.value.length

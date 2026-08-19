@@ -35,11 +35,86 @@ const TR_BLOCK = [
   ['TR', '12:20-14:05', 740, 845],
   ['TR', '14:15-16:00', 855, 960],
 ]
+// Spring term: all days identical (MTWRF), four base slots. A course may occupy
+// up to `maxConsecutiveSlots` consecutive base slots (e.g. 8:00-10:15 means the
+// first two slots; the assignable bands below derive those combinations).
+const SPRING_BLOCK = [
+  ['MTWRF', '8:00-10:15', 480, 615],
+  ['MTWRF', '10:15-12:30', 615, 750],
+  ['MTWRF', '12:30-14:45', 750, 885],
+  ['MTWRF', '14:45-17:00', 885, 1020],
+]
 
 export const SLOT_BLOCKS = [
   { label: 'MWF', slots: MWF_BLOCK.map(([days, time, start, end]) => ({ days, time, start, end })) },
   { label: 'TR', slots: TR_BLOCK.map(([days, time, start, end]) => ({ days, time, start, end })) },
 ]
+
+// Per-term calendar configurations. A term config carries its day groups (each a
+// base slot block), the calendar's day range, and how many consecutive base
+// slots a course may span (`maxConsecutiveSlots`). Fall and Winter share the
+// standard MWF/TR set; Spring has one MTWRF group of four slots that courses may
+// occupy in pairs. `termConfig(key)` is the lookup the app views use.
+const SPRING_SLOTS = SPRING_BLOCK.map(([days, time, start, end]) => ({ days, time, start, end }))
+export const TERM_CONFIGS = [
+  { key: 'F', label: 'Fall', dayGroups: SLOT_BLOCKS, dayStart: 480, dayEnd: 960, maxConsecutiveSlots: 1 },
+  { key: 'W', label: 'Winter', dayGroups: SLOT_BLOCKS, dayStart: 480, dayEnd: 960, maxConsecutiveSlots: 1 },
+  {
+    key: 'S',
+    label: 'Spring',
+    dayGroups: [{ label: 'MTWRF', slots: SPRING_SLOTS }],
+    dayStart: 480,
+    dayEnd: 1020,
+    maxConsecutiveSlots: 2,
+  },
+]
+export const TERM_KEYS = ['F', 'W', 'S']
+export const TERM_LABELS = { F: 'Fall', W: 'Winter', S: 'Spring' }
+
+export function termConfig(key) {
+  return TERM_CONFIGS.find((t) => t.key === key) || TERM_CONFIGS[0]
+}
+
+// The day-group label a day belongs to under a term (e.g. 'MWF' for Monday in
+// Fall, 'MTWRF' for any day in Spring).
+export function termDayGroup(termKey, day) {
+  const config = termConfig(termKey)
+  const group = config.dayGroups.find((g) => g.label.includes(day))
+  return group ? group.label : day
+}
+
+// The assignable time bands for one day under a term config: each base slot's
+// time, plus every run of consecutive base slots up to `maxConsecutiveSlots`
+// (e.g. Spring allows 8:00-12:30 = the first two). `maxConsecutiveSlots` of 1
+// yields just the base slots. Returns `[{ time, start, end }]`.
+export function termSlotOptions(termKey, day) {
+  const config = termConfig(termKey)
+  const group = config.dayGroups.find((g) => g.label.includes(day))
+  if (!group) return []
+  const slots = group.slots
+  const max = config.maxConsecutiveSlots || 1
+  const out = []
+  for (let i = 0; i < slots.length; i++) {
+    for (let len = 1; len <= Math.min(max, slots.length - i); len++) {
+      const start = slots[i].start
+      const end = slots[i + len - 1].end
+      out.push({ time: bandTime(start, end), start, end })
+    }
+  }
+  return out
+}
+
+// Bands may combine consecutive base slots (e.g. 8:00-10:15 + 10:15-12:30 ->
+// 8:00-12:30). Build the time string from start/end minutes.
+function bandTime(start, end) {
+  return `${minutesToHHMM(start)}-${minutesToHHMM(end)}`
+}
+
+function minutesToHHMM(min) {
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return `${h}:${String(m).padStart(2, '0')}`
+}
 
 export function toMinutes(hhmm) {
   const [h, m] = hhmm.split(':').map(Number)
@@ -78,28 +153,92 @@ export function daySlotTimes(day) {
 // 3. CSV parsing + derived index
 // ---------------------------------------------------------------------------
 
+// Tokenize one CSV line into fields, honoring double-quoted fields (with
+// "" escapes). A trailing-backslash/newline inside a quoted field is not
+// supported (registrar feeds are single-line per record).
+function csvFields(line) {
+  const fields = []
+  let cur = ''
+  let inQuotes = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cur += '"'
+          i++
+        } else {
+          inQuotes = false
+        }
+      } else {
+        cur += ch
+      }
+    } else if (ch === '"') {
+      inQuotes = true
+    } else if (ch === ',') {
+      fields.push(cur)
+      cur = ''
+    } else {
+      cur += ch
+    }
+  }
+  fields.push(cur)
+  return fields.map((f) => f.trim())
+}
+
+// Parse a schedule CSV into offering records. The header may be the round-trip /
+// registrar form `dept-prefix,course-number,section,instructor,days,times`
+// (optionally an extra `term` column, `F|W|S`) or use alternate synonyms for the
+// time column (`time`). Blank `days`/`times` mark an unscheduled offering.
+// Returns `[{ prefix, number, section, instructor, days, time, term? }]` where
+// `term` is present only when the source provided it.
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/)
-  const header = lines[0].split(',').map((h) => h.trim())
+  const header = csvFields(lines[0])
   const rows = []
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line) continue
-    const cells = line.split(',')
+    const cells = csvFields(line)
     const rec = {}
     header.forEach((h, idx) => {
       rec[h] = (cells[idx] || '').trim()
     })
-    rows.push({
+    const time = rec['times'] != null && rec['times'] !== '' ? rec['times'] : rec['time'] || ''
+    const out = {
       prefix: rec['dept-prefix'],
       number: rec['course-number'],
       section: rec['section'],
       instructor: rec['instructor'],
       days: rec['days'],
-      time: rec['times'],
-    })
+      time,
+    }
+    if (rec['term'] != null && rec['term'] !== '') out.term = rec['term']
+    rows.push(out)
   }
   return rows
+}
+
+// Serialize offerings back to the importable CSV form (an exact round-trip of
+// `parseCsv`). `rows` are offering records; an optional `term` per row is written
+// when the caller provides it. Header is `dept-prefix,course-number,section,
+// instructor,days,times` plus `term` when any non-empty term is present.
+export function renderCsv(offerings) {
+  const includesTerm = offerings.some((o) => o.term != null && o.term !== '')
+  const header = ['dept-prefix', 'course-number', 'section', 'instructor', 'days', 'times']
+  if (includesTerm) header.push('term')
+  const quote = (v) => {
+    const s = String(v ?? '')
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+  }
+  const lines = [header.join(',')]
+  for (const o of offerings) {
+    const isTime = o.time != null && o.time !== '' ? o.time : o.times || ''
+    const rec = [o.prefix, o.number, o.section, o.instructor, o.days, isTime]
+    if (includesTerm) rec.push(o.term || '')
+    lines.push(rec.map(quote).join(','))
+  }
+  return lines.join('\n')
 }
 
 // Order two schedule items consistently: dept prefix, then course number
@@ -122,17 +261,26 @@ export function compareCodes(a, b) {
 
 // Computes the day-set string for a course after an edit-mode drag. `days` is
 // the offering's current day letters (e.g. "MW"), `fromDay` the specific day
-// the drag started from, `toGroup` the target slot's day group ("MWF"/"TR"),
-// `toDay` the specific target day. Rules:
-//   1. Different day group -> adopt the target group's full day set ("TR"/"MWF")
+// the drag started from, `toGroup` the target slot's day group, `toDay` the
+// specific target day. `termKey` selects the term's day groups (defaults to
+// Fall's MWF/TR behavior). Rules:
+//   1. Different day group -> adopt the target group's full day set
 //   2. Same group (or same day / unknown source day) -> keep the current days,
 //      only the time changes
 //   3. Same group, different day -> swap `fromDay` for `toDay` (deduped and
 //      ordered by the week), e.g. "MW" dragged onto Friday becomes "WF"
-export function rescheduleDays(days, fromDay, toGroup, toDay) {
+export function rescheduleDays(days, fromDay, toGroup, toDay, termKey) {
+  const config = termConfig(termKey)
   const cur = (days || '').split('').filter((d) => 'MTWRF'.includes(d))
   if (!cur.length) return toGroup
-  const curGroup = cur.includes('T') || cur.includes('R') ? 'TR' : 'MWF'
+  // The group a set of days belongs to, per this term's groups.
+  const groupFor = (set) => {
+    for (const g of config.dayGroups) {
+      if (set.every((d) => g.label.includes(d))) return g.label
+    }
+    return toGroup
+  }
+  const curGroup = groupFor(cur)
   if (toGroup !== curGroup) return toGroup
   if (!fromDay || fromDay === toDay) return cur.join('')
   const seen = new Set()
@@ -149,12 +297,17 @@ export function rescheduleDays(days, fromDay, toGroup, toDay) {
 
 // Reschedules an offering and recomputes `days` from the drag context
 // (`fromDay`/`toDay`/`toGroup`) instead of taking a raw day string.
-export function moveOfferingSmart(offerings, { prefix, number, section }, { fromDay, toDay, group, time }) {
+export function moveOfferingSmart(
+  offerings,
+  { prefix, number, section },
+  { fromDay, toDay, group, time },
+  termKey,
+) {
   const idx = (offerings || []).findIndex(
     (o) => o.prefix === prefix && o.number === number && o.section === section,
   )
   if (idx < 0) return offerings
-  const days = rescheduleDays((offerings[idx] || {}).days, fromDay, group, toDay)
+  const days = rescheduleDays((offerings[idx] || {}).days, fromDay, group, toDay, termKey)
   const next = offerings.slice()
   next[idx] = { ...next[idx], days, time }
   return next
@@ -229,30 +382,42 @@ export function dragPayloadFrom(e) {
   }
 }
 
-// Build derived index once schedule data is available.
+// Build derived index once schedule data is available. Offerings with no
+// meeting time (blank `days` or `time`) are "unscheduled" (e.g. independent
+// studies): they still group by course and instructor but appear only in the
+// `unscheduled` list, never on the calendar or in conflict detection. The rest
+// are indexed by course / day / slot / instructor.
 export function buildIndex(offerings) {
   const byCourse = {}
   const byDay = { M: [], T: [], W: [], R: [], F: [] }
   const bySlot = {}
   const byInstructor = {}
+  const unscheduled = []
 
   const eachItem = (o) => {
     const code = `${o.prefix} ${o.number}`
-    const days = o.days.split('')
-    const [startStr, endStr] = o.time.split('-')
-    const start = toMinutes(startStr)
-    const end = toMinutes(endStr)
+    const days = (o.days || '').split('').filter((d) => 'MTWRF'.includes(d))
+    const t = o.time || ''
+    const [startStr, endStr] = t.split('-')
+    const start = t ? toMinutes(startStr) : null
+    const end = t ? toMinutes(endStr) : null
     return { o, code, sid: o.$sid, sectionLabel: `Section ${o.section}`, start, end, days }
   }
 
   for (const o of offerings) {
     const item = eachItem(o)
+    const scheduled = Boolean(item.o.days && item.o.time && item.start != null && item.end != null)
 
     if (!byCourse[item.code]) byCourse[item.code] = []
     byCourse[item.code].push(item)
 
     if (!byInstructor[o.instructor]) byInstructor[o.instructor] = []
     byInstructor[o.instructor].push(item)
+
+    if (!scheduled) {
+      unscheduled.push(item)
+      continue
+    }
 
     for (const d of item.days) {
       byDay[d].push(item)
@@ -266,8 +431,9 @@ export function buildIndex(offerings) {
   for (const list of Object.values(byInstructor)) list.sort(compareItems)
   for (const list of Object.values(byDay)) list.sort(compareItems)
   for (const list of Object.values(bySlot)) list.sort(compareItems)
+  unscheduled.sort(compareItems)
 
-  return { byCourse, byDay, bySlot, byInstructor }
+  return { byCourse, byDay, bySlot, byInstructor, unscheduled }
 }
 
 // ---------------------------------------------------------------------------
@@ -337,10 +503,27 @@ export const DAY_START_MIN = 480 // 8:00
 export const DAY_END_MIN = 960 // 16:00
 export const PX_PER_MIN = 1
 
-export function hourMarks() {
-  // Hour ruler marks between 8:00 and 16:00, as { label, min }.
+// The day range to render, computed from the offered blocks so classes with
+// arbitrary (early/late) times are visible. Falls back to the standard range
+// when nothing is scheduled.
+export function calendarDayRange(index) {
+  let min = Infinity
+  let max = -Infinity
+  const walk = (items) => {
+    for (const it of items || []) {
+      if (it.start < min) min = it.start
+      if (it.end > max) max = it.end
+    }
+  }
+  walk(index && index.byDay.M)
+  if (min === Infinity) min = DAY_START_MIN
+  if (max === -Infinity) max = DAY_END_MIN
+  return { start: min, end: max }
+}
+
+export function hourMarks(start = DAY_START_MIN, end = DAY_END_MIN) {
   const marks = []
-  for (let m = DAY_START_MIN; m <= DAY_END_MIN; m += 60) {
+  for (let m = start; m <= end; m += 60) {
     marks.push({ label: formatHour(m), min: m })
   }
   return marks

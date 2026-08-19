@@ -1,13 +1,17 @@
-import { SLOT_BLOCKS, WEEKDAYS, formatTime, compareInstructors } from '@major-vis/schedule-core'
-import { scheduleById, updateOffering, removeCourseFromSchedule } from '../src/scheduleStore.js'
+import {
+  WEEKDAYS,
+  formatTime,
+  compareInstructors,
+  termConfig,
+  termSlotOptions,
+} from '@major-vis/schedule-core'
+import { scheduleById, updateOffering, removeCourseFromSchedule, activeTerm } from '../src/scheduleStore.js'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 
 const { computed, ref } = Vue
 
-// The days each standard slot group can be scheduled on: MWF slots only ever
-// meet M/W/F, TR slots only T/R. Picking a slot constrains the day toggles to
-// its group.
-const GROUP_DAYS = { MWF: ['M', 'W', 'F'], TR: ['T', 'R'] }
+// Day letters available per term group (Spring is a single MTWRF group).
+const GROUP_DAYS = { MWF: ['M', 'W', 'F'], TR: ['T', 'R'], MTWRF: ['M', 'T', 'W', 'R', 'F'] }
 
 export default {
   name: 'ScheduleCourseEdit',
@@ -20,7 +24,13 @@ export default {
     const o = props.offering.o
 
     const schedule = computed(() => scheduleById(props.scheduleId))
-    const courseOfferings = computed(() => schedule.value?.offerings || [])
+
+    // Instructor dropdowns are drawn from the whole *term* the course is in.
+    const courseOfferings = computed(() => {
+      const s = schedule.value
+      const part = s && s.terms && s.terms[activeTerm.value]
+      return part ? part.offerings : []
+    })
 
     const deptInstructors = computed(() => {
       const set = new Set()
@@ -41,54 +51,83 @@ export default {
     const instructorSel = ref(o.instructor || '')
     const sectionSel = ref(o.section || '')
 
-    // Time-slot groups, each with its own day letters and time options. A
-    // non-standard current time is folded into the group matching its days.
-    const dayGroups = computed(() => {
-      const groups = SLOT_BLOCKS.map((b) => ({
-        label: b.label,
-        days: GROUP_DAYS[b.label],
-        slots: b.slots.map((s) => s.time),
-      }))
-      const all = groups.flatMap((g) => g.slots)
-      if (o.time && !all.includes(o.time)) {
-        const label = (o.days || '').includes('T') || (o.days || '').includes('R') ? 'TR' : 'MWF'
-        const grp = groups.find((g) => g.label === label)
-        grp.slots = [...grp.slots, o.time]
-      }
-      return groups
-    })
-
+    // --- Time mode -----------------------------------------------------
+    // 'slot' (a term band), 'custom' (arbitrary start/end), or 'none'
+    // (unscheduled — independent study with no meeting time).
+    const config = termConfig(activeTerm.value)
     const initLetters = (o.days || '').split('').filter((d) => 'MTWRF'.includes(d))
-    const timeSel = ref(o.time || dayGroups.value[0].slots[0])
-    // A single day set, scoped to the currently selected slot's group. Picking a
-    // slot in another group resets the days to that group's full set.
-    const daysSel = ref(initLetters)
-    const timeGroupSel = computed(
-      () => dayGroups.value.find((g) => g.slots.includes(timeSel.value))?.label || null,
-    )
-    const activeDays = computed(() => {
-      const label = timeGroupSel.value
-      if (!label) return []
-      return daysSel.value.filter((d) => GROUP_DAYS[label].includes(d))
-    })
 
-    const pickTime = (label, t) => {
-      timeSel.value = t
+    const timeMode = ref(o.time ? 'slot' : 'none')
+    const timeSel = ref(o.time || '')
+    const daysSel = ref(initLetters)
+    const customStart = ref(o.time ? o.time.split('-')[0] : '12:00')
+    const customEnd = ref(o.time ? o.time.split('-')[1] : '13:00')
+
+    // The day group for the current selection (or the first group). Default to
+    // the group that contains the course's existing days, else the term's first.
+    const dayGroups = computed(() =>
+      config.dayGroups.map((g) => ({
+        label: g.label,
+        days: GROUP_DAYS[g.label] || g.label.split(''),
+      })),
+    )
+    const groupForDays = (letters) => {
+      if (!letters.length) return config.dayGroups[0].label
+      for (const g of config.dayGroups) {
+        if (letters.every((d) => g.label.includes(d))) return g.label
+      }
+      return config.dayGroups[0].label
+    }
+    const timeGroupSel = ref(groupForDays(initLetters))
+
+    const pickGroup = (label) => {
+      timeGroupSel.value = label
+      // adopt the group's full day set when switching groups
       daysSel.value = [...GROUP_DAYS[label]]
     }
-    const toggleDay = (label, d) => {
-      if (label !== timeGroupSel.value) return
+    const toggleDay = (d) => {
+      const g = GROUP_DAYS[timeGroupSel.value]
+      if (!g.includes(d)) return
       daysSel.value = daysSel.value.includes(d) ? daysSel.value.filter((x) => x !== d) : [...daysSel.value, d]
     }
 
-    const canSave = computed(() => activeDays.value.length > 0 && Boolean(timeSel.value))
+    // Term slot bands for the active day group (incl. consecutive pairs in Spring).
+    const groupSlots = computed(() => {
+      const label = timeGroupSel.value
+      const day = (GROUP_DAYS[label] || 'M')[0]
+      return termSlotOptions(activeTerm.value, day).map((s) => s.time)
+    })
+    const slotOptions = computed(() => {
+      const base = groupSlots.value
+      if (timeMode.value === 'custom' && timeSel.value && !base.includes(timeSel.value)) {
+        return [...base, timeSel.value]
+      }
+      return base
+    })
+
+    const canSave = computed(() => {
+      if (timeMode.value === 'none') return true
+      if (timeMode.value === 'custom') return Boolean(customStart.value && customEnd.value)
+      return Boolean(timeSel.value)
+    })
 
     const courseName = computed(() => catalogCourseName(props.offering.code))
+    const termLabel = computed(() => termConfig(activeTerm.value).label)
 
     const save = () => {
       if (!canSave.value) return
-      const label = timeGroupSel.value
-      const days = label ? WEEKDAYS.filter((d) => daysSel.value.includes(d)).join('') : o.days || ''
+      let days = o.days || ''
+      let time = o.time || ''
+      if (timeMode.value === 'none') {
+        days = ''
+        time = ''
+      } else if (timeMode.value === 'custom') {
+        days = WEEKDAYS.filter((d) => daysSel.value.includes(d)).join('')
+        time = `${customStart.value}-${customEnd.value}`
+      } else {
+        days = WEEKDAYS.filter((d) => daysSel.value.includes(d)).join('')
+        time = timeSel.value
+      }
       updateOffering(
         props.scheduleId,
         { prefix: o.prefix, number: o.number, section: o.section },
@@ -96,7 +135,7 @@ export default {
           instructor: instructorSel.value,
           section: sectionSel.value.trim() || o.section,
           days,
-          time: timeSel.value,
+          time,
         },
       )
       emit('close')
@@ -117,17 +156,24 @@ export default {
       instructorOptions,
       instructorSel,
       sectionSel,
+      timeMode,
       timeSel,
+      slotOptions,
       dayGroups,
       daysSel,
       timeGroupSel,
-      pickTime,
+      pickGroup,
       toggleDay,
+      customStart,
+      customEnd,
       canSave,
       save,
       removeCourse,
       courseName,
+      termLabel,
       formatTime,
+      activeTerm,
+      GROUP_DAYS,
     }
   },
   template: `
@@ -139,8 +185,8 @@ export default {
         </div>
         <div class="modal-body">
           <p class="modal-intro">
-            {{ courseName }} — editing this offering in <strong>{{ schedule.name }}</strong>. Any changes are saved
-            to this schedule in your browser.
+            {{ courseName }} — editing this offering in <strong>{{ schedule.name }}</strong>
+            ({{ termLabel }}). Any changes are saved to this schedule in your browser.
           </p>
 
           <div class="field">
@@ -161,14 +207,18 @@ export default {
           </div>
 
           <div class="field">
-            <label>Time slot &amp; days</label>
-            <div class="slot-time-groups">
-              <div
-                class="slot-time-group"
-                v-for="g in dayGroups"
-                :key="g.label"
-                :class="{ active: timeGroupSel === g.label }"
-              >
+            <label>Meeting time</label>
+            <div class="filter-group">
+              <button class="filter-btn" :class="{ active: timeMode === 'slot' }" @click="timeMode = 'slot'">Time slot</button>
+              <button class="filter-btn" :class="{ active: timeMode === 'custom' }" @click="timeMode = 'custom'">Custom time</button>
+              <button class="filter-btn" :class="{ active: timeMode === 'none' }" @click="timeMode = 'none'">No meeting time</button>
+            </div>
+
+            <div v-if="timeMode !== 'none'" class="slot-time-groups">
+              <div class="slot-time-group" v-for="g in dayGroups" :key="g.label" :class="{ inactive: timeGroupSel !== g.label }">
+                <button class="slot-time-group-name" :class="{ active: timeGroupSel === g.label }" @click="pickGroup(g.label)">
+                  {{ g.label }}
+                </button>
                 <div class="slot-time-group-days">
                   <button
                     v-for="d in g.days"
@@ -177,22 +227,29 @@ export default {
                     class="day-chip"
                     :class="{ active: daysSel.includes(d), disabled: timeGroupSel !== g.label }"
                     :disabled="timeGroupSel !== g.label"
-                    :title="timeGroupSel === g.label ? '' : 'Pick a ' + g.label + ' time to change its days'"
-                    @click="toggleDay(g.label, d)"
+                    @click="timeGroupSel === g.label && toggleDay(d)"
                   >{{ d }}</button>
                 </div>
-                <div class="slot-time-opts">
-                  <button
-                    v-for="s in g.slots"
-                    :key="s"
-                    type="button"
-                    class="filter-btn slot-time-btn"
-                    :class="{ active: timeSel === s }"
-                    @click="pickTime(g.label, s)"
-                  >{{ formatTime(s) }}</button>
-                </div>
+              </div>
+
+              <div v-if="timeMode === 'slot'" class="slot-time-opts">
+                <button
+                  v-for="s in slotOptions"
+                  :key="s"
+                  type="button"
+                  class="filter-btn slot-time-btn"
+                  :class="{ active: timeSel === s }"
+                  @click="timeSel = s"
+                >{{ formatTime(s) }}</button>
+              </div>
+
+              <div v-if="timeMode === 'custom'" class="custom-time-row">
+                <input class="search-input" type="time" v-model="customStart" aria-label="Start time" />
+                <span class="custom-time-sep">to</span>
+                <input class="search-input" type="time" v-model="customEnd" aria-label="End time" />
               </div>
             </div>
+            <p v-else class="field-hint">Independent studies and the like can sit in the schedule without a meeting time.</p>
           </div>
 
           <div class="controls">

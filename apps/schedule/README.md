@@ -13,17 +13,37 @@ college-hosted source.
 
 ## Persistence (localStorage)
 
-- `major-vis.schedules` — `[{ id, name, offerings }]`
+- `major-vis.schedules` — `[{ id, name, year, terms: { F: { offerings, version }, W: ..., S: ... } }]`
 - `major-vis.schedule.selected` — visible schedule ids
 - `major-vis.schedule.color` — "color by schedule" toggle
+- `major-vis.schedule.term` — the active term (`F`/`W`/`S`)
+
+A **schedule** is a named, yearly entry that owns three term parts (Fall/Winter/
+Spring), each a separate `offerings` collection; the app edits one term at a time
+(`activeTerm`). Older single-term records are migrated on load into every term
+part.
 
 An **offering** record: `{ prefix, number, section, instructor, days, time }`
-(`days` ⊆ `MTWRF`, `time` = `"HH:MM-HH:MM"`). This is the same shape
-`parseCsv`/`makeSchedule` produce, so it maps directly to registrar-style data
-feeds. Domain logic lives in `@major-vis/schedule-core`.
+(`days` ⊆ `MTWRF`, `time` = `"HH:MM-HH:MM"`). Blank `days`/`time` mark an
+**unscheduled** offering (independent studies) — present in the schedule but
+excluded from the calendar/conflicts. This is the same shape `parseCsv`/
+`makeSchedule` produce, so it maps directly to registrar-style data feeds.
+Domain logic lives in `@major-vis/schedule-core`.
+
+Term slot sets are provided by `@major-vis/schedule-core`'s `TERM_CONFIGS`:
+Fall/Winter share a standard MWF/TR set; Spring has a single MTWRF group of four
+slots, and a course may occupy up to two consecutive slots. Custom start/end
+times are allowed (the calendar grows to fit them); an offering can also be set
+to "No meeting time".
+
+**CSV**: use the schedule app's "Upload CSV" to load a file into a schedule's
+active term (or its `term` column parts); the file is the same round-trip /
+registrar format (`dept-prefix,course-number,section,instructor,days,times`
+plus optional `term`) produced by "Download year CSV". `parseCsv`/`renderCsv`
+in `@major-vis/schedule-core` implement the format (quoted-field aware).
 
 On load the app seeds a deterministic "Sample schedule" (`seedSampleSchedule`,
-seed 42) unless schedules already exist.
+seed 42) into the Fall part unless schedules already exist.
 
 ## Routes
 

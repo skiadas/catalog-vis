@@ -1,14 +1,15 @@
 import {
   daySlotBlocks,
-  blockStyle,
   formatTime,
   buildVisual,
   briefInstructor,
-  SLOT_BLOCKS,
+  termSlotOptions,
+  termDayGroup,
   toMinutes,
+  calendarDayRange,
   colorForSchedule,
 } from '@major-vis/schedule-core'
-import { selectedDepartments, selectedInstructors, filterMode } from '../src/scheduleStore.js'
+import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
 import {
   schedule,
   selectedScheduleIds,
@@ -23,9 +24,10 @@ import WeeklyCalendar from './WeeklyCalendar.js'
 
 const { computed } = Vue
 
-// The day-group a weekday column belongs to: MWF days are M/W/F, TR days are T/R.
+// The day-group a weekday column belongs to, per the active term (e.g. MWF days
+// are M/W/F, TR days T/R; Spring is a single MTWRF group).
 function dayGroup(day) {
-  return day === 'M' || day === 'W' || day === 'F' ? 'MWF' : 'TR'
+  return termDayGroup(activeTerm.value, day)
 }
 
 export default {
@@ -61,11 +63,18 @@ export default {
       return out
     }
 
+    const dayRange = computed(() => calendarDayRange(schedule.value))
+    // Position a band relative to the visible day range's start (1px/min).
+    const blockStyleFor = (band) => ({
+      top: band.start - dayRange.value.start + 'px',
+      height: band.end - band.start + 'px',
+    })
+
     const blocksInDay = (day) =>
       dayBlocks(day).map((slot) => ({
         key: slot.time,
         slot,
-        style: blockStyle(slot),
+        style: blockStyleFor(slot),
         title: slotTitle(slot),
         active: filter.value.active,
       }))
@@ -77,17 +86,10 @@ export default {
       moveOffering,
     )
 
-    // The 10 standard time slots per weekday are the drop targets. Bands already
-    // occupied by a block get their drop handling on the block itself; the rest
-    // become empty drop zones.
-    const standardTimes = (day) => {
-      const times = []
-      for (const block of SLOT_BLOCKS) {
-        if (!block.label.includes(day)) continue
-        for (const slot of block.slots) times.push(slot.time)
-      }
-      return times
-    }
+    // The assignable time bands per weekday for the active term are the drop
+    // targets. Bands already occupied by a block get their drop handling on the
+    // block itself; the rest become empty drop zones.
+    const standardTimes = (day) => termSlotOptions(activeTerm.value, day).map((s) => s.time)
     const dropZones = (day) => {
       const occupied = new Set(dayBlocks(day).map((b) => b.time))
       return standardTimes(day)
@@ -100,7 +102,7 @@ export default {
             day,
             days: dayGroup(day),
             time,
-            style: blockStyle(band),
+            style: blockStyleFor(band),
           }
         })
     }
@@ -108,6 +110,7 @@ export default {
     return {
       formatTime,
       schedule,
+      dayRange,
       blocksInDay,
       filter,
       briefInstructor,
@@ -128,7 +131,7 @@ export default {
   },
   template: `
     <div>
-      <WeeklyCalendar :on-day-click="goScheduleDay" :striped="filter.active">
+      <WeeklyCalendar :on-day-click="goScheduleDay" :striped="filter.active" :range="dayRange">
         <template #daycol="{ day }">
           <div
             v-for="z in dropZones(day)"

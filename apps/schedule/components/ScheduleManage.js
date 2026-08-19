@@ -10,9 +10,11 @@ import {
   duplicateSchedule,
   generateSchedule,
   editingScheduleId,
+  activeTerm,
+  termOfferings,
 } from '../src/scheduleStore.js'
 import { allCourses } from '@major-vis/catalog-client'
-import { colorForSchedule } from '@major-vis/schedule-core'
+import { colorForSchedule, TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
 
 const { ref, computed } = Vue
 
@@ -33,6 +35,7 @@ export default {
     const showCreate = ref(false)
     const newKind = ref('empty')
     const newName = ref('')
+    const newYear = ref('')
     const newDept = ref('')
     const deptOptions = computed(() => {
       const set = new Set()
@@ -46,8 +49,9 @@ export default {
     const doCreate = () => {
       const mode = newKind.value === 'dept' ? 'dept' : newKind.value === 'empty' ? 'empty' : 'random'
       const dept = mode === 'dept' ? newDept.value || deptOptions.value[0] : undefined
-      generateSchedule({ mode, dept, name: newName.value })
+      generateSchedule({ mode, dept, name: newName.value, year: newYear.value })
       newName.value = ''
+      newYear.value = ''
       newKind.value = 'empty'
       showCreate.value = false
     }
@@ -73,6 +77,7 @@ export default {
       showCreate,
       newKind,
       newName,
+      newYear,
       newDept,
       deptOptions,
       openCreate,
@@ -85,6 +90,10 @@ export default {
       editingScheduleId,
       editSchedule,
       colorForSchedule,
+      activeTerm,
+      termOfferings,
+      TERM_KEYS,
+      TERM_LABELS,
     }
   },
   template: `
@@ -110,7 +119,12 @@ export default {
               <span class="schedule-swatch" :style="{ backgroundColor: colorForSchedule(s.id) }"></span>
               <div class="schedule-manage-main">
                 <div class="schedule-manage-name">{{ s.name }}</div>
-                <div class="schedule-manage-meta">{{ s.offerings.length }} offerings</div>
+                <div class="schedule-manage-meta">
+                  {{ s.year || '—' }} · {{ termOfferings(s).length }} offerings this term
+                  <span v-if="TERM_KEYS.some((t) => termOfferings(s, t).length)"> ·
+                    {{ TERM_KEYS.map((t) => (termOfferings(s, t).length ? TERM_LABELS[t] + ': ' + termOfferings(s, t).length : '')).filter(Boolean).join(', ') }}
+                  </span>
+                </div>
               </div>
               <button
                 class="schedule-manage-eye"
@@ -165,6 +179,10 @@ export default {
           <div class="field">
             <label for="schedule-create-name">Name (optional)</label>
             <input id="schedule-create-name" class="search-input" type="text" placeholder="Auto-named if blank" v-model="newName" />
+          </div>
+          <div class="field">
+            <label for="schedule-create-year">Year (optional)</label>
+            <input id="schedule-create-year" class="search-input" type="text" placeholder="e.g. 2026-27" v-model="newYear" />
           </div>
           <div class="field">
             <label>Type</label>

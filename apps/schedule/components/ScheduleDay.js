@@ -2,13 +2,14 @@ import { route } from '../router.js'
 import {
   WEEKDAYS,
   WEEKDAY_NAMES,
-  SLOT_BLOCKS,
+  termSlotOptions,
+  termDayGroup,
   formatTime,
   slotKey,
   buildVisual,
   colorForSchedule,
 } from '@major-vis/schedule-core'
-import { selectedDepartments, selectedInstructors, filterMode } from '../src/scheduleStore.js'
+import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
 import {
   schedule,
   selectedScheduleIds,
@@ -28,6 +29,7 @@ export default {
   components: { CoursePill },
   setup() {
     const day = computed(() => route.value.params.day)
+    const dayGroup = (d) => termDayGroup(activeTerm.value, d)
 
     // In edit mode the filter is overridden (like the grid) so the edited
     // schedule's courses are all visible, individually colored, and editable.
@@ -48,17 +50,16 @@ export default {
     const prevDay = () => goScheduleDay(WEEKDAYS[(dayIndex.value + WEEKDAYS.length - 1) % WEEKDAYS.length])
     const nextDay = () => goScheduleDay(WEEKDAYS[(dayIndex.value + 1) % WEEKDAYS.length])
 
-    // Every standard time band for the day, in order: occupied ones render as
-    // offering cards, empty ones as drop targets for edit-mode drags.
-    const dayTimes = computed(() => {
-      const out = []
-      for (const block of SLOT_BLOCKS) {
-        if (!block.label.includes(day.value)) continue
-        for (const slot of block.slots)
-          out.push({ key: slot.time, day: day.value, days: block.label, ...slot })
-      }
-      return out
-    })
+    // The assignable time bands for the day in the active term, in order:
+    // occupied ones render as offering cards, empty ones as drop targets.
+    const dayTimes = computed(() =>
+      termSlotOptions(activeTerm.value, day.value).map((s) => ({
+        key: s.time,
+        day: day.value,
+        days: dayGroup(day.value),
+        ...s,
+      })),
+    )
     const itemsFor = (time) => {
       let items = schedule.value.bySlot[slotKey(day.value, time)] || []
       if (filter.value.active) items = items.filter((it) => filter.value.matches(it))

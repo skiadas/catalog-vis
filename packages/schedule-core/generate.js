@@ -5,7 +5,7 @@
 // ({prefix, number, section, instructor, days, time}) so a generated schedule can
 // be stored in the schedule collection alongside CSV-parsed ones.
 
-import { SLOT_BLOCKS } from './schedule.js'
+import { WEEKDAYS, termConfig, termSlotOptions } from './schedule.js'
 
 // Small deterministic PRNG (mulberry32) so generation is reproducible per seed.
 export function mulberry32(seed) {
@@ -83,20 +83,31 @@ export function buildFacultyAndEligible(programs, allCourses) {
   return { facultyByPrefix, eligible }
 }
 
-// All week slots as "DAYS|time" keys.
-function allSlots() {
+// Assignable slot keys for the term (default Fall) as "DAYS|time" bands.
+function allSlots(termKey) {
   const keys = []
-  for (const block of SLOT_BLOCKS) {
-    for (const slot of block.slots) keys.push(`${block.label}|${slot.time}`)
+  for (const day of WEEKDAYS) {
+    for (const opt of termSlotOptions(termKey, day)) {
+      keys.push(`${day}|${opt.time}`)
+    }
   }
   return keys
 }
 
 // Generate a schedule. `mode` is 'random' (all departments, ~30%) or 'dept'
-// (exclusively `prefix`, ~40% of that department). Returns offerings.
-export function makeSchedule(mode, prefix, facultyByPrefix, eligible, seed) {
+// (exclusively `prefix`, ~40% of that department). `termKey` selects the term's
+// slot bands (default Fall's standard MWF/TR). Returns offerings.
+export function makeSchedule(mode, prefix, facultyByPrefix, eligible, seed, termKey = 'F') {
   const rng = mulberry32(seed)
-  const slots = allSlots()
+  const slots = allSlots(termKey)
+  const termDayGroups = termConfig(termKey).dayGroups
+  // Which day letters a slot band belongs to: the term group that includes the
+  // slot's specific day (all bands from `termSlotOptions(day)` share its day).
+  const labelFor = (sk) => {
+    const day = sk.split('|')[0]
+    const group = termDayGroups.find((g) => g.label.includes(day))
+    return group ? group.label : day
+  }
 
   let chosen
   if (mode === 'dept' && prefix) {
@@ -155,13 +166,14 @@ export function makeSchedule(mode, prefix, facultyByPrefix, eligible, seed) {
     .filter((o) => assignment[`${o.prefix} ${o.number} ${o.section}`])
     .map((o) => {
       const sk = assignment[`${o.prefix} ${o.number} ${o.section}`]
-      const [days, time] = sk.split('|')
+      const [day] = sk.split('|')
+      const time = sk.slice(day.length + 1)
       return {
         prefix: o.prefix,
         number: o.number,
         section: o.section,
         instructor: instructorOf[`${o.prefix} ${o.number}`],
-        days,
+        days: labelFor(sk),
         time,
       }
     })

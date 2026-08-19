@@ -1,8 +1,15 @@
-// Schedule app store: the schedule collection, display filters, generation, and
-// editing state. Persists to localStorage (`major-vis.schedule.*`) and depends
-// on the catalog data layer (`@major-vis/catalog-client`) for course names and
-// faculty pools (generation). Pure domain logic lives in
-// `@major-vis/schedule-core`.
+// Schedule app store: the schedule collection, the active term, display filters,
+// generation, and editing state. Persists to localStorage (`major-vis.schedule.*`)
+// and depends on the catalog data layer (`@major-vis/catalog-client`) for course
+// names and faculty pools (generation) and `@major-vis/schedule-core` for the
+// term slot model and domain helpers.
+//
+// A "schedule" is created with a name + year and owns three term parts (Fall,
+// Winter, Spring), each a separate offerings collection (see the integration
+// plan). The app works on one term part at a time (`activeTerm`): the grid/day/
+// slot/course/instructor views and edit operations all target that part, so Math
+// and Biology can each have their own named yearly schedules and the registrar
+// its own. Any subset of schedules may be displayed at once, merged per term.
 
 import {
   buildIndex,
@@ -12,6 +19,7 @@ import {
   nextSectionLetter,
   addOfferingToSchedule,
   removeOfferingFromSchedule,
+  TERM_KEYS,
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
 import { programs, allCourses } from '@major-vis/catalog-client'
@@ -23,13 +31,11 @@ export const selectedInstructors = ref([])
 export const filterMode = ref('dept')
 
 // ---- Schedule collection state ------------------------------------------
-// Schedules are named, editable collections of offerings, persisted to
-// localStorage. Any subset may be displayed at once; the merged, indexed view
-// (`schedule` / `scheduleOfferings`) is derived below. This layers naturally onto
-// future editing/creation workflows.
-
+// Schedules are named, yearly entries with three term parts, persisted to
+// localStorage. The active term selects which part every view/edit operates on.
 export const schedules = ref([])
 export const selectedScheduleIds = ref([])
+export const activeTerm = ref('F')
 
 // Whether to color courses by schedule when multiple schedules are shown and no
 // department/instructor filter is active. Off by default (grid shows clean count
@@ -38,7 +44,8 @@ export const selectedScheduleIds = ref([])
 export const colorSchedules = ref(false)
 
 // The schedule currently being edited, or null. In edit mode the schedule's
-// courses can be dragged onto the grid's standard time slots to be rescheduled.
+// active-term courses can be dragged onto the grid's standard time slots to be
+// rescheduled.
 export const editingScheduleId = ref(null)
 
 // The offering currently open in the course-edit modal (a merged item with `o`,
@@ -57,10 +64,18 @@ export function closeCourseEdit() {
 const LS_SCHEDULES = 'major-vis.schedules'
 const LS_SELECTED = 'major-vis.schedule.selected'
 const LS_COLOR = 'major-vis.schedule.color'
+const LS_TERM = 'major-vis.schedule.term'
 
 export function setColorSchedules(v) {
   colorSchedules.value = !!v
   if (typeof window !== 'undefined') localStorage.setItem(LS_COLOR, colorSchedules.value ? '1' : '0')
+}
+
+// Switch which term part the app is looking at/editing. Persisted locally.
+export function setActiveTerm(term) {
+  if (!TERM_KEYS.includes(term)) return
+  activeTerm.value = term
+  if (typeof window !== 'undefined') localStorage.setItem(LS_TERM, term)
 }
 
 export function scheduleById(id) {
@@ -71,14 +86,47 @@ function scheduleId() {
   return 'sched_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }
 
-// Adds a schedule (offerings in parseCsv shape) and selects it.
-export function addSchedule(name, offerings) {
-  const schedule = { id: scheduleId(), name, offerings }
+// The term part of a schedule, defaulting to an empty part. `term` defaults to
+// the active term; explicit (year, term) lookups are used by the year picker.
+export function termPart(schedule, term = activeTerm.value) {
+  if (!schedule) return null
+  const part = (schedule.terms || {})[term]
+  return part || { offerings: [], version: 0 }
+}
+
+// Offerings of a schedule's term part (identity shape: prefix/number/section).
+export function termOfferings(schedule, term = activeTerm.value) {
+  const part = termPart(schedule, term)
+  return part ? part.offerings : []
+}
+
+// Adds a schedule, creating its three empty term parts. `offerings` (optional)
+// seeds the active term part — the callers that historically passed a flat
+// offerings list (CSV import, generation) now do so against the active term.
+// Selects the schedule and returns its id.
+export function addSchedule(name, year, offerings) {
+  const empty = {}
+  for (const t of TERM_KEYS) empty[t] = { offerings: [], version: 0 }
+  if (offerings) empty[activeTerm.value] = { offerings: [...(offerings || [])], version: 0 }
+  const schedule = { id: scheduleId(), name, year, terms: empty }
   schedules.value = [...schedules.value, schedule]
   selectedScheduleIds.value = [...selectedScheduleIds.value, schedule.id]
   persistSchedules()
   persistSelectedSchedules()
   return schedule.id
+}
+
+// Replaces the active term part of a schedule with `offerings` (CSV import,
+// generation, or a full-term paste), bumping its version.
+export function setTermOfferings(id, term, offerings) {
+  const s = scheduleById(id)
+  if (!s) return false
+  if (!s.terms[term]) s.terms[term] = { offerings: [], version: 0 }
+  s.terms[term].offerings = [...(offerings || [])]
+  s.terms[term].version = (s.terms[term].version || 0) + 1
+  schedules.value = [...schedules.value]
+  persistSchedules()
+  return true
 }
 
 // Removes a schedule and deselects it if it was visible.
@@ -102,16 +150,19 @@ export function renameSchedule(id, name) {
   return true
 }
 
-// Duplicates a schedule (deep-copied offerings) under an auto-generated name and
-// selects it. Returns the new schedule's id, or null if the source is missing.
+// Duplicates a schedule (deep-copied term parts) under an auto-generated name
+// and selects it. Returns the new schedule's id, or null if the source is missing.
 export function duplicateSchedule(id) {
   const s = scheduleById(id)
   if (!s) return null
-  const copy = {
-    id: scheduleId(),
-    name: s.name + ' (copy)',
-    offerings: (s.offerings || []).map((o) => ({ ...o })),
+  const terms = {}
+  for (const t of TERM_KEYS) {
+    terms[t] = {
+      offerings: (s.terms[t]?.offerings || []).map((o) => ({ ...o })),
+      version: s.terms[t]?.version || 0,
+    }
   }
+  const copy = { id: scheduleId(), name: s.name + ' (copy)', year: s.year, terms }
   schedules.value = [...schedules.value, copy]
   selectedScheduleIds.value = [...selectedScheduleIds.value, copy.id]
   persistSchedules()
@@ -137,61 +188,66 @@ export function setEditingSchedule(id) {
   editingScheduleId.value = target ? target.id : null
 }
 
-// Reschedules a single offering of `scheduleId` into a standard slot. The
-// `move` context is `{ fromDay, toDay, group, time }` where `group` is the
-// target slot's day group ("MWF"/"TR") and `time` one of the SLOT_BLOCKS times;
-// the target `days` are recomputed from the drag context (see `rescheduleDays`).
-// No-op if the offering can't be found.
+// Reschedules a single offering of `scheduleId`'s active term into a standard
+// slot. The `move` context is `{ fromDay, toDay, group, time }` (see
+// `rescheduleDays`). No-op if the offering can't be found.
 export function moveOffering(id, prefix, number, section, move) {
   const s = scheduleById(id)
   if (!s) return false
-  const next = moveOfferingSmart(s.offerings, { prefix, number, section }, move)
-  if (next === s.offerings) return false
-  scheduleById(id).offerings = next
+  const part = s.terms[activeTerm.value]
+  const next = moveOfferingSmart(part.offerings, { prefix, number, section }, move, activeTerm.value)
+  if (next === part.offerings) return false
+  part.offerings = next
+  part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
   persistSchedules()
   return true
 }
 
-// Rewrites an offering's editable fields (instructor / section / days / time).
-// `cur` is the offering's current identity (prefix/number/section) used to
-// locate it; `changes` replaces the rest. No-op if it can't be found.
+// Rewrites an offering's editable fields (instructor / section / days / time)
+// in the schedule's active term. `cur` is the offering's current identity
+// (prefix/number/section) used to locate it; `changes` replaces the rest.
 export function updateOffering(id, cur, changes) {
   const s = scheduleById(id)
   if (!s) return false
-  const next = updateOfferingInSchedule(s.offerings, cur, changes)
-  if (next === s.offerings) return false
-  scheduleById(id).offerings = next
+  const part = s.terms[activeTerm.value]
+  const next = updateOfferingInSchedule(part.offerings, cur, changes)
+  if (next === part.offerings) return false
+  part.offerings = next
+  part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
   persistSchedules()
   return true
 }
 
-// Adds a brand-new catalog course (by code) to a schedule, landing it in the
-// default slot with the first free section letter. Returns the merged edit-item
-// ({ o, code, sid }) so the caller can open the course editor, or null if the
-// schedule can't be found.
+// Adds a brand-new catalog course (by code) to the schedule's active term,
+// landing it in the default slot with the first free section letter. Returns the
+// merged edit-item ({ o, code, sid }) so the caller can open the course editor.
 export function addCourseToSchedule(id, code) {
   const s = scheduleById(id)
   if (!s) return null
+  const part = s.terms[activeTerm.value]
   const [prefix, number] = code.split(' ')
-  const section = nextSectionLetter(s.offerings, prefix, number)
+  const section = nextSectionLetter(part.offerings, prefix, number)
   const offering = { prefix, number, section, instructor: '', ...DEFAULT_SLOT }
-  scheduleById(id).offerings = addOfferingToSchedule(s.offerings, offering)
+  part.offerings = addOfferingToSchedule(part.offerings, offering)
+  part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
   persistSchedules()
   return { o: offering, code, sid: id }
 }
 
-// Removes the offering matching `cur` (prefix/number/section) from a schedule.
-// Also closes the editor if the edited course was the one removed. No-op if the
-// offering can't be found.
+// Removes the offering matching `cur` (prefix/number/section) from the
+// schedule's active term. Also closes the editor if the edited course was the
+// one removed.
 export function removeCourseFromSchedule(id, cur) {
   const s = scheduleById(id)
   if (!s) return false
-  const next = removeOfferingFromSchedule(s.offerings, cur)
-  if (next === s.offerings) return false
-  scheduleById(id).offerings = next
+  const part = s.terms[activeTerm.value]
+  const next = removeOfferingFromSchedule(part.offerings, cur)
+  if (next === part.offerings) return false
+  part.offerings = next
+  part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
   persistSchedules()
   if (courseEditTarget.value) {
@@ -203,19 +259,20 @@ export function removeCourseFromSchedule(id, cur) {
   return true
 }
 
-// Merged raw offerings across the selected schedules, tagged with their source id.
+// Merged raw offerings across the selected schedules for the active term, tagged
+// with their source schedule id.
 export const scheduleOfferings = computed(() => {
   if (!schedules.value.length) return []
   const sel = new Set(selectedScheduleIds.value)
   const out = []
   for (const s of schedules.value) {
     if (!sel.has(s.id)) continue
-    for (const o of s.offerings) out.push({ ...o, $sid: s.id })
+    for (const o of termOfferings(s, activeTerm.value)) out.push({ ...o, $sid: s.id })
   }
   return out
 })
 
-// The merged index over the selected schedules.
+// The merged index over the selected schedules' active-term offerings.
 export const schedule = computed(() => buildIndex(scheduleOfferings.value))
 
 function persistSchedules() {
@@ -226,12 +283,35 @@ function persistSelectedSchedules() {
   if (typeof window === 'undefined') return
   localStorage.setItem(LS_SELECTED, JSON.stringify(selectedScheduleIds.value))
 }
+// Normalizes a stored schedule: older {id,name,offerings} records (single-term)
+// become a schedule with that offering list in every part for backward
+// compatibility; new records already carry `terms`.
+function normalizeStored(raw) {
+  if (Array.isArray(raw.offerings)) {
+    const terms = {}
+    for (const t of TERM_KEYS) terms[t] = { offerings: raw.offerings.map((o) => ({ ...o })), version: 0 }
+    return { id: raw.id, name: raw.name, year: raw.year || '', terms }
+  }
+  if (raw.terms) {
+    const terms = {}
+    for (const t of TERM_KEYS)
+      terms[t] =
+        raw.terms[t] && Array.isArray(raw.terms[t].offerings)
+          ? { offerings: raw.terms[t].offerings.map((o) => ({ ...o })), version: raw.terms[t].version || 0 }
+          : { offerings: [], version: 0 }
+    return { id: raw.id, name: raw.name, year: raw.year || '', terms }
+  }
+  return null
+}
 function loadSchedules() {
   if (typeof window === 'undefined') return null
   try {
     const raw = localStorage.getItem(LS_SCHEDULES)
     const arr = raw ? JSON.parse(raw) : null
-    if (Array.isArray(arr) && arr.length && arr.every((s) => s && Array.isArray(s.offerings))) return arr
+    if (Array.isArray(arr) && arr.length) {
+      const norm = arr.map(normalizeStored).filter(Boolean)
+      if (norm.length) return norm
+    }
   } catch {
     /* ignore */
   }
@@ -250,12 +330,10 @@ function loadSelectedSchedules() {
 }
 
 // Seed the schedule collection. Prefers schedules already saved in localStorage;
-// otherwise populates from the freshly fetched sample schedule. A fresh user sees
-// only the Sample schedule (the pre-existing single schedule users already see)
-// selected by default; additional schedules are generated on demand.
+// otherwise populates from the freshly fetched sample schedule.
 function seedSchedules(seedList) {
   const stored = loadSchedules()
-  schedules.value = stored && stored.length ? stored : seedList
+  schedules.value = stored && stored.length ? stored : seedList.map(normalizeStored)
   if (!stored || !stored.length) persistSchedules()
   const selected = loadSelectedSchedules()
   const valid = (sel) =>
@@ -270,39 +348,38 @@ function seedSchedules(seedList) {
   if (typeof window !== 'undefined') {
     const c = localStorage.getItem(LS_COLOR)
     if (c !== null) colorSchedules.value = c === '1'
+    const t = localStorage.getItem(LS_TERM)
+    if (t && TERM_KEYS.includes(t)) activeTerm.value = t
   }
 }
 
-// Bootstraps the collection with the deterministic "Sample schedule" generated
-// from the live catalog (seed 42 for reproducibility). Call after the catalog
-// has loaded (`loadCatalog`).
+// Bootstraps the collection with the deterministic "Fall sample schedule"
+// generated from the live catalog (seed 42 for reproducibility) placed in its
+// Fall term part. Call after the catalog has loaded (`loadCatalog`).
 export function seedSampleSchedule() {
   const { facultyByPrefix, eligible } = buildFacultyAndEligible(programs.value, allCourses.value)
-  seedSchedules([
-    {
-      id: 'base',
-      name: 'Sample schedule',
-      offerings: makeSchedule('random', undefined, facultyByPrefix, eligible, 42),
-    },
-  ])
+  const empty = {}
+  for (const t of TERM_KEYS) empty[t] = { offerings: [], version: 0 }
+  empty.F.offerings = makeSchedule('random', undefined, facultyByPrefix, eligible, 42)
+  seedSchedules([{ id: 'base', name: 'Sample schedule', year: '', terms: empty }])
 }
 
 // Generates a new schedule from the live catalog. `mode` is 'random' (all
-// departments), 'dept' (exclusively `dept`'s courses), or 'empty' (a blank
-// schedule you fill in by hand). Names the schedule from the deed unless `name`
-// is provided; the new schedule is auto-selected.
-export function generateSchedule({ mode, dept, name } = {}) {
+// departments), 'dept' (exclusively `dept`'s courses), or 'empty'. The generated
+// offerings seed the schedule's active term.
+export function generateSchedule({ mode, dept, name, year } = {}) {
   let offerings
   let fallback
+  const t = activeTerm.value
   if (mode === 'empty') {
     offerings = []
     fallback = 'Empty schedule'
   } else {
     const { facultyByPrefix, eligible } = buildFacultyAndEligible(programs.value, allCourses.value)
     const seed = Math.floor(Math.random() * 2 ** 31)
-    offerings = makeSchedule(mode, dept, facultyByPrefix, eligible, seed)
+    offerings = makeSchedule(mode, dept, facultyByPrefix, eligible, seed, t)
     fallback = mode === 'dept' ? `Schedule for ${dept}` : 'Random schedule'
   }
   const label = name && name.trim() ? name.trim() : fallback
-  return addSchedule(label, offerings)
+  return addSchedule(label, year, offerings)
 }

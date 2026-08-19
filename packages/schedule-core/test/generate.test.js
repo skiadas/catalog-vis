@@ -84,3 +84,13 @@ test('mulberry32 is deterministic', () => {
   const b = mulberry32(123)
   for (let i = 0; i < 5; i++) assert.equal(a(), b())
 })
+
+test('makeSchedule spring term uses MTWRF single-group bands', () => {
+  const { facultyByPrefix, eligible } = buildFacultyAndEligible(PROGRAMS, ALL_COURSES)
+  const offerings = makeSchedule('random', undefined, facultyByPrefix, eligible, 42, 'S')
+  assert.ok(offerings.length > 0)
+  for (const o of offerings) {
+    assert.equal(o.days, 'MTWRF')
+    assert.match(o.time, /^\d{1,2}:\d{2}-\d{1,2}:\d{2}$/)
+  }
+})

@@ -17,9 +17,12 @@ import {
   editingSchedule,
   setEditingSchedule,
   renameSchedule,
+  activeTerm,
+  setActiveTerm,
   courseEditTarget,
   closeCourseEdit,
 } from '../src/scheduleStore.js'
+import { TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
 import ScheduleGrid from './ScheduleGrid.js'
 import ScheduleDay from './ScheduleDay.js'
 import ScheduleSlot from './ScheduleSlot.js'
@@ -137,6 +140,10 @@ export default {
       enterEdit,
       exitEdit,
       commitRename,
+      activeTerm,
+      setActiveTerm,
+      TERM_KEYS,
+      TERM_LABELS,
       courseEditTarget,
       closeCourseEdit,
       goScheduleGrid,
@@ -163,6 +170,16 @@ export default {
         </div>
 
         <SchedulePicker :active="showSchedules" @edit="enterEdit" @manage="showSchedules = true" />
+
+        <div class="term-tabs">
+          <button
+            v-for="t in TERM_KEYS"
+            :key="t"
+            class="filter-btn"
+            :class="{ active: activeTerm === t }"
+            @click="setActiveTerm(t)"
+          >{{ TERM_LABELS[t] }}</button>
+        </div>
 
         <div class="schedule-toolbar">
           <div class="schedule-tabs">

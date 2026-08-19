@@ -877,3 +877,77 @@
 .help-section li {
   margin-bottom: 2px;
 }
+
+/* Term (Fall/Winter/Spring) tab bar + CSV upload + custom-time editor */
+
+.term-tabs {
+  @include flex-row;
+  gap: var(--space-1);
+  margin: 8px 0 0;
+}
+.term-tabs .filter-btn {
+  flex: 0 0 auto;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--font-xs);
+  padding: 5px 14px;
+  border-radius: var(--radius);
+}
+.term-tabs .filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-inverse);
+}
+
+.slot-time-group-name {
+  @include button-reset;
+  @include text-caption;
+  flex: 0 0 64px;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+}
+.slot-time-group-name.active {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: var(--weight-bold);
+}
+.slot-time-group.inactive {
+  opacity: 0.6;
+}
+
+.custom-time-row {
+  @include flex-row;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.custom-time-row .search-input {
+  max-width: 120px;
+}
+.custom-time-sep {
+  color: var(--text-muted);
+}
+.field-hint {
+  margin: var(--space-1) 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.schedule-upload-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.schedule-upload-input {
+  display: none;
+}
+.schedule-upload-error {
+  color: var(--danger, #c62828);
+  font-size: var(--font-xs);
+}
