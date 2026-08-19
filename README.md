@@ -22,6 +22,7 @@ apps/                        the three user-facing apps (each own index.html + i
   browse/                    program & course catalog
   schedule/                  schedule review/editing
   planner/                   degree planner + audit
+server/                      Node backend: Express + built-in node:sqlite (auth, schedules, suggestions)
 tools/catalog-pipeline/      Python: scrape, codify, extract core, audit, merge, report
 ```
 
@@ -65,11 +66,13 @@ matrix. The sample schedule is generated in the browser from the catalog
 
 ## Development
 
-Requirements: Node ≥ 20 (tooling only; not used by the apps) and Python 3.
+Requirements: **Node ≥ 22.5** (the server uses the built-in `node:sqlite` module;
+tooling runs on modern Node) and Python 3.
 
 ```sh
-npm install              # tooling + workspace packages
-npm test                 # unit tests (degree-audit, schedule-core, catalog-contract)
+npm install              # tooling + workspace packages (incl. the server)
+npm test                 # unit tests (degree-audit, schedule-core, catalog-contract, server)
+npm run serve            # run the backend (Express + SQLite) at http://localhost:8080
 npm run validate:catalog # committed JSON conforms to the contract schemas
 npm run build:css        # compile style/*.scss -> apps/<name>/style.css (commit both)
 npm run check:css        # rebuild + verify committed CSS is up to date (runs in CI)
@@ -88,15 +91,16 @@ python3 tools/catalog-pipeline/test_data.py  # data invariants (npm run test:dat
 ## How it's deployed
 
 GitHub Actions runs lint/format/tests/schema-validation on every push
-(`.github/workflows/ci.yml`). The site is published to GitHub Pages from the
-`main` branch (repo root); the root `index.html` is a **launcher** that resolves
-which services are enabled (backend `/api/config`, else `config.json`, else all)
-and redirects to the first enabled app. GitHub Pages sends
-`Access-Control-Allow-Origin: *`, so the apps could be lifted onto separate hosts
-and still fetch the catalog JSON cross-origin.
+(`.github/workflows/ci.yml`, on Node 24 / Python 3.12). The static pages
+publish to GitHub Pages from the `main` branch; the root `index.html` is a
+**launcher** that resolves which services are enabled (backend `/api/config`,
+else `config.json`, else all) and redirects to the first enabled app.
 
-Services are toggled via a comma-separated list of `program | schedule |
-planner`. The committed `config.json` at the root (currently `["schedule"]`) is
-the static-deployment source of truth; the college backend will eventually drive
-it from a `SERVICES` env var. See `packages/app-config/README.md` and
-`docs/INTEGRATION_PLAN.md`.
+For the college deployment, the **server** (`server/`) serves the static apps,
+the catalog JSON, and the `/api/*` endpoints from one host: auth (username
+self-identify for now), yearly schedules/terms, and suggested changes. It reuses
+the pure `@major-vis/schedule-core` domain logic and stores data in SQLite via
+the built-in `node:sqlite` module — no native dependencies. Set `SERVICES` to
+a comma-separated list of `program | schedule | planner` to choose which apps
+are exposed (default `schedule`). See `docs/INTEGRATION_PLAN.md` and
+`server/README.md`.

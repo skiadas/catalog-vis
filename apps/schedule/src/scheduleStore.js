@@ -23,6 +23,7 @@ import {
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
 import { programs, allCourses } from '@major-vis/catalog-client'
+import * as backend from './backend.js'
 
 const { ref, computed } = Vue
 
@@ -32,10 +33,15 @@ export const filterMode = ref('dept')
 
 // ---- Schedule collection state ------------------------------------------
 // Schedules are named, yearly entries with three term parts, persisted to
-// localStorage. The active term selects which part every view/edit operates on.
+// localStorage (serverless) or to the major-vis backend (when one is present).
+// The active term selects which part every view/edit operates on.
 export const schedules = ref([])
 export const selectedScheduleIds = ref([])
 export const activeTerm = ref('F')
+
+// True when the schedule app is served backed by the major-vis server; the
+// store then mirrors writes to the API instead of localStorage.
+export const remote = ref(false)
 
 // Whether to color courses by schedule when multiple schedules are shown and no
 // department/instructor filter is active. Off by default (grid shows clean count
@@ -78,12 +84,27 @@ export function setActiveTerm(term) {
   if (typeof window !== 'undefined') localStorage.setItem(LS_TERM, term)
 }
 
+// Turn remote (server-backed) mode on/off. When on, schedule list/create and term
+// edits are mirrored to the backend rather than persisted to localStorage.
+export function setRemote(v) {
+  remote.value = !!v
+}
+
 export function scheduleById(id) {
   return schedules.value.find((s) => s.id === id) || null
 }
 
 function scheduleId() {
   return 'sched_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+}
+
+// After a local mutation of a schedule's term part, mirror it to the server when
+// in remote mode (fire-and-forget; the next full load reconciles any failure).
+function syncTerm(id, term = activeTerm.value) {
+  if (!remote.value || typeof window === 'undefined') return
+  const s = scheduleById(id)
+  const part = s && s.terms[term]
+  if (part) backend.replaceTerm(id, term, part.offerings)
 }
 
 // The term part of a schedule, defaulting to an empty part. `term` defaults to
@@ -101,19 +122,43 @@ export function termOfferings(schedule, term = activeTerm.value) {
 }
 
 // Adds a schedule, creating its three empty term parts. `offerings` (optional)
-// seeds the active term part — the callers that historically passed a flat
-// offerings list (CSV import, generation) now do so against the active term.
-// Selects the schedule and returns its id.
+// seeds the active term part. Selects the schedule and returns its id.
 export function addSchedule(name, year, offerings) {
-  const empty = {}
-  for (const t of TERM_KEYS) empty[t] = { offerings: [], version: 0 }
-  if (offerings) empty[activeTerm.value] = { offerings: [...(offerings || [])], version: 0 }
-  const schedule = { id: scheduleId(), name, year, terms: empty }
+  if (remote.value) {
+    const optimistic = { id: scheduleId(), name, year, terms: emptyTerms() }
+    if (offerings) optimistic.terms[activeTerm.value].offerings = [...offerings]
+    schedules.value = [...schedules.value, optimistic]
+    selectedScheduleIds.value = [...selectedScheduleIds.value, optimistic.id]
+    persistSelectedSchedules()
+    backend.createSchedule({ name, year }).then((srv) => {
+      if (!srv) return
+      // Replace the optimistic entry with the server-owned one; seed offerings.
+      const idx = schedules.value.findIndex((x) => x.id === optimistic.id)
+      if (idx >= 0) {
+        schedules.value[idx] = srv
+        schedules.value = [...schedules.value]
+        selectedScheduleIds.value = selectedScheduleIds.value.map((x) => (x === optimistic.id ? srv.id : x))
+        if (offerings && offerings.length) setTermOfferings(srv.id, activeTerm.value, offerings)
+        persistSelectedSchedules()
+      } else {
+        schedules.value = [...schedules.value, srv]
+      }
+    })
+    return optimistic.id
+  }
+  const schedule = { id: scheduleId(), name, year, terms: emptyTerms() }
+  if (offerings) schedule.terms[activeTerm.value].offerings = [...offerings]
   schedules.value = [...schedules.value, schedule]
   selectedScheduleIds.value = [...selectedScheduleIds.value, schedule.id]
   persistSchedules()
   persistSelectedSchedules()
   return schedule.id
+}
+
+function emptyTerms() {
+  const empty = {}
+  for (const t of TERM_KEYS) empty[t] = { offerings: [], version: 0 }
+  return empty
 }
 
 // Replaces the active term part of a schedule with `offerings` (CSV import,
@@ -125,6 +170,7 @@ export function setTermOfferings(id, term, offerings) {
   s.terms[term].offerings = [...(offerings || [])]
   s.terms[term].version = (s.terms[term].version || 0) + 1
   schedules.value = [...schedules.value]
+  syncTerm(id, term)
   persistSchedules()
   return true
 }
@@ -134,6 +180,7 @@ export function deleteSchedule(id) {
   schedules.value = schedules.value.filter((s) => s.id !== id)
   selectedScheduleIds.value = selectedScheduleIds.value.filter((x) => x !== id)
   if (editingScheduleId.value === id) editingScheduleId.value = null
+  if (remote.value) backend.deleteSchedule(id)
   persistSchedules()
   persistSelectedSchedules()
 }
@@ -146,6 +193,7 @@ export function renameSchedule(id, name) {
   if (!s || !trimmed || trimmed === s.name) return false
   s.name = trimmed
   schedules.value = [...schedules.value]
+  if (remote.value) backend.updateScheduleMeta(id, { name: trimmed })
   persistSchedules()
   return true
 }
@@ -200,6 +248,7 @@ export function moveOffering(id, prefix, number, section, move) {
   part.offerings = next
   part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
+  syncTerm(id)
   persistSchedules()
   return true
 }
@@ -216,6 +265,7 @@ export function updateOffering(id, cur, changes) {
   part.offerings = next
   part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
+  syncTerm(id)
   persistSchedules()
   return true
 }
@@ -233,6 +283,7 @@ export function addCourseToSchedule(id, code) {
   part.offerings = addOfferingToSchedule(part.offerings, offering)
   part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
+  syncTerm(id)
   persistSchedules()
   return { o: offering, code, sid: id }
 }
@@ -249,6 +300,7 @@ export function removeCourseFromSchedule(id, cur) {
   part.offerings = next
   part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
+  syncTerm(id)
   persistSchedules()
   if (courseEditTarget.value) {
     const o = courseEditTarget.value.o
@@ -276,7 +328,9 @@ export const scheduleOfferings = computed(() => {
 export const schedule = computed(() => buildIndex(scheduleOfferings.value))
 
 function persistSchedules() {
-  if (typeof window === 'undefined') return
+  // In remote mode the server holds the schedule collection; localStorage is
+  // only used for the serverless fallback.
+  if (typeof window === 'undefined' || remote.value) return
   localStorage.setItem(LS_SCHEDULES, JSON.stringify(schedules.value))
 }
 function persistSelectedSchedules() {
@@ -351,6 +405,42 @@ function seedSchedules(seedList) {
     const t = localStorage.getItem(LS_TERM)
     if (t && TERM_KEYS.includes(t)) activeTerm.value = t
   }
+}
+
+// Bootstraps the collection. When the app is served by the major-vis backend it
+// loads the shared schedule list from the API; otherwise it seeds the local
+// sample schedule. Call after `loadCatalog` (it consults the catalog for the
+// sample generation).
+export async function initScheduleCollection() {
+  if (typeof window === 'undefined') return
+  const isRemote = await backend.detectRemote()
+  setRemote(isRemote)
+  if (isRemote) {
+    const list = await backend.fetchSchedules()
+    if (list) {
+      schedules.value = list
+      const selected = loadSelectedSchedules()
+      const valid = (sel) =>
+        Array.isArray(sel) && sel.filter((id) => schedules.value.some((s) => s.id === id)).length > 0
+      if (valid(selected)) {
+        selectedScheduleIds.value = selected.filter((id) => schedules.value.some((s) => s.id === id))
+      } else {
+        selectedScheduleIds.value = schedules.value.length ? [schedules.value[0].id] : []
+        persistSelectedSchedules()
+      }
+      restoreAux()
+      return
+    }
+  }
+  seedSampleSchedule()
+}
+
+function restoreAux() {
+  if (typeof window === 'undefined') return
+  const c = localStorage.getItem(LS_COLOR)
+  if (c !== null) colorSchedules.value = c === '1'
+  const t = localStorage.getItem(LS_TERM)
+  if (t && TERM_KEYS.includes(t)) activeTerm.value = t
 }
 
 // Bootstraps the collection with the deterministic "Fall sample schedule"

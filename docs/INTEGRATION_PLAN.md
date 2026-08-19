@@ -32,16 +32,25 @@ database persistence, login, and ownership with suggested edits.
 
 - **Frontend stays static & build-free.** The three apps keep their Vue-CDNG
   global + import-map model. `@major-vis/*` packages keep their contracts.
-- **New Node backend** (`server/` workspace package): Node + Express + SQLite
-  (`better-sqlite3`). It reuses `@major-vis/schedule-core` and
-  `@major-vis/degree-audit` directly (pure ESM, no Vue). A repository layer
-  keeps Postgres a later swap. Serves the static apps, the catalog JSON, and
-  `/api/*` from one origin.
+- **New Node backend** (`server/` workspace package): Node + Express + the
+  built-in **`node:sqlite`** (Node ≥ 22.5; no native deps, no node-gyp in CI).
+  It reuses `@major-vis/schedule-core` and `@major-vis/degree-audit` directly
+  (pure ESM, no Vue). A repository layer keeps Postgres a later swap. Serves the
+  static apps, the catalog JSON, and `/api/*` from one origin.
 - **The `catalog-client` `baseUrl` seam is unchanged**; apps point it at the
   server, which hosts the pipeline artifacts (or a normalized API later).
 - **Identity** is a pluggable provider (`AUTH_PROVIDER`): `username` (no
   password, self-identify) first; one-time-code / SSO later without frontend
   changes.
+
+### Stack decision (revised)
+
+The backend uses Node's built-in **`node:sqlite`** rather than a native SQLite
+binding, and the repo floor is bumped from Node 20 to **Node 22.5+** (CI runs
+Node 24). This drops the `better-sqlite3` native build entirely (no node-gyp in
+CI), keeps tests dependency-free, and matches the modern-Node direction — the
+apps stay static/build-free while the backend uses only Express as an external
+dependency.
 
 ## The schedule model
 
@@ -81,7 +90,7 @@ TERM_CONFIGS = {
 ```
 
 - Spring: one `MTWRF` group, 4 base slots `8:00-10:15 / 10:15-12:30 /
-  12:30-2:45 / 2:45-5:00`, all days identical.
+12:30-2:45 / 2:45-5:00`, all days identical.
 - A helper `termSlotOptions(config, day)` yields assignable bands = single
   slots plus up to `maxConsecutiveSlots` consecutive combinations (Spring:
   4 singles + 3 pairs = 7 options).
@@ -158,7 +167,7 @@ land in the actively-open part. This doubles as the registrar-feed format.
 ## Service configuration (item 1)
 
 - Server reads `SERVICES=schedule` (comma-separated, keys `program|schedule|
-  planner`; invalid keys rejected) and serves it via `GET /api/config`.
+planner`; invalid keys rejected) and serves it via `GET /api/config`.
   Default when unset: `schedule` for production behavior; all three for dev.
 - New tiny client package `@major-vis/app-config`: `loadConfig({ baseUrl })` →
   cached `{ services, auth }`; `isEnabled('schedule')`. Fetches `/api/config`
@@ -198,8 +207,10 @@ Each phase ends with the AGENTS.md verification gates: `npx prettier --check`,
    root launcher, config-filtered nav. Ship schedule-only.
 2. **Schedule model.** `TERM_CONFIGS`, schedule→term-parts, unscheduled,
    custom times, CSV round-trip + upload. New schedule-core tests.
-3. **Backend + identity.** Express/SQLite server, sessions, username login,
-   schedules/terms/changes APIs, static + catalog hosting.
+3. **Backend + identity.** Express + `node:sqlite` server, sessions, username
+   login, schedules/terms/changes APIs, static + catalog hosting. The schedule
+   store's `src/backend.js` mirrors it (list/create/replace + fallback to
+   localStorage when no server is present). **Delivered.**
 4. **Ownership + suggestions.** Offering ids, diff module, draft workflow,
    change list + approve/reject + export.
 5. **College rollout.** OTC/SSO provider if wanted; deployment docs (env vars,

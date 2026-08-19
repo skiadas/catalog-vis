@@ -8,7 +8,7 @@
 import { loading, loadCatalog } from '@major-vis/catalog-client'
 import { loadConfig, isEnabled, SERVICE_DEFS } from '@major-vis/app-config'
 import { route, initRouter } from './router.js'
-import { seedSampleSchedule } from './src/scheduleStore.js'
+import { initScheduleCollection } from './src/scheduleStore.js'
 import ScheduleApp from './components/ScheduleApp.js'
 
 initRouter()
@@ -17,7 +17,10 @@ initRouter()
 // reflects whatever the deployment enables.
 loadConfig({ endpoint: '../../api/config', staticPath: '../../config.json' })
 
-loadCatalog({ baseUrl: '../../' }).then(seedSampleSchedule)
+// Load the catalog (baseUrl reaches the repo-root JSON when co-deployed), then
+// seed the schedule collection — from the backend when one is present, else the
+// local "Sample schedule".
+loadCatalog({ baseUrl: '../../' }).then(initScheduleCollection)
 
 const app = Vue.createApp({
   setup() {

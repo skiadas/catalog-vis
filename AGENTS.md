@@ -23,9 +23,10 @@ packages/
   degree-audit/              pure requirements evaluator (node --test-able)
   schedule-core/             pure schedule domain model + generator (node --test-able)
   router/                    tiny hash-router factory (createRouter)
+server/                      Node backend: Express + built-in node:sqlite + username auth + schedules/suggestions API (npm run serve)
 apps/
   browse/                    program & course catalog (index.html + import map + main.js + router.js)
-  schedule/                  schedule review/editing + src/scheduleStore.js + scheduleDrag.js
+  schedule/                  schedule review/editing + src/scheduleStore.js + scheduleDrag.js + src/backend.js
   planner/                   degree planner + audit + src/plannerStore.js
 tools/catalog-pipeline/      Python: scrape, codify, extract_core, audit, merge, md_to_html, test_data
 ```
@@ -114,6 +115,14 @@ eligible, seed, termKey)` with a mulberry32 PRNG). The offering record
 - **`router`** (`@major-vis/router`) — `createRouter(routes, fallback)`: each
   app registers a route table (`{ view, parse(parts, query), href(params) }`)
   and re-exports its own `route`/nav helpers.
+- **`server`** (`server/`, workspace outside `packages/`) — Node backend:
+  Express + the built-in **`node:sqlite`** (Node ≥ 22.5, no native deps).
+  `src/app.js` (`createApp`) is a testable factory; `src/db.js` owns the schema
+  (users, sessions, schedules, schedule_terms, schedule_changes);
+  `src/ops.js` applies diff operations for approvals. Reuses `@major-vis/
+schedule-core`. `npm run serve` boots it; `SERVICES` env drives `/api/config`.
+  The schedule app's `src/backend.js` mirrors the store to the API when a server
+  is present, falling back to localStorage otherwise. See `server/README.md`.
 
 ### 4. The apps
 

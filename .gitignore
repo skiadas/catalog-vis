@@ -26,3 +26,6 @@ venv/
 catalog_issues.json
 catalog_issues.md
 catalog_issues.html
+
+# Server runtime DB
+server/data/

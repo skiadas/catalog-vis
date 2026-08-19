@@ -2,10 +2,15 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "server"
   ],
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "scripts": {
     "test": "node --test",
+    "serve": "node server/src/index.js",
     "test:data": "python3 tools/catalog-pipeline/test_data.py",
     "validate:catalog": "node packages/catalog-contract/validate.mjs",
     "build:css": "sass style/browse.scss:apps/browse/style.css style/schedule.scss:apps/schedule/style.css style/planner.scss:apps/planner/style.css --no-source-map",
