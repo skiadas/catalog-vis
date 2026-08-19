@@ -8,7 +8,8 @@
     ".": "./planner.js"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "scenarios": "node scenarios.mjs"
   },
   "license": "UNLICENSED",
   "private": true

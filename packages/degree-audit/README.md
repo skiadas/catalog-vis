@@ -24,7 +24,7 @@ planner passes `allCourses`).
 ### Node evaluation
 
 - `satisfied(item, taken, catalog, excluded?)` → `{ status, matched, missing,
-  needed, count, min, max }` for a single item (`course`, `any_of`,
+needed, count, min, max }` for a single item (`course`, `any_of`,
   `each_of`, `some_of`, `electives`, `pair` (legacy), `custom`/`level_gate` →
   `status: 'unknown'`)
 - `assignRequirement(requirement, taken, catalog)` → per-section
@@ -59,7 +59,18 @@ aggregates verify counts over the chosen set (`level.atLeast/atMost`,
 
 ```sh
 npm test            # from this package
+npm run scenarios   # pretty-print the synthetic capability catalog (17 cases)
 ```
+
+The unit tests in `test/` cover the evaluator function by function. The
+capability catalog (`scenarios.mjs`) is a separate, human-readable table of one
+acceptance case per requirement shape the engine must handle (WL same-language
+threads, SM diversity buckets, core cross-claims, any_of/each_of/some_of,
+cross-listings, ranges, level bands, prerequisites). Each row is written against
+the catalog's own synthetic course set — not the current majors.json — and tags
+the real catalog shape it models with `sourceShape`, so a requirement redesign
+shows up as a stale row instead of silently passing. The same rows are asserted
+by `test/scenarios.test.js`, so the table and the CI gate cannot drift apart.
 
 ## Reimplementing elsewhere
 

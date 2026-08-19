@@ -1217,7 +1217,8 @@ function electivesWeight(code, constraints) {
 // callers (like the summary header) that only need the roll-up status.
 export function trackReport(requirement, taken, catalog, opts) {
   if (!requirement) return { status: 'unknown', satisfied: 0, total: 0, sections: [], gaps: [] }
-  const evaluated = evaluateRequirement(requirement, taken, catalog)
+  const takenSet = toSet(taken)
+  const evaluated = evaluateRequirement(requirement, takenSet, catalog)
   const rec = audit([evaluated]).requirements[0]
   const parsedSections = requirement.sections || []
   const sections = (evaluated.sections || []).map((s, si) => {
@@ -1259,7 +1260,7 @@ export function trackReport(requirement, taken, catalog, opts) {
     satisfied: rec.satisfied,
     total: rec.total,
     sections,
-    gaps: opts && opts.gaps === false ? [] : trackGaps(requirement, taken, catalog),
+    gaps: opts && opts.gaps === false ? [] : trackGaps(requirement, takenSet, catalog),
   }
 }
 
