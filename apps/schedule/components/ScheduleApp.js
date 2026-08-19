@@ -19,6 +19,7 @@ import {
   renameSchedule,
   activeTerm,
   setActiveTerm,
+  remote,
   courseEditTarget,
   closeCourseEdit,
 } from '../src/scheduleStore.js'
@@ -34,6 +35,7 @@ import ScheduleFilters from './ScheduleFilters.js'
 import ScheduleHelp from './ScheduleHelp.js'
 import ScheduleManage from './ScheduleManage.js'
 import ScheduleAddCourse from './ScheduleAddCourse.js'
+import SuggestedChanges from './SuggestedChanges.js'
 
 const { computed, ref } = Vue
 
@@ -51,6 +53,7 @@ export default {
     ScheduleHelp,
     ScheduleManage,
     ScheduleAddCourse,
+    SuggestedChanges,
   },
   setup() {
     const view = computed(() => route.value.params.scheduleView || 'grid')
@@ -90,6 +93,13 @@ export default {
     }
     const showSchedules = ref(false)
     const showAddCourse = ref(false)
+    const showSuggestions = ref(false)
+
+    // The schedule the suggestions panel acts on: the one being edited, else the
+    // first selected schedule.
+    const suggestionsScheduleId = computed(
+      () => editingScheduleId.value || selectedScheduleIds.value[0] || null,
+    )
 
     // Edit bar.
     const editingId = editingScheduleId
@@ -134,6 +144,9 @@ export default {
       toggleHelp,
       showSchedules,
       showAddCourse,
+      showSuggestions,
+      suggestionsScheduleId,
+      remote,
       editingId,
       editingName,
       nameDraft,
@@ -179,6 +192,11 @@ export default {
             :class="{ active: activeTerm === t }"
             @click="setActiveTerm(t)"
           >{{ TERM_LABELS[t] }}</button>
+          <button
+            v-if="remote && suggestionsScheduleId"
+            class="filter-btn schedule-suggestions-btn"
+            @click="showSuggestions = true"
+          >Suggested changes</button>
         </div>
 
         <div class="schedule-toolbar">
@@ -274,5 +292,6 @@ export default {
     <ScheduleHelp :open="showHelp" @close="showHelp = false" />
     <ScheduleManage :open="showSchedules" @close="showSchedules = false" @edit="enterEdit" />
     <ScheduleAddCourse :open="showAddCourse" @close="showAddCourse = false" />
+    <SuggestedChanges :open="showSuggestions" :schedule-id="suggestionsScheduleId" @close="showSuggestions = false" />
   `,
 }

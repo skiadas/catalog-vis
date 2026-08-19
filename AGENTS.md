@@ -109,7 +109,9 @@ endpoint, staticPath, fallback })` resolves which services
   conflicts, calendar layout, colors, filters, editing
   (`moveOfferingSmart` …), drag payload (`buildDragPayload`/`dragPayloadFrom`),
   and generation (`./generate`: `makeSchedule(mode, prefix, facultyByPrefix,
-eligible, seed, termKey)` with a mulberry32 PRNG). The offering record
+eligible, seed, termKey)` with a mulberry32 PRNG). Suggestion diffing lives in
+  `./diff` (`diffOfferings`/`applyOperations`/`describeChange`/`renderChanges`).
+  The offering record
   `{prefix, number, section, instructor, days, time}` is registrar-shaped;
   blank `days`/`time` mark an unscheduled (independent-study) offering.
 - **`router`** (`@major-vis/router`) — `createRouter(routes, fallback)`: each

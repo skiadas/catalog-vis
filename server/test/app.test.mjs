@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { openDb } from '../src/db.js'
 import { createApp } from '../src/app.js'
 import { startTestServer } from './helpers.mjs'
+import { diffOfferings } from '@major-vis/schedule-core/diff'
 
 // A self-contained client: fresh in-memory DB + server + a logged-in username.
 async function authClient(username = 'alice') {
@@ -131,16 +132,18 @@ test('non-owner cannot modify but can suggest; owner approves against base versi
     assert.equal(denied.status, 403)
 
     // Bob proposes a suggestion (change instructor) against version 1.
+    const course = {
+      prefix: 'CS',
+      number: '220',
+      section: 'A',
+      days: 'MWF',
+      time: '9:20-10:30',
+      instructor: 'Wahl',
+    }
     const sug = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
       term: 'F',
       baseVersion: 1,
-      operations: [
-        {
-          kind: 'update',
-          cur: { prefix: 'CS', number: '220', section: 'A' },
-          changes: { instructor: 'Skiadas' },
-        },
-      ],
+      operations: diffOfferings([course], [{ ...course, instructor: 'Skiadas' }]),
       note: 'change instructor',
     })
     assert.equal(sug.status, 201)
@@ -209,20 +212,22 @@ test('suggestions export as md and csv', async () => {
       ],
     })
     const term = (await srv.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
+    const course = {
+      prefix: 'CS',
+      number: '220',
+      section: 'A',
+      days: 'MWF',
+      time: '9:20-10:30',
+      instructor: 'Wahl',
+    }
     await srv.post(`/api/schedules/${schedule.id}/suggestions`, {
       term: 'F',
       baseVersion: term.version,
-      operations: [
-        {
-          kind: 'update',
-          cur: { prefix: 'CS', number: '220', section: 'A' },
-          changes: { instructor: 'Skiadas' },
-        },
-      ],
+      operations: diffOfferings([course], [{ ...course, instructor: 'Skiadas' }]),
     })
     const md = await srv.get(`/api/schedules/${schedule.id}/suggestions/export?fmt=md`)
     assert.equal(md.status, 200)
-    assert.match(md.text, /instructor=Skiadas/)
+    assert.match(md.text, /instructor from Wahl to Skiadas/)
     const csv = await srv.get(`/api/schedules/${schedule.id}/suggestions/export?fmt=csv`)
     assert.equal(csv.status, 200)
     assert.match(csv.text, /CS 220/)

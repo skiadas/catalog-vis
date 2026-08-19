@@ -6,7 +6,8 @@
   "main": "./schedule.js",
   "exports": {
     ".": "./schedule.js",
-    "./generate": "./generate.js"
+    "./generate": "./generate.js",
+    "./diff": "./diff.js"
   },
   "scripts": {
     "test": "node --test"

@@ -61,7 +61,9 @@ one-time-code later without changing the route contract.
 of diff operations (`add` / `remove` / `update`). The server stores it against
 the term's current version and does **not** mutate the canonical term until the
 owner **approves** it; approval checks the base version still matches (a stale
-base is `409`) and applies the operations. See `src/ops.js`.
+base is `409`) and applies the operations. Diff produce/apply/describe live in
+`@major-vis/schedule-core/diff` (`diffOfferings`, `applyOperations`,
+`describeChange`, `renderChanges`).
 
 ## Reuse
 

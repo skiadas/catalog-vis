@@ -951,3 +951,76 @@
   color: var(--danger, #c62828);
   font-size: var(--font-xs);
 }
+
+/* Suggested changes (ownership/approve-reject) panel */
+
+.schedule-suggestions-btn {
+  margin-left: auto;
+}
+.suggested-feedback {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  color: var(--success, #1e7e34);
+}
+.suggested-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.suggested-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.suggested-row.approved {
+  opacity: 0.55;
+}
+.suggested-row.rejected {
+  opacity: 0.45;
+}
+.suggested-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.suggested-head {
+  @include flex-row;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 4px;
+}
+.suggested-pill {
+  @include text-caption;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill, 20px);
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+.suggested-who {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.suggested-status {
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.suggested-change {
+  font-size: 13.5px;
+  color: var(--text);
+}
+.suggested-note {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.suggested-actions {
+  @include flex-row;
+  flex: 0 0 auto;
+}

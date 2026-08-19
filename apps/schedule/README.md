@@ -45,6 +45,18 @@ in `@major-vis/schedule-core` implement the format (quoted-field aware).
 On load the app seeds a deterministic "Sample schedule" (`seedSampleSchedule`,
 seed 42) into the Fall part unless schedules already exist.
 
+## Server-backed mode (ownership + suggestions)
+
+When the app is served by the backend (`server/`), `initScheduleCollection`
+pings `/api/config` and switches to **remote mode**: the schedule list and term
+edits are mirrored to the API (`apps/schedule/src/backend.js`) instead of
+`localStorage`. The signed-in user (`username` self-identify) owns the
+schedules they create; a non-owner who edits a term has changes turned into a
+**suggestion** (a diff via `@major-vis/schedule-core/diff`), never a direct
+write. The owner approves/rejects each suggestion and can export them. The
+"Suggested changes" panel (`components/SuggestedChanges.js`) is only shown in
+remote mode. Without a server the app runs entirely on `localStorage`.
+
 ## Routes
 
 - `#/` — grid

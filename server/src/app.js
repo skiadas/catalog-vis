@@ -9,7 +9,7 @@
 import crypto from 'node:crypto'
 import express from 'express'
 import * as db from './db.js'
-import { applyOperations } from './ops.js'
+import { applyOperations, renderChanges } from '@major-vis/schedule-core/diff'
 
 const TERMS = ['F', 'W', 'S']
 
@@ -236,7 +236,7 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     const fmt = req.query.fmt === 'json' || !req.query.fmt ? 'json' : req.query.fmt === 'md' ? 'md' : 'csv'
     if (fmt === 'md') {
       const lines = visible.map((c) => {
-        const ops = (c.operations || []).map((op) => describeOp(op)).join('; ')
+        const ops = renderChanges(c.operations, 'text')
         return `- **Suggestion #${c.id}** (${c.term}, by ${c.proposer}): ${ops || '(empty)'}${c.note ? ' — ' + c.note : ''} [${c.status}]`
       })
       return res.type('text/markdown').send(lines.join('\n') || '_No suggestions._')
@@ -244,7 +244,7 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     if (fmt === 'csv') {
       const rows = [['id', 'term', 'proposer', 'status', 'base_version', 'change']]
       for (const c of visible) {
-        const desc = (c.operations || []).map((op) => describeOp(op)).join('; ')
+        const desc = renderChanges(c.operations, 'text')
         rows.push([c.id, c.term, c.proposer, c.status, c.base_version, desc || '(empty)'])
       }
       const csv = rows.map((r) => r.map(csvCell).join(',')).join('\n')
@@ -267,21 +267,4 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
 function csvCell(value) {
   const s = String(value ?? '')
   return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
-}
-
-// Human-readable description of a single op (used in exports; Phase 4's diff
-// module will produce richer descriptions like "CS 220: change instructor...").
-function describeOp(op) {
-  if (!op) return ''
-  if (op.kind === 'add')
-    return `add ${op.offering && op.offering.prefix} ${op.offering && op.offering.number}${op.offering && op.offering.section ? op.offering.section : ''}`
-  if (op.kind === 'remove')
-    return `remove ${op.cur.prefix} ${op.cur.number}${op.cur.section ? op.cur.section : ''}`
-  if (op.kind === 'update') {
-    const bits = Object.entries(op.changes || {})
-      .filter(([, v]) => v != null && v !== '')
-      .map(([k, v]) => `set ${k}=${v}`)
-    return `update ${op.cur.prefix} ${op.cur.number}${op.cur.section ? op.cur.section : ''}: ${bits.join(', ') || 'no changes'}`
-  }
-  return JSON.stringify(op)
 }

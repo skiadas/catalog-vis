@@ -58,6 +58,20 @@ export async function replaceTerm(id, term, offerings) {
   }
 }
 
+// Fetches a term part ({ offerings, version }) or null.
+export async function fetchTerm(id, term) {
+  try {
+    const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(id)}/terms/${term}`, {
+      method: 'GET',
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data && data.term) || null
+  } catch {
+    return null
+  }
+}
+
 export async function updateScheduleMeta(id, { name, status }) {
   try {
     const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(id)}`, {
@@ -78,6 +92,71 @@ export async function deleteSchedule(id) {
     const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+// ---- Session -------------------------------------------------------------
+
+export async function fetchSession() {
+  try {
+    const res = await fetch(`${API_BASE}/auth/session`, { method: 'GET' })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data && data.user) || null
+  } catch {
+    return null
+  }
+}
+
+// ---- Suggested changes ---------------------------------------------------
+
+export async function fetchSuggestions(scheduleId) {
+  try {
+    const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(scheduleId)}/suggestions`, {
+      method: 'GET',
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data && data.suggestions) || []
+  } catch {
+    return []
+  }
+}
+
+// Submits a suggested change for a term. `payload` = { term, baseVersion,
+// operations, note }. Operations come from `@major-vis/schedule-core/diff`'s
+// `diffOfferings` (add/remove/update with per-field diff). Returns the created
+// suggestion or null.
+export async function createSuggestion(scheduleId, payload) {
+  try {
+    const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(scheduleId)}/suggestions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data && data.suggestion) || null
+  } catch {
+    return null
+  }
+}
+
+export async function approveSuggestion(id) {
+  try {
+    const res = await fetch(`${API_BASE}/suggestions/${encodeURIComponent(id)}/approve`, { method: 'POST' })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function rejectSuggestion(id) {
+  try {
+    const res = await fetch(`${API_BASE}/suggestions/${encodeURIComponent(id)}/reject`, { method: 'POST' })
     return res.ok
   } catch {
     return false

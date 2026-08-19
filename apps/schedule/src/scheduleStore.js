@@ -23,6 +23,7 @@ import {
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
 import { programs, allCourses } from '@major-vis/catalog-client'
+import { diffOfferings } from '@major-vis/schedule-core/diff'
 import * as backend from './backend.js'
 
 const { ref, computed } = Vue
@@ -90,6 +91,74 @@ export function setRemote(v) {
   remote.value = !!v
 }
 
+// ---- Ownership + suggested changes --------------------------------------
+// The signed-in user (username self-identify). Populated when remote; used to
+// decide whether a schedule is editable directly or only by suggestion.
+
+export const currentUser = ref(null)
+
+// Loads the current user from the backend when in remote mode. No-op (null)
+// otherwise. Returns the user or null.
+export async function loadCurrentUser() {
+  if (!remote.value || typeof window === 'undefined') {
+    currentUser.value = null
+    return null
+  }
+  const user = await backend.fetchSession()
+  currentUser.value = user
+  return user
+}
+
+// Whether the supplied schedule is owned by the current user.
+export function isOwner(schedule) {
+  if (!currentUser.value || !schedule) return false
+  if (schedule.owner_user_id == null) return false
+  return Number(schedule.owner_user_id) === Number(currentUser.value.id)
+}
+
+// Pending/processed suggestions for the currently-viewed schedule (remote only).
+export const suggestions = ref([])
+
+export async function refreshSuggestions(scheduleId) {
+  if (!remote.value || typeof window === 'undefined') {
+    suggestions.value = []
+    return []
+  }
+  const list = await backend.fetchSuggestions(scheduleId)
+  suggestions.value = list
+  return list
+}
+
+export async function approveSuggestion(id) {
+  if (!(await backend.approveSuggestion(id))) return false
+  suggestions.value = suggestions.value.map((s) => (s.id === id ? { ...s, status: 'approved' } : s))
+  return true
+}
+
+export async function rejectSuggestion(id) {
+  if (!(await backend.rejectSuggestion(id))) return false
+  suggestions.value = suggestions.value.map((s) => (s.id === id ? { ...s, status: 'rejected' } : s))
+  return true
+}
+
+// Submits a proposed change for a term part as a suggestion. `newOfferings` is
+// the desired offering list; the server's current term is fetched so the
+// suggestion carries the right base version, and the diff (add/remove/update)
+// is computed here via schedule-core. Returns the created suggestion or null.
+export async function submitTermSuggestion(scheduleId, term, newOfferings, note) {
+  if (!remote.value || typeof window === 'undefined') return null
+  const current = await backend.fetchTerm(scheduleId, term)
+  if (!current) return null
+  const operations = diffOfferings(current.offerings || [], newOfferings || [])
+  if (!operations.length) return null
+  return backend.createSuggestion(scheduleId, {
+    term,
+    baseVersion: current.version,
+    operations,
+    note: note || '',
+  })
+}
+
 export function scheduleById(id) {
   return schedules.value.find((s) => s.id === id) || null
 }
@@ -100,11 +169,14 @@ function scheduleId() {
 
 // After a local mutation of a schedule's term part, mirror it to the server when
 // in remote mode (fire-and-forget; the next full load reconciles any failure).
+// Only owners write directly; a non-owner's change is surfaced through the
+// propose flow (`submitTermSuggestion`) in the UI, never written to the schedule.
 function syncTerm(id, term = activeTerm.value) {
   if (!remote.value || typeof window === 'undefined') return
   const s = scheduleById(id)
   const part = s && s.terms[term]
-  if (part) backend.replaceTerm(id, term, part.offerings)
+  if (!part) return
+  if (isOwner(s)) backend.replaceTerm(id, term, part.offerings)
 }
 
 // The term part of a schedule, defaulting to an empty part. `term` defaults to
@@ -416,6 +488,7 @@ export async function initScheduleCollection() {
   const isRemote = await backend.detectRemote()
   setRemote(isRemote)
   if (isRemote) {
+    await loadCurrentUser()
     const list = await backend.fetchSchedules()
     if (list) {
       schedules.value = list

@@ -211,8 +211,11 @@ Each phase ends with the AGENTS.md verification gates: `npx prettier --check`,
    login, schedules/terms/changes APIs, static + catalog hosting. The schedule
    store's `src/backend.js` mirrors it (list/create/replace + fallback to
    localStorage when no server is present). **Delivered.**
-4. **Ownership + suggestions.** Offering ids, diff module, draft workflow,
-   change list + approve/reject + export.
+4. **Ownership + suggestions.** `schedule-core/diff.js`
+   (`diffOfferings`/`applyOperations`/`describeChange`/`renderChanges`),
+   server approval/reject + export, client ownership detection + suggestion
+   submission, and an owner "Suggested changes" panel with approve/reject.
+   **Delivered.**
 5. **College rollout.** OTC/SSO provider if wanted; deployment docs (env vars,
    TLS, CORS, backups); catalog serving via the seam.
 
