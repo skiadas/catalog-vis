@@ -200,8 +200,7 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
   app.patch('/api/suggestions/:id', requireAuth, (req, res) => {
     const suggestion = db.getSuggestion(database, Number(req.params.id))
     if (!suggestion) return res.status(404).json({ error: 'not_found' })
-    if (suggestion.proposer_user_id !== req.user.id)
-      return res.status(403).json({ error: 'not_proposer' })
+    if (suggestion.proposer_user_id !== req.user.id) return res.status(403).json({ error: 'not_proposer' })
     if (suggestion.status !== 'pending') return res.status(409).json({ error: 'not_pending' })
     const operations = Array.isArray(req.body && req.body.operations) ? req.body.operations : undefined
     const note = req.body && typeof req.body.note === 'string' ? req.body.note.trim() : undefined
@@ -219,8 +218,7 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
   app.delete('/api/suggestions/:id', requireAuth, (req, res) => {
     const suggestion = db.getSuggestion(database, Number(req.params.id))
     if (!suggestion) return res.status(404).json({ error: 'not_found' })
-    if (suggestion.proposer_user_id !== req.user.id)
-      return res.status(403).json({ error: 'not_proposer' })
+    if (suggestion.proposer_user_id !== req.user.id) return res.status(403).json({ error: 'not_proposer' })
     if (suggestion.status !== 'pending') return res.status(409).json({ error: 'not_pending' })
     const withdrawn = db.setSuggestionStatus(database, suggestion.id, 'withdrawn')
     res.json({ suggestion: withdrawn })
@@ -243,9 +241,7 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     if (!current) return res.status(404).json({ error: 'not_found' })
     const applied = applyOperations(current.offerings, suggestion.operations)
     const changed = diffOfferings(current.offerings, applied).length > 0
-    const term = changed
-      ? db.setTermOfferings(database, schedule.id, suggestion.term, applied)
-      : current
+    const term = changed ? db.setTermOfferings(database, schedule.id, suggestion.term, applied) : current
     const saved = db.setSuggestionStatus(database, suggestion.id, changed ? 'approved' : 'moot')
     res.json({ term, suggestion: saved })
   })
