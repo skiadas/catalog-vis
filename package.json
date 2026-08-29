@@ -11,6 +11,8 @@
   },
   "scripts": {
     "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage",
+    "test:smoke": "node apps/schedule/smoke.mjs",
     "serve": "node server/src/index.js",
     "test:data": "python3 tools/catalog-pipeline/test_data.py",
     "validate:catalog": "node packages/catalog-contract/validate.mjs",
@@ -26,11 +28,12 @@
     "check:apps": "npm run build && npm run typecheck"
   },
   "devDependencies": {
+    "@types/node": "^26",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
+    "playwright-core": "^1.62.1",
     "prettier": "3.3.3",
     "sass": "^1.102.0",
-    "@types/node": "^26",
     "typescript": "^5.9.3",
     "vite": "^8.2.2",
     "vue": "^3.5.42"

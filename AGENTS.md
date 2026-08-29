@@ -88,6 +88,23 @@ pass _before_ you commit:
 - `npm run lint` (eslint)
 - `python3 -m black .` then `python3 -m compileall -q -x "node_modules|/\.git/" .`
 
+**Definition of done for a change to app/store logic or UI** — passing the
+checks above proves the build stays green, not that a feature works:
+
+- **Store/non-DOM logic** (e.g. `apps/schedule/src/scheduleStore.js`) gets
+  unit-tested under `node --test` against a real in-process API server when
+  the change alters behavior (see `apps/schedule/test/scheduleStore.test.mjs`
+  and its helpers — the harness shims localStorage and a cookie-aware fetch;
+  `backend.setApiBase` points the store at the test server).
+- **UI interactions** are exercised by the local-only smoke test
+  (`npm run test:smoke` — requires `npm run build` first and system Chrome /
+  `CHROME_PATH`; drives sign-in, creation, and the edit/suggest menus in a
+  headless browser and fails on console errors) or, when the smoke test can't
+  cover the flow, an explicit manual run of the full stack (`npm run build &&
+  npm run serve`).
+- **Coverage**: `npm run test:coverage` reports Node-test-file coverage; check
+  it when adding suites so untested files don't accumulate silently.
+
 Amend instead of adding fixup commits if the latest commit is unpushed and the
 fix is for issues it introduced. **Never push unless asked** — inspect
 `git status`/`git diff` before staging.
