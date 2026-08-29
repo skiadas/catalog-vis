@@ -35,46 +35,36 @@ catalog.hanover.edu  (the public catalog)
         └────────────── cross-app links are plain URLs ──────────────┘
 ```
 
-Each app is an independent static page (`index.html` + `main.js`). The pipeline
-is the only writer of the contract; apps are read-only consumers. The pipeline's
-producer can be swapped (scrape → a college feed/API) without touching consumers,
-as long as the JSON contract holds.
+Each app is an independent Vite root (`apps/<name>`, wired by the shared
+`appConfig` factory in `vite.apps.mjs`) that builds a self-contained
+`dist/<name>/` bundle. The pipeline is the only writer of the contract; apps
+are read-only consumers. The pipeline's producer can be swapped (scrape → a
+college feed/API) without touching consumers, as long as the JSON contract
+holds.
 
 ## The four mechanisms a newcomer can't guess
 
-### 1. No runtime build; Vue is a CDN global
+### 1. Apps only run as Vite bundles; SCSS is compiled by the build
 
-There is no bundler and no server-side compilation at runtime. Each `index.html`
-loads Vue from unpkg as a global (`<script src="...vue.global.prod.js">`), and
-app code uses it via `const { ref, computed } = Vue`. That is why
-`catalog-client` and the app stores are "browser-only" while the pure packages
-never import Vue.
+There is no CDN and no import maps: each app's `index.html` loads a single
+`main.js` module entry, and bare `@major-vis/*` specifiers inside the app
+resolve through the workspace `package.json` `exports` fields at build time
+(`npm run build`, or the `npm run dev`/`dev:browse`/`dev:planner` dev servers).
+That is why `catalog-client` and the app stores are "browser-only" while the
+pure packages never import Vue. The only preprocessing step is **CSS**:
+authored in SCSS under `style/` and compiled by an inline Vite plugin (`scss`
+in `vite.apps.mjs`) — in dev (served fresh, invalidated on SCSS change) and in
+build (bundled into `dist/<name>/`). The compiled `apps/<name>/style.css` is
+**not** in version control, and a SCSS error fails the build.
 
-The one preprocessing step is **CSS**: it is authored in SCSS under `style/`
-and compiled to committed `apps/<name>/style.css` via `npm run build:css` —
-a developer-time step, never something the deployed apps run.
+### 2. Workspace resolution replaces per-app import maps
 
-### 2. Per-app import maps
-
-Each app's `index.html` declares a `<script type="importmap">` that maps bare
-`@major-vis/*` specifiers to package files. Because an app lives at
-`apps/<name>/`, two levels below the repo root, the paths are `../../packages/...`:
-
-```html
-<script type="importmap">
-  {
-    "imports": {
-      "@major-vis/app-config": "../../packages/app-config/index.js",
-      "@major-vis/catalog-client": "../../packages/catalog-client/index.js",
-      "@major-vis/degree-audit": "../../packages/degree-audit/planner.js",
-      ...
-    }
-  }
-</script>
-```
-
-Relative (not root-absolute) paths keep the apps location-independent — they work
-under any GitHub Pages subpath or local server root.
+Because every app builds through Vite, each app's `index.html` is trivial — a
+root-relative `/main.js` and `./style.css` link. Packages expose `exports`
+maps (with a separate `types` condition for tsc `checkJs`), and the Vite build
+emits **relative** asset URLs (`base: './'` in `vite.apps.mjs`), so a built
+app is location-independent: it runs from `/apps/<name>/` in the container
+layout, any subpath, or its own host.
 
 ### 3. The `baseUrl` seam
 
@@ -83,15 +73,17 @@ the catalog source. Today each app passes `baseUrl: '../../'` to reach the
 repo-root JSON when co-deployed. Pointing an app at a college-hosted catalog API
 (or a separate host) means changing that one value.
 
-### 3b. Service config: `loadConfig` + the root launcher
+### 3b. Service config: `config.json` + the root launcher
 
 A deployment decides which of `program` / `schedule` / `planner` appear by
-serving a services list (`@major-vis/app-config`). Each app's `main.js` calls
-`loadConfig({ endpoint: '../../api/config', staticPath: '../../config.json' })`
-and renders the nav from `SERVICE_DEFS` filtered by `isEnabled(key)`. The root
-`index.html` is a launcher that resolves the same list (backend `/api/config`,
-else `config.json`, else all) and redirects to the first enabled service — so
-for a schedule-only deployment, visiting `/` lands directly in `apps/schedule`.
+serving a services list: the backend exposes it at `/api/config` (driven by
+the `SERVICES` env var), with a static `config.json` at the deployment root as
+the serverless fallback. The root `index.html` is a **launcher** that resolves
+that list (backend first, then `config.json`, then all) and redirects to the
+first enabled app under `/apps/<name>/` (or shows a chooser when several are
+enabled). The apps themselves are standalone: they carry no cross-app chrome,
+and `@major-vis/app-config` is the library equivalent of this same resolution
+for anything that needs it.
 
 ### 4. Cross-app navigation is URLs, not calls
 

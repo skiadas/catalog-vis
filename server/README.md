@@ -1,10 +1,12 @@
 # @major-vis/server
 
 Backend for the major-vis apps: Express + the built-in **`node:sqlite`**
-database (Node ≥ 22.5). Serves the static apps + catalog JSON, provides
+database (Node ≥ 24). Serves the built apps + the catalog API, provides
 username-based auth, and exposes the yearly schedule / term / suggested-change
 APIs. Reuses the pure `@major-vis/schedule-core` domain logic directly (no
-duplicate scheduling code).
+duplicate scheduling code). It is also the **container process** — the
+deployment is a single container (see the root README "How it's deployed" and
+the `Dockerfile`).
 
 ## Run
 
@@ -15,8 +17,13 @@ npm run serve
 #      STATIC_DIR (repo root by default)
 ```
 
-Serves at `http://localhost:8080/` (the root launcher redirects to the first
-enabled service) with the API under `/api`.
+The container sets `STATIC_DIR=/srv/static` to an **assembled layout**: the
+root launcher (`index.html`, `config.json`), the three catalog artifacts, and
+the built apps under `apps/<name>/` (copied from `dist/<name>/`). The apps'
+relative seams (`loadCatalog`'s `baseUrl: '../../'`, the schedule API base
+`../../api`) resolve against that root — the source-tree `apps/` is never
+served. Serves at `http://localhost:8080/` (the root launcher redirects to the
+first enabled service) with the API under `/api`.
 
 ## Storage
 
@@ -28,9 +35,26 @@ SQLite via `node:sqlite` (`DatabaseSync`). Schema (migrated at boot in `src/db.j
 - `schedule_terms(id, schedule_id, term, payload, version)` — one row per
   (schedule, term); `payload` is the JSON offerings array
 - `schedule_changes(id, schedule_id, term, proposer_user_id, status,
-base_version, operations, note, created_at, resolved_at)` — suggested changes
+  base_version, operations, note, created_at, resolved_at)` — suggested changes
 
-`server/data/` is gitignored (dev DB).
+`server/data/` is gitignored (dev DB); the container persists `/data` as a
+volume.
+
+## Catalog API (always public — no auth, no DB)
+
+The catalog is the **pipeline JSON as source of truth**, served from
+`staticDir` (see `src/catalog.js`):
+
+```
+GET  /majors.json, /requirements_parsed.json, /core_requirements.json
+     -> the artifacts, with Cache-Control: no-store + ETag/Last-Modified
+GET  /catalog.json -> { catalog_year, updated_at, schema_version, artifacts }
+```
+
+`no-store` keeps the data contract from ever going stale in a consumer's
+browser. The relative `baseUrl` seam in `@major-vis/catalog-client` means a
+future college-hosted catalog API can replace these routes without touching
+the apps (CORS needed only when hosted off-origin).
 
 ## API
 

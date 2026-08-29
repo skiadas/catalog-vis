@@ -3,10 +3,8 @@
 A set of independently deployable static Vue 3 apps that browse Hanover
 College's academic programs, review/edit schedules, and plan majors/minors.
 Catalog data is scraped from [catalog.hanover.edu](https://catalog.hanover.edu),
-codified, and shipped as static JSON.
-
-Live site: <https://skiadas.github.io/catalog-vis/> (redirects to
-`apps/browse/`).
+codified, and shipped as static JSON. The whole system — apps, catalog API,
+backend API — deploys as a single container (see "How it's deployed").
 
 ## Layout
 
@@ -18,11 +16,11 @@ packages/                    shared, build-free packages (npm workspaces)
   degree-audit/              pure requirements evaluator
   schedule-core/             pure schedule domain model + generator
   router/                    tiny hash-router factory
-apps/                        the three user-facing apps (each own index.html + import map)
+apps/                        the three user-facing apps (each a Vite root, wired by vite.apps.mjs)
   browse/                    program & course catalog
   schedule/                  schedule review/editing
   planner/                   degree planner + audit
-server/                      Node backend: Express + built-in node:sqlite (auth, schedules, suggestions)
+server/                      Node backend: Express + built-in node:sqlite; serves the built apps, the catalog API, and the schedules/suggestions API
 tools/catalog-pipeline/      Python: scrape, codify, extract core, audit, merge, report
 ```
 
@@ -35,17 +33,17 @@ these READMEs are the per-piece contracts. For newcomers:
 
 ## Quick start
 
-The apps are static sites with **no runtime build**: Vue loads from a CDN
-global, workspace packages resolve via per-app import maps, and each app
-styles itself with a compiled `apps/<name>/style.css`. The CSS _source_ is
-SCSS in `style/` (compiled to the per-app files via `npm run build:css`).
-Serve the repo root:
+The apps are built with **Vite + TypeScript**: each app is an independent Vite
+root (`apps/<name>`) with hot-reload development, and `npm run build` bundles
+all three into self-contained `dist/<name>/` directories (SCSS is compiled by
+Vite from `style/`; nothing compiled lives in version control). The backend,
+the built apps, and the catalog all run together in a single container.
 
 ```sh
-python3 -m http.server 8080
-# http://localhost:8080/apps/browse/   (programs)
-# http://localhost:8080/apps/schedule/ (schedule)
-# http://localhost:8080/apps/planner/  (planner)
+npm install        # tooling + workspace packages
+npm run dev        # schedule app dev server at http://localhost:5173
+npm run dev:browse # browse app
+npm run dev:planner# planner app
 ```
 
 ## Data pipeline
@@ -67,16 +65,17 @@ matrix. The sample schedule is generated in the browser from the catalog
 
 ## Development
 
-Requirements: **Node ≥ 22.5** (the server uses the built-in `node:sqlite` module;
-tooling runs on modern Node) and Python 3.
+Requirements: **Node ≥ 24** (the server uses the built-in `node:sqlite` module)
+and Python 3.
 
 ```sh
 npm install              # tooling + workspace packages (incl. the server)
 npm test                 # unit tests (degree-audit, schedule-core, catalog-contract, server)
+npm run typecheck        # tsc checkJs across apps/packages/server
+npm run build            # Vite bundles the three apps into dist/<name>/
+npm run dev              # schedule app dev server at http://localhost:5173
 npm run serve            # run the backend (Express + SQLite) at http://localhost:8080
 npm run validate:catalog # committed JSON conforms to the contract schemas
-npm run build:css        # compile style/*.scss -> apps/<name>/style.css (commit both)
-npm run check:css        # rebuild + verify committed CSS is up to date (runs in CI)
 npm run lint             # eslint
 npm run format           # prettier --write
 ```
@@ -91,17 +90,32 @@ python3 tools/catalog-pipeline/test_data.py  # data invariants (npm run test:dat
 
 ## How it's deployed
 
-GitHub Actions runs lint/format/tests/schema-validation on every push
-(`.github/workflows/ci.yml`, on Node 24 / Python 3.12). The static pages
-publish to GitHub Pages from the `main` branch; the root `index.html` is a
-**launcher** that resolves which services are enabled (backend `/api/config`,
-else `config.json`, else all) and redirects to the first enabled app.
+GitHub Actions runs lint/format/tests/typecheck/build/schema-validation on
+every push (`.github/workflows/ci.yml`, Node 26 / Python 3.12); pushes to
+`main` and `v*` tags build the container and publish it to GHCR
+(`.github/workflows/publish.yml`).
 
-For the college deployment, the **server** (`server/`) serves the static apps,
-the catalog JSON, and the `/api/*` endpoints from one host: auth (username
-self-identify for now), yearly schedules/terms, and suggested changes. It reuses
-the pure `@major-vis/schedule-core` domain logic and stores data in SQLite via
-the built-in `node:sqlite` module — no native dependencies. Set `SERVICES` to
-a comma-separated list of `program | schedule | planner` to choose which apps
-are exposed (default `schedule`). See `docs/INTEGRATION_PLAN.md` and
-`server/README.md`.
+The deployment is a **single container** (`Dockerfile`): the image builds the
+apps (`npm ci && npm run build`), then the Express server (`server/`) serves
+the assembled layout from one process:
+
+- the root `index.html` **launcher** — resolves which services are enabled
+  (`/api/config`, else `config.json`, else all) and redirects to the first
+  enabled app under `/apps/<name>/`;
+- the **catalog API** — the three artifacts (`/majors.json`,
+  `/requirements_parsed.json`, `/core_requirements.json`) plus a
+  `/catalog.json` manifest, always public;
+- the **backend API** (`/api/*`: username self-identify auth, yearly
+  schedules/terms, suggested changes) backed by SQLite via the built-in
+  `node:sqlite` module — no native dependencies.
+
+```sh
+docker pull ghcr.io/<owner>/major-vis:latest
+docker run --rm -p 8080:8080 -v major-vis-data:/data ghcr.io/<owner>/major-vis:latest
+```
+
+Set `SERVICES` to a comma-separated list of `program | schedule | planner` to
+choose which apps are exposed (default `schedule`); `PORT`/`HOST` cover the
+listen socket, `DB_PATH` (default `/data/major-vis.db`) the SQLite file. See
+`server/README.md`. The hostname-split seams (each app on its own host, the
+catalog API served elsewhere) exist but are not used yet.

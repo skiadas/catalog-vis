@@ -29,7 +29,7 @@ packages/
   degree-audit/              pure requirements evaluator (node --test-able)
   schedule-core/             pure schedule domain model + generator (node --test-able)
   router/                    tiny hash-router factory (createRouter)
-server/                      Node backend: Express + built-in node:sqlite + auth + schedules/suggestions API
+server/                      Node backend: Express + built-in node:sqlite + auth + schedules/suggestions API; serves the built apps + catalog API + launcher (the container process)
 apps/
   browse/                    program & course catalog
   schedule/                  schedule review/editing
@@ -49,8 +49,10 @@ tools/catalog-pipeline/      Python: scrape, codify, extract_core, audit, md_to_
   `vite.apps.mjs`) because components are plain template strings, not SFCs.
   Pure packages never import Vue (`schedule-core`, `degree-audit`,
   `catalog-contract`, `app-config`); `catalog-client` and `router` import Vue
-  on purpose. The only standalone preprocessed thing is CSS: SCSS in `style/`
-  compiled to committed per-app `style.css`.
+  on purpose. CSS is authored as SCSS (`style/`, shared partials in
+  `style/partials/`) and compiled by Vite into each app build via an inline
+  plugin in `vite.apps.mjs` — the compiled `apps/*/style.css` is **not** in
+  version control, and a SCSS error fails the build.
 - **The catalog is three root JSON files** (`majors.json`,
   `requirements_parsed.json`, `core_requirements.json`), validated against the
   contract schemas by `npm run validate:catalog` (run in CI). The pipeline is the
@@ -67,11 +69,9 @@ tools/catalog-pipeline/      Python: scrape, codify, extract_core, audit, md_to_
 
 **Formatting** — `npx prettier@3.3.3 --write "**/*.{js,html,css,scss}"` (JSON
 and the compiled `apps/*/style.css` are ignored), then `python3 -m black .` and
-`python3 -m compileall -q -x "node_modules|/\.git/" .`. CSS is authored as SCSS
-— entry points in `style/`, shared partials (tokens/mixins/base/per-app) in
-`style/partials/` — and compiled via `npm run build:css` to committed
-`apps/<name>/style.css`. **Never hard-code design tokens**: inherit before you
-set · token before you repeat · name a repeated look once.
+`python3 -m compileall -q -x "node_modules|/\.git/" .`. **Never hard-code
+design tokens**: inherit before you set · token before you repeat · name a
+repeated look once.
 
 **Conventions** — naming and style rules beyond tooling live in
 `docs/CONVENTIONS.md` (e.g. booleans read as predicates: `isOpen`, not `open`).
@@ -85,7 +85,6 @@ pass _before_ you commit:
 - `npm run build` (Vite bundles each app; fails on bad imports/exports)
 - `npm run validate:catalog` (contract schemas)
 - `npm run test:data` (Python data-integrity)
-- `npm run check:css` (rebuilds `apps/*/style.css`, fails on drift)
 - `npm run lint` (eslint)
 - `python3 -m black .` then `python3 -m compileall -q -x "node_modules|/\.git/" .`
 
@@ -96,8 +95,9 @@ fix is for issues it introduced. **Never push unless asked** — inspect
 **Common tasks** — run the Python pipeline from the repo root (scripts anchor
 data to the root via `ROOT`): `python3 tools/catalog-pipeline/scrape_catalog.py`
 re-scrapes; the full regeneration workflow and the serve command are in
-`README.md`. Serve locally with `python3 -m http.server 8080` →
-`http://localhost:8080/apps/<name>/`.
+`README.md`. Serve apps locally with `npm run dev` (Vite, per-app) or
+`vite preview`; the full stack (built apps + catalog + API) runs in the
+container (see `server/README.md`).
 
 ## Where to dig in
 
@@ -118,11 +118,15 @@ When a task touches a specific piece, read its README (map above) plus:
 
 ## Current gotchas
 
-- All three apps deploy together on GitHub Pages from the repo root (root
-  `index.html` redirects to `apps/browse/`); the hostname-split seams exist but
-  are not used yet.
+- Deployment is a single container (see `Dockerfile` + the ghcr publish
+  workflow): `npm ci && npm run build` in the image, then the Express server
+  serves the assembled layout — built apps under `/apps/<name>/`, the catalog
+  artifacts + `/catalog.json`, and the backend API — from one process. The
+  root `index.html` launcher and the relative app seams (`baseUrl: '../../'`,
+  API base `../../api`) are resolved against that layout. The hostname-split
+  deployment seams exist but are not used yet.
 - Courses a requirement references with no description anywhere are **CAT4** —
   genuine source gaps, not planner bugs.
-- Plans and schedules persist only in `localStorage` — no accounts yet.
-  Server-side degree audit and college-API catalog serving are the intended
-  next steps.
+- Plans and schedules persist only in `localStorage` — no server-side accounts
+  yet (the backend DB holds schedules/suggestions when `SERVICES` enables the
+  backend and the app detects it). Server-side degree audit is a future step.
