@@ -1,7 +1,7 @@
 // Browse app bootstrap: parse the hash route, then load the catalog into the
 // shared refs (baseUrl reaches the repo-root JSON when co-deployed). Views are
 // switched by route.view; components are registered globally for the template.
-import { loading, loadCatalog } from '@major-vis/catalog-client'
+import { errorMessage, loading, loadCatalog } from '@major-vis/catalog-client'
 import { route, initRouter } from './router.js'
 import { createApp } from 'vue'
 import ProgramList from './components/ProgramList.js'
@@ -11,11 +11,12 @@ import RequirementSection from './components/RequirementSection.js'
 import RequirementItem from './components/RequirementItem.js'
 
 initRouter()
-loadCatalog({ baseUrl: '../../' })
+// A catalog load failure rejects; the banner renders `errorMessage` instead.
+loadCatalog({ baseUrl: '../../' }).catch(() => {})
 
 const app = createApp({
   setup() {
-    return { route, loading }
+    return { route, loading, errorMessage }
   },
   template: `
     <nav class="top-nav">
@@ -26,6 +27,7 @@ const app = createApp({
     </nav>
 
     <div v-if="loading" class="loading">Loading catalog data...</div>
+    <div v-else-if="errorMessage" class="catalog-error">{{ errorMessage }}</div>
     <ProgramList v-else-if="route.view === 'programs'" />
     <ProgramDetail v-else-if="route.view === 'program-detail'" />
     <CourseDetail v-else-if="route.view === 'course-detail'" />

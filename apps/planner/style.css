@@ -401,6 +401,17 @@ body {
   font-size: var(--font-lg);
 }
 
+.catalog-error {
+  text-align: center;
+  padding: var(--space-3) var(--space-5);
+  margin-bottom: var(--space-4);
+  color: var(--warning);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-left: 4px solid var(--warning);
+  font-size: var(--font-md);
+}
+
 .results-count {
   font-size: var(--font-md);
   color: var(--text-muted);

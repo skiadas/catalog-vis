@@ -3,10 +3,10 @@
 Browser catalog data layer shared by all apps. Fetches the three catalog
 artifacts into Vue-reactive refs and derives browse filters. This is the
 read-only side of the catalog contract (see `@major-vis/catalog-contract` for
-the schemas).
+the schemas and types).
 
-Depends on the **Vue global** (CDN), matching the app views' pattern — it is
-browser-only and not `node --test`-able (unlike the pure engine packages).
+Browser-only (fetches via `fetch`), so the apps' unit-tested engines
+(`schedule-core`, `degree-audit`) never import it.
 
 ## Contract
 
@@ -20,8 +20,14 @@ browser-only and not `node --test`-able (unlike the pure engine packages).
 - `coreRequirements` — the single core-curriculum program's requirements from
   `core_requirements.json`
 - `loading` — true until `loadCatalog` finishes
+- `errorMessage` — human-readable reason the catalog couldn't be loaded (fetch
+  failure or contract validation failure), or `''` when all is well; the apps
+  render it instead of the catalog UI
 - `searchQuery`, `filterType` — browse-list filter inputs
 - `filteredPrograms` — derived, filtered program list
+
+The refs and helpers are JSDoc-typed against `@major-vis/catalog-contract`'s
+declarations, so consumers type-check against the real catalog shape.
 
 ### Loading
 
@@ -38,6 +44,11 @@ await loadCatalog({
 college-hosted catalog API (or another host) by changing it. The catalog host
 must allow CORS when apps are served from a different origin (GitHub Pages
 sends `Access-Control-Allow-Origin: *`).
+
+By default every fetched document is validated against the catalog contract
+(`validate: true`) before it is stored; on failure `errorMessage` is set, the
+refs stay empty, and the promise rejects (the apps render the message instead
+of an empty catalog). Pass `{ validate: false }` to skip the check.
 
 ### Helpers
 

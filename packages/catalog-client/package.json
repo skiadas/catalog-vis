@@ -7,6 +7,9 @@
   "exports": {
     ".": "./index.js"
   },
+  "dependencies": {
+    "@major-vis/catalog-contract": "*"
+  },
   "license": "UNLICENSED",
   "private": true
 }
