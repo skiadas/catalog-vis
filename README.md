@@ -28,7 +28,8 @@ tools/catalog-pipeline/      Python: scrape, codify, extract core, audit, merge,
 
 Every package and app ships a README that is its contract — inputs, outputs,
 persistence shapes, and cross-app links — so any piece can be lifted onto its
-own host or reimplemented elsewhere. `AGENTS.md` is the piece map. For newcomers:
+own host or reimplemented elsewhere. `AGENTS.md` orients an agent to the repo;
+these READMEs are the per-piece contracts. For newcomers:
 `docs/ARCHITECTURE.md` (how the pieces fit + reading order) and
 `docs/GLOSSARY.md` (the terminology).
 

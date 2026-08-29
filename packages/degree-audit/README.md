@@ -11,7 +11,8 @@ Inputs are always supplied explicitly — the module never imports catalog data.
 Course codes are strings like `BIO 161`; cross-listed `ENG/COM 251`, aliased
 `GNDR 499` (`GNDR` → `GNDS`), and ranges `ENV 408-409` are resolved by
 `expandCode`. `catalog` is any collection keyed by concrete course code (the
-planner passes `allCourses`).
+planner passes `allCourses`). `taken` is a set of course codes — the evaluator
+never sees timing or terms; the planner passes the union of its timeline slots.
 
 ### Code helpers
 

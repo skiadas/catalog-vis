@@ -1,3 +1,22 @@
+"""Scrape Hanover College's catalog (catalog.hanover.edu) into `majors.json` —
+programs, their requirement texts, the union course catalog, and faculty.
+
+Scraping quirks to keep in mind when reading the output:
+
+- Course codes from the Search API carry extra whitespace (`BIO  161`);
+  `normalize_code()` collapses runs of whitespace and uppercases.
+- Program `id`s are derived from the program *name* (non-alphanumerics removed,
+  lowercased) — the source HTML anchors' ids are unreliable.
+- Faculty names are normalized (`normalize_faculty_name`) and deduped per
+  program.
+- The global `catalog` index is the union of the Search API and every program's
+  course list, so program-only codes resolve.
+- Disagreements between the two endpoints are *not* silently resolved: they are
+  recorded at the top level of `majors.json` in `source_discrepancies`
+  (description conflicts) and `presence_discrepancies` (search-only /
+  program-only).
+"""
+
 import argparse
 import json
 import os

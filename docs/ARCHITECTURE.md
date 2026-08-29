@@ -96,8 +96,7 @@ for a schedule-only deployment, visiting `/` lands directly in `apps/schedule`.
 ### 4. Cross-app navigation is URLs, not calls
 
 The three apps are separate module instances — they cannot import each other's
-state. They talk through deep links (see `docs/GLOSSARY.md` → "join keys", and
-the contract in `AGENTS.md`):
+state. They talk through deep links (see `docs/GLOSSARY.md` → "join keys"):
 
 - `browse → planner`: `../planner/#/?program=<id>&track=<trackKey>`
 - `planner → browse`: `../browse/#/program/<id>` and `../browse/#/course/<code>`
