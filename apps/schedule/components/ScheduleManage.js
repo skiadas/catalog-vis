@@ -47,12 +47,26 @@ export default {
     })
     const openCreate = () => {
       showCreate.value = true
+      createError.value = ''
       if (!newDept.value && deptOptions.value.length) newDept.value = deptOptions.value[0]
     }
-    const doCreate = () => {
+    // The creator stays open until the schedule exists server-side (no
+    // optimistic ghosts): the button shows progress and the modal keeps the
+    // user's inputs on a failed create so they can retry.
+    const creating = ref(false)
+    const createError = ref('')
+    const doCreate = async () => {
+      if (creating.value) return
+      creating.value = true
+      createError.value = ''
       const mode = newKind.value === 'dept' ? 'dept' : newKind.value === 'empty' ? 'empty' : 'random'
       const dept = mode === 'dept' ? newDept.value || deptOptions.value[0] : undefined
-      generateSchedule({ mode, dept, name: newName.value, year: newYear.value })
+      const id = await generateSchedule({ mode, dept, name: newName.value, year: newYear.value })
+      creating.value = false
+      if (id == null) {
+        createError.value = 'Could not create the schedule — the server did not confirm. Try again?'
+        return
+      }
       newName.value = ''
       newYear.value = ''
       newKind.value = 'empty'
@@ -61,9 +75,10 @@ export default {
 
     const removeSchedule = (id) => deleteSchedule(id)
     // Duplicates a schedule, then drops into edit mode on the copy (which is
-    // auto-selected by `duplicateSchedule`).
-    const duplicateAndEdit = (id) => {
-      const newId = duplicateSchedule(id)
+    // auto-selected by `duplicateSchedule`). Awaited: a failed duplicate keeps
+    // the user where they are.
+    const duplicateAndEdit = async (id) => {
+      const newId = await duplicateSchedule(id)
       if (newId) emit('edit', newId)
     }
     // Editing (like duplicating) is delegated to the parent's `enterEdit`,
@@ -81,6 +96,8 @@ export default {
       manageQuery,
       filteredSchedules,
       showCreate,
+      creating,
+      createError,
       newKind,
       newName,
       newYear,
@@ -122,7 +139,7 @@ export default {
             v-model="manageQuery"
           />
           <div class="schedule-manage-list">
-            <div v-for="s in filteredSchedules" :key="s.id" class="schedule-manage-row">
+            <div v-for="s in filteredSchedules" :key="s.id" class="schedule-manage-row" :class="{ 'menu-open': menuFor === s.id }">
               <span class="schedule-swatch" :style="{ backgroundColor: colorForSchedule(s.id) }"></span>
               <div class="schedule-manage-main">
                 <div class="schedule-manage-name">{{ s.name }}</div>
@@ -212,8 +229,9 @@ export default {
               <option v-for="d in deptOptions" :key="d" :value="d">{{ d }}</option>
             </select>
           </div>
+          <p v-if="createError" class="schedule-create-error">{{ createError }}</p>
           <div class="controls">
-            <button class="filter-btn primary" @click="doCreate">Generate</button>
+            <button class="filter-btn primary" :disabled="creating" @click="doCreate">{{ creating ? 'Creating…' : 'Generate' }}</button>
           </div>
         </div>
       </div>

@@ -196,6 +196,7 @@ export default {
         v-for="s in visibleSchedules"
         :key="s.id"
         class="schedule-pill"
+        :class="{ 'menu-open': menuFor === s.id }"
         :style="{ backgroundColor: colorForSchedule(s.id) }"
         :title="'Hide ' + s.name"
         @click="toggleSchedule(s.id)"

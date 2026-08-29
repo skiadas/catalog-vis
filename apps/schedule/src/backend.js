@@ -4,12 +4,19 @@
 // the store-facing schedule shape or null on failure, so the store can branch
 // cleanly without trying to understand transport details.
 
-// Base for API calls relative to the schedule app page (../.. -> repo root).
-const API_BASE = '../../api'
+// Base for API calls (../.. -> repo root in the served layout). Mutable so
+// tests can point the store at an in-process server; the store's functions read
+// the current value at call time.
+export let apiBase = '../../api'
+
+// Overrides the API base (used by the store test suite; also a deploy seam).
+export function setApiBase(base) {
+  apiBase = base
+}
 
 export async function detectRemote() {
   try {
-    const res = await fetch(`${API_BASE}/config`, { method: 'GET' })
+    const res = await fetch(`${apiBase}/config`, { method: 'GET' })
     return res.ok
   } catch {
     return false
@@ -18,7 +25,7 @@ export async function detectRemote() {
 
 export async function fetchSchedules() {
   try {
-    const res = await fetch(`${API_BASE}/schedules`, { method: 'GET' })
+    const res = await fetch(`${apiBase}/schedules`, { method: 'GET' })
     if (!res.ok) return null
     const data = await res.json()
     return (data && data.schedules) || []
@@ -29,7 +36,7 @@ export async function fetchSchedules() {
 
 export async function createSchedule({ name, year }) {
   try {
-    const res = await fetch(`${API_BASE}/schedules`, {
+    const res = await fetch(`${apiBase}/schedules`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, year }),
@@ -47,7 +54,7 @@ export async function createSchedule({ name, year }) {
 // optimistic view, which is resolved on the next full reload.
 export async function replaceTerm(id, term, offerings) {
   try {
-    const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(id)}/terms/${term}`, {
+    const res = await fetch(`${apiBase}/schedules/${encodeURIComponent(id)}/terms/${term}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ offerings }),
@@ -61,7 +68,7 @@ export async function replaceTerm(id, term, offerings) {
 // Fetches a term part ({ offerings, version }) or null.
 export async function fetchTerm(id, term) {
   try {
-    const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(id)}/terms/${term}`, {
+    const res = await fetch(`${apiBase}/schedules/${encodeURIComponent(id)}/terms/${term}`, {
       method: 'GET',
     })
     if (!res.ok) return null
@@ -80,7 +87,7 @@ export async function fetchTerm(id, term) {
  */
 export async function updateScheduleMeta(id, { name, status }) {
   try {
-    const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(id)}`, {
+    const res = await fetch(`${apiBase}/schedules/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, status }),
@@ -95,7 +102,7 @@ export async function updateScheduleMeta(id, { name, status }) {
 
 export async function deleteSchedule(id) {
   try {
-    const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(id)}`, {
+    const res = await fetch(`${apiBase}/schedules/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     })
     return res.ok
@@ -109,7 +116,7 @@ export async function deleteSchedule(id) {
 // Signs in with a username (self-identify). Returns the user or null.
 export async function login(username) {
   try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    const res = await fetch(`${apiBase}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username }),
@@ -124,7 +131,7 @@ export async function login(username) {
 
 export async function logout() {
   try {
-    const res = await fetch(`${API_BASE}/auth/logout`, { method: 'POST' })
+    const res = await fetch(`${apiBase}/auth/logout`, { method: 'POST' })
     return res.ok
   } catch {
     return false
@@ -133,7 +140,7 @@ export async function logout() {
 
 export async function fetchSession() {
   try {
-    const res = await fetch(`${API_BASE}/auth/session`, { method: 'GET' })
+    const res = await fetch(`${apiBase}/auth/session`, { method: 'GET' })
     if (!res.ok) return null
     const data = await res.json()
     return (data && data.user) || null
@@ -146,7 +153,7 @@ export async function fetchSession() {
 
 export async function fetchSuggestions(scheduleId) {
   try {
-    const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(scheduleId)}/suggestions`, {
+    const res = await fetch(`${apiBase}/schedules/${encodeURIComponent(scheduleId)}/suggestions`, {
       method: 'GET',
     })
     if (!res.ok) return []
@@ -163,7 +170,7 @@ export async function fetchSuggestions(scheduleId) {
 // suggestion or null.
 export async function createSuggestion(scheduleId, payload) {
   try {
-    const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(scheduleId)}/suggestions`, {
+    const res = await fetch(`${apiBase}/schedules/${encodeURIComponent(scheduleId)}/suggestions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -178,7 +185,7 @@ export async function createSuggestion(scheduleId, payload) {
 
 export async function approveSuggestion(id) {
   try {
-    const res = await fetch(`${API_BASE}/suggestions/${encodeURIComponent(id)}/approve`, { method: 'POST' })
+    const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}/approve`, { method: 'POST' })
     if (!res.ok) return null
     const data = await res.json()
     return (data && data.suggestion) || null
@@ -189,7 +196,7 @@ export async function approveSuggestion(id) {
 
 export async function rejectSuggestion(id) {
   try {
-    const res = await fetch(`${API_BASE}/suggestions/${encodeURIComponent(id)}/reject`, { method: 'POST' })
+    const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}/reject`, { method: 'POST' })
     return res.ok
   } catch {
     return false
@@ -200,7 +207,7 @@ export async function rejectSuggestion(id) {
 // Returns the updated suggestion or null.
 export async function updateSuggestion(id, payload) {
   try {
-    const res = await fetch(`${API_BASE}/suggestions/${encodeURIComponent(id)}`, {
+    const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -217,7 +224,7 @@ export async function updateSuggestion(id, payload) {
 // suggestion or null.
 export async function withdrawSuggestion(id) {
   try {
-    const res = await fetch(`${API_BASE}/suggestions/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}`, { method: 'DELETE' })
     if (!res.ok) return null
     const data = await res.json()
     return (data && data.suggestion) || null

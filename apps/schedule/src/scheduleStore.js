@@ -215,11 +215,20 @@ export async function refreshSuggestions(scheduleId) {
 }
 
 // Refreshes suggestions for every selected schedule (and an active session's
-// target). Used on load, on selection changes, and after session actions.
+// target). Used on load, on selection changes, and after session actions. In
+// remote mode only schedules the server has acknowledged (owner_user_id set)
+// are fetched — an entry awaiting its create round-trip has a client-only id
+// that the API can't resolve, so fetching its suggestions would 404.
 export function refreshAllSuggestions() {
   const ids = new Set(selectedScheduleIds.value)
   if (editingScheduleId.value) ids.add(editingScheduleId.value)
-  for (const id of ids) void refreshSuggestions(id)
+  for (const id of ids) {
+    if (remote.value) {
+      const s = scheduleById(id)
+      if (!s || s.owner_user_id == null) continue
+    }
+    void refreshSuggestions(id)
+  }
 }
 
 // ---- Drafts (suggest sessions) ------------------------------------------
@@ -276,11 +285,14 @@ export const editingDraft = computed(() => {
 
 // Sets up (or keeps) the draft of a suggest session for `scheduleId`'s term:
 // the base is the published term, with the proposer's own pending operations
-// replayed on top (their previously proposed intent survives approvals). An
-// existing draft is kept so unsaved edits are never lost. Remote mode then
-// fetches the freshest published term and re-bases once more.
+// replayed on top (their previously proposed intent survives approvals). A
+// DIRTY draft (unsaved edits) is kept so work is never lost; a clean one —
+// its content already proposed — is rebuilt so re-entering a session always
+// starts from the freshest published state. Remote mode then fetches the
+// freshest term and re-bases once more.
 async function setupDraft(scheduleId, term) {
-  if (getDraft(scheduleId, term)) return
+  const existing = getDraft(scheduleId, term)
+  if (existing && existing.dirty) return
   const s = scheduleById(scheduleId)
   if (!s) return
   const part = s.terms[term] || { offerings: [], version: 0 }
@@ -571,29 +583,20 @@ export function termOfferings(schedule, term = activeTerm.value) {
 }
 
 // Adds a schedule, creating its three empty term parts. `offerings` (optional)
-// seeds the active term part. Selects the schedule and returns its id.
-export function addSchedule(name, year, offerings) {
+// seeds the active term part. Remote: waits for the server to confirm before
+// the schedule appears — no optimistic ghosts; a failed create returns null
+// and the caller can show an error and let the user retry. Offline: resolves
+// immediately. Selects the schedule and returns its id (or null).
+export async function addSchedule(name, year, offerings) {
   if (remote.value) {
-    const optimistic = { id: scheduleId(), name, year, terms: emptyTerms() }
-    if (offerings) optimistic.terms[activeTerm.value].offerings = [...offerings]
-    schedules.value = [...schedules.value, optimistic]
-    selectedScheduleIds.value = [...selectedScheduleIds.value, optimistic.id]
+    const srv = await backend.createSchedule({ name, year })
+    if (!srv) return null
+    schedules.value = [...schedules.value, srv]
+    selectedScheduleIds.value = [...selectedScheduleIds.value, srv.id]
     persistSelectedSchedules()
-    backend.createSchedule({ name, year }).then((srv) => {
-      if (!srv) return
-      // Replace the optimistic entry with the server-owned one; seed offerings.
-      const idx = schedules.value.findIndex((x) => x.id === optimistic.id)
-      if (idx >= 0) {
-        schedules.value[idx] = srv
-        schedules.value = [...schedules.value]
-        selectedScheduleIds.value = selectedScheduleIds.value.map((x) => (x === optimistic.id ? srv.id : x))
-        if (offerings && offerings.length) setTermOfferings(srv.id, activeTerm.value, offerings)
-        persistSelectedSchedules()
-      } else {
-        schedules.value = [...schedules.value, srv]
-      }
-    })
-    return optimistic.id
+    if (offerings && offerings.length) setTermOfferings(srv.id, activeTerm.value, offerings)
+    refreshAllSuggestions()
+    return srv.id
   }
   const schedule = { id: scheduleId(), name, year, terms: emptyTerms() }
   if (offerings) schedule.terms[activeTerm.value].offerings = [...offerings]
@@ -671,8 +674,11 @@ export function renameSchedule(id, name) {
 }
 
 // Duplicates a schedule (deep-copied term parts) under an auto-generated name
-// and selects it. Returns the new schedule's id, or null if the source is missing.
-export function duplicateSchedule(id) {
+// and selects it. Remote: the copy is created server-side (awaited, so a
+// failed duplicate returns null and leaves no ghost) and each non-empty term
+// is mirrored. Returns the new schedule's id, or null if the source is missing
+// or the server didn't confirm.
+export async function duplicateSchedule(id) {
   const s = scheduleById(id)
   if (!s) return null
   const terms = {}
@@ -681,6 +687,18 @@ export function duplicateSchedule(id) {
       offerings: (s.terms[t]?.offerings || []).map((o) => ({ ...o })),
       version: s.terms[t]?.version || 0,
     }
+  }
+  if (remote.value) {
+    const srv = await backend.createSchedule({ name: s.name + ' (copy)', year: s.year })
+    if (!srv) return null
+    schedules.value = [...schedules.value, srv]
+    selectedScheduleIds.value = [...selectedScheduleIds.value, srv.id]
+    persistSelectedSchedules()
+    for (const t of TERM_KEYS) {
+      if (terms[t].offerings.length) setTermOfferings(srv.id, t, terms[t].offerings)
+    }
+    refreshAllSuggestions()
+    return srv.id
   }
   const copy = { id: scheduleId(), name: s.name + ' (copy)', year: s.year, terms }
   schedules.value = [...schedules.value, copy]
@@ -708,22 +726,24 @@ export const editingSchedule = computed(() =>
 
 // Enters/starts a session on `id` (or exits when `id` is null/falsy). `role` is
 // 'edit' (direct writes; remote requires ownership) or 'suggest' (edits land in
-// a draft and are proposed). Returns true when the session was entered.
+// a draft and are proposed). Resolves to true when the session is entered and
+// (for suggest) its draft is set up; false when the schedule is missing or the
+// role is refused. Callers that don't await it still get a working session.
 export function setEditingSchedule(id, role = 'edit') {
   if (!id) {
     editingScheduleId.value = null
     editingRole.value = null
-    return true
+    return Promise.resolve(true)
   }
   const target = id ? scheduleById(id) : null
-  if (!target) return false
-  if (remote.value && role !== 'suggest' && !isOwner(target)) return false
+  if (!target) return Promise.resolve(false)
+  if (remote.value && role !== 'suggest' && !isOwner(target)) return Promise.resolve(false)
   editingScheduleId.value = target.id
   editingRole.value = role === 'suggest' ? 'suggest' : 'edit'
-  if (role === 'suggest') {
-    void refreshSuggestions(target.id).then(() => setupDraft(target.id, activeTerm.value))
-  }
-  return true
+  if (role !== 'suggest') return Promise.resolve(true)
+  return refreshSuggestions(target.id)
+    .then(() => setupDraft(target.id, activeTerm.value))
+    .then(() => true)
 }
 
 // Reschedules a single offering of `scheduleId`'s active term into a standard
@@ -967,11 +987,12 @@ export function seedSampleSchedule() {
 
 // Generates a new schedule from the live catalog. `mode` is 'random' (all
 // departments), 'dept' (exclusively `dept`'s courses), or 'empty'. The generated
-// offerings seed the schedule's active term.
+// offerings seed the schedule's active term. Awaits the schedule's creation
+// (server-confirmed in remote mode); resolves to the new schedule's id or null.
 /**
  * @param {{ mode: 'random' | 'dept' | 'empty'; dept?: string | null; name?: string; year?: string }} [opts]
  */
-export function generateSchedule(
+export async function generateSchedule(
   { mode, dept, name, year } = { mode: 'random', dept: null, name: '', year: '' },
 ) {
   let offerings
