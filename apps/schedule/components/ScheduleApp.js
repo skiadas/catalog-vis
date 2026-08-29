@@ -289,9 +289,9 @@ export default {
     </div>
     <div v-else class="loading">Loading schedule...</div>
 
-    <ScheduleHelp :open="showHelp" @close="showHelp = false" />
-    <ScheduleManage :open="showSchedules" @close="showSchedules = false" @edit="enterEdit" />
-    <ScheduleAddCourse :open="showAddCourse" @close="showAddCourse = false" />
-    <SuggestedChanges :open="showSuggestions" :schedule-id="suggestionsScheduleId" @close="showSuggestions = false" />
+    <ScheduleHelp :is-open="showHelp" @close="showHelp = false" />
+    <ScheduleManage :is-open="showSchedules" @close="showSchedules = false" @edit="enterEdit" />
+    <ScheduleAddCourse :is-open="showAddCourse" @close="showAddCourse = false" />
+    <SuggestedChanges :is-open="showSuggestions" :schedule-id="suggestionsScheduleId" @close="showSuggestions = false" />
   `,
 }

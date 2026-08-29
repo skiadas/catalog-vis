@@ -1,6 +1,6 @@
 // "Your schedules" management modal plus the "New schedule" creation modal it
 // opens. Read/writes the schedule collection via the module store directly;
-// the caller controls visibility through the `open` prop.
+// the caller controls visibility through the `isOpen` prop.
 
 import {
   schedules,
@@ -21,7 +21,7 @@ import { ref, computed } from 'vue'
 export default {
   name: 'ScheduleManage',
   props: {
-    open: { type: Boolean, default: false },
+    isOpen: { type: Boolean, default: false },
   },
   emits: ['close', 'edit'],
   setup(props, { emit }) {
@@ -97,7 +97,7 @@ export default {
     }
   },
   template: `
-    <div v-if="props.open" class="modal-overlay" @click.self="close">
+    <div v-if="props.isOpen" class="modal-overlay" @click.self="close">
       <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="schedule-manage-title">
         <div class="modal-head">
           <h3 id="schedule-manage-title">Your schedules</h3>

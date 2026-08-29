@@ -3,7 +3,7 @@
 // reject — applying the diff is handled server-side against its base version.
 // For a non-owner it offers proposing the current term's offerings as a change.
 //
-// Reads the schedule store directly; the caller controls visibility via `open`.
+// Reads the schedule store directly; the caller controls visibility via `isOpen`.
 
 import {
   suggestions,
@@ -18,12 +18,12 @@ import {
 import { TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
 import { renderChanges } from '@major-vis/schedule-core/diff'
 
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 export default {
   name: 'SuggestedChanges',
   props: {
-    open: { type: Boolean, default: false },
+    isOpen: { type: Boolean, default: false },
     scheduleId: { type: [String, Number], default: null },
   },
   emits: ['close'],
@@ -34,10 +34,17 @@ export default {
     const proposeFor = ref('F')
     const feedback = ref('')
 
-    const open = async () => {
+    // Refresh suggestions each time the modal opens.
+    const load = async () => {
       feedback.value = ''
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
+    watch(
+      () => props.isOpen,
+      (isOpenNow) => {
+        if (isOpenNow) load()
+      },
+    )
 
     const changeText = (s) => renderChanges(s.operations || [], 'text') || '(no changes)'
 
@@ -79,7 +86,6 @@ export default {
       feedback,
       TERM_KEYS,
       TERM_LABELS,
-      open,
       changeText,
       doApprove,
       doReject,
@@ -88,7 +94,7 @@ export default {
     }
   },
   template: `
-    <div v-if="open" class="modal-overlay" @click.self="$emit('close')" @keydown.esc="$emit('close')">
+    <div v-if="isOpen" class="modal-overlay" @click.self="$emit('close')" @keydown.esc="$emit('close')">
       <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="suggested-title">
         <div class="modal-head">
           <h3 id="suggested-title">Suggested changes — {{ schedule && schedule.name }}</h3>

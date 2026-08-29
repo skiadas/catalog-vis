@@ -73,6 +73,9 @@ and the compiled `apps/*/style.css` are ignored), then `python3 -m black .` and
 `apps/<name>/style.css`. **Never hard-code design tokens**: inherit before you
 set · token before you repeat · name a repeated look once.
 
+**Conventions** — naming and style rules beyond tooling live in
+`docs/CONVENTIONS.md` (e.g. booleans read as predicates: `isOpen`, not `open`).
+
 **Committing and verifying** — commit often, in small logical units; finish a
 coherent slice and commit before moving on. Run the same checks CI runs, all must
 pass _before_ you commit:

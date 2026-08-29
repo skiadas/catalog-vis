@@ -1,9 +1,9 @@
-// "How to use this page" help modal. Visibility via the `open` prop.
+// "How to use this page" help modal. Visibility via the `isOpen` prop.
 
 export default {
   name: 'ScheduleHelp',
   props: {
-    open: { type: Boolean, default: false },
+    isOpen: { type: Boolean, default: false },
   },
   emits: ['close'],
   setup(props, { emit }) {
@@ -13,7 +13,7 @@ export default {
     }
   },
   template: `
-    <div v-if="props.open" class="modal-overlay" @click.self="close">
+    <div v-if="props.isOpen" class="modal-overlay" @click.self="close">
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-help-title">
         <div class="modal-head">
           <h3 id="schedule-help-title">Using the Schedule page</h3>
