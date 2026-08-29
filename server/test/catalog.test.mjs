@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { buildServer, mountLocalBuiltApps } from '../src/index.js'
+import { buildServer, mountLocalBuiltApps, mountLocalLayout } from '../src/index.js'
 import { startTestServer } from './helpers.mjs'
 import express from 'express'
 
@@ -152,6 +152,38 @@ test('local repo-root serving mounts the built apps at /apps/<name>/ (never the 
     assert.equal(missing.status, 404)
   } finally {
     srv.close()
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('the local-layout branch only mounts built apps when the static dir is the repo root', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'major-vis-layout-'))
+  mkdirSync(join(root, 'dist', 'schedule'), { recursive: true })
+  writeFileSync(join(root, 'dist', 'schedule', 'index.html'), '<html><body>BUILT</body></html>')
+
+  // staticDir === repoRoot: dist mounts; the source/dev index must not appear.
+  const local = express()
+  const srvLocal = await startTestServer(
+    mountLocalLayout(local, { staticDir: root, repoRoot: root }),
+  )
+  try {
+    const page = await srvLocal.get('/apps/schedule/')
+    assert.equal(page.status, 200)
+    assert.equal(page.text.includes('BUILT'), true)
+  } finally {
+    srvLocal.close()
+  }
+
+  // staticDir is an assembled layout elsewhere: nothing is mounted (the layout
+  // itself owns the /apps/<name>/ slots).
+  const assembled = express()
+  const srvAssembled = await startTestServer(
+    mountLocalLayout(assembled, { staticDir: '/srv/static', repoRoot: root }),
+  )
+  try {
+    assert.equal((await srvAssembled.get('/apps/schedule/')).status, 404)
+  } finally {
+    srvAssembled.close()
     rmSync(root, { recursive: true, force: true })
   }
 })

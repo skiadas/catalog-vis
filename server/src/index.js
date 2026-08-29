@@ -23,6 +23,16 @@ export function mountLocalBuiltApps(app, repoRoot) {
     if (!existsSync(path.join(distDir, 'index.html'))) continue
     app.use(`/apps/${name}`, express.static(distDir))
   }
+  return app
+}
+
+// The local-layout branch: only when the static dir IS the repo root do the
+// built bundles take the /apps/<name>/ slots (an assembled container layout
+// already holds built apps there). Tested as its own unit so the branch can't
+// silently regress.
+export function mountLocalLayout(app, config) {
+  if (config.staticDir !== config.repoRoot) return app
+  return mountLocalBuiltApps(app, config.repoRoot)
 }
 
 export function buildServer(env = process.env) {
@@ -52,9 +62,7 @@ export function buildServer(env = process.env) {
   // Local repo-root serving: the built apps take the /apps/<name>/ slots the
   // container assembles (runs before the generic static so the source tree's
   // dev index.html never wins).
-  if (config.staticDir === config.repoRoot) {
-    mountLocalBuiltApps(app, config.repoRoot)
-  }
+  mountLocalLayout(app, config)
 
   // Static: the serving layout (`staticDir`) holds the root launcher
   // (index.html + config.json), the catalog artifacts, and the built apps
