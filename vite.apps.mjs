@@ -8,14 +8,41 @@
 // bad imports a build-time error instead of a browser runtime crash.
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
+import { readFile } from 'node:fs'
 import { defineConfig } from 'vite'
 
 const repoRoot = fileURLToPath(new URL('.', import.meta.url))
+
+// The catalog artifacts the apps fetch via `loadCatalog({ baseUrl })`. In the
+// co-deployed layout these live at the repo root, two levels above each app;
+// in dev the app is served at the origin root, so the relative `../../` would
+// resolve to `/majors.json` which the dev server (rooted at apps/<name>) can't
+// find. This plugin serves them from the repo root during `vite serve` only;
+// `vite build` is untouched (deployed apps keep resolving the shared-root
+// layout as designed).
+const CATALOG_FILES = ['majors.json', 'requirements_parsed.json', 'core_requirements.json']
+
+const catalogDevPlugin = {
+  name: 'major-vis-catalog-dev',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const name = CATALOG_FILES.find((f) => req.url.startsWith(`/${f}`))
+      if (!name) return next()
+      readFile(resolve(repoRoot, name), (err, data) => {
+        if (err) return next()
+        res.setHeader('Content-Type', 'application/json')
+        res.setHeader('Cache-Control', 'no-store')
+        res.end(data)
+      })
+    })
+  },
+}
 
 export function appConfig(name) {
   return defineConfig({
     root: resolve(repoRoot, 'apps', name),
     base: './',
+    plugins: [catalogDevPlugin],
     build: {
       outDir: resolve(repoRoot, 'dist', name),
       emptyOutDir: true,
