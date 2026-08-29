@@ -70,16 +70,22 @@ function normalize(v) {
 }
 
 // Apply a list of operations to an offerings array, returning a new array.
-// Unknown/mismatched ops are skipped so a stale suggestion can't corrupt a term.
+// Unknown/mismatched ops are skipped so a stale suggestion can't corrupt a term;
+// add ops that duplicate an existing offering (same prefix/number/section) are
+// skipped so concurrent approvals can't create duplicates.
 export function applyOperations(offerings, operations) {
   if (!Array.isArray(operations)) return offerings
+  const existing = new Set((offerings || []).map(offeringKey))
   let list = offerings
   for (const op of operations) {
     if (!op) continue
     if (op.kind === 'add' && op.offering) {
+      if (existing.has(offeringKey(op.offering))) continue
       list = addOfferingToSchedule(list, { ...op.offering })
+      existing.add(offeringKey(op.offering))
     } else if (op.kind === 'remove' && op.cur) {
       list = removeOfferingFromSchedule(list, op.cur)
+      existing.delete(offeringKey(op.cur))
     } else if (op.kind === 'update' && op.cur && op.changes) {
       const next = updateOfferingInSchedule(list, op.cur, op.changes)
       list = next

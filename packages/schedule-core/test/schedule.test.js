@@ -24,6 +24,8 @@ import {
   colorForSchedule,
   buildFilter,
   buildVisual,
+  buildEditVisual,
+  proposeOverlay,
   instructorsInSchedule,
   departmentsInSchedule,
   moveOfferingSmart,
@@ -549,4 +551,87 @@ test('unscheduled offerings are excluded from calendar and conflicts', () => {
     ['CS 220'],
   )
   assert.deepEqual(conflictsForCourse('CS 220', index), [])
+})
+
+test('buildEditVisual keeps every course visible but honors an active filter', () => {
+  // No filter: pass-all, colored by the edit color callback.
+  const open = buildEditVisual('dept', [], [], (it) => '#' + it.sid)
+  assert.equal(open.active, true)
+  assert.equal(open.matches({ o: { prefix: 'BIO' } }), true)
+  assert.equal(open.color({ sid: 'cs' }), '#cs')
+
+  // Active department filter: limits AND colors by department.
+  const dept = buildEditVisual('dept', ['CS'], [], () => '#x')
+  assert.equal(dept.active, true)
+  assert.equal(dept.matches({ o: { prefix: 'CS' } }), true)
+  assert.equal(dept.matches({ o: { prefix: 'BIO' } }), false)
+  assert.equal(dept.color({ o: { prefix: 'CS' } }), colorForDept('CS'))
+
+  // Active instructor filter behaves the same.
+  const inst = buildEditVisual('instructor', [], ['Vosmeier'], () => '#x')
+  assert.equal(inst.matches({ o: { instructor: 'Vosmeier' } }), true)
+  assert.equal(inst.matches({ o: { instructor: 'Morgan' } }), false)
+})
+
+test('proposeOverlay renders concurrent proposals independently with proposers', () => {
+  const base = [
+    { prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '9:20-10:30' },
+    { prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '10:00-11:45' },
+    { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '8:00-9:10' },
+  ]
+  const pending = [
+    {
+      id: 7,
+      proposer: 'physics',
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'PHY', number: '121', section: 'A' },
+          changes: { days: 'MWF', time: '12:00-13:10' },
+        },
+      ],
+    },
+    {
+      id: 9,
+      proposer: 'math',
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'MAT', number: '131', section: 'A' },
+          changes: { days: 'TR', time: '14:15-16:00' },
+        },
+        { kind: 'add', offering: { prefix: 'MAT', number: '299', section: 'A', days: 'MWF', time: '8:00-9:10' } },
+      ],
+    },
+    {
+      id: 11,
+      proposer: 'math',
+      operations: [{ kind: 'remove', cur: { prefix: 'CS', number: '101', section: 'A' } }],
+    },
+    {
+      id: 14,
+      proposer: 'registrar',
+      operations: [
+        // instructor-only change: no calendar overlay
+        {
+          kind: 'update',
+          cur: { prefix: 'CS', number: '101', section: 'A' },
+          changes: { instructor: 'Wahl' },
+        },
+      ],
+    },
+  ]
+  const { proposed, removals } = proposeOverlay(base, pending)
+  assert.equal(proposed.length, 3) // two moves + one add; instructor-only skipped
+  const phy = proposed.find((p) => p.offering.prefix === 'PHY')
+  assert.equal(phy.kind, 'move')
+  assert.equal(phy.offering.time, '12:00-13:10')
+  assert.deepEqual(phy.from, { prefix: 'PHY', number: '121', section: 'A' })
+  assert.equal(phy.proposer, 'physics')
+  assert.equal(phy.suggestionId, 7)
+  const added = proposed.find((p) => p.kind === 'add')
+  assert.equal(added.offering.number, '299')
+  assert.deepEqual(removals, [
+    { cur: { prefix: 'CS', number: '101', section: 'A' }, suggestionId: 11, proposer: 'math' },
+  ])
 })

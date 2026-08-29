@@ -78,6 +78,23 @@ test('applyOperations skips unknown/mismatched ops safely', () => {
   assert.equal(out[0].instructor, 'X')
 })
 
+test('applyOperations dedupes duplicate adds so concurrent approvals stay clean', () => {
+  const list = [OFF(1, { number: '101' })]
+  const add = { kind: 'add', offering: { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' } }
+  // Duplicate of an existing offering: skipped.
+  assert.deepEqual(applyOperations(list, [add]), list)
+  // Duplicate of an add in the same batch: only one lands.
+  const fresh = applyOperations([], [add, { ...add }])
+  assert.equal(fresh.length, 1)
+  // A remove frees the identity: the same add can land again afterwards.
+  const afterRemove = applyOperations(list, [
+    { kind: 'remove', cur: { prefix: 'CS', number: '101', section: 'A' } },
+    add,
+  ])
+  assert.equal(afterRemove.length, 1)
+  assert.equal(afterRemove[0].time, '9:20-10:30')
+})
+
 test('describeChange reads naturally', () => {
   assert.equal(
     describeChange({

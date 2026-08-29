@@ -709,3 +709,76 @@ export function buildVisual(mode, depts, instructors, scheduleIds, colorSchedule
   }
   return { active: false, matches: () => true, color: () => '' }
 }
+
+// The visual filter used while a schedule is in edit/suggest mode. Edit mode
+// must always render individual course pills (so the edited schedule's courses
+// stay draggable), but a department/instructor filter still holds: when one is
+// active its match/color rules apply to everything, exactly like the plain
+// views; otherwise every course shows, colored by `colorFn` (the schedule
+// color). Returns { active: true, matches, color }.
+export function buildEditVisual(mode, depts, instructors, colorFn) {
+  const filter = buildFilter(mode, depts, instructors)
+  if (filter.active) return filter
+  return { active: true, matches: () => true, color: colorFn || (() => '') }
+}
+
+// The calendar overlay for a term's pending suggestions: every pending
+// suggestion's ops are interpreted against the current term independently, so
+// concurrent proposals from different proposers each yield their own overlay
+// entries (two departments moving a course into the same slot show two
+// proposed blocks). Each entry carries its suggestion id and proposer for
+// labeling.
+//
+// Returns:
+//   proposed: [{ offering, kind: 'add' | 'move', from, suggestionId, proposer }]
+//     — offered blocks to render (dashed). `offering` carries the proposed
+//       days/time; `from` is the current identity for moves.
+//   removals: [{ cur, suggestionId, proposer }]
+//     — offered removals: markers for the course's current block.
+//
+// Update ops that don't move the course on the calendar (instructor/section
+// changes) are omitted here — they stay visible in the suggestions panel.
+export function proposeOverlay(baseOfferings, pendingSuggestions) {
+  const baseByKey = new Map()
+  for (const o of baseOfferings || []) {
+    baseByKey.set(`${o.prefix} ${o.number} ${o.section}`, o)
+  }
+  const proposed = []
+  const removals = []
+  for (const sug of pendingSuggestions || []) {
+    for (const op of sug.operations || []) {
+      if (!op) continue
+      if (op.kind === 'add' && op.offering) {
+        proposed.push({
+          offering: { ...op.offering },
+          kind: 'add',
+          from: null,
+          suggestionId: sug.id,
+          proposer: sug.proposer,
+        })
+      } else if (op.kind === 'update' && op.cur) {
+        const cur =
+          baseByKey.get(offeringKeyOf(op.cur)) ||
+          { ...op.cur, days: '', time: '' }
+        const next = { ...cur, ...(op.changes || {}) }
+        const moved =
+          (next.days || '') !== (cur.days || '') || (next.time || '') !== (cur.time || '')
+        if (!moved || !next.days || !next.time) continue
+        proposed.push({
+          offering: next,
+          kind: 'move',
+          from: { prefix: cur.prefix, number: cur.number, section: cur.section },
+          suggestionId: sug.id,
+          proposer: sug.proposer,
+        })
+      } else if (op.kind === 'remove' && op.cur) {
+        removals.push({ cur: { ...op.cur }, suggestionId: sug.id, proposer: sug.proposer })
+      }
+    }
+  }
+  return { proposed, removals }
+}
+
+function offeringKeyOf(o) {
+  return `${o.prefix} ${o.number} ${o.section}`
+}
