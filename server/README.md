@@ -11,15 +11,21 @@ the `Dockerfile`).
 ## Run
 
 ```sh
-npm run serve
+npm run build && npm run serve
 # env: PORT (8080), HOST (0.0.0.0), DB_PATH (server/data/major-vis.db),
 #      SERVICES (comma list: program|schedule|planner; default schedule),
-#      STATIC_DIR (repo root by default)
+#      STATIC_DIR (built static layout; defaults to the repo root)
 ```
 
 The container sets `STATIC_DIR=/srv/static` to an **assembled layout**: the
 root launcher (`index.html`, `config.json`), the three catalog artifacts, and
-the built apps under `apps/<name>/` (copied from `dist/<name>/`). The apps'
+the built apps under `apps/<name>/` (copied from `dist/<name>/`). Locally
+(`STATIC_DIR` unset = repo root), the same layout is mirrored: the built
+bundles under `dist/<name>/` are mounted at `/apps/<name>/` automatically, so
+run `npm run build` first — the source tree's dev-only `apps/<name>/index.html`
+is never served. (`npm run dev` is the Vite UI-iteration path: apps only,
+offline — no `/api`, so no ownership/suggestions.)
+The apps'
 relative seams (`loadCatalog`'s `baseUrl: '../../'`, the schedule API base
 `../../api`) resolve against that root — the source-tree `apps/` is never
 served. Serves at `http://localhost:8080/` (the root launcher redirects to the
@@ -35,7 +41,7 @@ SQLite via `node:sqlite` (`DatabaseSync`). Schema (migrated at boot in `src/db.j
 - `schedule_terms(id, schedule_id, term, payload, version)` — one row per
   (schedule, term); `payload` is the JSON offerings array
 - `schedule_changes(id, schedule_id, term, proposer_user_id, status,
-  base_version, operations, note, created_at, resolved_at)` — suggested changes
+base_version, operations, note, created_at, resolved_at)` — suggested changes
 
 `server/data/` is gitignored (dev DB); the container persists `/data` as a
 volume.

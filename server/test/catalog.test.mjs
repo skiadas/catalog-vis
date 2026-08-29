@@ -3,8 +3,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { buildServer } from '../src/index.js'
+import { buildServer, mountLocalBuiltApps } from '../src/index.js'
 import { startTestServer } from './helpers.mjs'
+import express from 'express'
 
 // A hermetic serving layout: a temp static root with the three catalog
 // artifacts, the root launcher, and a built-looking app under apps/<name>/.
@@ -118,5 +119,39 @@ test('missing artifacts 404 with a clear error', async () => {
     srv.close()
     db.close()
     rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('local repo-root serving mounts the built apps at /apps/<name>/ (never the source dev index)', async () => {
+  // A fake repo tree: source apps/<name>/index.html (dev-only) AND built
+  // dist/<name>/ bundles, plus an app with no dist yet.
+  const root = mkdtempSync(join(tmpdir(), 'major-vis-repo-'))
+  mkdirSync(join(root, 'apps', 'schedule'), { recursive: true })
+  mkdirSync(join(root, 'apps', 'browse'), { recursive: true })
+  mkdirSync(join(root, 'dist', 'schedule', 'assets'), { recursive: true })
+  writeFileSync(join(root, 'apps', 'schedule', 'index.html'), '<html><body>SOURCE DEV INDEX</body></html>')
+  writeFileSync(join(root, 'apps', 'browse', 'index.html'), '<html><body>SOURCE DEV INDEX</body></html>')
+  writeFileSync(join(root, 'dist', 'schedule', 'index.html'), '<html><body>BUILT BUNDLE</body></html>')
+  writeFileSync(join(root, 'dist', 'schedule', 'assets', 'index-hash123.js'), 'export const ok = 1')
+
+  const app = express()
+  mountLocalBuiltApps(app, root)
+  const srv = await startTestServer(app)
+  try {
+    // The built bundle wins over the source dev index.
+    const page = await srv.get('/apps/schedule/')
+    assert.equal(page.status, 200)
+    assert.equal(page.text.includes('BUILT BUNDLE'), true)
+    assert.equal(page.text.includes('SOURCE DEV INDEX'), false)
+    // Hashed assets are served.
+    const asset = await srv.get('/apps/schedule/assets/index-hash123.js')
+    assert.equal(asset.status, 200)
+    assert.match(asset.headers.get('content-type'), /javascript/)
+    // An app without a dist directory is not mounted.
+    const missing = await srv.get('/apps/browse/')
+    assert.equal(missing.status, 404)
+  } finally {
+    srv.close()
+    rmSync(root, { recursive: true, force: true })
   }
 })

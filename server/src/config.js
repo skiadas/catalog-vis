@@ -31,6 +31,7 @@ export function loadConfig(env = process.env) {
     services: parseServices(env.SERVICES),
     // Where the static apps + catalog JSON live (the repo root by default).
     staticDir: path.resolve(env.STATIC_DIR || repoRoot),
+    repoRoot,
     dbPath: path.resolve(env.DB_PATH || path.join(repoRoot, 'server', 'data', 'major-vis.db')),
     sessionCookie: env.SESSION_COOKIE || 'mjv_sid',
   }

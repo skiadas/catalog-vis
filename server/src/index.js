@@ -3,6 +3,7 @@
 // (createApp) are importable separately for tests.
 
 import path from 'node:path'
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
 import compression from 'compression'
@@ -10,6 +11,19 @@ import { loadConfig } from './config.js'
 import { openDb } from './db.js'
 import { createApp } from './app.js'
 import { catalogRouter } from './catalog.js'
+
+// In the container the assembled static layout (/srv/static) already holds the
+// built apps under apps/<name>/. When serving the repo root directly (local
+// `npm run serve`), those paths resolve to the source tree's dev-only
+// index.html — so the built bundles are mounted at /apps/<name>/ instead,
+// mirroring the container layout. Each mount is a no-op when dist is missing.
+export function mountLocalBuiltApps(app, repoRoot) {
+  for (const name of ['browse', 'schedule', 'planner']) {
+    const distDir = path.join(repoRoot, 'dist', name)
+    if (!existsSync(path.join(distDir, 'index.html'))) continue
+    app.use(`/apps/${name}`, express.static(distDir))
+  }
+}
 
 export function buildServer(env = process.env) {
   const config = loadConfig(env)
@@ -34,6 +48,13 @@ export function buildServer(env = process.env) {
 
   // Catalog API: the three artifacts + manifest, always public.
   app.use(catalogRouter(config.staticDir))
+
+  // Local repo-root serving: the built apps take the /apps/<name>/ slots the
+  // container assembles (runs before the generic static so the source tree's
+  // dev index.html never wins).
+  if (config.staticDir === config.repoRoot) {
+    mountLocalBuiltApps(app, config.repoRoot)
+  }
 
   // Static: the serving layout (`staticDir`) holds the root launcher
   // (index.html + config.json), the catalog artifacts, and the built apps
