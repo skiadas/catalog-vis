@@ -11,6 +11,56 @@ import { DatabaseSync } from 'node:sqlite'
 import path from 'node:path'
 import fs from 'node:fs'
 
+/** @typedef {import('node:sqlite').DatabaseSync} DB */
+
+// Row shapes for the SELECTs below. Columns come from the migrations; the
+// repository functions return typed rows so the rest of the server is typed
+// against real names rather than raw `Record<string, any>`.
+/**
+ * @typedef {object} UserRow
+ * @property {number} id
+ * @property {string} username
+ */
+
+/**
+ * @typedef {object} SessionRow
+ * @property {number} session_id
+ * @property {string} expires_at
+ * @property {number} user_id
+ * @property {string} username
+ */
+
+/**
+ * @typedef {object} ScheduleRow
+ * @property {number} id
+ * @property {string} name
+ * @property {string} year
+ * @property {string} status
+ * @property {number} owner_user_id
+ * @property {string | null} owner
+ */
+
+/**
+ * @typedef {object} TermRow
+ * @property {number} schedule_id
+ * @property {'F' | 'W' | 'S'} term
+ * @property {number} version
+ * @property {string} payload
+ */
+
+/**
+ * @typedef {object} SuggestionRow
+ * @property {number} id
+ * @property {number} schedule_id
+ * @property {string} term
+ * @property {number} proposer_user_id
+ * @property {number} base_version
+ * @property {string} operations
+ * @property {string} status
+ * @property {string} note
+ * @property {string | null} proposer
+ */
+
 const MIGRATIONS = [
   `
   CREATE TABLE IF NOT EXISTS users (
@@ -77,6 +127,9 @@ export function openDb(dbPath) {
 }
 
 // Wrap a sequence of statements in a transaction. `fn` receives the raw db.
+/**
+ * @param {DB} db
+ */
 export function transaction(db, fn) {
   db.exec('BEGIN;')
   try {
@@ -91,27 +144,45 @@ export function transaction(db, fn) {
 
 // ---- Auth ----------------------------------------------------------------
 
+/**
+ * @param {DB} db
+ */
 export function userByUsername(db, username) {
-  const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username)
+  const row = /** @type {UserRow | undefined} */ (
+    db.prepare('SELECT * FROM users WHERE username = ?').get(username)
+  )
   return row || null
 }
 
+/**
+ * @param {DB} db
+ */
 export function getUser(db, id) {
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(id) || null
+  const row = /** @type {UserRow | undefined} */ (db.prepare('SELECT * FROM users WHERE id = ?').get(id))
+  return row || null
 }
 
+/**
+ * @param {DB} db
+ */
 export function createUser(db, username) {
   const info = db.prepare('INSERT INTO users (username) VALUES (?)').run(username)
   return { id: Number(info.lastInsertRowid), username }
 }
 
 // Find-or-create the user; returns the user row.
+/**
+ * @param {DB} db
+ */
 export function ensureUser(db, username) {
   const found = userByUsername(db, username)
   if (found) return found
   return createUser(db, username)
 }
 
+/**
+ * @param {DB} db
+ */
 export function createSession(db, userId, tokenHash, ttl = 86400 * 30) {
   const expiresAt = new Date(Date.now() + ttl * 1000).toISOString()
   db.prepare('INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?, ?, ?)').run(
@@ -121,14 +192,19 @@ export function createSession(db, userId, tokenHash, ttl = 86400 * 30) {
   )
 }
 
+/**
+ * @param {DB} db
+ */
 export function sessionUser(db, tokenHash) {
-  const row = db
-    .prepare(
-      `SELECT s.id AS session_id, s.expires_at, u.id AS user_id, u.username
+  const row = /** @type {SessionRow | undefined} */ (
+    db
+      .prepare(
+        `SELECT s.id AS session_id, s.expires_at, u.id AS user_id, u.username
        FROM sessions s JOIN users u ON u.id = s.user_id
        WHERE s.token_hash = ?`,
-    )
-    .get(tokenHash)
+      )
+      .get(tokenHash)
+  )
   if (!row) return null
   if (new Date(row.expires_at).getTime() < Date.now()) {
     db.prepare('DELETE FROM sessions WHERE id = ?').run(row.session_id)
@@ -137,6 +213,9 @@ export function sessionUser(db, tokenHash) {
   return { id: row.user_id, username: row.username }
 }
 
+/**
+ * @param {DB} db
+ */
 export function deleteSession(db, tokenHash) {
   db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash)
 }
@@ -144,25 +223,30 @@ export function deleteSession(db, tokenHash) {
 // ---- Schedules -----------------------------------------------------------
 
 /**
- * @param {object} db
+ * @param {DB} db
  * @param {{ year?: string }} [opts]
  */
 export function listSchedules(db, { year } = {}) {
   const clause = year != null && year !== '' ? 'WHERE s.year = ?' : ''
-  const rows = db
-    .prepare(
-      `SELECT s.*, u.username AS owner FROM schedules s
+  const rows = /** @type {ScheduleRow[]} */ (
+    db
+      .prepare(
+        `SELECT s.*, u.username AS owner FROM schedules s
        JOIN users u ON u.id = s.owner_user_id ${clause} ORDER BY s.year DESC, s.name`,
-    )
-    .all(...(clause ? [year] : []))
+      )
+      .all(...(clause ? [year] : []))
+  )
   return rows.map((r) => ({ ...r, terms: termSummary(db, r.id) }))
 }
 
 // Per-term offering counts + versions, for list summaries.
+/**
+ * @param {DB} db
+ */
 function termSummary(db, scheduleId) {
-  const rows = db
-    .prepare('SELECT term, version, payload FROM schedule_terms WHERE schedule_id = ?')
-    .all(scheduleId)
+  const rows = /** @type {TermRow[]} */ (
+    db.prepare('SELECT term, version, payload FROM schedule_terms WHERE schedule_id = ?').all(scheduleId)
+  )
   const summary = { F: { count: 0, version: 0 }, W: { count: 0, version: 0 }, S: { count: 0, version: 0 } }
   for (const r of rows) {
     try {
@@ -174,6 +258,9 @@ function termSummary(db, scheduleId) {
   return summary
 }
 
+/**
+ * @param {DB} db
+ */
 export function createSchedule(db, { name, year, ownerUserId }) {
   return transaction(db, (d) => {
     const info = d
@@ -191,17 +278,22 @@ export function createSchedule(db, { name, year, ownerUserId }) {
   })
 }
 
+/**
+ * @param {DB} db
+ */
 export function getSchedule(db, id) {
-  const row = db
-    .prepare(
-      'SELECT s.*, u.username AS owner FROM schedules s JOIN users u ON u.id = s.owner_user_id WHERE s.id = ?',
-    )
-    .get(id)
+  const row = /** @type {ScheduleRow | undefined} */ (
+    db
+      .prepare(
+        'SELECT s.*, u.username AS owner FROM schedules s JOIN users u ON u.id = s.owner_user_id WHERE s.id = ?',
+      )
+      .get(id)
+  )
   if (!row) return null
   const terms = {}
-  const termRows = db
-    .prepare('SELECT term, version, payload FROM schedule_terms WHERE schedule_id = ?')
-    .all(id)
+  const termRows = /** @type {TermRow[]} */ (
+    db.prepare('SELECT term, version, payload FROM schedule_terms WHERE schedule_id = ?').all(id)
+  )
   for (const r of termRows) {
     let offerings = []
     try {
@@ -214,10 +306,15 @@ export function getSchedule(db, id) {
   return { ...row, terms }
 }
 
+/**
+ * @param {DB} db
+ */
 export function getTerm(db, scheduleId, term) {
-  const row = db
-    .prepare('SELECT *, payload FROM schedule_terms WHERE schedule_id = ? AND term = ?')
-    .get(scheduleId, term)
+  const row = /** @type {TermRow | undefined} */ (
+    db
+      .prepare('SELECT *, payload FROM schedule_terms WHERE schedule_id = ? AND term = ?')
+      .get(scheduleId, term)
+  )
   if (!row) return null
   let offerings = []
   try {
@@ -228,6 +325,9 @@ export function getTerm(db, scheduleId, term) {
   return { schedule_id: row.schedule_id, term: row.term, version: row.version, offerings }
 }
 
+/**
+ * @param {DB} db
+ */
 export function updateScheduleMeta(db, id, { name, status }) {
   const fields = []
   const vals = []
@@ -245,18 +345,24 @@ export function updateScheduleMeta(db, id, { name, status }) {
   return getSchedule(db, id)
 }
 
+/**
+ * @param {DB} db
+ */
 export function deleteSchedule(db, id) {
   db.prepare('DELETE FROM schedules WHERE id = ?').run(id)
 }
 
 // Replaces a term part's offerings, incrementing its version, and bumps the
 // schedule's own updated_at/version. Returns the saved term.
+/**
+ * @param {DB} db
+ */
 export function setTermOfferings(db, scheduleId, term, offerings) {
   return transaction(db, (d) => {
     const payload = JSON.stringify(offerings || [])
-    const existing = d
-      .prepare('SELECT version FROM schedule_terms WHERE schedule_id = ? AND term = ?')
-      .get(scheduleId, term)
+    const existing = /** @type {{ version: number } | undefined} */ (
+      d.prepare('SELECT version FROM schedule_terms WHERE schedule_id = ? AND term = ?').get(scheduleId, term)
+    )
     if (!existing) throw new Error('term not found')
     const version = (existing.version || 0) + 1
     d.prepare(
@@ -274,10 +380,13 @@ export function setTermOfferings(db, scheduleId, term, offerings) {
 // Logs a suggested change for a term part from `proposer`. The server stores the
 // operations payload and does NOT modify the canonical term until an owner
 // approves it against the recorded base version.
+/**
+ * @param {DB} db
+ */
 export function addSuggestion(db, { scheduleId, term, proposerUserId, baseVersion, operations, note }) {
-  const existing = db
-    .prepare('SELECT version FROM schedule_terms WHERE schedule_id = ? AND term = ?')
-    .get(scheduleId, term)
+  const existing = /** @type {{ version: number } | undefined} */ (
+    db.prepare('SELECT version FROM schedule_terms WHERE schedule_id = ? AND term = ?').get(scheduleId, term)
+  )
   if (!existing) throw new Error('term not found')
   const info = db
     .prepare(
@@ -289,28 +398,41 @@ export function addSuggestion(db, { scheduleId, term, proposerUserId, baseVersio
   return getSuggestion(db, Number(info.lastInsertRowid))
 }
 
+/**
+ * @param {DB} db
+ */
 export function getSuggestion(db, id) {
-  const row = db
-    .prepare(
-      `SELECT c.*, p.username AS proposer FROM schedule_changes c
+  const row = /** @type {SuggestionRow | undefined} */ (
+    db
+      .prepare(
+        `SELECT c.*, p.username AS proposer FROM schedule_changes c
        JOIN users p ON p.id = c.proposer_user_id WHERE c.id = ?`,
-    )
-    .get(id)
+      )
+      .get(id)
+  )
   if (!row) return null
   return { ...row, operations: safeParse(row.operations) }
 }
 
+/**
+ * @param {DB} db
+ */
 export function listSuggestions(db, scheduleId) {
-  const rows = db
-    .prepare(
-      `SELECT c.*, p.username AS proposer FROM schedule_changes c
+  const rows = /** @type {SuggestionRow[]} */ (
+    db
+      .prepare(
+        `SELECT c.*, p.username AS proposer FROM schedule_changes c
        JOIN users p ON p.id = c.proposer_user_id
        WHERE c.schedule_id = ? ORDER BY c.created_at DESC`,
-    )
-    .all(scheduleId)
+      )
+      .all(scheduleId)
+  )
   return rows.map((r) => ({ ...r, operations: safeParse(r.operations) }))
 }
 
+/**
+ * @param {DB} db
+ */
 export function setSuggestionStatus(db, id, status) {
   const resolved = status === 'pending' ? null : new Date().toISOString()
   db.prepare(`UPDATE schedule_changes SET status = ?, resolved_at = ? WHERE id = ?`).run(status, resolved, id)

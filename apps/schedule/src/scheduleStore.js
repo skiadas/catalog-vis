@@ -531,9 +531,11 @@ export function seedSampleSchedule() {
 // departments), 'dept' (exclusively `dept`'s courses), or 'empty'. The generated
 // offerings seed the schedule's active term.
 /**
- * @param {{ mode?: 'random' | 'dept' | 'empty'; dept?: string | null; name?: string; year?: string }} [opts]
+ * @param {{ mode: 'random' | 'dept' | 'empty'; dept?: string | null; name?: string; year?: string }} [opts]
  */
-export function generateSchedule({ mode, dept, name, year } = {}) {
+export function generateSchedule(
+  { mode, dept, name, year } = { mode: 'random', dept: null, name: '', year: '' },
+) {
   let offerings
   let fallback
   const t = activeTerm.value
