@@ -4,6 +4,9 @@ node_modules/
 # Built app bundles (npm run build / vite) — dist/ is deployment output
 dist/
 
+# Compiled stylesheets — Vite compiles them from style/*.scss (see vite.apps.mjs)
+apps/*/style.css
+
 # Python
 __pycache__/
 *.pyc

@@ -14,8 +14,6 @@
     "serve": "node server/src/index.js",
     "test:data": "python3 tools/catalog-pipeline/test_data.py",
     "validate:catalog": "node packages/catalog-contract/validate.mjs",
-    "build:css": "sass style/browse.scss:apps/browse/style.css style/schedule.scss:apps/schedule/style.css style/planner.scss:apps/planner/style.css --no-source-map",
-    "check:css": "npm run build:css && git diff --exit-code -- apps/browse/style.css apps/schedule/style.css apps/planner/style.css",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,html,css,scss}\"",

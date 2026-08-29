@@ -2,5 +2,5 @@ package-lock.json
 node_modules/
 dist/
 *.json
-# Compiled Sass output — the .scss source is authoritative (npm run build:css).
+# Compiled Sass output — the .scss source is authoritative (Vite compiles it).
 apps/*/style.css

@@ -27,9 +27,6 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
-      - name: Check compiled CSS is up to date
-        run: npm run check:css
-
       - name: Run unit tests
         run: npm test
 
