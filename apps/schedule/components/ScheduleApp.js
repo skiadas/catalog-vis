@@ -22,7 +22,6 @@ import {
   renameSchedule,
   activeTerm,
   setActiveTerm,
-  remote,
   showPendingSuggestions,
   setShowPendingSuggestions,
   pendingSuggestionsForTerm,
@@ -158,7 +157,6 @@ export default {
       showAddCourse,
       showSuggestions,
       suggestionsScheduleId,
-      remote,
       editingId,
       editingRole,
       editingName,
@@ -210,7 +208,7 @@ export default {
             @click="setActiveTerm(t)"
           >{{ TERM_LABELS[t] }}</button>
           <button
-            v-if="remote && suggestionsScheduleId"
+            v-if="suggestionsScheduleId"
             class="filter-btn schedule-suggestions-btn"
             @click="showSuggestions = true"
           >Suggested changes</button>
@@ -259,7 +257,7 @@ export default {
           <span class="schedule-edit-hint" v-else-if="view !== 'grid'">Switch to the grid view to click a course's edit icon or drag it onto a time slot.</span>
           <span class="schedule-edit-hint" v-else>Click a course's edit icon to change its settings, or drag it onto a time slot to move it.</span>
           <button
-            v-if="editingRole === 'suggest' && remote"
+            v-if="editingRole === 'suggest'"
             class="filter-btn schedule-suggestions-btn"
             :class="{ active: showSuggestions }"
             @click="showSuggestions = true"

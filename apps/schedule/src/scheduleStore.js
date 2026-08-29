@@ -134,9 +134,13 @@ export async function loadCurrentUser() {
   return user
 }
 
-// Whether the supplied schedule is owned by the current user.
+// Whether the supplied schedule is owned by the current user. Without a
+// backend every schedule belongs to the single local user (offline mirrors the
+// live flow, so self-approve/reject of one's own trail rows works the same).
 export function isOwner(schedule) {
-  if (!currentUser.value || !schedule) return false
+  if (!schedule) return false
+  if (!remote.value) return true
+  if (!currentUser.value) return false
   if (schedule.owner_user_id == null) return false
   return Number(schedule.owner_user_id) === Number(currentUser.value.id)
 }
