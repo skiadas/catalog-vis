@@ -107,8 +107,8 @@ const MIGRATIONS = [
     schedule_id INTEGER NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
     term TEXT NOT NULL,
     proposer_user_id INTEGER NOT NULL REFERENCES users(id),
-    status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected'
-    base_version INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'moot'
+    base_version INTEGER NOT NULL,          -- informational: what the proposer saw (never enforced)
     operations TEXT NOT NULL DEFAULT '[]',  -- JSON diff ops
     note TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -236,26 +236,31 @@ export function listSchedules(db, { year } = {}) {
       )
       .all(...(clause ? [year] : []))
   )
-  return rows.map((r) => ({ ...r, terms: termSummary(db, r.id) }))
+  // Full term payloads (offerings + version), the same shape `getSchedule`
+  // returns — the schedule app's store renders directly from this list.
+  return rows.map((r) => ({ ...r, terms: getTerms(db, r.id) }))
 }
 
-// Per-term offering counts + versions, for list summaries.
+// All three term parts of a schedule with their full offering payloads.
 /**
  * @param {DB} db
+ * @param {number} scheduleId
  */
-function termSummary(db, scheduleId) {
+function getTerms(db, scheduleId) {
   const rows = /** @type {TermRow[]} */ (
     db.prepare('SELECT term, version, payload FROM schedule_terms WHERE schedule_id = ?').all(scheduleId)
   )
-  const summary = { F: { count: 0, version: 0 }, W: { count: 0, version: 0 }, S: { count: 0, version: 0 } }
+  const terms = {}
   for (const r of rows) {
+    let offerings = []
     try {
-      summary[r.term] = { count: JSON.parse(r.payload || '[]').length, version: r.version }
+      offerings = JSON.parse(r.payload || '[]')
     } catch {
-      summary[r.term] = { count: 0, version: r.version }
+      offerings = []
     }
+    terms[r.term] = { offerings, version: r.version }
   }
-  return summary
+  return terms
 }
 
 /**
@@ -290,20 +295,7 @@ export function getSchedule(db, id) {
       .get(id)
   )
   if (!row) return null
-  const terms = {}
-  const termRows = /** @type {TermRow[]} */ (
-    db.prepare('SELECT term, version, payload FROM schedule_terms WHERE schedule_id = ?').all(id)
-  )
-  for (const r of termRows) {
-    let offerings = []
-    try {
-      offerings = JSON.parse(r.payload || '[]')
-    } catch {
-      offerings = []
-    }
-    terms[r.term] = { offerings, version: r.version }
-  }
-  return { ...row, terms }
+  return { ...row, terms: getTerms(db, id) }
 }
 
 /**
@@ -379,7 +371,10 @@ export function setTermOfferings(db, scheduleId, term, offerings) {
 
 // Logs a suggested change for a term part from `proposer`. The server stores the
 // operations payload and does NOT modify the canonical term until an owner
-// approves it against the recorded base version.
+// approves it. `baseVersion` records what the proposer saw (informational): many
+// suggestions from many proposers stay live concurrently, and approval applies
+// the identity-based operations to whatever the current term state is — it is
+// never gated on the recorded base version.
 /**
  * @param {DB} db
  */
@@ -396,6 +391,29 @@ export function addSuggestion(db, { scheduleId, term, proposerUserId, baseVersio
     )
     .run(scheduleId, term, proposerUserId, baseVersion, JSON.stringify(operations || []), note || '')
   return getSuggestion(db, Number(info.lastInsertRowid))
+}
+
+// Replaces a pending suggestion's operations and/or note (proposer editing their
+// own proposal). Returns the updated suggestion or null if the id is unknown.
+/**
+ * @param {DB} db
+ * @param {number} id
+ * @param {{ operations?: unknown[]; note?: string }} changes
+ */
+export function updateSuggestion(db, id, { operations, note }) {
+  const fields = []
+  const vals = []
+  if (operations !== undefined) {
+    fields.push('operations = ?')
+    vals.push(JSON.stringify(operations))
+  }
+  if (note !== undefined) {
+    fields.push('note = ?')
+    vals.push(note)
+  }
+  if (!fields.length) return getSuggestion(db, id)
+  db.prepare(`UPDATE schedule_changes SET ${fields.join(', ')} WHERE id = ?`).run(...vals, id)
+  return getSuggestion(db, id)
 }
 
 /**

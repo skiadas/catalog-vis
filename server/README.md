@@ -70,9 +70,11 @@ PATCH  /api/schedules/:id { name?, status? }-> { schedule }      (owner)
 DELETE /api/schedules/:id                                          (owner)
 GET    /api/schedules/:id/terms/:term       -> { term: { offerings, version } }
 PUT    /api/schedules/:id/terms/:term       -> { term }           (owner, full replace)
-POST   /api/schedules/:id/suggestions       -> { suggestion }    (auth, version-guarded)
-GET    /api/schedules/:id/suggestions       -> { suggestions }   (owner sees all; others see own)
-POST   /api/suggestions/:id/approve         -> { term }           (owner; applies diff ops)
+POST   /api/schedules/:id/suggestions       -> { suggestion }    (auth; base_version informational)
+GET    /api/schedules/:id/suggestions       -> { suggestions }   (everyone sees pending; own history + owner sees all)
+PATCH  /api/suggestions/:id                 -> { suggestion }    (proposer, pending only)
+DELETE /api/suggestions/:id                 -> { suggestion }    (proposer, pending only; soft 'withdrawn')
+POST   /api/suggestions/:id/approve         -> { term, suggestion } (owner; applies ops to current state)
 POST   /api/suggestions/:id/reject          -> { ok }             (owner)
 GET    /api/schedules/:id/suggestions/export?fmt=json|md|csv
 ```
@@ -81,13 +83,19 @@ GET    /api/schedules/:id/suggestions/export?fmt=json|md|csv
 provider is `username` (self-identify); the provider seam leaves room for SSO /
 one-time-code later without changing the route contract.
 
-**Suggestions**: a non-owner (or owner) can propose a change to a term as a list
-of diff operations (`add` / `remove` / `update`). The server stores it against
-the term's current version and does **not** mutate the canonical term until the
-owner **approves** it; approval checks the base version still matches (a stale
-base is `409`) and applies the operations. Diff produce/apply/describe live in
+**Suggestions**: anyone can propose a change to a term as a list of diff
+operations (`add` / `remove` / `update` with absolute field values). Many
+suggestions from many proposers stay live **concurrently**: approval applies
+the operations to whatever the term's current state is (no base-version guard),
+so approving one proposal never invalidates others. Unmatched ops no-op,
+duplicate adds dedupe, and an approval that changes nothing is recorded as
+**`moot`**. Proposers can edit (`PATCH`) or withdraw (`DELETE`, soft
+`withdrawn`) their own pending suggestions. The recorded `base_version` is
+informational only — the paper trail keeps every row with proposer, note,
+operations, and resolution status. Diff produce/apply/describe live in
 `@major-vis/schedule-core/diff` (`diffOfferings`, `applyOperations`,
-`describeChange`, `renderChanges`).
+`describeChange`, `renderChanges`). `GET /api/schedules` returns full term
+payloads (offerings + versions) so the app renders directly from the list.
 
 ## Reuse
 

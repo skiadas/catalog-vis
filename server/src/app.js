@@ -9,7 +9,7 @@
 import crypto from 'node:crypto'
 import express from 'express'
 import * as db from './db.js'
-import { applyOperations, renderChanges } from '@major-vis/schedule-core/diff'
+import { applyOperations, diffOfferings, renderChanges } from '@major-vis/schedule-core/diff'
 
 const TERMS = ['F', 'W', 'S']
 
@@ -154,10 +154,12 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
   })
 
   // ---- Suggested changes -------------------------------------------------
-  // A non-owner (or anyone) submits a suggestion against a term's current
-  // version. The server stores it; the owner reviews/approves. The proposed
-  // change is expressed as diff operations; applying requires the base version
-  // to still match (stale-base guard).
+  // Anyone proposes a change to a term as identity-based diff operations
+  // (add/remove/update with absolute values). Many suggestions from many
+  // proposers stay live concurrently: approving one never invalidates others —
+  // approval applies the ops to whatever the term's current state is (unmatched
+  // ops no-op, duplicate adds dedupe). `baseVersion` is recorded for the paper
+  // trail only, never enforced.
   app.post('/api/schedules/:id/suggestions', requireAuth, (req, res) => {
     const schedule = db.getSchedule(database, Number(req.params.id))
     if (!schedule) return res.status(404).json({ error: 'not_found' })
@@ -167,13 +169,6 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     const baseVersion = Number(req.body && req.body.baseVersion)
     if (!Number.isInteger(baseVersion) || baseVersion < 0)
       return res.status(400).json({ error: 'base_version_required' })
-    const current = db.getTerm(database, schedule.id, term)
-    if (!current) return res.status(404).json({ error: 'not_found' })
-    // The base version must match the current term version (the suggestion
-    // was built against the latest published state).
-    if (current.version !== baseVersion) {
-      return res.status(409).json({ error: 'stale_base', currentVersion: current.version })
-    }
     const note = String((req.body && req.body.note) || '').trim()
     const suggestion = db.addSuggestion(database, {
       scheduleId: schedule.id,
@@ -190,14 +185,53 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     const schedule = db.getSchedule(database, Number(req.params.id))
     if (!schedule) return res.status(404).json({ error: 'not_found' })
     const all = db.listSuggestions(database, schedule.id)
-    // Everyone sees the owner's own schedules' suggestions; non-owners see only
-    // their own proposals (privacy).
+    // Everyone sees the live (pending) suggestions from every proposer so
+    // departments can coordinate; history (approved/rejected/withdrawn/moot) is
+    // visible to the owner and to the row's own proposer.
     const visible =
-      schedule.owner_user_id === req.user.id ? all : all.filter((c) => c.proposer_user_id === req.user.id)
+      schedule.owner_user_id === req.user.id
+        ? all
+        : all.filter((c) => c.status === 'pending' || c.proposer_user_id === req.user.id)
     res.json({ suggestions: visible })
   })
 
-  // Owner applies a pending suggestion against its base version.
+  // A proposer can edit their own pending suggestion (new operations and/or
+  // note); pending only, so the trail is stable once resolved.
+  app.patch('/api/suggestions/:id', requireAuth, (req, res) => {
+    const suggestion = db.getSuggestion(database, Number(req.params.id))
+    if (!suggestion) return res.status(404).json({ error: 'not_found' })
+    if (suggestion.proposer_user_id !== req.user.id)
+      return res.status(403).json({ error: 'not_proposer' })
+    if (suggestion.status !== 'pending') return res.status(409).json({ error: 'not_pending' })
+    const operations = Array.isArray(req.body && req.body.operations) ? req.body.operations : undefined
+    const note = req.body && typeof req.body.note === 'string' ? req.body.note.trim() : undefined
+    if (operations === undefined && note === undefined)
+      return res.status(400).json({ error: 'nothing_to_update' })
+    const updated = db.updateSuggestion(database, suggestion.id, {
+      ...(operations !== undefined ? { operations } : {}),
+      ...(note !== undefined ? { note } : {}),
+    })
+    res.json({ suggestion: updated })
+  })
+
+  // A proposer can withdraw their own pending suggestion. Withdraw is a soft
+  // status change: the row stays in the trail as 'withdrawn'.
+  app.delete('/api/suggestions/:id', requireAuth, (req, res) => {
+    const suggestion = db.getSuggestion(database, Number(req.params.id))
+    if (!suggestion) return res.status(404).json({ error: 'not_found' })
+    if (suggestion.proposer_user_id !== req.user.id)
+      return res.status(403).json({ error: 'not_proposer' })
+    if (suggestion.status !== 'pending') return res.status(409).json({ error: 'not_pending' })
+    const withdrawn = db.setSuggestionStatus(database, suggestion.id, 'withdrawn')
+    res.json({ suggestion: withdrawn })
+  })
+
+  // Owner applies a pending suggestion against the current term state. There is
+  // no base-version guard: identity-based operations apply to whatever the term
+  // currently holds, so concurrent suggestions from many proposers can each be
+  // approved one at a time. If the operations end up changing nothing (e.g. the
+  // target is already gone), the suggestion is recorded as 'moot' rather than
+  // 'approved' — the trail reflects what actually happened.
   app.post('/api/suggestions/:id/approve', requireAuth, (req, res) => {
     const suggestion = db.getSuggestion(database, Number(req.params.id))
     if (!suggestion) return res.status(404).json({ error: 'not_found' })
@@ -207,13 +241,13 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
       return res.status(403).json({ error: 'not_owner' })
     const current = db.getTerm(database, schedule.id, suggestion.term)
     if (!current) return res.status(404).json({ error: 'not_found' })
-    if (current.version !== suggestion.base_version) {
-      return res.status(409).json({ error: 'stale_base', currentVersion: current.version })
-    }
     const applied = applyOperations(current.offerings, suggestion.operations)
-    const saved = db.setTermOfferings(database, schedule.id, suggestion.term, applied)
-    db.setSuggestionStatus(database, suggestion.id, 'approved')
-    res.json({ term: saved })
+    const changed = diffOfferings(current.offerings, applied).length > 0
+    const term = changed
+      ? db.setTermOfferings(database, schedule.id, suggestion.term, applied)
+      : current
+    const saved = db.setSuggestionStatus(database, suggestion.id, changed ? 'approved' : 'moot')
+    res.json({ term, suggestion: saved })
   })
 
   app.post('/api/suggestions/:id/reject', requireAuth, (req, res) => {
@@ -232,7 +266,9 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     if (!schedule) return res.status(404).json({ error: 'not_found' })
     const all = db.listSuggestions(database, schedule.id)
     const visible =
-      schedule.owner_user_id === req.user.id ? all : all.filter((c) => c.proposer_user_id === req.user.id)
+      schedule.owner_user_id === req.user.id
+        ? all
+        : all.filter((c) => c.status === 'pending' || c.proposer_user_id === req.user.id)
     const fmt = req.query.fmt === 'json' || !req.query.fmt ? 'json' : req.query.fmt === 'md' ? 'md' : 'csv'
     if (fmt === 'md') {
       const lines = visible.map((c) => {
