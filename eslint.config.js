@@ -19,7 +19,7 @@ export default [
   {
     files: ['**/*.js'],
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: 2025,
       sourceType: 'module',
       globals: {
         ...globals.browser,
@@ -29,7 +29,7 @@ export default [
   {
     files: ['**/*.mjs'],
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: 2025,
       sourceType: 'module',
       globals: {
         ...globals.node,

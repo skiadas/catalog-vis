@@ -5,47 +5,45 @@
 // This is a *parallel* contract check to test/test_data.py: the JSON Schemas
 // cover structure/vocabulary, while test_data.py keeps the derived/relational
 // invariants (id-from-name, track-slug uniqueness, cross-file integrity).
+//
+// Reads the artifacts from the repo root and runs the same validation routine
+// the browser uses (`validateCatalog` in `index.js`), so the pipeline and the
+// apps judge documents identically.
 
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import Ajv2020 from 'ajv/dist/2020.js'
+import { CATALOG_FILES, validateCatalog } from './index.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '../..')
 
-const SUITES = [
-  ['majors.json', 'schemas/majors.schema.json'],
-  ['requirements_parsed.json', 'schemas/requirements.schema.json'],
-  ['core_requirements.json', 'schemas/core.schema.json'],
-]
-
-const ajv = new Ajv2020({ allErrors: true })
-
-let failed = 0
-for (const [dataRel, schemaRel] of SUITES) {
-  const dataPath = join(root, dataRel)
-  const schemaPath = join(here, schemaRel)
-  let data
+/** @type {import('./types.d.ts').CatalogDocs} */
+const docs = {
+  'majors.json': undefined,
+  'requirements_parsed.json': undefined,
+  'core_requirements.json': undefined,
+}
+let readFailed = 0
+for (const file of CATALOG_FILES) {
   try {
-    data = JSON.parse(readFileSync(dataPath, 'utf8'))
+    docs[file] = JSON.parse(readFileSync(join(root, file), 'utf8'))
   } catch (err) {
-    console.error(`FAIL ${dataRel}: cannot read/parse (${err.message})`)
-    failed++
-    continue
+    readFailed++
+    console.error(`FAIL ${file}: cannot read/parse (${err.message})`)
   }
-  const schema = JSON.parse(readFileSync(schemaPath, 'utf8'))
-  const validate = ajv.compile(schema)
-  if (validate(data)) {
-    console.log(`OK   ${dataRel} conforms to ${schemaRel}`)
-  } else {
-    failed++
-    console.log(`FAIL ${dataRel} does not conform to ${schemaRel}:`)
-    for (const e of validate.errors) {
+}
+if (readFailed) process.exit(1)
+
+const issues = validateCatalog(docs)
+if (issues) {
+  for (const { file, errors } of issues) {
+    console.log(`FAIL ${file} does not conform to its schema:`)
+    for (const e of errors) {
       console.log(`  ${e.instancePath || '/'} ${e.message}`)
     }
   }
+  process.exit(1)
 }
-
-if (failed) process.exit(1)
+for (const file of CATALOG_FILES) console.log(`OK   ${file} conforms to its schema`)
 console.log('All catalog data conforms to the contract schemas.')

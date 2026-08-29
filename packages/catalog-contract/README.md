@@ -39,8 +39,21 @@ witnesses are the tripwires.
 node validate.mjs         # or: npm run validate:catalog (from repo root)
 ```
 
-This checks the committed data files at the repo root against the schemas.
-CI runs it on every push.
+This checks the committed data files at the repo root against the schemas —
+through the same `validateCatalog` routine (`index.js`) that the browser
+client runs on fetched documents, so CI and the apps judge catalog data
+identically. CI runs it on every push.
+
+## Runtime entry
+
+`index.js` is the browser-safe validator surface: `validateCatalog(docs)`
+returns `null` when the three documents (keyed by their canonical filenames,
+`majors.json` / `requirements_parsed.json` / `core_requirements.json`)
+conform, or a list of per-file Ajv errors otherwise. `@major-vis/catalog-client`
+calls it in `loadCatalog` before storing fetched data (fail loud on mismatch).
+The `types.d.ts` declarations mirror this entry; `test/runtime.test.js`
+imports the package by name to keep the declared surface and the runtime
+implementation honest.
 
 ## Consumer-needs matrix
 
@@ -70,9 +83,9 @@ The contract is keyed by strings that are stable across re-scrapes:
 
 ## Consuming it
 
-- Browser apps resolve `@major-vis/catalog-contract` (and the other
-  `@major-vis/*` packages) via each app's import map — see
-  `apps/*/index.html`.
+- Apps resolve `@major-vis/catalog-contract` through the workspace `exports`
+  map (`types.d.ts` for typecheck via JSDoc, `index.js` at runtime); Vite
+  bundles the runtime entry into each app. See `packages/catalog-client`.
 - To reimplement a consumer elsewhere, depend on the schemas here and the pure
   engine contracts in `@major-vis/degree-audit` and `@major-vis/schedule-core`.
 - To point an app at a different catalog source (e.g. a college-hosted API),

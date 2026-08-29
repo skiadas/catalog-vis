@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "description": "The catalog data contract: formal JSON Schemas for majors.json, requirements_parsed.json, and core_requirements.json, plus a validator, consumer-needs matrix, and the human-oriented REQUIREMENTS_SCHEMA.md.",
   "type": "module",
+  "main": "./index.js",
   "types": "./types.d.ts",
   "exports": {
     ".": {
-      "types": "./types.d.ts"
+      "types": "./types.d.ts",
+      "default": "./index.js"
     }
   },
   "scripts": {

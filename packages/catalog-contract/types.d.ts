@@ -151,3 +151,30 @@ export interface CoreRequirementsDoc {
   source?: string
   programs: CoreProgram[]
 }
+
+// ---- Runtime validation API (implemented in index.js) ------------------------
+// These declarations mirror the runtime entry so consumers type-check against
+// the same surface the browser executes. `test/runtime.test.js` imports the
+// package by name and exercises the real functions — the parity tripwire.
+
+/** The three catalog documents, keyed by their canonical artifact filenames. */
+export type CatalogDocs = {
+  'majors.json': unknown
+  'requirements_parsed.json': unknown
+  'core_requirements.json': unknown
+}
+
+/** A schema failure for one artifact: the file and its Ajv errors. */
+export interface CatalogValidationIssue {
+  file: string
+  errors: Array<{ instancePath: string; message: string }>
+}
+
+/**
+ * Validates the three catalog documents against the contract schemas. Returns
+ * null when every document conforms, or the per-file failures otherwise.
+ */
+export function validateCatalog(docs: CatalogDocs): CatalogValidationIssue[] | null
+
+/** The three canonical catalog artifact filenames (the `docs` keys). */
+export const CATALOG_FILES: readonly ['majors.json', 'requirements_parsed.json', 'core_requirements.json']
