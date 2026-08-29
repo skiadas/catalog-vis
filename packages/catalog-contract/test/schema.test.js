@@ -24,6 +24,11 @@ const checkMajors = compile(majorsSchema)
 const checkRequirements = compile(requirementsSchema)
 const checkCore = compile(coreSchema)
 
+// Deep-clones a valid fixture and returns an untyped copy, so tests can corrupt
+// documents into shapes the valid-document type can't express (the schema must
+// reject them) without sprinkling `any` casts at each mutation site.
+const corrupt = (doc) => /** @type {any} */ (structuredClone(doc))
+
 const validProgram = {
   id: 'anthropologycultural',
   name: 'Anthropology, Cultural',
@@ -75,18 +80,18 @@ test('requirements schema accepts valid nodes and rejects unknown item types', (
 })
 
 test('requirements schema rejects an any_of carrying both codes and items', () => {
-  const bad = structuredClone(validParsed)
-  bad.programs[0].requirements[0].sections[0].items = /** @type {any} */ ([
+  const bad = corrupt(validParsed)
+  bad.programs[0].requirements[0].sections[0].items = [
     { type: 'any_of', codes: ['BIO 161'], items: [{ type: 'course', code: 'BIO 161' }] },
-  ])
+  ]
   assert.equal(checkRequirements(bad).ok, false)
 })
 
 test('requirements schema allows a from constraint that is note-only', () => {
-  const data = structuredClone(validParsed)
-  data.programs[0].requirements[0].sections[0].items = /** @type {any} */ ([
+  const data = corrupt(validParsed)
+  data.programs[0].requirements[0].sections[0].items = [
     { type: 'electives', count: 2, constraints: [{ type: 'from', note: 'courses below' }] },
-  ])
+  ]
   assert.equal(checkRequirements(data).ok, true)
 })
 
@@ -108,7 +113,7 @@ test('core schema accepts a valid area and rejects a missing electives count', (
     ],
   }
   assert.equal(checkCore(valid).ok, true)
-  const bad = structuredClone(valid)
-  bad.programs[0].requirements[0].sections[0].items[0] = /** @type {any} */ ({ type: 'electives' })
+  const bad = corrupt(valid)
+  bad.programs[0].requirements[0].sections[0].items[0] = { type: 'electives' }
   assert.equal(checkCore(bad).ok, false)
 })

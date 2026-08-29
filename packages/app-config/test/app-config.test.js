@@ -7,11 +7,11 @@ const fresh = () => {
   return globalThis.fetch
 }
 
-// Cast a minimal Response-like fetch stub to the real fetch signature that the
-// app-config module calls under `globalThis.fetch`.
-const stubFetch = (impl) => {
-  globalThis.fetch = /** @type {typeof globalThis.fetch} */ (impl)
-}
+// Build the Response-like fakes the app-config module consumes. Using real
+// Response objects (instead of hand-shaped stubs) keeps `globalThis.fetch`
+// assignments fully type-correct.
+const res = (data, status = 200) => new Response(JSON.stringify(data), { status })
+const noRes = () => new Response(null, { status: 404 })
 
 test('SERVICE_DEFS covers the three apps with stable keys and dirs', () => {
   assert.deepEqual(SERVICE_KEYS, ['program', 'schedule', 'planner'])
@@ -23,11 +23,8 @@ test('SERVICE_DEFS covers the three apps with stable keys and dirs', () => {
 
 test('uses the server endpoint when it returns valid services', async () => {
   fresh()
-  stubFetch(async (url) =>
-    url === 'api/config'
-      ? { ok: true, json: async () => ({ services: ['schedule'], auth: { provider: 'username' } }) }
-      : { ok: false },
-  )
+  globalThis.fetch = async (url) =>
+    url === 'api/config' ? res({ services: ['schedule'], auth: { provider: 'username' } }) : noRes()
   const cfg = await loadConfig({ endpoint: 'api/config', staticPath: 'config.json' })
   assert.deepEqual(cfg.services, ['schedule'])
   assert.deepEqual(cfg.auth, { provider: 'username' })
@@ -38,11 +35,8 @@ test('uses the server endpoint when it returns valid services', async () => {
 
 test('falls back to the static config.json when the endpoint 404s', async () => {
   fresh()
-  stubFetch(async (url) =>
-    url === 'config.json'
-      ? { ok: true, json: async () => ({ services: ['program', 'planner'] }) }
-      : { ok: false },
-  )
+  globalThis.fetch = async (url) =>
+    url === 'config.json' ? res({ services: ['program', 'planner'] }) : noRes()
   await loadConfig({ endpoint: 'api/config', staticPath: 'config.json' })
   assert.deepEqual(config().services, ['program', 'planner'])
   assert.equal(isEnabled('schedule'), false)
@@ -50,24 +44,21 @@ test('falls back to the static config.json when the endpoint 404s', async () => 
 
 test('falls back to defaults when both sources are missing', async () => {
   fresh()
-  stubFetch(async () => ({ ok: false }))
+  globalThis.fetch = async () => noRes()
   await loadConfig({ endpoint: 'api/config', staticPath: 'config.json' })
   assert.deepEqual(config().services, ['program', 'schedule', 'planner'])
 })
 
 test('honors an explicit fallback list', async () => {
   fresh()
-  stubFetch(async () => ({ ok: false }))
+  globalThis.fetch = async () => noRes()
   await loadConfig({ fallback: ['schedule'] })
   assert.deepEqual(config().services, ['schedule'])
 })
 
 test('normalizes order/dedupe and drops unknown keys', async () => {
   fresh()
-  stubFetch(async () => ({
-    ok: true,
-    json: async () => ({ services: ['planner', 'bogus', 'schedule', 'program', 'schedule'] }),
-  }))
+  globalThis.fetch = async () => res({ services: ['planner', 'bogus', 'schedule', 'program', 'schedule'] })
   await loadConfig({ endpoint: 'api/config' })
   assert.deepEqual(config().services, ['program', 'schedule', 'planner'])
 })
@@ -75,12 +66,10 @@ test('normalizes order/dedupe and drops unknown keys', async () => {
 test('treats a non-array or empty services list as an unusable source', async () => {
   fresh()
   let calls = 0
-  stubFetch(async (url) => {
+  globalThis.fetch = async (url) => {
     calls++
-    return url === 'a'
-      ? { ok: true, json: async () => ({ services: {} }) }
-      : { ok: true, json: async () => ({ services: ['schedule'] }) }
-  })
+    return url === 'a' ? res({ services: {} }) : res({ services: ['schedule'] })
+  }
   await loadConfig({ endpoint: 'a', staticPath: 'b' })
   assert.equal(calls, 2)
   assert.deepEqual(config().services, ['schedule'])
@@ -88,7 +77,7 @@ test('treats a non-array or empty services list as an unusable source', async ()
 
 test('guards against malformed endpoint payloads', async () => {
   fresh()
-  stubFetch(async () => ({ ok: true, json: async () => 'nope' }))
+  globalThis.fetch = async () => res('nope')
   await loadConfig({ endpoint: 'api/config', staticPath: 'config.json', fallback: ['schedule'] })
   assert.deepEqual(config().services, ['schedule'])
 })
@@ -96,11 +85,11 @@ test('guards against malformed endpoint payloads', async () => {
 test('concurrent callers share one load', async () => {
   fresh()
   let calls = 0
-  stubFetch(async () => {
+  globalThis.fetch = async () => {
     calls++
     await new Promise((r) => setTimeout(r, 5))
-    return { ok: true, json: async () => ({ services: ['schedule'] }) }
-  })
+    return res({ services: ['schedule'] })
+  }
   const [a, b] = await Promise.all([
     loadConfig({ endpoint: 'api/config' }),
     loadConfig({ endpoint: 'api/config' }),
