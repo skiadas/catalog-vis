@@ -80,7 +80,10 @@ test('applyOperations skips unknown/mismatched ops safely', () => {
 
 test('applyOperations dedupes duplicate adds so concurrent approvals stay clean', () => {
   const list = [OFF(1, { number: '101' })]
-  const add = { kind: 'add', offering: { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' } }
+  const add = {
+    kind: 'add',
+    offering: { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' },
+  }
   // Duplicate of an existing offering: skipped.
   assert.deepEqual(applyOperations(list, [add]), list)
   // Duplicate of an add in the same batch: only one lands.

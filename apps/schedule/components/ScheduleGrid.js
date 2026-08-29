@@ -1,7 +1,10 @@
 import {
+  buildIndex,
   daySlotBlocks,
   formatTime,
   buildVisual,
+  buildEditVisual,
+  proposeOverlay,
   briefInstructor,
   termSlotOptions,
   termDayGroup,
@@ -12,9 +15,12 @@ import {
 import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
 import {
   schedule,
+  scheduleOfferings,
   selectedScheduleIds,
   colorSchedules,
   editingScheduleId,
+  showPendingSuggestions,
+  pendingSuggestionsForTerm,
   moveOffering,
   openCourseEdit,
 } from '../src/scheduleStore.js'
@@ -36,24 +42,70 @@ export default {
   setup() {
     const slotTitle = (slot) => slot.items.map((it) => it.code).join(', ')
 
-    // In edit mode we force the per-course colored view so the edited schedule's
-    // courses are individually visible (and draggable). Otherwise fall back to
-    // the normal filter / schedule-coloring behavior.
+    // Pending-suggestion overlay: each pending proposal's ops are interpreted
+    // against the published term independently, so concurrent moves from
+    // different departments all render (dashed). Removal markers tag their
+    // current blocks.
+    const overlay = computed(() => {
+      if (!showPendingSuggestions.value) return { extra: [], removalsByKey: new Map() }
+      const list = pendingSuggestionsForTerm.value
+      if (!list.length) return { extra: [], removalsByKey: new Map() }
+      const { proposed, removals } = proposeOverlay(scheduleOfferings.value, list)
+      const removalsByKey = new Map()
+      for (const r of removals) {
+        removalsByKey.set(`${r.cur.prefix} ${r.cur.number} ${r.cur.section}`, r)
+      }
+      return {
+        extra: proposed,
+        aware: true,
+        removalsByKey,
+      }
+    })
+
+    // The index rendered on the calendar: the published schedules plus the
+    // proposed offerings (each tagged with its suggestion so it colors and
+    // labels distinctly and is never draggable).
+    const shownIndex = computed(() => {
+      const extra = overlay.value.extra || []
+      if (!extra.length) return schedule.value
+      const merged = [
+        ...scheduleOfferings.value,
+        ...extra.map((p, i) => ({
+          ...p.offering,
+          $sid: 'prop:' + p.suggestionId + ':' + i,
+          $prop: p,
+        })),
+      ]
+      return buildIndex(merged)
+    })
+
+    // In edit/suggest mode we force the per-course colored view so the session
+    // schedule's courses are individually visible (and draggable), while an
+    // active department/instructor filter still limits the display. Otherwise
+    // the normal filter / schedule-coloring behavior applies — and when pending
+    // proposals are shown, the view activates (pills + schedule colors) so the
+    // proposed blocks are visible rather than hidden behind count summaries.
     const filter = computed(() => {
       if (editingScheduleId.value) {
-        return { active: true, matches: () => true, color: (it) => colorForSchedule(it.sid) }
+        return buildEditVisual(filterMode.value, selectedDepartments.value, selectedInstructors.value, (it) =>
+          colorForSchedule(it.sid),
+        )
       }
-      return buildVisual(
+      const visual = buildVisual(
         filterMode.value,
         selectedDepartments.value,
         selectedInstructors.value,
         selectedScheduleIds.value,
         colorSchedules.value,
       )
+      if (!visual.active && overlay.value.aware) {
+        return { active: true, matches: () => true, color: (it) => colorForSchedule(it.sid) }
+      }
+      return visual
     })
 
     const dayBlocks = (day) => {
-      const blocks = daySlotBlocks(day, schedule.value)
+      const blocks = daySlotBlocks(day, shownIndex.value)
       if (!filter.value.active) return blocks
       const out = []
       for (const b of blocks) {
@@ -63,7 +115,7 @@ export default {
       return out
     }
 
-    const dayRange = computed(() => calendarDayRange(schedule.value))
+    const dayRange = computed(() => calendarDayRange(shownIndex.value))
     // Position a band relative to the visible day range's start (1px/min).
     const blockStyleFor = (band) => ({
       top: band.start - dayRange.value.start + 'px',
@@ -78,6 +130,19 @@ export default {
         title: slotTitle(slot),
         active: filter.value.active,
       }))
+
+    // Overlay metadata for a rendered item (proposed pill / removal marker).
+    const proposalFor = (it) => (it.o && it.o.$prop) || null
+    const removalFor = (it) => overlay.value.removalsByKey.get(`${it.code} ${it.o.section}`) || null
+    const itemTitle = (it) => {
+      const prop = proposalFor(it)
+      if (prop) {
+        return `${it.code}${it.o.section}: proposed ${prop.kind === 'move' ? 'move' : 'add'} by ${prop.proposer}`
+      }
+      const rem = removalFor(it)
+      if (rem) return `${it.code}${it.o.section}: removal proposed by ${rem.proposer}`
+      return ''
+    }
 
     // A course belonging to the schedule being edited is draggable.
     const editingId = editingScheduleId
@@ -109,7 +174,7 @@ export default {
 
     return {
       formatTime,
-      schedule,
+      shownIndex,
       dayRange,
       blocksInDay,
       filter,
@@ -127,6 +192,9 @@ export default {
       zoneLeave,
       zoneDrop,
       openCourseEdit,
+      proposalFor,
+      removalFor,
+      itemTitle,
     }
   },
   template: `
@@ -160,14 +228,14 @@ export default {
               <div class="cal-block-depts">
                 <span
                   v-for="it in b.slot.items"
-                  :key="it.code + it.o.section"
+                  :key="it.code + it.o.section + it.sid"
                   class="filter-offering"
-                  :class="{ draggable: isEditable(it) }"
+                  :class="{ draggable: isEditable(it), proposed: proposalFor(it), removed: removalFor(it) }"
                   :style="{ backgroundColor: filter.color(it) }"
                   :draggable="isEditable(it)"
                   @click.stop="goScheduleCourse(it.code)"
                   @dragstart="onDragStart($event, it, day)"
-                  :title="isEditable(it) ? 'Drag to move' : ''"
+                  :title="itemTitle(it) || (isEditable(it) ? 'Drag to move' : '')"
                 >
                   <span class="filter-offering-main">{{ it.code }}{{ it.o.section }}<span class="do-inst">{{ briefInstructor(it.o.instructor) }}</span></span>
                   <button

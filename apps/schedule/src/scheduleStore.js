@@ -23,10 +23,10 @@ import {
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
 import { programs, allCourses } from '@major-vis/catalog-client'
-import { diffOfferings } from '@major-vis/schedule-core/diff'
+import { diffOfferings, applyOperations } from '@major-vis/schedule-core/diff'
 import * as backend from './backend.js'
 
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 export const selectedDepartments = ref([])
 export const selectedInstructors = ref([])
@@ -52,8 +52,24 @@ export const colorSchedules = ref(false)
 
 // The schedule currently being edited, or null. In edit mode the schedule's
 // active-term courses can be dragged onto the grid's standard time slots to be
-// rescheduled.
+// rescheduled. Editing pairs with `editingRole`: 'edit' writes the term part
+// directly (owners/serverless); 'suggest' edits a local draft that is turned
+// into a suggestion (see pendingDrafts).
 export const editingScheduleId = ref(null)
+
+// How the active schedule session edits: 'edit' or 'suggest'. Null when no
+// session is active.
+export const editingRole = ref(null)
+
+// Local drafts for suggest sessions, keyed `${scheduleId}:${term}`. A draft is
+// the proposer's desired end state for the term (the base the calendar renders
+// while the session is active); proposing diffs it against the server's current
+// term and upserts the proposer's own pending suggestion. `dirty` tracks
+// unsaved changes since the last propose.
+export const pendingDrafts = ref({})
+
+// Whether pending suggestions are overlaid on the calendar views. Persisted.
+export const showPendingSuggestions = ref(true)
 
 // The offering currently open in the course-edit modal (a merged item with `o`,
 // `code`, `sid`, as produced for grid items), or null. Shared across the
@@ -72,10 +88,19 @@ const LS_SCHEDULES = 'major-vis.schedules'
 const LS_SELECTED = 'major-vis.schedule.selected'
 const LS_COLOR = 'major-vis.schedule.color'
 const LS_TERM = 'major-vis.schedule.term'
+const LS_PENDING = 'major-vis.schedule.pending'
+const LS_TRAIL = 'major-vis.schedule.suggestions'
 
 export function setColorSchedules(v) {
   colorSchedules.value = !!v
   if (typeof window !== 'undefined') localStorage.setItem(LS_COLOR, colorSchedules.value ? '1' : '0')
+}
+
+// Show/hide the pending-suggestions overlay on the calendar views.
+export function setShowPendingSuggestions(v) {
+  showPendingSuggestions.value = !!v
+  if (typeof window !== 'undefined')
+    localStorage.setItem(LS_PENDING, showPendingSuggestions.value ? '1' : '0')
 }
 
 // Switch which term part the app is looking at/editing. Persisted locally.
@@ -116,47 +141,341 @@ export function isOwner(schedule) {
   return Number(schedule.owner_user_id) === Number(currentUser.value.id)
 }
 
-// Pending/processed suggestions for the currently-viewed schedule (remote only).
+// Visible suggestions per schedule id (the server's visibility rule: everyone
+// sees pending from all proposers, plus their own history; the owner sees all).
+// Offline this mirrors the localStorage trail (single proposer: everything).
+export const suggestionsBySchedule = ref({})
+
+// The visible list for the last-refreshed schedule; kept for components that
+// render a single schedule's list.
 export const suggestions = ref([])
 
+// Fetches (remote) or reads from the local trail (offline) the visible
+// suggestion list for `scheduleId` and refreshes both refs.
 export async function refreshSuggestions(scheduleId) {
-  if (!remote.value || typeof window === 'undefined') {
-    suggestions.value = []
-    return []
-  }
-  const list = await backend.fetchSuggestions(scheduleId)
+  const list =
+    remote.value && typeof window !== 'undefined'
+      ? await backend.fetchSuggestions(scheduleId)
+      : trailFor(scheduleId)
+  suggestionsBySchedule.value = { ...suggestionsBySchedule.value, [scheduleId]: list }
   suggestions.value = list
   return list
 }
 
+// Refreshes suggestions for every selected schedule (and an active session's
+// target). Used on load, on selection changes, and after session actions.
+export function refreshAllSuggestions() {
+  const ids = new Set(selectedScheduleIds.value)
+  if (editingScheduleId.value) ids.add(editingScheduleId.value)
+  for (const id of ids) void refreshSuggestions(id)
+}
+
+// ---- Drafts (suggest sessions) ------------------------------------------
+
+function draftKey(scheduleId, term) {
+  return `${scheduleId}:${term}`
+}
+
+function getDraft(scheduleId, term) {
+  return pendingDrafts.value[draftKey(scheduleId, term)] || null
+}
+
+function setDraft(scheduleId, term, draft) {
+  pendingDrafts.value = { ...pendingDrafts.value, [draftKey(scheduleId, term)]: draft }
+}
+
+function touchDraft() {
+  pendingDrafts.value = { ...pendingDrafts.value }
+}
+
+// Discards a suggest session's draft for a (schedule, term) — used when leaving
+// a session with unsaved changes.
+export function clearDraft(scheduleId, term = activeTerm.value) {
+  const drafts = { ...pendingDrafts.value }
+  delete drafts[draftKey(scheduleId, term)]
+  pendingDrafts.value = drafts
+}
+
+// Whether `scheduleId` is being edited as a suggestion right now.
+export function isSuggestSessionFor(scheduleId) {
+  return editingRole.value === 'suggest' && editingScheduleId.value === scheduleId
+}
+
+// The draft/term part that edit operations act on for `scheduleId`: the draft
+// when a suggest session targets it, else the schedule's term part.
+function mutablePart(scheduleId, term = activeTerm.value) {
+  if (isSuggestSessionFor(scheduleId)) {
+    let d = getDraft(scheduleId, term)
+    if (!d) {
+      d = { offerings: [], version: 0, dirty: false }
+      setDraft(scheduleId, term, d)
+    }
+    return { part: d, draft: true }
+  }
+  const s = scheduleById(scheduleId)
+  return { part: s && s.terms[term], draft: false }
+}
+
+// The draft of the active suggest session (or null) — for the edit bar badge.
+export const editingDraft = computed(() => {
+  if (editingRole.value !== 'suggest' || !editingScheduleId.value) return null
+  return getDraft(editingScheduleId.value, activeTerm.value)
+})
+
+// Sets up (or keeps) the draft of a suggest session for `scheduleId`'s term:
+// the base is the published term, with the proposer's own pending operations
+// replayed on top (their previously proposed intent survives approvals). An
+// existing draft is kept so unsaved edits are never lost. Remote mode then
+// fetches the freshest published term and re-bases once more.
+async function setupDraft(scheduleId, term) {
+  if (getDraft(scheduleId, term)) return
+  const s = scheduleById(scheduleId)
+  if (!s) return
+  const part = s.terms[term] || { offerings: [], version: 0 }
+  const own = ownPendingSuggestion(scheduleId, term)
+  setDraft(scheduleId, term, {
+    offerings: own ? applyOperations(part.offerings, own.operations) : [...part.offerings],
+    version: part.version,
+    dirty: false,
+  })
+  if (!remote.value || typeof window === 'undefined') return
+  const current = await backend.fetchTerm(scheduleId, term)
+  if (!current || editingScheduleId.value !== scheduleId) return
+  setLocalTerm(scheduleId, term, current.offerings, current.version)
+  const own2 = ownPendingSuggestion(scheduleId, term)
+  setDraft(scheduleId, term, {
+    offerings: own2 ? applyOperations(current.offerings, own2.operations) : [...current.offerings],
+    version: current.version,
+    dirty: false,
+  })
+}
+
+// Creates a draft for the freshly-active term when the session crosses terms.
+watch(activeTerm, (term) => {
+  if (editingRole.value === 'suggest' && editingScheduleId.value) {
+    void setupDraft(editingScheduleId.value, term)
+  }
+})
+
+// The diff operations a draft would propose (published term -> draft), for the
+// panel's preview before committing.
+export function draftOperations(scheduleId, term = activeTerm.value) {
+  const d = getDraft(scheduleId, term)
+  const s = scheduleById(scheduleId)
+  if (!d || !s) return []
+  const base = (s.terms[term] || { offerings: [] }).offerings || []
+  return diffOfferings(base, d.offerings || [])
+}
+
+// Proposes the draft of `scheduleId`'s active term as a suggestion. Remote:
+// diffs against the server's fresh current term and upserts the proposer's own
+// pending suggestion (create, or PATCH the existing one). Offline: the same
+// against the local store with a localStorage trail. Returns the suggestion row
+// or null when there is nothing to propose.
+export async function proposeDraft(scheduleId, note) {
+  const term = activeTerm.value
+  const draft = getDraft(scheduleId, term)
+  if (!draft) return null
+  const s = scheduleById(scheduleId)
+  if (!s) return null
+  if (remote.value && typeof window !== 'undefined') {
+    const current = await backend.fetchTerm(scheduleId, term)
+    if (!current) return null
+    const ops = diffOfferings(current.offerings || [], draft.offerings || [])
+    draft.dirty = false
+    if (!ops.length) return null
+    const own = ownPendingSuggestion(scheduleId, term)
+    // Re-proposing identical operations is a no-op (the upsert would be empty).
+    if (own && JSON.stringify(own.operations || []) === JSON.stringify(ops)) return null
+    const saved = own
+      ? await backend.updateSuggestion(own.id, {
+          operations: ops,
+          note: String(note || '').trim() || own.note,
+        })
+      : await backend.createSuggestion(scheduleId, {
+          term,
+          baseVersion: current.version,
+          operations: ops,
+          note: String(note || '').trim(),
+        })
+    setLocalTerm(scheduleId, term, current.offerings, current.version)
+    draft.version = current.version
+    if (saved) await refreshSuggestions(scheduleId)
+    return saved
+  }
+  const part = s.terms[term] || { offerings: [], version: 0 }
+  const ops = diffOfferings(part.offerings || [], draft.offerings || [])
+  draft.dirty = false
+  if (!ops.length) return null
+  const rows = trailRows()
+  const own = ownPendingSuggestion(scheduleId, term)
+  let row
+  if (own) {
+    row = { ...own, operations: ops, note: String(note || '').trim() || own.note || '' }
+    rows[rows.indexOf(own)] = row
+  } else {
+    row = {
+      id: suggestionId(),
+      schedule_id: scheduleId,
+      term,
+      proposer_user_id: null,
+      proposer: 'you',
+      status: 'pending',
+      base_version: part.version,
+      operations: ops,
+      note: String(note || '').trim(),
+      created_at: new Date().toISOString(),
+      resolved_at: null,
+    }
+    rows.push(row)
+  }
+  persistTrail(rows)
+  draft.version = part.version
+  await refreshSuggestions(scheduleId)
+  return row
+}
+
+// ---- Suggestion lifecycle -----------------------------------------------
+
+// The proposer's own pending suggestion for a (schedule, term), or null.
+function ownPendingSuggestion(scheduleId, term) {
+  const list = suggestionsBySchedule.value[scheduleId] || []
+  if (remote.value) {
+    const uid = currentUser.value && currentUser.value.id
+    return (
+      list.find(
+        (s) => s.status === 'pending' && s.term === term && Number(s.proposer_user_id) === Number(uid),
+      ) || null
+    )
+  }
+  return list.find((s) => s.status === 'pending' && s.term === term) || null
+}
+
+// Approves a pending suggestion. Remote: the owner approves; the response's
+// term becomes the published state and the suggestion's status is reported
+// ('approved', or 'moot' when nothing changed). Offline: applies the ops
+// against the local store with the same status rules. Returns true when the
+// suggestion is no longer pending.
 export async function approveSuggestion(id) {
-  if (!(await backend.approveSuggestion(id))) return false
-  suggestions.value = suggestions.value.map((s) => (s.id === id ? { ...s, status: 'approved' } : s))
+  const row = (suggestions.value || []).find((s) => s.id === id) || null
+  const scheduleId = row ? row.schedule_id : null
+  const term = row ? row.term : activeTerm.value
+  if (remote.value && typeof window !== 'undefined') {
+    const result = await backend.approveSuggestion(id)
+    if (!result) return false
+    if (result.term && result.term.term && result.term.schedule_id) {
+      setLocalTerm(result.term.schedule_id, result.term.term, result.term.offerings, result.term.version)
+    }
+    if (scheduleId) await refreshSuggestions(scheduleId)
+    return true
+  }
+  if (!row || row.status !== 'pending') return false
+  const s = scheduleById(scheduleId)
+  const part = s && s.terms[term]
+  if (!part) return false
+  const applied = applyOperations(part.offerings || [], row.operations || [])
+  const changed = diffOfferings(part.offerings || [], applied).length > 0
+  row.status = changed ? 'approved' : 'moot'
+  row.resolved_at = new Date().toISOString()
+  if (changed) {
+    part.offerings = applied
+    part.version = (part.version || 0) + 1
+    schedules.value = [...schedules.value]
+    persistSchedules()
+  }
+  persistTrail(trailRows().map((r) => (r.id === id ? row : r)))
+  await refreshSuggestions(scheduleId)
   return true
 }
 
 export async function rejectSuggestion(id) {
-  if (!(await backend.rejectSuggestion(id))) return false
-  suggestions.value = suggestions.value.map((s) => (s.id === id ? { ...s, status: 'rejected' } : s))
+  if (remote.value && typeof window !== 'undefined') {
+    const ok = await backend.rejectSuggestion(id)
+    if (ok) {
+      const row = (suggestions.value || []).find((s) => s.id === id)
+      suggestions.value = suggestions.value.map((s) => (s.id === id ? { ...s, status: 'rejected' } : s))
+      if (row && row.schedule_id) await refreshSuggestions(row.schedule_id)
+    }
+    return ok
+  }
+  const rows = trailRows()
+  const row = rows.find((r) => r.id === id)
+  if (!row || row.status !== 'pending') return false
+  row.status = 'rejected'
+  row.resolved_at = new Date().toISOString()
+  persistTrail(rows)
+  await refreshSuggestions(row.schedule_id)
   return true
 }
 
-// Submits a proposed change for a term part as a suggestion. `newOfferings` is
-// the desired offering list; the server's current term is fetched so the
-// suggestion carries the right base version, and the diff (add/remove/update)
-// is computed here via schedule-core. Returns the created suggestion or null.
-export async function submitTermSuggestion(scheduleId, term, newOfferings, note) {
-  if (!remote.value || typeof window === 'undefined') return null
-  const current = await backend.fetchTerm(scheduleId, term)
-  if (!current) return null
-  const operations = diffOfferings(current.offerings || [], newOfferings || [])
-  if (!operations.length) return null
-  return backend.createSuggestion(scheduleId, {
-    term,
-    baseVersion: current.version,
-    operations,
-    note: note || '',
-  })
+// Withdraws a pending suggestion (soft status; stays in the trail).
+export async function withdrawSuggestion(id) {
+  if (remote.value && typeof window !== 'undefined') {
+    const saved = await backend.withdrawSuggestion(id)
+    if (!saved) return false
+    const row = (suggestions.value || []).find((s) => s.id === id)
+    if (row && row.schedule_id) await refreshSuggestions(row.schedule_id)
+    return true
+  }
+  const rows = trailRows()
+  const row = rows.find((r) => r.id === id)
+  if (!row || row.status !== 'pending') return false
+  row.status = 'withdrawn'
+  row.resolved_at = new Date().toISOString()
+  persistTrail(rows)
+  await refreshSuggestions(row.schedule_id)
+  return true
+}
+
+// Pending suggestions across the selected schedules for the active term, with a
+// scheduleId tag — the overlay source for the calendar views.
+export const pendingSuggestionsForTerm = computed(() => {
+  const out = []
+  for (const sid of selectedScheduleIds.value) {
+    for (const s of suggestionsBySchedule.value[sid] || []) {
+      if (s.status === 'pending' && s.term === activeTerm.value) out.push({ ...s, scheduleId: sid })
+    }
+  }
+  return out
+})
+
+function suggestionId() {
+  return 'sg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+}
+
+// ---- Offline suggestion trail (localStorage mirror) ---------------------
+// Serverless mode keeps the same suggestion lifecycle locally: pending rows are
+// proposed from drafts, can be approved/rejected/withdrawn, and the trail is
+// the paper trail.
+
+function trailRows() {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(LS_TRAIL)
+    const arr = raw ? JSON.parse(raw) : null
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+}
+
+function persistTrail(rows) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(LS_TRAIL, JSON.stringify(rows))
+}
+
+function trailFor(scheduleId) {
+  return trailRows().filter((r) => r.schedule_id === scheduleId)
+}
+
+// Updates the published (non-draft) term part from the server.
+function setLocalTerm(scheduleId, term, offerings, version) {
+  const s = scheduleById(scheduleId)
+  if (!s) return
+  if (!s.terms[term]) s.terms[term] = { offerings: [], version: 0 }
+  s.terms[term].offerings = [...(offerings || [])]
+  s.terms[term].version = version
+  schedules.value = [...schedules.value]
 }
 
 export function scheduleById(id) {
@@ -179,10 +498,16 @@ function syncTerm(id, term = activeTerm.value) {
   if (isOwner(s)) backend.replaceTerm(id, term, part.offerings)
 }
 
-// The term part of a schedule, defaulting to an empty part. `term` defaults to
+// The term part of a schedule, defaulting to the empty part. `term` defaults to
 // the active term; explicit (year, term) lookups are used by the year picker.
+// During a suggest session the draft stands in for the published term part, so
+// every view renders the proposer's working state.
 export function termPart(schedule, term = activeTerm.value) {
   if (!schedule) return null
+  if (isSuggestSessionFor(schedule.id)) {
+    const draft = getDraft(schedule.id, term)
+    if (draft) return { offerings: draft.offerings, version: draft.version }
+  }
   const part = (schedule.terms || {})[term]
   return part || { offerings: [], version: 0 }
 }
@@ -234,10 +559,20 @@ function emptyTerms() {
 }
 
 // Replaces the active term part of a schedule with `offerings` (CSV import,
-// generation, or a full-term paste), bumping its version.
+// generation, or a full-term paste), bumping its version. In a suggest session
+// the replacement lands in the draft instead; remote non-owners may only
+// change the active term through a draft (direct writes are the owner's).
 export function setTermOfferings(id, term, offerings) {
   const s = scheduleById(id)
   if (!s) return false
+  if (isSuggestSessionFor(id)) {
+    const { part } = mutablePart(id, term)
+    part.offerings = [...(offerings || [])]
+    part.dirty = true
+    touchDraft()
+    return true
+  }
+  if (remote.value && !isOwner(s)) return false
   if (!s.terms[term]) s.terms[term] = { offerings: [], version: 0 }
   s.terms[term].offerings = [...(offerings || [])]
   s.terms[term].version = (s.terms[term].version || 0) + 1
@@ -251,7 +586,20 @@ export function setTermOfferings(id, term, offerings) {
 export function deleteSchedule(id) {
   schedules.value = schedules.value.filter((s) => s.id !== id)
   selectedScheduleIds.value = selectedScheduleIds.value.filter((x) => x !== id)
-  if (editingScheduleId.value === id) editingScheduleId.value = null
+  if (editingScheduleId.value === id) {
+    editingScheduleId.value = null
+    editingRole.value = null
+  }
+  const restSugs = {}
+  for (const [k, v] of Object.entries(suggestionsBySchedule.value)) {
+    if (k !== String(id)) restSugs[k] = v
+  }
+  suggestionsBySchedule.value = restSugs
+  const drafts = { ...pendingDrafts.value }
+  for (const key of Object.keys(drafts)) {
+    if (key.startsWith(id + ':')) delete drafts[key]
+  }
+  pendingDrafts.value = drafts
   if (remote.value) backend.deleteSchedule(id)
   persistSchedules()
   persistSelectedSchedules()
@@ -297,27 +645,52 @@ export function toggleSchedule(id) {
   persistSelectedSchedules()
 }
 
+// Keep each selected schedule's suggestion list fresh (offline reads the trail;
+// remote fetches on selection changes only).
+watch(selectedScheduleIds, () => refreshAllSuggestions())
+
 // The schedule being edited (null if not in edit mode).
 export const editingSchedule = computed(() =>
   editingScheduleId.value ? scheduleById(editingScheduleId.value) : null,
 )
 
-// Enters/starts edit mode for `id`, or exits when `id` is null/falsy.
-export function setEditingSchedule(id) {
+// Enters/starts a session on `id` (or exits when `id` is null/falsy). `role` is
+// 'edit' (direct writes; remote requires ownership) or 'suggest' (edits land in
+// a draft and are proposed). Returns true when the session was entered.
+export function setEditingSchedule(id, role = 'edit') {
+  if (!id) {
+    editingScheduleId.value = null
+    editingRole.value = null
+    return true
+  }
   const target = id ? scheduleById(id) : null
-  editingScheduleId.value = target ? target.id : null
+  if (!target) return false
+  if (remote.value && role !== 'suggest' && !isOwner(target)) return false
+  editingScheduleId.value = target.id
+  editingRole.value = role === 'suggest' ? 'suggest' : 'edit'
+  if (role === 'suggest') {
+    void refreshSuggestions(target.id).then(() => setupDraft(target.id, activeTerm.value))
+  }
+  return true
 }
 
 // Reschedules a single offering of `scheduleId`'s active term into a standard
 // slot. The `move` context is `{ fromDay, toDay, group, time }` (see
-// `rescheduleDays`). No-op if the offering can't be found.
+// `rescheduleDays`). No-op if the offering can't be found. In a suggest session
+// the change lands in the draft instead of the published term.
 export function moveOffering(id, prefix, number, section, move) {
   const s = scheduleById(id)
   if (!s) return false
-  const part = s.terms[activeTerm.value]
-  const next = moveOfferingSmart(part.offerings, { prefix, number, section }, move, activeTerm.value)
+  const { part, draft } = mutablePart(id)
+  if (!part) return false
+  const next = moveOfferingSmart(part.offerings || [], { prefix, number, section }, move, activeTerm.value)
   if (next === part.offerings) return false
   part.offerings = next
+  if (draft) {
+    part.dirty = true
+    touchDraft()
+    return true
+  }
   part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
   syncTerm(id)
@@ -327,14 +700,21 @@ export function moveOffering(id, prefix, number, section, move) {
 
 // Rewrites an offering's editable fields (instructor / section / days / time)
 // in the schedule's active term. `cur` is the offering's current identity
-// (prefix/number/section) used to locate it; `changes` replaces the rest.
+// (prefix/number/section) used to locate it; `changes` replaces the rest. In a
+// suggest session the change lands in the draft.
 export function updateOffering(id, cur, changes) {
   const s = scheduleById(id)
   if (!s) return false
-  const part = s.terms[activeTerm.value]
-  const next = updateOfferingInSchedule(part.offerings, cur, changes)
+  const { part, draft } = mutablePart(id)
+  if (!part) return false
+  const next = updateOfferingInSchedule(part.offerings || [], cur, changes)
   if (next === part.offerings) return false
   part.offerings = next
+  if (draft) {
+    part.dirty = true
+    touchDraft()
+    return true
+  }
   part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
   syncTerm(id)
@@ -345,14 +725,21 @@ export function updateOffering(id, cur, changes) {
 // Adds a brand-new catalog course (by code) to the schedule's active term,
 // landing it in the default slot with the first free section letter. Returns the
 // merged edit-item ({ o, code, sid }) so the caller can open the course editor.
+// In a suggest session the course lands in the draft.
 export function addCourseToSchedule(id, code) {
   const s = scheduleById(id)
   if (!s) return null
-  const part = s.terms[activeTerm.value]
+  const { part, draft } = mutablePart(id)
+  if (!part) return null
   const [prefix, number] = code.split(' ')
-  const section = nextSectionLetter(part.offerings, prefix, number)
+  const section = nextSectionLetter(part.offerings || [], prefix, number)
   const offering = { prefix, number, section, instructor: '', ...DEFAULT_SLOT }
-  part.offerings = addOfferingToSchedule(part.offerings, offering)
+  part.offerings = addOfferingToSchedule(part.offerings || [], offering)
+  if (draft) {
+    part.dirty = true
+    touchDraft()
+    return { o: offering, code, sid: id }
+  }
   part.version = (part.version || 0) + 1
   schedules.value = [...schedules.value]
   syncTerm(id)
@@ -362,18 +749,24 @@ export function addCourseToSchedule(id, code) {
 
 // Removes the offering matching `cur` (prefix/number/section) from the
 // schedule's active term. Also closes the editor if the edited course was the
-// one removed.
+// one removed. In a suggest session the removal lands in the draft.
 export function removeCourseFromSchedule(id, cur) {
   const s = scheduleById(id)
   if (!s) return false
-  const part = s.terms[activeTerm.value]
-  const next = removeOfferingFromSchedule(part.offerings, cur)
+  const { part, draft } = mutablePart(id)
+  if (!part) return false
+  const next = removeOfferingFromSchedule(part.offerings || [], cur)
   if (next === part.offerings) return false
   part.offerings = next
-  part.version = (part.version || 0) + 1
-  schedules.value = [...schedules.value]
-  syncTerm(id)
-  persistSchedules()
+  if (draft) {
+    part.dirty = true
+    touchDraft()
+  } else {
+    part.version = (part.version || 0) + 1
+    schedules.value = [...schedules.value]
+    syncTerm(id)
+    persistSchedules()
+  }
   if (courseEditTarget.value) {
     const o = courseEditTarget.value.o
     if (o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section) {
@@ -476,7 +869,10 @@ function seedSchedules(seedList) {
     if (c !== null) colorSchedules.value = c === '1'
     const t = localStorage.getItem(LS_TERM)
     if (t && TERM_KEYS.includes(t)) activeTerm.value = t
+    const p = localStorage.getItem(LS_PENDING)
+    if (p !== null) showPendingSuggestions.value = p === '1'
   }
+  if (!remote.value) refreshAllSuggestions()
 }
 
 // Bootstraps the collection. When the app is served by the major-vis backend it
@@ -502,6 +898,7 @@ export async function initScheduleCollection() {
         persistSelectedSchedules()
       }
       restoreAux()
+      refreshAllSuggestions()
       return
     }
   }
@@ -514,6 +911,8 @@ function restoreAux() {
   if (c !== null) colorSchedules.value = c === '1'
   const t = localStorage.getItem(LS_TERM)
   if (t && TERM_KEYS.includes(t)) activeTerm.value = t
+  const p = localStorage.getItem(LS_PENDING)
+  if (p !== null) showPendingSuggestions.value = p === '1'
 }
 
 // Bootstraps the collection with the deterministic "Fall sample schedule"

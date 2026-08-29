@@ -5,6 +5,7 @@
 import {
   editingScheduleId,
   editingSchedule,
+  editingRole,
   addCourseToSchedule,
   openCourseEdit,
 } from '../src/scheduleStore.js'
@@ -50,6 +51,7 @@ export default {
       props,
       close,
       editingName,
+      editingRole,
       addCourseQuery,
       addCourseResults,
       addCourse,
@@ -65,8 +67,9 @@ export default {
         </div>
         <div class="modal-body">
           <p class="modal-intro">
-            Pick a catalog course to add it to this schedule in its default slot — its edit window opens next
+            Pick a catalog course to add it in its default slot — its edit window opens next
             so you can customize it right away.
+            <template v-if="editingRole === 'suggest'"> It will be part of your proposal, not written to the schedule directly.</template>
           </p>
           <input
             class="search-input schedule-add-search"

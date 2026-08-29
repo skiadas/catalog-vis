@@ -13,6 +13,8 @@ export default {
     editable: { type: Boolean, default: false },
     draggable: { type: Boolean, default: false },
     dragDay: { type: String, default: '' },
+    proposed: { type: String, default: '' },
+    removed: { type: String, default: '' },
   },
   emits: ['edit'],
   setup(props, { emit }) {
@@ -33,9 +35,9 @@ export default {
   template: `
     <span
       class="slot-pill"
-      :class="{ 'filter-colored': filterActive, editable }"
+      :class="{ 'filter-colored': filterActive, editable, proposed, removed }"
       :style="filterActive ? { backgroundColor: color } : {}"
-      :title="courseName"
+      :title="proposed || removed || courseName"
       :draggable="draggable"
       @dragstart="onDragStart"
     >

@@ -1024,3 +1024,92 @@
   @include flex-row;
   flex: 0 0 auto;
 }
+
+/* Edit/suggest mode picker (pencil menu) */
+
+.mode-menu-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.mode-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  margin-top: 4px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow, 0 4px 14px rgba(0, 0, 0, 0.14));
+}
+.mode-menu-schedule {
+  @include text-caption;
+  padding: 2px 6px 6px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mode-menu-item {
+  @include text-label;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+.mode-menu-item:hover:not(:disabled) {
+  background: var(--overlay-hover);
+}
+.mode-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pending-suggestion overlay on calendar blocks and pills */
+
+.filter-offering.proposed {
+  outline: 2px dashed rgba(255, 255, 255, 0.85);
+  outline-offset: -3px;
+}
+.filter-offering.removed {
+  text-decoration: line-through;
+  opacity: 0.72;
+  filter: saturate(0.5);
+}
+.slot-pill.proposed {
+  outline: 2px dashed var(--primary);
+  outline-offset: -3px;
+}
+.slot-pill.removed {
+  text-decoration: line-through;
+  opacity: 0.65;
+  filter: saturate(0.5);
+}
+
+.schedule-proposals-toggle {
+  margin-left: 8px;
+}
+
+/* Suggest-session draft preview in the suggestions panel */
+
+.suggested-draft-preview {
+  margin: var(--space-1) 0 var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 13px;
+  white-space: pre-wrap;
+}

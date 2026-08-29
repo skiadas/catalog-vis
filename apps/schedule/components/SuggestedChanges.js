@@ -1,21 +1,30 @@
-// "Suggested changes" modal for a schedule (remote/backend mode). For a schedule
-// this user owns, it lists pending/proposed changes from others with approve /
-// reject — applying the diff is handled server-side against its base version.
-// For a non-owner it offers proposing the current term's offerings as a change.
+// "Suggested changes" panel for a schedule. The live (pending) suggestions of
+// every proposer are visible to everyone — that's the coordination surface
+// (a CS change from a non-CS person is reviewable by the owner). History is
+// visible to the owner and to the row's own proposer.
 //
-// Reads the schedule store directly; the caller controls visibility via `isOpen`.
+// While a suggest session is active on this schedule, the panel leads with the
+// draft's diff preview and a one-click propose (upserting the proposer's own
+// pending suggestion). Suggestion actions: the owner approves/rejects pending
+// rows; a pending row's proposer can withdraw it. An approval that changes
+// nothing is recorded as 'moot'.
 
 import {
   suggestions,
   refreshSuggestions,
   approveSuggestion,
   rejectSuggestion,
-  termOfferings,
+  withdrawSuggestion,
+  proposeDraft,
+  draftOperations,
   isOwner,
-  submitTermSuggestion,
+  isSuggestSessionFor,
   scheduleById,
+  currentUser,
+  remote,
+  activeTerm,
 } from '../src/scheduleStore.js'
-import { TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
+import { TERM_LABELS } from '@major-vis/schedule-core'
 import { renderChanges } from '@major-vis/schedule-core/diff'
 
 import { ref, computed, watch } from 'vue'
@@ -30,9 +39,21 @@ export default {
   setup(props) {
     const schedule = computed(() => (props.scheduleId ? scheduleById(props.scheduleId) : null))
     const owned = computed(() => isOwner(schedule.value))
+    const suggesting = computed(() => isSuggestSessionFor(props.scheduleId))
     const noteDraft = ref('')
-    const proposeFor = ref('F')
     const feedback = ref('')
+
+    // Whether the current user proposed a suggestion row (offline: everything
+    // in the local trail is theirs).
+    const isMine = (s) =>
+      !remote.value ||
+      (currentUser.value != null && Number(s.proposer_user_id) === Number(currentUser.value.id))
+
+    // The draft's pending diff for the active term (what proposing would send).
+    const draftOps = computed(() =>
+      props.scheduleId ? draftOperations(props.scheduleId, activeTerm.value) : [],
+    )
+    const draftText = computed(() => renderChanges(draftOps.value, 'text') || '(no changes yet)')
 
     // Refresh suggestions each time the modal opens.
     const load = async () => {
@@ -50,7 +71,7 @@ export default {
 
     const doApprove = async (id) => {
       const ok = await approveSuggestion(id)
-      feedback.value = ok ? 'Approved.' : 'Could not approve (may be stale).'
+      feedback.value = ok ? 'Approved.' : 'Could not approve (it may no longer be pending).'
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
     const doReject = async (id) => {
@@ -58,15 +79,19 @@ export default {
       feedback.value = ok ? 'Rejected.' : 'Could not reject.'
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
+    const doWithdraw = async (id) => {
+      const ok = await withdrawSuggestion(id)
+      feedback.value = ok ? 'Withdrawn — kept in the trail.' : 'Could not withdraw.'
+      if (props.scheduleId) await refreshSuggestions(props.scheduleId)
+    }
 
-    // Non-owner: propose the current term's offerings as a suggested change.
+    // Non-owner/suggestor: propose the active term's draft as a suggestion.
     const doPropose = async () => {
-      const s = schedule.value
-      if (!s) return
-      const term = proposeFor.value
-      const offerings = termOfferings(s, term)
-      const created = await submitTermSuggestion(s.id, term, offerings, noteDraft.value)
-      feedback.value = created ? `Proposed ${TERM_LABELS[term]} changes.` : 'Nothing to propose (no changes).'
+      if (!props.scheduleId) return
+      const created = await proposeDraft(props.scheduleId, noteDraft.value)
+      feedback.value = created
+        ? `Proposed ${TERM_LABELS[activeTerm.value]} changes.`
+        : 'Nothing new to propose (no changes since the last proposal).'
       noteDraft.value = ''
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
@@ -80,17 +105,21 @@ export default {
     return {
       schedule,
       owned,
+      suggesting,
       suggestions,
       noteDraft,
-      proposeFor,
       feedback,
-      TERM_KEYS,
-      TERM_LABELS,
+      draftText,
+      draftOps,
       changeText,
+      isMine,
       doApprove,
       doReject,
+      doWithdraw,
       doPropose,
       exportUrl,
+      TERM_LABELS,
+      activeTerm,
     }
   },
   template: `
@@ -103,51 +132,53 @@ export default {
         <div class="modal-body">
           <p v-if="feedback" class="suggested-feedback">{{ feedback }}</p>
 
-          <template v-if="owned">
+          <div v-if="suggesting" class="field">
+            <label>Your proposal for {{ TERM_LABELS[activeTerm] }} ({{ schedule && schedule.name }})</label>
             <p class="modal-intro">
-              People change your schedule by proposing diff changes; you approve or reject each one.
+              These are the changes you have collected in this session. Nothing is written to the schedule until you propose them and the owner approves.
             </p>
-            <div v-if="!suggestions.length" class="schedule-manage-empty">No suggestions yet.</div>
-            <div v-else class="suggested-list">
-              <div v-for="s in suggestions" :key="s.id" class="suggested-row" :class="s.status">
-                <div class="suggested-main">
-                  <div class="suggested-head">
-                    <span class="suggested-pill">{{ TERM_LABELS[s.term] || s.term }}</span>
-                    <span class="suggested-who">#{{ s.id }} · {{ s.proposer }}</span>
-                    <span class="suggested-status">{{ s.status }}</span>
-                  </div>
-                  <div class="suggested-change">{{ changeText(s) }}</div>
-                  <div v-if="s.note" class="suggested-note">{{ s.note }}</div>
-                </div>
-                <div v-if="s.status === 'pending'" class="suggested-actions">
-                  <button class="filter-btn" @click="doApprove(s.id)">Approve</button>
-                  <button class="filter-btn" @click="doReject(s.id)">Reject</button>
-                </div>
-              </div>
-            </div>
-            <a v-if="suggestions.length" class="filter-btn" :href="exportUrl" target="_blank" rel="noopener">Export (markdown)</a>
-          </template>
-
-          <template v-else>
-            <p class="modal-intro">
-              You don't own this schedule, so changes are proposed as a diff for the owner to approve.
-            </p>
-            <div class="field">
-              <label>Term to propose changes for</label>
-              <select class="search-input" v-model="proposeFor">
-                <option v-for="t in TERM_KEYS" :key="t" :value="t">{{ TERM_LABELS[t] }}</option>
-              </select>
-            </div>
+            <div class="suggested-draft-preview">{{ draftText }}</div>
             <div class="field">
               <label for="suggested-note">Note (optional)</label>
-              <input id="suggested-note" class="search-input" type="text" v-model="noteDraft" placeholder="e.g. suggested by the math department" />
+              <input id="suggested-note" class="search-input" type="text" v-model="noteDraft" placeholder="e.g. suggested by the physics department" />
             </div>
             <div class="controls">
               <span class="controls-spacer"></span>
               <button class="filter-btn" @click="$emit('close')">Close</button>
-              <button class="filter-btn primary" @click="doPropose">Propose changes</button>
+              <button
+                class="filter-btn primary"
+                :disabled="!draftOps.length"
+                @click="doPropose"
+              >{{ draftOps.length ? 'Propose changes' : 'Nothing to propose yet' }}</button>
             </div>
-          </template>
+          </div>
+
+          <p class="modal-intro" v-else>
+            {{ owned
+              ? 'Pending changes from the departments are live: approve or reject each one; the trail keeps everything that happened.'
+              : "You don't own this schedule. Proposals here are suggestions for the owner — make your changes via 'Suggest changes'." }}
+          </p>
+
+          <div v-if="!suggestions.length" class="schedule-manage-empty">No suggestions yet.</div>
+          <div v-else class="suggested-list">
+            <div v-for="s in suggestions" :key="s.id" class="suggested-row" :class="s.status">
+              <div class="suggested-main">
+                <div class="suggested-head">
+                  <span class="suggested-pill">{{ TERM_LABELS[s.term] || s.term }}</span>
+                  <span class="suggested-who">#{{ s.id }} · {{ s.proposer }}{{ isMine(s) ? ' (yours)' : '' }}</span>
+                  <span class="suggested-status">{{ s.status }}</span>
+                </div>
+                <div class="suggested-change">{{ changeText(s) }}</div>
+                <div v-if="s.note" class="suggested-note">{{ s.note }}</div>
+              </div>
+              <div v-if="s.status === 'pending'" class="suggested-actions">
+                <button v-if="owned" class="filter-btn" @click="doApprove(s.id)">Approve</button>
+                <button v-if="owned" class="filter-btn" @click="doReject(s.id)">Reject</button>
+                <button v-if="isMine(s) && !owned" class="filter-btn" @click="doWithdraw(s.id)">Withdraw</button>
+              </div>
+            </div>
+          </div>
+          <a v-if="remote && owned && suggestions.length" class="filter-btn" :href="exportUrl" target="_blank" rel="noopener">Export (markdown)</a>
         </div>
       </div>
     </div>

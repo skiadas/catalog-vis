@@ -600,7 +600,10 @@ test('proposeOverlay renders concurrent proposals independently with proposers',
           cur: { prefix: 'MAT', number: '131', section: 'A' },
           changes: { days: 'TR', time: '14:15-16:00' },
         },
-        { kind: 'add', offering: { prefix: 'MAT', number: '299', section: 'A', days: 'MWF', time: '8:00-9:10' } },
+        {
+          kind: 'add',
+          offering: { prefix: 'MAT', number: '299', section: 'A', days: 'MWF', time: '8:00-9:10' },
+        },
       ],
     },
     {

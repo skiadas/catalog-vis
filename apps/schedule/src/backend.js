@@ -154,9 +154,11 @@ export async function createSuggestion(scheduleId, payload) {
 export async function approveSuggestion(id) {
   try {
     const res = await fetch(`${API_BASE}/suggestions/${encodeURIComponent(id)}/approve`, { method: 'POST' })
-    return res.ok
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data && data.suggestion) || null
   } catch {
-    return false
+    return null
   }
 }
 
@@ -166,5 +168,35 @@ export async function rejectSuggestion(id) {
     return res.ok
   } catch {
     return false
+  }
+}
+
+// Replaces a pending suggestion's operations and/or note (own proposals only).
+// Returns the updated suggestion or null.
+export async function updateSuggestion(id, payload) {
+  try {
+    const res = await fetch(`${API_BASE}/suggestions/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data && data.suggestion) || null
+  } catch {
+    return null
+  }
+}
+
+// Withdraws a pending suggestion (soft status change). Returns the updated
+// suggestion or null.
+export async function withdrawSuggestion(id) {
+  try {
+    const res = await fetch(`${API_BASE}/suggestions/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data && data.suggestion) || null
+  } catch {
+    return null
   }
 }

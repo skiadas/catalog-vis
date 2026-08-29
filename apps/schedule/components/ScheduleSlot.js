@@ -4,16 +4,22 @@ import {
   WEEKDAY_NAMES,
   formatTime,
   slotKey,
+  buildIndex,
   buildVisual,
+  buildEditVisual,
+  proposeOverlay,
   colorForSchedule,
   termSlotOptions,
 } from '@major-vis/schedule-core'
 import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
 import {
   schedule,
+  scheduleOfferings,
   selectedScheduleIds,
   colorSchedules,
   editingScheduleId,
+  showPendingSuggestions,
+  pendingSuggestionsForTerm,
   openCourseEdit,
 } from '../src/scheduleStore.js'
 import { goScheduleCourse, goScheduleDay, goScheduleSlot } from '../router.js'
@@ -28,29 +34,75 @@ export default {
     const day = computed(() => route.value.params.day)
     const time = computed(() => route.value.params.time)
 
-    // In edit mode the filter is overridden (like the grid) so the edited
-    // schedule's courses are all visible, individually colored, and editable.
+    // Pending-suggestion overlay for this slot's index (see ScheduleGrid).
+    const overlay = computed(() => {
+      if (!showPendingSuggestions.value) return { extra: [], removalsByKey: new Map() }
+      const list = pendingSuggestionsForTerm.value
+      if (!list.length) return { extra: [], removalsByKey: new Map() }
+      const { proposed, removals } = proposeOverlay(scheduleOfferings.value, list)
+      const removalsByKey = new Map()
+      for (const r of removals) {
+        removalsByKey.set(`${r.cur.prefix} ${r.cur.number} ${r.cur.section}`, r)
+      }
+      return { extra: proposed, aware: true, removalsByKey }
+    })
+
+    const shownIndex = computed(() => {
+      const extra = overlay.value.extra || []
+      if (!extra.length) return schedule.value
+      const merged = [
+        ...scheduleOfferings.value,
+        ...extra.map((p, i) => ({
+          ...p.offering,
+          $sid: 'prop:' + p.suggestionId + ':' + i,
+          $prop: p,
+        })),
+      ]
+      return buildIndex(merged)
+    })
+
+    // In edit/suggest mode the filter is overridden (like the grid) so the
+    // session schedule's courses are visible — an active filter still limits.
+    // Pending proposals force the pill view so proposed blocks are visible.
     const filter = computed(() => {
       if (editingScheduleId.value) {
-        return { active: true, matches: () => true, color: (it) => colorForSchedule(it.sid) }
+        return buildEditVisual(filterMode.value, selectedDepartments.value, selectedInstructors.value, (it) =>
+          colorForSchedule(it.sid),
+        )
       }
-      return buildVisual(
+      const visual = buildVisual(
         filterMode.value,
         selectedDepartments.value,
         selectedInstructors.value,
         selectedScheduleIds.value,
         colorSchedules.value,
       )
+      if (!visual.active && overlay.value.aware) {
+        return { active: true, matches: () => true, color: (it) => colorForSchedule(it.sid) }
+      }
+      return visual
     })
 
     const items = computed(() => {
-      if (!schedule.value) return []
-      let list = schedule.value.bySlot[slotKey(day.value, time.value)] || []
+      if (!shownIndex.value) return []
+      let list = shownIndex.value.bySlot[slotKey(day.value, time.value)] || []
       if (filter.value.active) {
         list = list.filter((it) => filter.value.matches(it))
       }
       return list
     })
+
+    const proposalFor = (it) => (it.o && it.o.$prop) || null
+    const removalFor = (it) => overlay.value.removalsByKey.get(`${it.code} ${it.o.section}`) || null
+    const itemTitle = (it) => {
+      const prop = proposalFor(it)
+      if (prop) {
+        return `${it.code}${it.o.section}: proposed ${prop.kind === 'move' ? 'move' : 'add'} by ${prop.proposer}`
+      }
+      const rem = removalFor(it)
+      if (rem) return `${it.code}${it.o.section}: removal proposed by ${rem.proposer}`
+      return ''
+    }
     const times = computed(() => termSlotOptions(activeTerm.value, day.value).map((s) => s.time))
     const timeIndex = computed(() => times.value.indexOf(time.value))
     const dayIndex = computed(() => WEEKDAYS.indexOf(day.value))
@@ -90,6 +142,9 @@ export default {
       goScheduleCourse,
       goScheduleDay,
       isEditable,
+      proposalFor,
+      removalFor,
+      itemTitle,
       openCourseEdit,
     }
   },
@@ -109,11 +164,13 @@ export default {
       <div class="slot-pills" v-else>
         <CoursePill
           v-for="it in items"
-          :key="it.code + it.o.section"
+          :key="it.code + it.o.section + it.sid"
           :item="it"
           :filter-active="filter.active"
           :color="filter.color(it)"
           :editable="isEditable(it)"
+          :proposed="proposalFor(it) ? itemTitle(it) : ''"
+          :removed="removalFor(it) ? itemTitle(it) : ''"
           @edit="openCourseEdit(it)"
         />
       </div>

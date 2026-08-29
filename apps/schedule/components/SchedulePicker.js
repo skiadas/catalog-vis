@@ -18,11 +18,13 @@ import {
 } from '../src/scheduleStore.js'
 import { colorForSchedule, compareItems, parseCsv, renderCsv, TERM_LABELS } from '@major-vis/schedule-core'
 import { courseName } from '@major-vis/catalog-client'
+import ScheduleModeMenu from './ScheduleModeMenu.js'
 
 import { computed, ref } from 'vue'
 
 export default {
   name: 'SchedulePicker',
+  components: { ScheduleModeMenu },
   props: {
     active: { type: Boolean, default: false },
   },
@@ -34,6 +36,7 @@ export default {
     const fileInput = ref(null)
     const importFor = ref(null)
     const importError = ref('')
+    const menuFor = ref(null)
     const filterActive = computed(
       () =>
         (filterMode.value === 'dept' && selectedDepartments.value.length > 0) ||
@@ -112,7 +115,10 @@ export default {
       URL.revokeObjectURL(url)
     }
 
-    const edit = (id) => emit('edit', id)
+    const edit = (id, role = 'edit') => {
+      menuFor.value = null
+      emit('edit', id, role)
+    }
     const manage = () => emit('manage')
 
     // CSV upload: parses the file and loads it into a schedule's active term.
@@ -178,6 +184,7 @@ export default {
       colorForSchedule,
       edit,
       manage,
+      menuFor,
     }
   },
   template: `
@@ -194,14 +201,18 @@ export default {
         @click="toggleSchedule(s.id)"
       >
         <span class="schedule-pill-label">{{ s.name }}</span>
-        <button
-          class="schedule-pill-edit"
-          :title="'Edit ' + s.name"
-          aria-label="Edit schedule"
-          @click.stop="edit(s.id)"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-        </button>
+        <span class="mode-menu-wrap">
+          <button
+            class="schedule-pill-edit"
+            :class="{ active: menuFor === s.id }"
+            :title="'Edit or suggest changes for ' + s.name"
+            aria-label="Edit schedule"
+            @click.stop="menuFor = menuFor === s.id ? null : s.id"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          </button>
+          <ScheduleModeMenu :schedule="s" :open="menuFor === s.id" @mode="edit" @close="menuFor = null" />
+        </span>
         <button
           class="schedule-pill-hide"
           :title="'Hide ' + s.name"

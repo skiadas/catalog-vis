@@ -15,17 +15,20 @@ import {
 } from '../src/scheduleStore.js'
 import { allCourses } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
+import ScheduleModeMenu from './ScheduleModeMenu.js'
 
 import { ref, computed } from 'vue'
 
 export default {
   name: 'ScheduleManage',
+  components: { ScheduleModeMenu },
   props: {
     isOpen: { type: Boolean, default: false },
   },
   emits: ['close', 'edit'],
   setup(props, { emit }) {
     const manageQuery = ref('')
+    const menuFor = ref(null)
     const filteredSchedules = computed(() => {
       const q = manageQuery.value.trim().toLowerCase()
       if (!q) return schedules.value
@@ -65,7 +68,10 @@ export default {
     }
     // Editing (like duplicating) is delegated to the parent's `enterEdit`,
     // which initializes the edit-bar name draft and returns to the grid view.
-    const editSchedule = (id) => emit('edit', id)
+    const editSchedule = (id, role = 'edit') => {
+      menuFor.value = null
+      emit('edit', id, role)
+    }
 
     const close = () => emit('close')
 
@@ -89,6 +95,7 @@ export default {
       toggleSchedule,
       editingScheduleId,
       editSchedule,
+      menuFor,
       colorForSchedule,
       activeTerm,
       termOfferings,
@@ -136,15 +143,18 @@ export default {
                 <svg v-if="selectedScheduleIds.includes(s.id)" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
               </button>
-              <button
-                class="schedule-manage-icon"
-                :class="{ active: editingScheduleId === s.id }"
-                :aria-label="'Edit ' + s.name"
-                :title="'Edit ' + s.name"
-                @click="editSchedule(s.id)"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-              </button>
+              <span class="mode-menu-wrap">
+                <button
+                  class="schedule-manage-icon"
+                  :class="{ active: menuFor === s.id || editingScheduleId === s.id }"
+                  :aria-label="'Edit or suggest changes for ' + s.name"
+                  :title="'Edit or suggest changes for ' + s.name"
+                  @click="menuFor = menuFor === s.id ? null : s.id"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                </button>
+                <ScheduleModeMenu :schedule="s" :open="menuFor === s.id" @mode="editSchedule" @close="menuFor = null" />
+              </span>
               <button
                 class="schedule-manage-icon"
                 :aria-label="'Duplicate ' + s.name"

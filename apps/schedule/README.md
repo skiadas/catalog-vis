@@ -17,6 +17,8 @@ college-hosted source.
 - `major-vis.schedule.selected` — visible schedule ids
 - `major-vis.schedule.color` — "color by schedule" toggle
 - `major-vis.schedule.term` — the active term (`F`/`W`/`S`)
+- `major-vis.schedule.pending` — pending-suggestion overlay toggle
+- `major-vis.schedule.suggestions` — the offline suggestion trail (serverless mode)
 
 A **schedule** is a named, yearly entry that owns three term parts (Fall/Winter/
 Spring), each a separate `offerings` collection; the app edits one term at a time
@@ -45,17 +47,40 @@ in `@major-vis/schedule-core` implement the format (quoted-field aware).
 On load the app seeds a deterministic "Sample schedule" (`seedSampleSchedule`,
 seed 42) into the Fall part unless schedules already exist.
 
-## Server-backed mode (ownership + suggestions)
+## Edit and suggest modes
+
+Every schedule's pencil button opens a mode picker: **Edit** writes the schedule
+directly and **Suggest changes** collects edits into a draft, shown live on the
+calendar (the draft stands in for the published term while the session is
+active). Both are offered to owners and offline users; in remote mode a
+non-owner is only offered Suggest (direct writes require ownership, enforced
+server-side). Proposing diffs the draft against the server's current term and
+upserts the proposer's own pending suggestion (create, or replace the ops of
+their existing pending one), so a department's edits always consolidate into
+one coherent proposal — never redundant intermediate moves — and re-enter a
+suggestion session by replaying their own pending ops onto the freshest
+published state.
+
+## Suggested changes (remote, and mirrored offline)
 
 When the app is served by the backend (`server/`), `initScheduleCollection`
 pings `/api/config` and switches to **remote mode**: the schedule list and term
 edits are mirrored to the API (`apps/schedule/src/backend.js`) instead of
-`localStorage`. The signed-in user (`username` self-identify) owns the
-schedules they create; a non-owner who edits a term has changes turned into a
-**suggestion** (a diff via `@major-vis/schedule-core/diff`), never a direct
-write. The owner approves/rejects each suggestion and can export them. The
-"Suggested changes" panel (`components/SuggestedChanges.js`) is only shown in
-remote mode. Without a server the app runs entirely on `localStorage`.
+`localStorage`. The signed-in user (`username` self-identify) owns the schedules
+they create. Suggestions are concurrent: any number of departments may hold
+live pending proposals ("suggested moves"), visible to everyone — pending
+suggestions render as dashed overlay blocks on the calendar (the "Show
+proposals" toggle, on by default), so departments see where each other plan to
+offer courses. The owner approves/rejects each suggestion one at a time; an
+approval that changes nothing is recorded as `moot`; proposers can edit
+(`PATCH`) or withdraw (soft `withdrawn`) their own pending suggestions, and the
+panel keeps the full paper trail (proposer, note, operations, status,
+`resolved_at`).
+
+Without a server, the app runs entirely on `localStorage`, and the same
+suggestion lifecycle is mirrored there (`major-vis.schedule.suggestions`) so
+testing offline exercises the real flow. The "Your schedules" manager, save
+button, and all mutating actions behave identically in both modes.
 
 ## Routes
 

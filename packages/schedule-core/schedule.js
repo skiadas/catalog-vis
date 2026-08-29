@@ -757,12 +757,9 @@ export function proposeOverlay(baseOfferings, pendingSuggestions) {
           proposer: sug.proposer,
         })
       } else if (op.kind === 'update' && op.cur) {
-        const cur =
-          baseByKey.get(offeringKeyOf(op.cur)) ||
-          { ...op.cur, days: '', time: '' }
+        const cur = baseByKey.get(offeringKeyOf(op.cur)) || { ...op.cur, days: '', time: '' }
         const next = { ...cur, ...(op.changes || {}) }
-        const moved =
-          (next.days || '') !== (cur.days || '') || (next.time || '') !== (cur.time || '')
+        const moved = (next.days || '') !== (cur.days || '') || (next.time || '') !== (cur.time || '')
         if (!moved || !next.days || !next.time) continue
         proposed.push({
           offering: next,

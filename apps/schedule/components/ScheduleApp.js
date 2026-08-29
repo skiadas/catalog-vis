@@ -14,12 +14,18 @@ import {
   schedules,
   selectedScheduleIds,
   editingScheduleId,
+  editingRole,
   editingSchedule,
+  editingDraft,
   setEditingSchedule,
+  clearDraft,
   renameSchedule,
   activeTerm,
   setActiveTerm,
   remote,
+  showPendingSuggestions,
+  setShowPendingSuggestions,
+  pendingSuggestionsForTerm,
   courseEditTarget,
   closeCourseEdit,
 } from '../src/scheduleStore.js'
@@ -105,13 +111,19 @@ export default {
     const editingId = editingScheduleId
     const editingName = computed(() => (editingSchedule.value ? editingSchedule.value.name : ''))
     const nameDraft = ref('')
-    const enterEdit = (id) => {
-      setEditingSchedule(id)
+    const enterEdit = (id, role = 'edit') => {
+      setEditingSchedule(id, role)
       nameDraft.value = editingSchedule.value ? editingSchedule.value.name : ''
       showSchedules.value = false
       if (view.value !== 'grid') goScheduleGrid()
     }
     const exitEdit = () => {
+      // Leaving a suggest session with unsaved draft changes asks first.
+      const draft = editingDraft.value
+      if (draft && draft.dirty) {
+        if (!window.confirm('Discard your unsaved draft changes?')) return
+        clearDraft(editingScheduleId.value, activeTerm.value)
+      }
       setEditingSchedule(null)
     }
     // Renames the edited schedule from the inline input (on Enter or blur).
@@ -148,13 +160,18 @@ export default {
       suggestionsScheduleId,
       remote,
       editingId,
+      editingRole,
       editingName,
+      editingDraft,
       nameDraft,
       enterEdit,
       exitEdit,
       commitRename,
       activeTerm,
       setActiveTerm,
+      showPendingSuggestions,
+      setShowPendingSuggestions,
+      pendingSuggestionsForTerm,
       TERM_KEYS,
       TERM_LABELS,
       courseEditTarget,
@@ -218,11 +235,17 @@ export default {
             <span class="filter-mode-label">Filters:</span>
             <button class="filter-btn" :class="{ active: filterMode === 'dept' }" @click="filterMode = 'dept'">Departments</button>
             <button class="filter-btn" :class="{ active: filterMode === 'instructor' }" @click="filterMode = 'instructor'">Instructors</button>
+            <button
+              v-if="pendingSuggestionsForTerm.length"
+              class="filter-btn schedule-proposals-toggle"
+              :class="{ active: showPendingSuggestions }"
+              @click="setShowPendingSuggestions(!showPendingSuggestions)"
+            >Show proposals</button>
           </div>
         </div>
 
         <div class="schedule-edit-bar" v-if="editingId">
-          <span class="schedule-edit-label">Edit mode:
+          <span class="schedule-edit-label">{{ editingRole === 'suggest' ? 'Suggestion mode:' : 'Edit mode:' }}
             <input
               class="schedule-edit-name"
               v-model="nameDraft"
@@ -232,8 +255,15 @@ export default {
             />
           </span>
           <button class="filter-btn primary" @click="showAddCourse = true">＋ Add course</button>
-          <span class="schedule-edit-hint" v-if="view !== 'grid'">Switch to the grid view to click a course's edit icon or drag it onto a time slot.</span>
+          <span class="schedule-edit-hint" v-if="editingRole === 'suggest'">Changes are collected into a proposal for the owner to approve — nothing is written to the schedule until then.</span>
+          <span class="schedule-edit-hint" v-else-if="view !== 'grid'">Switch to the grid view to click a course's edit icon or drag it onto a time slot.</span>
           <span class="schedule-edit-hint" v-else>Click a course's edit icon to change its settings, or drag it onto a time slot to move it.</span>
+          <button
+            v-if="editingRole === 'suggest' && remote"
+            class="filter-btn schedule-suggestions-btn"
+            :class="{ active: showSuggestions }"
+            @click="showSuggestions = true"
+          >{{ editingDraft && editingDraft.dirty ? 'Propose changes ●' : 'Propose changes' }}</button>
           <button class="filter-btn" @click="exitEdit">Done</button>
         </div>
 

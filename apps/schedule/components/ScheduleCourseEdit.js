@@ -5,7 +5,13 @@ import {
   termConfig,
   termSlotOptions,
 } from '@major-vis/schedule-core'
-import { scheduleById, updateOffering, removeCourseFromSchedule, activeTerm } from '../src/scheduleStore.js'
+import {
+  scheduleById,
+  updateOffering,
+  removeCourseFromSchedule,
+  activeTerm,
+  editingRole,
+} from '../src/scheduleStore.js'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 
 import { computed, ref } from 'vue'
@@ -173,6 +179,7 @@ export default {
       termLabel,
       formatTime,
       activeTerm,
+      editingRole,
       GROUP_DAYS,
     }
   },
@@ -186,7 +193,9 @@ export default {
         <div class="modal-body">
           <p class="modal-intro">
             {{ courseName }} — editing this offering in <strong>{{ schedule.name }}</strong>
-            ({{ termLabel }}). Any changes are saved to this schedule in your browser.
+            ({{ termLabel }}).
+            <template v-if="editingRole === 'suggest'">These changes are collected into a proposal for the owner; nothing is written to the schedule until it's approved.</template>
+            <template v-else>Any changes are saved to this schedule in your browser.</template>
           </p>
 
           <div class="field">
