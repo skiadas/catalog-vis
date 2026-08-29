@@ -7,7 +7,7 @@
     "server"
   ],
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=24"
   },
   "scripts": {
     "test": "node --test",
@@ -32,7 +32,7 @@
     "eslint-config-prettier": "^10.0.0",
     "prettier": "3.3.3",
     "sass": "^1.102.0",
-    "@types/node": "^24",
+    "@types/node": "^26",
     "typescript": "^5.9.3",
     "vite": "^8.2.2",
     "vue": "^3.5.42"
