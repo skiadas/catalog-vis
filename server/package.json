@@ -16,6 +16,7 @@
     "node": ">=22.5.0"
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "express": "^4.21.2"
   },
   "license": "UNLICENSED",
