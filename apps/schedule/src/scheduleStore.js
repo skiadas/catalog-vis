@@ -26,7 +26,7 @@ import { programs, allCourses } from '@major-vis/catalog-client'
 import { diffOfferings } from '@major-vis/schedule-core/diff'
 import * as backend from './backend.js'
 
-const { ref, computed } = Vue
+import { ref, computed } from 'vue'
 
 export const selectedDepartments = ref([])
 export const selectedInstructors = ref([])
@@ -530,6 +530,9 @@ export function seedSampleSchedule() {
 // Generates a new schedule from the live catalog. `mode` is 'random' (all
 // departments), 'dept' (exclusively `dept`'s courses), or 'empty'. The generated
 // offerings seed the schedule's active term.
+/**
+ * @param {{ mode?: 'random' | 'dept' | 'empty'; dept?: string | null; name?: string; year?: string }} [opts]
+ */
 export function generateSchedule({ mode, dept, name, year } = {}) {
   let offerings
   let fallback

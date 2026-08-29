@@ -8,7 +8,7 @@ import {
 import { scheduleById, updateOffering, removeCourseFromSchedule, activeTerm } from '../src/scheduleStore.js'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 
-const { computed, ref } = Vue
+import { computed, ref } from 'vue'
 
 // Day letters available per term group (Spring is a single MTWRF group).
 const GROUP_DAYS = { MWF: ['M', 'W', 'F'], TR: ['T', 'R'], MTWRF: ['M', 'T', 'W', 'R', 'F'] }

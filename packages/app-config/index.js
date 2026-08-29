@@ -55,6 +55,16 @@ async function fetchConfig(url, fetchImpl) {
 // then `staticPath` then `fallback`. Returns the resolved config. Concurrent
 // callers share a single fetch. `fallback` may be an array of service keys or a
 // full config object.
+/**
+ * @typedef {Object} ConfigOptions
+ * @property {string} [endpoint]
+ * @property {string} [staticPath]
+ * @property {string[] | { services?: string[] }} [fallback]
+ */
+
+/**
+ * @param {ConfigOptions} [options]
+ */
 export function loadConfig({ endpoint, staticPath, fallback = DEFAULT_SERVICES } = {}) {
   if (loading) return loading
   const fetchImpl = globalThis.fetch

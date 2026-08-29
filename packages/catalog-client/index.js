@@ -7,7 +7,7 @@
 //
 // Depends on the Vue global (CDN) — the same pattern as the app views.
 
-const { ref, computed } = Vue
+import { ref, computed } from 'vue'
 
 export const programs = ref([])
 export const allCourses = ref({})
@@ -20,6 +20,15 @@ export const filterType = ref('all')
 // Fetches the catalog artifacts and populates the shared refs. `baseUrl` is
 // the seam for pointing an app at a different catalog source (a college-hosted
 // API or another host); `files` overrides the per-artifact paths.
+/**
+ * @typedef {Object} CatalogOptions
+ * @property {string} [baseUrl]
+ * @property {{ majors?: string; parsed?: string; core?: string }} [files]
+ */
+
+/**
+ * @param {CatalogOptions} [options]
+ */
 export async function loadCatalog({ baseUrl = '', files } = {}) {
   const paths = files || {
     majors: 'majors.json',

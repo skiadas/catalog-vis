@@ -10,7 +10,7 @@ import {
 } from '@major-vis/schedule-core'
 import { schedule, filterMode, selectedDepartments, selectedInstructors } from '../src/scheduleStore.js'
 
-const { computed } = Vue
+import { computed } from 'vue'
 
 export default {
   name: 'ScheduleFilters',

@@ -19,7 +19,7 @@ import {
 import { goScheduleCourse, goScheduleDay, goScheduleSlot } from '../router.js'
 import CoursePill from './CoursePill.js'
 
-const { computed } = Vue
+import { computed } from 'vue'
 
 export default {
   name: 'ScheduleSlot',

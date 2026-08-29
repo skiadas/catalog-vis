@@ -7,7 +7,7 @@ import {
 } from '@major-vis/catalog-client'
 import { route, goToCourse, goHome, plannerUrl } from '../router.js'
 
-const { computed } = Vue
+import { computed } from 'vue'
 
 export default {
   name: 'ProgramDetail',

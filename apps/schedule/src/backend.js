@@ -72,6 +72,12 @@ export async function fetchTerm(id, term) {
   }
 }
 
+// Replaces a schedule's metadata (name/status) server-side. Both fields are
+// optional; a missing field is left untouched on the server.
+/**
+ * @param {string} id
+ * @param {{ name?: string; status?: string }} meta
+ */
 export async function updateScheduleMeta(id, { name, status }) {
   try {
     const res = await fetch(`${API_BASE}/schedules/${encodeURIComponent(id)}`, {

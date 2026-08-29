@@ -22,7 +22,7 @@ import { goScheduleSlot, goScheduleDay, goScheduleCourse } from '../router.js'
 import { useScheduleDrag } from '../scheduleDrag.js'
 import WeeklyCalendar from './WeeklyCalendar.js'
 
-const { computed } = Vue
+import { computed } from 'vue'
 
 // The day-group a weekday column belongs to, per the active term (e.g. MWF days
 // are M/W/F, TR days T/R; Spring is a single MTWRF group).

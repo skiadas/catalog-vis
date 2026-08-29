@@ -4,7 +4,7 @@ import { courseByCode, courseName } from '@major-vis/catalog-client'
 import { conflictsForCourse, formatTime } from '@major-vis/schedule-core'
 import { goScheduleCourse, goScheduleSlot } from '../router.js'
 
-const { computed } = Vue
+import { computed } from 'vue'
 
 export default {
   name: 'ScheduleCourse',

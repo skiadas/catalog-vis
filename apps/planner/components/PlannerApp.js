@@ -25,7 +25,7 @@ import { trackReport } from '@major-vis/degree-audit'
 import TrackAudit from './TrackAudit.js'
 import PlannerTimeline from './PlannerTimeline.js'
 
-const { ref, computed, nextTick } = Vue
+import { ref, computed, nextTick } from 'vue'
 
 export default {
   name: 'PlannerApp',

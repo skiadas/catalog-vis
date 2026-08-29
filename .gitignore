@@ -1,6 +1,9 @@
 # Node / tooling
 node_modules/
 
+# Built app bundles (npm run build / vite) — dist/ is deployment output
+dist/
+
 # Python
 __pycache__/
 *.pyc

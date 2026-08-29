@@ -17,7 +17,7 @@ import {
 
 export { CORE_ID, CORE_TRACK, programTracks } from '@major-vis/catalog-client'
 
-const { ref, computed } = Vue
+import { ref, computed } from 'vue'
 
 export const PLAN_SLOT_KEYS = [
   'y1f',

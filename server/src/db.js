@@ -143,6 +143,10 @@ export function deleteSession(db, tokenHash) {
 
 // ---- Schedules -----------------------------------------------------------
 
+/**
+ * @param {object} db
+ * @param {{ year?: string }} [opts]
+ */
 export function listSchedules(db, { year } = {}) {
   const clause = year != null && year !== '' ? 'WHERE s.year = ?' : ''
   const rows = db

@@ -3,7 +3,7 @@ import { allCourses, courseName } from '@major-vis/catalog-client'
 import { dragPayloadFrom } from '@major-vis/schedule-core'
 import { prereqStatus } from '@major-vis/degree-audit'
 
-const { ref, computed } = Vue
+import { ref, computed } from 'vue'
 
 const YEARS = [
   { key: 'y1', label: 'First Year' },

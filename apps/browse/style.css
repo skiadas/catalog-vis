@@ -481,32 +481,6 @@ body {
   font-size: var(--font-base);
 }
 
-.nav-links {
-  display: flex;
-  gap: 6px;
-}
-
-.nav-links a {
-  font-size: var(--font-base);
-  font-weight: var(--weight-medium);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all var(--duration-fast);
-  border: 1px solid transparent;
-}
-
-.nav-links a:hover {
-  background: var(--primary-light);
-  color: var(--primary);
-}
-
-.nav-links a.active {
-  background: var(--primary);
-  color: white;
-}
-
 .course-picker {
   display: flex;
   align-items: center;

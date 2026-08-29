@@ -3,6 +3,7 @@
   "type": "module",
   "workspaces": [
     "packages/*",
+    "apps/*",
     "server"
   ],
   "engines": {
@@ -18,12 +19,22 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,html,css,scss}\"",
-    "format:check": "prettier --check \"**/*.{js,html,css,scss}\""
+    "format:check": "prettier --check \"**/*.{js,html,css,scss}\"",
+    "dev": "vite apps/schedule",
+    "dev:browse": "vite apps/browse",
+    "dev:planner": "vite apps/planner",
+    "build": "vite build apps/schedule && vite build apps/browse && vite build apps/planner",
+    "typecheck": "tsc -p tsconfig.json",
+    "check:apps": "npm run build && npm run typecheck"
   },
   "devDependencies": {
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
     "prettier": "3.3.3",
-    "sass": "^1.102.0"
+    "sass": "^1.102.0",
+    "@types/node": "^24",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.2",
+    "vue": "^3.5.42"
   }
 }

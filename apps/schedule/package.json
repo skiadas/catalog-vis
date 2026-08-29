@@ -1,0 +1,14 @@
+{
+  "name": "@major-vis/app-schedule",
+  "version": "0.1.0",
+  "description": "Schedule review & editing app.",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@major-vis/catalog-client": "*",
+    "@major-vis/router": "*",
+    "@major-vis/schedule-core": "*",
+    "vue": "^3.5.42"
+  },
+  "license": "UNLICENSED"
+}

@@ -1,7 +1,7 @@
 import { courseName } from '@major-vis/catalog-client'
 import { goToCourse } from '../router.js'
 
-const { computed } = Vue
+import { computed } from 'vue'
 
 export default {
   name: 'RequirementItem',

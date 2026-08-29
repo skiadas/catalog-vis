@@ -2,7 +2,7 @@ import { takenSet, placeCourse, removePlanCourse } from '../src/plannerStore.js'
 import { allCourses, courseName } from '@major-vis/catalog-client'
 import { trackReport } from '@major-vis/degree-audit'
 
-const { ref, computed } = Vue
+import { ref, computed } from 'vue'
 
 export default {
   name: 'TrackAudit',

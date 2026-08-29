@@ -37,7 +37,7 @@ import ScheduleManage from './ScheduleManage.js'
 import ScheduleAddCourse from './ScheduleAddCourse.js'
 import SuggestedChanges from './SuggestedChanges.js'
 
-const { computed, ref } = Vue
+import { computed, ref } from 'vue'
 
 export default {
   name: 'ScheduleApp',

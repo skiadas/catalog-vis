@@ -2,7 +2,7 @@ import { goScheduleCourse, goScheduleInstructor } from '../router.js'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 import { buildDragPayload } from '@major-vis/schedule-core'
 
-const { computed } = Vue
+import { computed } from 'vue'
 
 export default {
   name: 'CoursePill',

@@ -4,7 +4,7 @@
 
 import { buildDragPayload, dragPayloadFrom } from '@major-vis/schedule-core'
 
-const { ref } = Vue
+import { ref } from 'vue'
 
 // Returns the shared edit-mode drag state + handlers, parameterized by the
 // schedule being edited (`editingId`, a ref) and the store's moveOffering

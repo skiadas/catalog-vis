@@ -76,17 +76,17 @@ test('requirements schema accepts valid nodes and rejects unknown item types', (
 
 test('requirements schema rejects an any_of carrying both codes and items', () => {
   const bad = structuredClone(validParsed)
-  bad.programs[0].requirements[0].sections[0].items = [
+  bad.programs[0].requirements[0].sections[0].items = /** @type {any} */ ([
     { type: 'any_of', codes: ['BIO 161'], items: [{ type: 'course', code: 'BIO 161' }] },
-  ]
+  ])
   assert.equal(checkRequirements(bad).ok, false)
 })
 
 test('requirements schema allows a from constraint that is note-only', () => {
   const data = structuredClone(validParsed)
-  data.programs[0].requirements[0].sections[0].items = [
+  data.programs[0].requirements[0].sections[0].items = /** @type {any} */ ([
     { type: 'electives', count: 2, constraints: [{ type: 'from', note: 'courses below' }] },
-  ]
+  ])
   assert.equal(checkRequirements(data).ok, true)
 })
 
@@ -109,6 +109,6 @@ test('core schema accepts a valid area and rejects a missing electives count', (
   }
   assert.equal(checkCore(valid).ok, true)
   const bad = structuredClone(valid)
-  bad.programs[0].requirements[0].sections[0].items[0] = { type: 'electives' }
+  bad.programs[0].requirements[0].sections[0].items[0] = /** @type {any} */ ({ type: 'electives' })
   assert.equal(checkCore(bad).ok, false)
 })

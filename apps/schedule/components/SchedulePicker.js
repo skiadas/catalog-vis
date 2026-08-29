@@ -19,7 +19,7 @@ import {
 import { colorForSchedule, compareItems, parseCsv, renderCsv, TERM_LABELS } from '@major-vis/schedule-core'
 import { courseName } from '@major-vis/catalog-client'
 
-const { computed, ref } = Vue
+import { computed, ref } from 'vue'
 
 export default {
   name: 'SchedulePicker',

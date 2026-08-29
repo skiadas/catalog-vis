@@ -1,4 +1,4 @@
-const { computed } = Vue
+import { computed } from 'vue'
 
 export default {
   name: 'RequirementSection',

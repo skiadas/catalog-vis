@@ -15,9 +15,10 @@ import {
   submitTermSuggestion,
   scheduleById,
 } from '../src/scheduleStore.js'
-import { renderChanges, TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
+import { TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
+import { renderChanges } from '@major-vis/schedule-core/diff'
 
-const { ref, computed } = Vue
+import { ref, computed } from 'vue'
 
 export default {
   name: 'SuggestedChanges',

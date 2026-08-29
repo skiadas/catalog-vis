@@ -4,30 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hanover College — Programs</title>
-    <!-- Vue as a global (no build step); app modules use `const { ref, computed } = Vue`. -->
-    <script src="https://unpkg.com/vue@3.5.40/dist/vue.global.prod.js"></script>
     <!-- App stylesheet (compiled from style/*.scss via `npm run build:css`). -->
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div id="app"></div>
-    <!--
-      No build step: the import map resolves bare @major-vis/* specifiers to the
-      workspace packages (two levels up, at the repo root). This is how app code
-      imports @major-vis/catalog-client, the pure engines, and the router.
-    -->
-    <script type="importmap">
-      {
-        "imports": {
-          "@major-vis/app-config": "../../packages/app-config/index.js",
-          "@major-vis/catalog-client": "../../packages/catalog-client/index.js",
-          "@major-vis/degree-audit": "../../packages/degree-audit/planner.js",
-          "@major-vis/schedule-core": "../../packages/schedule-core/schedule.js",
-          "@major-vis/schedule-core/generate": "../../packages/schedule-core/generate.js",
-          "@major-vis/router": "../../packages/router/index.js"
-        }
-      }
-    </script>
-    <script type="module" src="main.js"></script>
+    <script type="module" src="/main.js"></script>
   </body>
 </html>

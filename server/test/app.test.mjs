@@ -110,12 +110,9 @@ test('non-owner cannot modify but can suggest; owner approves against base versi
     const alice = srv.newClient()
     const bob = srv.newClient()
     const carol = srv.newClient()
-    for (const [c, u] of [
-      [alice, 'alice'],
-      [bob, 'bob'],
-      [carol, 'carol'],
-    ])
-      assert.equal((await c.post('/api/auth/login', { username: u })).status, 200)
+    assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
+    assert.equal((await bob.post('/api/auth/login', { username: 'bob' })).status, 200)
+    assert.equal((await carol.post('/api/auth/login', { username: 'carol' })).status, 200)
 
     const { schedule } = (await alice.post('/api/schedules', { name: 'Registrar', year: '2026-27' })).json
     // seed the schedule with a course

@@ -9,12 +9,13 @@ export async function startTestServer(app) {
   const server = http.createServer(app)
   server.listen(0, '127.0.0.1')
   await once(server, 'listening')
-  const { port } = server.address()
+  const addr = server.address()
+  const port = typeof addr === 'object' && addr ? addr.port : 0
   const base = `http://127.0.0.1:${port}`
 
   function makeClient(cookies = {}) {
     async function request(method, path, body) {
-      const headers = {}
+      const headers = /** @type {Record<string, string>} */ ({})
       const jar = Object.entries(cookies)
         .map(([k, v]) => `${k}=${v}`)
         .join('; ')

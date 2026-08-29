@@ -11,7 +11,7 @@ import {
 import { allCourses, courseName } from '@major-vis/catalog-client'
 import { compareCodes } from '@major-vis/schedule-core'
 
-const { ref, computed } = Vue
+import { ref, computed } from 'vue'
 
 export default {
   name: 'ScheduleAddCourse',

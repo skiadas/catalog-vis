@@ -22,7 +22,7 @@ import { goScheduleSlot, goScheduleCourse, goScheduleDay } from '../router.js'
 import { useScheduleDrag } from '../scheduleDrag.js'
 import CoursePill from './CoursePill.js'
 
-const { computed } = Vue
+import { computed } from 'vue'
 
 export default {
   name: 'ScheduleDay',

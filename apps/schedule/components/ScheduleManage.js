@@ -16,7 +16,7 @@ import {
 import { allCourses } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
 
-const { ref, computed } = Vue
+import { ref, computed } from 'vue'
 
 export default {
   name: 'ScheduleManage',

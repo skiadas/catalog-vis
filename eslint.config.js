@@ -3,7 +3,7 @@ import globals from 'globals'
 import prettier from 'eslint-config-prettier'
 
 export default [
-  { ignores: ['node_modules/'] },
+  { ignores: ['node_modules/', 'dist/'] },
   js.configs.recommended,
   {
     // Server runs on Node (not the browser); give it Node globals.
@@ -23,7 +23,6 @@ export default [
       sourceType: 'module',
       globals: {
         ...globals.browser,
-        Vue: 'readonly',
       },
     },
   },

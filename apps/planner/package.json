@@ -1,0 +1,15 @@
+{
+  "name": "@major-vis/app-planner",
+  "version": "0.1.0",
+  "description": "Degree planner + audit app.",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@major-vis/catalog-client": "*",
+    "@major-vis/degree-audit": "*",
+    "@major-vis/router": "*",
+    "@major-vis/schedule-core": "*",
+    "vue": "^3.5.42"
+  },
+  "license": "UNLICENSED"
+}

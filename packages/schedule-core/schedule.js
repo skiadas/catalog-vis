@@ -21,6 +21,7 @@ export const WEEKDAY_NAMES = { M: 'Monday', T: 'Tuesday', W: 'Wednesday', R: 'Th
 // ---------------------------------------------------------------------------
 
 // Slot blocks: (days, time, startMin, endMin). Times in 24h.
+/** @type {Array<[string, string, number, number]>} */
 const MWF_BLOCK = [
   ['MWF', '8:00-9:10', 480, 550],
   ['MWF', '9:20-10:30', 560, 630],
@@ -29,6 +30,7 @@ const MWF_BLOCK = [
   ['MWF', '13:20-14:30', 800, 870],
   ['MWF', '14:40-15:50', 880, 950],
 ]
+/** @type {Array<[string, string, number, number]>} */
 const TR_BLOCK = [
   ['TR', '8:00-9:45', 480, 585],
   ['TR', '10:00-11:45', 600, 705],
@@ -38,6 +40,10 @@ const TR_BLOCK = [
 // Spring term: all days identical (MTWRF), four base slots. A course may occupy
 // up to `maxConsecutiveSlots` consecutive base slots (e.g. 8:00-10:15 means the
 // first two slots; the assignable bands below derive those combinations).
+// Spring term: all days identical (MTWRF), four base slots. A course may occupy
+// up to `maxConsecutiveSlots` consecutive base slots (e.g. 8:00-10:15 means the
+// first two slots; the assignable bands below derive those combinations).
+/** @type {Array<[string, string, number, number]>} */
 const SPRING_BLOCK = [
   ['MTWRF', '8:00-10:15', 480, 615],
   ['MTWRF', '10:15-12:30', 615, 750],
@@ -190,8 +196,7 @@ function csvFields(line) {
 // registrar form `dept-prefix,course-number,section,instructor,days,times`
 // (optionally an extra `term` column, `F|W|S`) or use alternate synonyms for the
 // time column (`time`). Blank `days`/`times` mark an unscheduled offering.
-// Returns `[{ prefix, number, section, instructor, days, time, term? }]` where
-// `term` is present only when the source provided it.
+/** @returns {Array<{ prefix: string; number: string; section: string; instructor: string; days: string; time: string; term?: string }>} */
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/)
   const header = csvFields(lines[0])

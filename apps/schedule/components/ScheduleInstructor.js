@@ -4,7 +4,7 @@ import { instructorConflicts, compareInstructors } from '@major-vis/schedule-cor
 import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../router.js'
 import WeeklyCalendar from './WeeklyCalendar.js'
 
-const { computed } = Vue
+import { computed } from 'vue'
 
 export default {
   name: 'ScheduleInstructor',

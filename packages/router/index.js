@@ -6,7 +6,7 @@
 // `parse` returns an object wins. `href(params)` builds the hash string (the
 // part after `#`, without the leading `#`).
 
-const { ref } = Vue
+import { ref } from 'vue'
 
 export function createRouter(routes, fallback) {
   const route = ref({ view: fallback, params: {} })
