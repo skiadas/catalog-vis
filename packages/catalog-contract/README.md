@@ -25,6 +25,14 @@ structure and vocabulary; `test_data.py` keeps the derived/relational rules
 (program `id` derived from name, track-slug uniqueness, cross-file code
 integrity). Keep all three in sync when the contract changes.
 
+The **code projection** of the contract lives in `types.d.ts` — hand-authored
+TypeScript types for the three documents, consumed by JS/TS code through
+JSDoc `import()`s. Data conformance stays the schemas' job (`validate:catalog`);
+type conformance is witnessed by `types.witness.ts` + `test/types.test.js`, both
+checked in CI (`npm run typecheck` / `npm test`). When the contract changes,
+update `schemas/`, the invariants, **and** `types.d.ts` together — the two
+witnesses are the tripwires.
+
 ### Validate
 
 ```sh
