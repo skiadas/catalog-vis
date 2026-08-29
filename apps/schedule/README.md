@@ -66,8 +66,9 @@ published state.
 When the app is served by the backend (`server/`), `initScheduleCollection`
 pings `/api/config` and switches to **remote mode**: the schedule list and term
 edits are mirrored to the API (`apps/schedule/src/backend.js`) instead of
-`localStorage`. The signed-in user (`username` self-identify) owns the schedules
-they create. Suggestions are concurrent: any number of departments may hold
+`localStorage`. An unauthenticated visit shows an empty collection with the
+**sign-in bar** (username self-identify) — owners are whoever created a
+schedule. Suggestions are concurrent: any number of departments may hold
 live pending proposals ("suggested moves"), visible to everyone — pending
 suggestions render as dashed overlay blocks on the calendar (the "Show
 proposals" toggle, on by default), so departments see where each other plan to

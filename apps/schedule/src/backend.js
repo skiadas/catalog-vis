@@ -106,6 +106,31 @@ export async function deleteSchedule(id) {
 
 // ---- Session -------------------------------------------------------------
 
+// Signs in with a username (self-identify). Returns the user or null.
+export async function login(username) {
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data && data.user) || null
+  } catch {
+    return null
+  }
+}
+
+export async function logout() {
+  try {
+    const res = await fetch(`${API_BASE}/auth/logout`, { method: 'POST' })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 export async function fetchSession() {
   try {
     const res = await fetch(`${API_BASE}/auth/session`, { method: 'GET' })

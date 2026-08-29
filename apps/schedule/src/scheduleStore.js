@@ -134,6 +134,54 @@ export async function loadCurrentUser() {
   return user
 }
 
+// Signs in with a username (self-identify, remote mode) and loads the shared
+// server state. Returns true on success.
+export async function signIn(username) {
+  if (!remote.value || typeof window === 'undefined') return false
+  const user = await backend.login(String(username || '').trim())
+  if (!user) return false
+  currentUser.value = user
+  if (!(await loadServerState())) return false
+  return true
+}
+
+// Signs out (remote mode): clears the session and the identity; the last
+// loaded view stays until the next sign-in replaces it.
+export async function signOut() {
+  if (!remote.value || typeof window === 'undefined') return
+  await backend.logout()
+  currentUser.value = null
+  suggestions.value = []
+  suggestionsBySchedule.value = {}
+  editingScheduleId.value = null
+  editingRole.value = null
+  pendingDrafts.value = {}
+}
+
+// Replaces the local view with the backend's schedule collection (after a
+// sign-in, or at boot). Returns false when the backend isn't reachable /
+// authenticated. Any drafts or sessions from the previous identity are
+// dropped.
+async function loadServerState() {
+  const list = await backend.fetchSchedules()
+  if (!list) return false
+  schedules.value = list
+  const selected = loadSelectedSchedules()
+  const valid = (sel) =>
+    Array.isArray(sel) && sel.filter((id) => schedules.value.some((s) => s.id === id)).length > 0
+  selectedScheduleIds.value = valid(selected)
+    ? selected.filter((id) => schedules.value.some((s) => s.id === id))
+    : schedules.value.length
+      ? [schedules.value[0].id]
+      : []
+  persistSelectedSchedules()
+  editingScheduleId.value = null
+  editingRole.value = null
+  pendingDrafts.value = {}
+  refreshAllSuggestions()
+  return true
+}
+
 // Whether the supplied schedule is owned by the current user. Without a
 // backend every schedule belongs to the single local user (offline mirrors the
 // live flow, so self-approve/reject of one's own trail rows works the same).
@@ -880,31 +928,18 @@ function seedSchedules(seedList) {
 }
 
 // Bootstraps the collection. When the app is served by the major-vis backend it
-// loads the shared schedule list from the API; otherwise it seeds the local
-// sample schedule. Call after `loadCatalog` (it consults the catalog for the
-// sample generation).
+// loads the shared schedule list from the API (an unauthenticated visit stays
+// empty — the auth bar offers sign-in); otherwise it seeds the local sample
+// schedule. Call after `loadCatalog` (it consults the catalog for the sample
+// generation).
 export async function initScheduleCollection() {
   if (typeof window === 'undefined') return
   const isRemote = await backend.detectRemote()
   setRemote(isRemote)
   if (isRemote) {
     await loadCurrentUser()
-    const list = await backend.fetchSchedules()
-    if (list) {
-      schedules.value = list
-      const selected = loadSelectedSchedules()
-      const valid = (sel) =>
-        Array.isArray(sel) && sel.filter((id) => schedules.value.some((s) => s.id === id)).length > 0
-      if (valid(selected)) {
-        selectedScheduleIds.value = selected.filter((id) => schedules.value.some((s) => s.id === id))
-      } else {
-        selectedScheduleIds.value = schedules.value.length ? [schedules.value[0].id] : []
-        persistSelectedSchedules()
-      }
-      restoreAux()
-      refreshAllSuggestions()
-      return
-    }
+    if (await loadServerState()) restoreAux()
+    return
   }
   seedSampleSchedule()
 }
