@@ -166,18 +166,16 @@
   gap: 6px var(--space-3);
   margin-bottom: 8px;
 }
-.schedule-tabs {
-  @include flex-row;
+.schedule-toolbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin-left: auto;
 }
 .filter-mode {
   @include flex-row;
-  margin-left: auto;
   align-items: center;
-}
-.filter-mode .filter-mode-label {
-  @include text-eyebrow;
-  color: var(--text-muted);
-  margin-right: 2px;
 }
 .filter-mode .filter-btn {
   @include text-label-sm;
@@ -191,6 +189,45 @@
   background: var(--accent);
   border-color: var(--accent);
   color: white;
+}
+
+/* Segmented control: connected buttons with end-only radii. Used for the
+   view tabs, the term selector, and the filter-mode pair. */
+.seg {
+  @include flex-row;
+  align-items: center;
+}
+.seg .seg-btn {
+  @include text-label-sm;
+  padding: 5px 14px;
+  border: 1px solid var(--accent);
+  border-left: none;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--duration-fast);
+}
+.seg .seg-btn:first-child {
+  border-left: 1px solid var(--accent);
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+}
+.seg .seg-btn:last-child {
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+}
+.seg .seg-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+.seg .seg-btn:not(.active):hover {
+  background: var(--primary-light);
+}
+.filter-count {
+  margin-left: 4px;
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
+  opacity: 0.8;
 } /* Add-a-course modal (edit mode) */
 
 .schedule-add-search {
@@ -547,7 +584,29 @@
 .schedule-picker {
   @include flex-row;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 8px;
+}
+.schedule-picker-left,
+.schedule-picker-right {
+  @include flex-row;
+  align-items: center;
+}
+.schedule-csv-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.schedule-csv-caret {
+  margin-left: 4px;
+  font-size: var(--font-xs);
+}
+/* The CSV action menu reuses the mode-menu dropdown silhouette. */
+.csv-menu {
+  @extend .mode-menu;
+}
+.csv-menu-item {
+  @extend .mode-menu-item;
 }
 .schedule-edit-bar {
   @include flex-row(10px);
@@ -857,26 +916,7 @@
   margin-bottom: 2px;
 }
 
-/* Term (Fall/Winter/Spring) tab bar + CSV upload + custom-time editor */
-
-.term-tabs {
-  @include flex-row;
-  gap: var(--space-1);
-  margin: 8px 0 0;
-}
-.term-tabs .filter-btn {
-  flex: 0 0 auto;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: var(--font-xs);
-  padding: 5px 14px;
-  border-radius: var(--radius);
-}
-.term-tabs .filter-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--text-inverse);
-}
+/* Custom-time editor */
 
 .slot-time-group-name {
   @include button-reset;
@@ -917,12 +957,6 @@
   color: var(--text-muted);
 }
 
-.schedule-upload-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
 .schedule-upload-input {
   display: none;
 }
@@ -934,7 +968,7 @@
 /* Suggested changes (ownership/approve-reject) panel */
 
 .schedule-suggestions-btn {
-  margin-left: auto;
+  white-space: nowrap;
 }
 .suggested-feedback {
   margin: 0 0 var(--space-2);

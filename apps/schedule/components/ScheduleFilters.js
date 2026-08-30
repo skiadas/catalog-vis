@@ -8,7 +8,13 @@ import {
   colorForDept,
   colorForInstructor,
 } from '@major-vis/schedule-core'
-import { schedule, filterMode, selectedDepartments, selectedInstructors } from '../src/scheduleStore.js'
+import {
+  schedule,
+  filterMode,
+  filterPanelOpen,
+  selectedDepartments,
+  selectedInstructors,
+} from '../src/scheduleStore.js'
 
 import { computed } from 'vue'
 
@@ -42,6 +48,7 @@ export default {
     return {
       props,
       showFilter,
+      filterPanelOpen,
       depts,
       instructors,
       toggleDept,
@@ -57,7 +64,7 @@ export default {
   },
   template: `
     <div>
-      <div class="filter-panel" v-if="showFilter && filterMode === 'dept'">
+      <div class="filter-panel" v-if="showFilter && filterPanelOpen && filterMode === 'dept'">
         <span class="filter-label">Departments:</span>
         <span
           v-for="d in depts"
@@ -70,7 +77,7 @@ export default {
         <button v-if="selectedDepartments.length" class="filter-clear" @click="clearDepts">Clear</button>
       </div>
 
-      <div class="filter-panel" v-if="showFilter && filterMode === 'instructor'">
+      <div class="filter-panel" v-if="showFilter && filterPanelOpen && filterMode === 'instructor'">
         <span class="filter-label">Instructors:</span>
         <span
           v-for="i in instructors"

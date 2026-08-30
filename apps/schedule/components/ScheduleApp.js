@@ -9,6 +9,9 @@ import { goScheduleGrid, goScheduleCourse, goScheduleInstructor } from '../route
 import { courseName } from '@major-vis/catalog-client'
 import {
   filterMode,
+  filterPanelOpen,
+  selectedDepartments,
+  selectedInstructors,
   schedule,
   schedules,
   selectedScheduleIds,
@@ -65,6 +68,23 @@ export default {
     })
     const selectedCode = computed(() => route.value.params.code || '')
     const showFilter = computed(() => ['grid', 'day', 'slot'].includes(view.value))
+
+    // Filter mode buttons: clicking the active mode collapses the chips panel
+    // (selections stay applied), clicking the other mode switches and opens it.
+    const pickFilter = (mode) => {
+      if (filterMode.value === mode) {
+        filterPanelOpen.value = !filterPanelOpen.value
+      } else {
+        filterMode.value = mode
+        filterPanelOpen.value = true
+      }
+    }
+    const deptFilterCount = computed(() => selectedDepartments.value.length)
+    const instructorFilterCount = computed(() => selectedInstructors.value.length)
+    const clearActiveFilters = () => {
+      if (filterMode.value === 'dept') selectedDepartments.value = []
+      else selectedInstructors.value = []
+    }
 
     // Course picker — the "course conflicts" dropdown.
     const courseQuery = ref('')
@@ -135,6 +155,12 @@ export default {
       sortedCourses,
       selectedCode,
       showFilter,
+      filterMode,
+      filterPanelOpen,
+      pickFilter,
+      deptFilterCount,
+      instructorFilterCount,
+      clearActiveFilters,
       courseQuery,
       courseOpen,
       courseResults,
@@ -143,7 +169,6 @@ export default {
       schedule,
       schedules,
       selectedScheduleIds,
-      filterMode,
       showSchedules,
       showAddCourse,
       showSuggestions,
@@ -174,40 +199,50 @@ export default {
     <div v-if="schedule">
       <SchedulePicker :active="showSchedules" @edit="enterEdit" @manage="showSchedules = true" />
 
-      <div class="term-tabs">
+      <div class="schedule-toolbar">
+        <div class="seg" role="group" aria-label="View">
+          <button class="seg-btn" :class="{ active: view === 'grid' }" @click="goScheduleGrid()">Grid</button>
+          <button
+            class="seg-btn"
+            :class="{ active: view === 'course' }"
+            @click="goScheduleCourse(selectedCode || sortedCourses[0])"
+          >Course conflicts</button>
+          <button
+            class="seg-btn"
+            :class="{ active: view === 'instructor' }"
+            @click="goScheduleInstructor(Object.keys(schedule.byInstructor)[0])"
+          >Instructor</button>
+        </div>
+
+        <div class="seg" role="group" aria-label="Term">
           <button
             v-for="t in TERM_KEYS"
             :key="t"
-            class="filter-btn"
+            class="seg-btn"
             :class="{ active: activeTerm === t }"
             @click="setActiveTerm(t)"
           >{{ TERM_LABELS[t] }}</button>
-          <button
-            v-if="suggestionsScheduleId"
-            class="filter-btn schedule-suggestions-btn"
-            @click="showSuggestions = true"
-          >Suggested changes</button>
         </div>
 
-        <div class="schedule-toolbar">
-          <div class="schedule-tabs">
-            <button class="filter-btn" :class="{ active: view === 'grid' }" @click="goScheduleGrid()">Grid</button>
-            <button
-              class="filter-btn"
-              :class="{ active: view === 'course' }"
-              @click="goScheduleCourse(selectedCode || sortedCourses[0])"
-            >Course conflicts</button>
-            <button
-              class="filter-btn"
-              :class="{ active: view === 'instructor' }"
-              @click="goScheduleInstructor(Object.keys(schedule.byInstructor)[0])"
-            >Instructor Schedule</button>
-          </div>
-
+        <div class="schedule-toolbar-right">
           <div class="filter-mode" v-if="showFilter">
-            <span class="filter-mode-label">Filters:</span>
-            <button class="filter-btn" :class="{ active: filterMode === 'dept' }" @click="filterMode = 'dept'">Departments</button>
-            <button class="filter-btn" :class="{ active: filterMode === 'instructor' }" @click="filterMode = 'instructor'">Instructors</button>
+            <div class="seg" role="group" aria-label="Filter by">
+              <button
+                class="seg-btn"
+                :class="{ active: filterMode === 'dept' && filterPanelOpen }"
+                @click="pickFilter('dept')"
+              >Departments<span v-if="deptFilterCount" class="filter-count">({{ deptFilterCount }})</span></button>
+              <button
+                class="seg-btn"
+                :class="{ active: filterMode === 'instructor' && filterPanelOpen }"
+                @click="pickFilter('instructor')"
+              >Instructors<span v-if="instructorFilterCount" class="filter-count">({{ instructorFilterCount }})</span></button>
+            </div>
+            <button
+              v-if="!filterPanelOpen && (deptFilterCount || instructorFilterCount)"
+              class="filter-clear"
+              @click="clearActiveFilters"
+            >Clear</button>
             <button
               v-if="pendingSuggestionsForTerm.length"
               class="filter-btn schedule-proposals-toggle"
@@ -215,7 +250,14 @@ export default {
               @click="setShowPendingSuggestions(!showPendingSuggestions)"
             >Show proposals</button>
           </div>
+
+          <button
+            v-if="suggestionsScheduleId"
+            class="filter-btn schedule-suggestions-btn"
+            @click="showSuggestions = true"
+          >Suggested changes</button>
         </div>
+      </div>
 
         <div class="schedule-edit-bar" v-if="editingId">
           <span class="schedule-edit-label">{{ editingRole === 'suggest' ? 'Suggestion mode:' : 'Edit mode:' }}

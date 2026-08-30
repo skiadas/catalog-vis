@@ -32,6 +32,11 @@ export const selectedDepartments = ref([])
 export const selectedInstructors = ref([])
 export const filterMode = ref('dept')
 
+// Whether the filter chips panel is expanded. The mode buttons (Departments /
+// Instructors) drive this: clicking the active mode collapses the picklist
+// without clearing selections (the filter keeps applying); default closed.
+export const filterPanelOpen = ref(false)
+
 // ---- Schedule collection state ------------------------------------------
 // Schedules are named, yearly entries with three term parts, persisted to
 // localStorage (serverless) or to the major-vis backend (when one is present).
