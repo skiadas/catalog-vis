@@ -13,7 +13,7 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-IMAGE="ghcr.io/skiados/catalog-vis:${IMAGE_TAG:-latest}"
+IMAGE="ghcr.io/skiadas/catalog-vis:${IMAGE_TAG:-latest}"
 CONTAINER="major-vis"
 
 docker compose pull -q
