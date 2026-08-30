@@ -5,7 +5,9 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@major-vis/catalog-client": "*",
+    "@major-vis/catalog-client": "*"
+  },
+  "devDependencies": {
     "vue": "^3.5.42",
     "vue-router": "^4.6.4"
   },

@@ -26,7 +26,7 @@ packages/
   catalog-contract/          THE DATA CONTRACT: JSON Schemas + validator + REQUIREMENTS_SCHEMA.md
   catalog-client/            browser catalog data layer (loadCatalog + refs + filters + tracks)
   app-config/                browser service + auth config (loadConfig/isEnabled + launcher contract)
-  degree-audit/              pure requirements evaluator (node --test-able)
+degree-audit/              pure requirements evaluator (node --test-able)
   schedule-core/             pure schedule domain model + generator (node --test-able)
 server/                      Node backend: Express + built-in node:sqlite + auth + schedules/suggestions API; serves the built apps + catalog API + launcher (the container process)
 apps/

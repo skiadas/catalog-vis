@@ -6,7 +6,9 @@
   "private": true,
   "dependencies": {
     "@major-vis/catalog-client": "*",
-    "@major-vis/schedule-core": "*",
+    "@major-vis/schedule-core": "*"
+  },
+  "devDependencies": {
     "vue": "^3.5.42",
     "vue-router": "^4.6.4"
   },
