@@ -110,6 +110,22 @@ export function termSlotOptions(termKey, day) {
   return out
 }
 
+// Whether an offering's meeting pattern is a standard one for the term: all its
+// day letters sit in one day group and its `time` is one of that group's
+// assignable bands. Anything else (custom times, mixed day groups, blank
+// days/time) is off-pattern and rendered with the distinct off-pattern cue.
+export function isStandardPattern(termKey, days, time) {
+  if (!days || !time) return false
+  const letters = String(days)
+    .split('')
+    .filter((d) => 'MTWRF'.includes(d))
+  if (!letters.length) return false
+  const config = termConfig(termKey)
+  const group = config.dayGroups.find((g) => letters.every((d) => g.label.includes(d)))
+  if (!group) return false
+  return termSlotOptions(termKey, group.label[0]).some((s) => s.time === time)
+}
+
 // Bands may combine consecutive base slots (e.g. 8:00-10:15 + 10:15-12:30 ->
 // 8:00-12:30). Build the time string from start/end minutes.
 function bandTime(start, end) {
@@ -128,6 +144,7 @@ export function toMinutes(hhmm) {
 }
 
 export function formatTime(time) {
+  if (!time) return 'No meeting time'
   // "8:00-9:10" -> "8:00 AM - 9:10 AM"
   const [a, b] = time.split('-')
   const fmt = (t) => {
@@ -320,14 +337,22 @@ export function moveOfferingSmart(
 
 // Rewrites fields (instructor / section / days / time) on the offering matching
 // `cur` (its current identity, since `section` may itself be edited). Returns a
-// new array, or the same array when nothing matches.
+// new array, or the same array when nothing matches. A half-set meeting time
+// (`days` without `time` or vice versa) is normalized to the no-meeting-time
+// shape (both blank), since the contract only defines scheduled (both set) and
+// unscheduled (both blank) offerings.
 export function updateOfferingInSchedule(offerings, cur, changes) {
   const idx = (offerings || []).findIndex(
     (o) => o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section,
   )
   if (idx < 0) return offerings
   const next = offerings.slice()
-  next[idx] = { ...next[idx], ...changes }
+  const merged = { ...next[idx], ...changes }
+  if (!merged.days || !merged.time) {
+    merged.days = ''
+    merged.time = ''
+  }
+  next[idx] = merged
   return next
 }
 
@@ -508,22 +533,28 @@ export const DAY_START_MIN = 480 // 8:00
 export const DAY_END_MIN = 960 // 16:00
 export const PX_PER_MIN = 1
 
-// The day range to render, computed from the offered blocks so classes with
-// arbitrary (early/late) times are visible. Falls back to the standard range
-// when nothing is scheduled.
-export function calendarDayRange(index) {
-  let min = Infinity
-  let max = -Infinity
-  const walk = (items) => {
-    for (const it of items || []) {
-      if (it.start < min) min = it.start
-      if (it.end > max) max = it.end
-    }
+// The day range to render: anchored to the term's standard hours (Fall/Winter
+// 8:00-16:00, Spring 8:00-17:00) so an off-pattern early/late class never
+// stretches the whole grid or hides normal classes. Off-range parts of
+// off-pattern classes are clamped by `clipBand` instead.
+export function calendarDayRange(termKey) {
+  const config = termConfig(termKey)
+  return { start: config.dayStart, end: config.dayEnd }
+}
+
+// Clamps a band to the rendered day range, so an off-pattern class starting
+// before or ending after the ruled hours keeps its in-range portion. Returns
+// null when nothing of the band falls inside the range.
+export function clipBand(band, range) {
+  const start = Math.max(band.start, range.start)
+  const end = Math.min(band.end, range.end)
+  if (end <= start) return null
+  return {
+    start,
+    end,
+    clippedTop: band.start < range.start,
+    clippedBottom: band.end > range.end,
   }
-  walk(index && index.byDay.M)
-  if (min === Infinity) min = DAY_START_MIN
-  if (max === -Infinity) max = DAY_END_MIN
-  return { start: min, end: max }
 }
 
 export function hourMarks(start = DAY_START_MIN, end = DAY_END_MIN) {

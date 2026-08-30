@@ -28,8 +28,13 @@ An **offering** is the primitive record, in the shape `parseCsv` produces:
 - `WEEKDAYS = ['M','T','W','R','F']`, `WEEKDAY_NAMES`
 - `SLOT_BLOCKS = [{ label: 'MWF', slots }, { label: 'TR', slots }]` with the 6
   MWF + 4 TR standard bands (`{ days, time, start, end }`)
-- `DEFAULT_SLOT` (first MWF band), `toMinutes(hhmm)`, `formatTime(time)`,
-  `slotKey(day, time)`, `daySlotTimes(day)`
+- `DEFAULT_SLOT` (first MWF band), `toMinutes(hhmm)`, `formatTime(time)`
+  (a blank time renders as `"No meeting time"`), `slotKey(day, time)`,
+  `daySlotTimes(day)`
+- `termSlotOptions(termKey, day)` → that day's assignable bands
+- `isStandardPattern(termKey, days, time)` → whether an offering's time is one
+  of its day group's standard bands (the off-pattern test the grid's rail cue
+  uses)
 - `compareItems(a, b)`, `compareCodes(a, b)`
 
 ### Editing
@@ -37,7 +42,10 @@ An **offering** is the primitive record, in the shape `parseCsv` produces:
 - `rescheduleDays(days, fromDay, toGroup, toDay)` → day-set after a drag
 - `moveOfferingSmart(offerings, { prefix, number, section }, { fromDay, toDay, group, time })`
   → new offerings array (pure)
-- `updateOfferingInSchedule(offerings, cur, changes)` → new array (pure)
+- `updateOfferingInSchedule(offerings, cur, changes)` → new array (pure);
+  a change that blanks one side of `days`/`time` blanks the other, so a
+  half-set record can never survive a write (both-blank is the
+  no-meeting-time shape)
 - `addOfferingToSchedule(offerings, offering)`, `removeOfferingFromSchedule(offerings, { prefix, number, section })`
 - `nextSectionLetter(offerings, prefix, number)` → first free section letter
 
@@ -52,6 +60,10 @@ An **offering** is the primitive record, in the shape `parseCsv` produces:
 - `DAY_START_MIN = 480`, `DAY_END_MIN = 960`, `PX_PER_MIN = 1`
 - `hourMarks()`, `formatHour(min)`, `daySlotBlocks(day, index)`,
   `blockStyle(slot)` (absolute-position styles)
+- `calendarDayRange(termKey)` → the term's standard rendered range (anchored,
+  so an off-pattern early/late class never stretches the grid)
+- `clipBand(band, range)` → the band's in-range portion with `clippedTop` /
+  `clippedBottom` flags (or `null` when nothing falls inside the range)
 
 ### Display + filters
 

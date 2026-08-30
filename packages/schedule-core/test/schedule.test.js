@@ -40,7 +40,9 @@ import {
   TERM_LABELS,
   termConfig,
   termSlotOptions,
+  isStandardPattern,
   calendarDayRange,
+  clipBand,
 } from '../schedule.js'
 
 const CSV = [
@@ -156,6 +158,36 @@ test('updateOfferingInSchedule returns the same array when nothing matches', () 
   )
 })
 
+test('updateOfferingInSchedule normalizes half-set meeting times to no-meeting-time', () => {
+  const offerings = [
+    { prefix: 'CS', number: '101', section: 'A', instructor: 'Vosmeier', days: 'MWF', time: '9:20-10:30' },
+  ]
+  // wiping one side blanks the other too — a half-set record can never
+  // survive a write; both-blank is the contract's no-meeting-time shape.
+  const timeWiped = updateOfferingInSchedule(
+    offerings,
+    { prefix: 'CS', number: '101', section: 'A' },
+    { time: '' },
+  )
+  assert.equal(timeWiped[0].days, '')
+  assert.equal(timeWiped[0].time, '')
+  const daysWiped = updateOfferingInSchedule(
+    offerings,
+    { prefix: 'CS', number: '101', section: 'A' },
+    { days: '' },
+  )
+  assert.equal(daysWiped[0].days, '')
+  assert.equal(daysWiped[0].time, '')
+  // a fully-set change passes through untouched
+  const full = updateOfferingInSchedule(
+    offerings,
+    { prefix: 'CS', number: '101', section: 'A' },
+    { days: 'TR', time: '10:00-11:45' },
+  )
+  assert.equal(full[0].days, 'TR')
+  assert.equal(full[0].time, '10:00-11:45')
+})
+
 test('DEFAULT_SLOT lands a new course in the first MWF band', () => {
   assert.equal(DEFAULT_SLOT.days, 'MWF')
   assert.equal(DEFAULT_SLOT.time, '8:00-9:10')
@@ -215,6 +247,10 @@ test('toMinutes', () => {
 test('formatTime converts to 12-hour ranges', () => {
   assert.equal(formatTime('8:00-9:10'), '8:00 AM - 9:10 AM')
   assert.equal(formatTime('13:20-14:30'), '1:20 PM - 2:30 PM')
+})
+
+test('formatTime renders a blank time as "No meeting time"', () => {
+  assert.equal(formatTime(''), 'No meeting time')
 })
 
 test('slot blocks cover the working day', () => {
@@ -524,16 +560,58 @@ test('rescheduleDays uses the term day groups for a spring course', () => {
   assert.equal(rescheduleDays('MTWR', 'M', 'MTWRF', 'F', 'S'), 'TWRF')
 })
 
-test('calendarDayRange expands to arbitrary early/late times', () => {
-  const index = buildIndex([
-    { prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '8:00-9:10' },
-    { prefix: 'BIO', number: '410', section: 'A', days: 'MWF', time: '20:00-21:30' },
-  ])
-  const range = calendarDayRange(index)
-  assert.equal(range.start, 480)
-  assert.equal(range.end, 1290)
-  // empty index falls back to the standard range
-  assert.deepEqual(calendarDayRange(buildIndex([])), { start: DAY_START_MIN, end: DAY_END_MIN })
+test('calendarDayRange is anchored to the term, not to offerings', () => {
+  // Fall/Winter rule 8:00-16:00; Spring 8:00-17:00. An early/late class does
+  // not stretch the rendered range — off-pattern classes are clamped instead.
+  assert.deepEqual(calendarDayRange('F'), { start: 480, end: 960 })
+  assert.deepEqual(calendarDayRange('W'), { start: 480, end: 960 })
+  assert.deepEqual(calendarDayRange('S'), { start: 480, end: 1020 })
+})
+
+test('clipBand keeps only the in-range portion of an off-pattern band', () => {
+  const range = calendarDayRange('F') // 8:00-16:00
+  // fully inside: passthrough, no clipped edges
+  assert.deepEqual(clipBand({ start: 600, end: 705 }, range), {
+    start: 600,
+    end: 705,
+    clippedTop: false,
+    clippedBottom: false,
+  })
+  // starts before the ruled hours
+  assert.deepEqual(clipBand({ start: 420, end: 550 }, range), {
+    start: 480,
+    end: 550,
+    clippedTop: true,
+    clippedBottom: false,
+  })
+  // ends after the ruled hours
+  assert.deepEqual(clipBand({ start: 880, end: 1140 }, range), {
+    start: 880,
+    end: 960,
+    clippedTop: false,
+    clippedBottom: true,
+  })
+  // entirely outside: nothing to render
+  assert.equal(clipBand({ start: 1100, end: 1260 }, range), null)
+  assert.equal(clipBand({ start: 300, end: 420 }, range), null)
+})
+
+test('isStandardPattern flags term bands and rejects off-pattern times', () => {
+  // full groups at their own bands are standard
+  assert.equal(isStandardPattern('F', 'MWF', '10:40-11:50'), true)
+  assert.equal(isStandardPattern('F', 'TR', '10:00-11:45'), true)
+  // a TR band on MWF days is not a MWF pattern (the switch-without-repick bug)
+  assert.equal(isStandardPattern('F', 'MWF', '10:00-11:45'), false)
+  assert.equal(isStandardPattern('F', 'TR', '10:40-11:50'), false)
+  // day subsets still count when the time is a band of the day's group
+  assert.equal(isStandardPattern('F', 'MW', '10:40-11:50'), true)
+  // mixed day groups or blank days/time are off-pattern
+  assert.equal(isStandardPattern('F', 'MT', '8:00-9:10'), false)
+  assert.equal(isStandardPattern('F', '', '10:00-11:45'), false)
+  assert.equal(isStandardPattern('F', 'MWF', ''), false)
+  // spring bands (incl. consecutive pairs) count; a fall band does not
+  assert.equal(isStandardPattern('S', 'MTWRF', '8:00-12:30'), true)
+  assert.equal(isStandardPattern('S', 'MTWRF', '8:00-9:10'), false)
 })
 
 test('unscheduled offerings are excluded from calendar and conflicts', () => {

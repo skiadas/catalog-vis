@@ -442,3 +442,40 @@ test('offline per-op resolution: accept one change, reject the other, row finali
     assert.equal(await store.resolveOp(row.id, moveEntry.id, 'rejected'), null)
   })
 })
+
+test('updateOffering never leaves a half-set meeting time', async () => {
+  await withRemote(async ({ store }) => {
+    // Make the store offline for this test (same process, remote back off).
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Local', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+
+    // Wiping the time alone blanks the days too (the no-meeting-time shape).
+    assert.ok(
+      store.updateOffering(
+        id,
+        { prefix: 'CS', number: '101', section: 'A' },
+        { instructor: 'Wahl', time: '' },
+      ),
+    )
+    let viewed = store.viewOfferings(store.scheduleById(id))
+    assert.equal(viewed[0].instructor, 'Wahl')
+    assert.equal(viewed[0].days, '')
+    assert.equal(viewed[0].time, '')
+
+    // A fully-set change passes through untouched.
+    assert.ok(
+      store.updateOffering(
+        id,
+        { prefix: 'CS', number: '101', section: 'A' },
+        { days: 'MWF', time: '8:00-9:10' },
+      ),
+    )
+    viewed = store.viewOfferings(store.scheduleById(id))
+    assert.equal(viewed[0].days, 'MWF')
+    assert.equal(viewed[0].time, '8:00-9:10')
+  })
+})

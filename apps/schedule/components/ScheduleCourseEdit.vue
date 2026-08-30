@@ -108,6 +108,7 @@
               <span class="custom-time-sep">to</span>
               <input class="search-input" type="time" v-model="customEnd" aria-label="End time" />
             </div>
+            <p v-if="timeHint" class="field-hint">{{ timeHint }}</p>
           </div>
           <p v-else class="field-hint">
             Independent studies and the like can sit in the schedule without a meeting time.
@@ -234,9 +235,12 @@ export default {
     const timeGroupSel = ref(groupForDays(initLetters))
 
     const pickGroup = (label) => {
+      if (timeGroupSel.value === label) return
       timeGroupSel.value = label
       // adopt the group's full day set when switching groups
       daysSel.value = [...GROUP_DAYS[label]]
+      // a band from the other group is meaningless here — require an explicit pick
+      timeSel.value = ''
     }
     const toggleDay = (d) => {
       const g = GROUP_DAYS[timeGroupSel.value]
@@ -252,16 +256,26 @@ export default {
     })
     const slotOptions = computed(() => {
       const base = groupSlots.value
-      if (timeMode.value === 'custom' && timeSel.value && !base.includes(timeSel.value)) {
-        return [...base, timeSel.value]
-      }
+      // An existing off-pattern time (imported custom band) stays selectable so
+      // an untouched course can be saved as-is; it just keeps the custom look.
+      if (timeSel.value && !base.includes(timeSel.value)) return [...base, timeSel.value]
       return base
     })
 
+    // Saving gives the course a real meeting pattern only when a time was
+    // actually chosen for the selected day group and at least one day is on.
     const canSave = computed(() => {
       if (timeMode.value === 'none') return true
+      if (!daysSel.value.length) return false
       if (timeMode.value === 'custom') return Boolean(customStart.value && customEnd.value)
-      return Boolean(timeSel.value)
+      return Boolean(timeSel.value && slotOptions.value.includes(timeSel.value))
+    })
+
+    const timeHint = computed(() => {
+      if (timeMode.value === 'none') return ''
+      if (timeMode.value === 'slot' && !timeSel.value) return `Pick a time slot for ${timeGroupSel.value}.`
+      if (!daysSel.value.length) return 'Pick at least one day.'
+      return ''
     })
 
     const courseName = computed(() => catalogCourseName(props.offering.code))
@@ -320,6 +334,7 @@ export default {
       customStart,
       customEnd,
       canSave,
+      timeHint,
       save,
       removeCourse,
       courseName,
