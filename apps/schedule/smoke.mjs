@@ -149,9 +149,33 @@ try {
   await em.waitFor({ state: 'visible', timeout: 5000 })
   await em.getByRole('button', { name: 'Custom time' }).click()
   if (await saveBtn.isEnabled()) await fail('Save stayed enabled with no day selected')
+
+  // The air-datepicker popover must step minutes by 5 only (00/05/.../55).
+  await em.getByLabel('Start time').click()
+  const picker = page.locator('.air-datepicker')
+  await picker.waitFor({ state: 'visible', timeout: 5000 })
+  const minSlider = picker.locator('input[name="minutes"]')
+  await minSlider.waitFor({ timeout: 5000 })
+  const step = await minSlider.getAttribute('step')
+  if (step !== '5') await fail(`minute slider step is "${step}", expected 5`)
+  await minSlider.evaluate((el) => {
+    const input = /** @type {HTMLInputElement} */ (el)
+    input.value = '30'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await page.waitForTimeout(150)
+  const startVal = await em.getByLabel('Start time').inputValue()
+  if (!startVal.endsWith(':30')) await fail(`start time stayed "${startVal}" after the slider move`)
+  // Time sliders never auto-close the popover; dismiss it with a header click
+  // so it cannot intercept the later picks, then choose a day and type the
+  // final custom times (focusing a field reopens its popover, so dismiss the
+  // end-time one again before saving).
+  await page.locator('.modal-head h3').click()
+
   await em.locator('.day-chip').first().click()
   await em.getByLabel('Start time').fill('15:00')
   await em.getByLabel('End time').fill('18:00')
+  await page.locator('.modal-head h3').click()
   await saveBtn.click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
   await page.locator('.cal-block.off-pattern.clipped-bottom').first().waitFor({ timeout: 5000 })

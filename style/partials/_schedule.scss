@@ -1041,6 +1041,30 @@
 .custom-time-sep {
   color: var(--text-muted);
 }
+/* Air Datepicker (time-only popover) themed to the app tokens. It renders in
+   a body-level container above the modal overlay; its two sliders step by
+   minutesStep=5, so the minute hand can only land on 00/05/.../55. */
+.air-datepicker {
+  --adp-background-color: var(--surface);
+  --adp-border-color: var(--border);
+  --adp-color: var(--text);
+  --adp-color-secondary: var(--text-muted);
+  --adp-color-disabled: var(--gray-300);
+  --adp-accent-color: var(--accent);
+  --adp-background-color-hover: var(--primary-light);
+  --adp-background-color-active: var(--accent);
+  --adp-border-radius: var(--radius-sm);
+  --adp-z-index: 200;
+  --adp-font-size: var(--font-md);
+  --adp-time-track-color: var(--gray-300);
+  --adp-time-track-color-hover: var(--gray-500);
+  --adp-time-thumb-size: 14px;
+}
+/* Time-only popover: no date navigation row, no pointer arrow. */
+.air-datepicker.-only-timepicker- .air-datepicker--navigation,
+.air-datepicker .air-datepicker--pointer {
+  display: none;
+}
 .field-hint {
   margin: var(--space-1) 0 0;
   font-size: 12.5px;

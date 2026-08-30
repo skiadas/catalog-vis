@@ -103,21 +103,21 @@
 
             <div v-if="timeMode === 'custom'" class="custom-time-row">
               <input
+                ref="startTimeEl"
                 class="search-input"
-                type="time"
-                step="300"
-                v-model="customStart"
+                type="text"
+                :value="customStart"
                 aria-label="Start time"
-                @change="customStart = snapToFive(customStart)"
+                @change="onStartTimeInput"
               />
               <span class="custom-time-sep">to</span>
               <input
+                ref="endTimeEl"
                 class="search-input"
-                type="time"
-                step="300"
-                v-model="customEnd"
+                type="text"
+                :value="customEnd"
                 aria-label="End time"
-                @change="customEnd = snapToFive(customEnd)"
+                @change="onEndTimeInput"
               />
             </div>
             <p v-if="timeHint" class="field-hint">{{ timeHint }}</p>
@@ -167,8 +167,10 @@ import {
   publishedPart,
 } from '../src/scheduleStore.js'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
+import AirDatepicker from 'air-datepicker'
+import 'air-datepicker/air-datepicker.css'
 
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onBeforeUnmount } from 'vue'
 
 // Day letters available per term group (Spring is a single MTWRF group).
 const GROUP_DAYS = { MWF: ['M', 'W', 'F'], TR: ['T', 'R'], MTWRF: ['M', 'T', 'W', 'R', 'F'] }
@@ -287,6 +289,67 @@ export default {
       return `${String(nh).padStart(2, '0')}:${String(snapped % 60).padStart(2, '0')}`
     }
 
+    // Manual typing is snapped to five minutes like picker selections.
+    const onStartTimeInput = (e) => {
+      customStart.value = snapToFive(/** @type {HTMLInputElement} */ (e.target).value)
+    }
+    const onEndTimeInput = (e) => {
+      customEnd.value = snapToFive(/** @type {HTMLInputElement} */ (e.target).value)
+    }
+
+    // --- Custom-time pickers (Air Datepicker, time-only) ----------------
+    // The popover's two sliders step minutes by 5 (dragging or arrow keys can
+    // only land on 00/05/…/55) — the native time input has no way to filter
+    // its minute list. Type-in still works and is snapped by `snapToFive`.
+    const startTimeEl = ref(null)
+    const endTimeEl = ref(null)
+    const startPicker = ref(null)
+    const endPicker = ref(null)
+
+    const timeToDate = (hhmm) => {
+      const [h, m] = (hhmm || '').split(':').map(Number)
+      const d = new Date(2020, 0, 1)
+      if (!Number.isNaN(h) && !Number.isNaN(m)) d.setHours(h, m, 0, 0)
+      return d
+    }
+    const attachTimePicker = (el, initial, onPick) =>
+      new AirDatepicker(el, {
+        timepicker: true,
+        onlyTimepicker: true,
+        minutesStep: 5,
+        timeFormat: 'HH:mm',
+        dateFormat: 'HH:mm',
+        autoClose: true,
+        selectedDates: [timeToDate(initial)],
+        onSelect: ({ formattedDate }) => onPick(snapToFive(formattedDate)),
+      })
+
+    // The custom-time inputs only exist while timeMode is 'custom', so the
+    // pickers attach/detach with the mode (the modal can open directly into
+    // any mode, and customStart may carry a value from a previous session).
+    watch(
+      timeMode,
+      (mode) => {
+        if (mode === 'custom') {
+          if (startTimeEl.value && !startPicker.value) {
+            startPicker.value = attachTimePicker(startTimeEl.value, customStart.value, (v) => {
+              customStart.value = v
+            })
+          }
+          if (endTimeEl.value && !endPicker.value) {
+            endPicker.value = attachTimePicker(endTimeEl.value, customEnd.value, (v) => {
+              customEnd.value = v
+            })
+          }
+        }
+      },
+      { immediate: true, flush: 'post' },
+    )
+    onBeforeUnmount(() => {
+      if (startPicker.value) startPicker.value.destroy()
+      if (endPicker.value) endPicker.value.destroy()
+    })
+
     const timeHint = computed(() => {
       if (timeMode.value === 'none') return ''
       if (timeMode.value === 'slot' && !timeSel.value) return `Pick a time slot for ${timeGroupSel.value}.`
@@ -349,7 +412,11 @@ export default {
       toggleDay,
       customStart,
       customEnd,
+      onStartTimeInput,
+      onEndTimeInput,
       snapToFive,
+      startTimeEl,
+      endTimeEl,
       canSave,
       timeHint,
       save,
