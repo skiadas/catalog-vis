@@ -16,7 +16,13 @@
           v-for="b in blocksInDay(day)"
           :key="b.key"
           class="cal-block"
-          :class="{ filtered: b.active, over: dragOver === dayGroup(day) + '|' + b.slot.time }"
+          :class="{
+            filtered: b.active,
+            over: dragOver === dayGroup(day) + '|' + b.slot.time,
+            'off-pattern': b.offPattern,
+            'clipped-top': b.clippedTop,
+            'clipped-bottom': b.clippedBottom,
+          }"
           :title="b.title"
           :style="b.style"
           @click="goScheduleSlot(day, b.slot.time)"
@@ -32,6 +38,7 @@
           @drop="zoneDrop($event, { day, days: dayGroup(day), time: b.slot.time })"
         >
           <template v-if="filter.active">
+            <span v-if="b.offPattern" class="cal-block-tag">custom</span>
             <div class="cal-block-time">{{ formatTime(b.slot.time) }}</div>
             <div class="cal-block-depts">
               <span
@@ -78,11 +85,13 @@
               {{ b.slot.items.length }}
               <span class="cal-block-label">course{{ b.slot.items.length !== 1 ? 's' : '' }}</span>
             </div>
+            <div v-if="b.offPattern" class="cal-block-tag">custom</div>
             <div class="cal-block-time">{{ formatTime(b.slot.time) }}</div>
           </template>
         </div>
       </template>
     </WeeklyCalendar>
+    <NoMeetingStrip :filter="filter" />
   </div>
 </template>
 
@@ -98,7 +107,9 @@ import {
   termSlotOptions,
   termDayGroup,
   toMinutes,
+  isStandardPattern,
   calendarDayRange,
+  clipBand,
   colorForSchedule,
 } from '@major-vis/schedule-core'
 import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
@@ -116,6 +127,7 @@ import {
 import { goScheduleSlot, goScheduleDay, goScheduleCourse } from '../router.js'
 import { useScheduleDrag } from '../scheduleDrag.js'
 import WeeklyCalendar from './WeeklyCalendar.vue'
+import NoMeetingStrip from './NoMeetingStrip.vue'
 
 import { computed } from 'vue'
 
@@ -127,7 +139,7 @@ function dayGroup(day) {
 
 export default {
   name: 'ScheduleGrid',
-  components: { WeeklyCalendar },
+  components: { WeeklyCalendar, NoMeetingStrip },
   setup() {
     const slotTitle = (slot) => slot.items.map((it) => it.code).join(', ')
 
@@ -204,21 +216,42 @@ export default {
       return out
     }
 
-    const dayRange = computed(() => calendarDayRange(shownIndex.value))
-    // Position a band relative to the visible day range's start (1px/min).
-    const blockStyleFor = (band) => ({
-      top: band.start - dayRange.value.start + 'px',
-      height: band.end - band.start + 'px',
-    })
+    // The calendar is anchored to the term's standard hours so one off-pattern
+    // early/late class never stretches the grid or hides normal classes; a
+    // band outside it entirely is dropped from the grid and picked up by the
+    // no-meeting-times strip instead.
+    const dayRange = computed(() => calendarDayRange(activeTerm.value))
+    // Position a band relative to the visible day range's start (1px/min),
+    // clamped at the range edges (clipped classes keep their in-range portion).
+    const blockStyleFor = (band) => {
+      const clipped = clipBand(band, dayRange.value)
+      return {
+        top: clipped.start - dayRange.value.start + 'px',
+        height: clipped.end - clipped.start + 'px',
+        clippedTop: clipped.clippedTop,
+        clippedBottom: clipped.clippedBottom,
+      }
+    }
 
     const blocksInDay = (day) =>
-      dayBlocks(day).map((slot) => ({
-        key: slot.time,
-        slot,
-        style: blockStyleFor(slot),
-        title: slotTitle(slot),
-        active: filter.value.active,
-      }))
+      dayBlocks(day)
+        .map((slot) => ({ slot, clip: clipBand(slot, dayRange.value) }))
+        .filter((x) => x.clip)
+        .map(({ slot, clip }) => ({
+          key: slot.time,
+          slot,
+          style: {
+            top: clip.start - dayRange.value.start + 'px',
+            height: clip.end - clip.start + 'px',
+          },
+          // A block whose time isn't a standard band of its day group renders
+          // as a half-width rail so normal courses keep the full column.
+          offPattern: !isStandardPattern(activeTerm.value, slot.items[0].o.days, slot.items[0].o.time),
+          clippedTop: clip.clippedTop,
+          clippedBottom: clip.clippedBottom,
+          title: slotTitle(slot),
+          active: filter.value.active,
+        }))
 
     // Overlay metadata for a rendered item (proposed pill / removal marker).
     const proposalFor = (it) => (it.o && it.o.$prop) || null

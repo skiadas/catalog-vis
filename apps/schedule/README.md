@@ -38,8 +38,19 @@ Domain logic lives in `@major-vis/schedule-core`.
 Term slot sets are provided by `@major-vis/schedule-core`'s `TERM_CONFIGS`:
 Fall/Winter share a standard MWF/TR set; Spring has a single MTWRF group of four
 slots, and a course may occupy up to two consecutive slots. Custom start/end
-times are allowed (the calendar grows to fit them); an offering can also be set
-to "No meeting time".
+times are allowed; an offering can also be set to "No meeting time".
+
+**Patterns the grid distinguishes:** the calendar is anchored to the term's
+standard hours — one early/late class never stretches or hides the normal
+grid. A course whose time isn't a standard band of its day group (custom
+times, TR-band times on MWF days after a careless day-group switch) renders as
+a **half-width dashed "custom" rail** instead of a full block, and its
+in-range portion is clamped at the grid's edges with a corner notch when it
+starts before or ends after the ruled hours. Courses entirely outside the
+ruled hours — together with no-meeting-time courses — appear in the **"No
+meeting times" strip** under the grid (draggable onto slots in edit mode, so
+you can give an independent study a time). The strip and the rail keep
+off-pattern courses visible without letting them compete with normal ones.
 
 **CSV**: use the schedule app's "Upload CSV" to load a file into a schedule's
 active term (or its `term` column parts); the file is the same round-trip /
