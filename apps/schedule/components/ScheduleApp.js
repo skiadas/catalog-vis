@@ -10,7 +10,6 @@ import { courseName } from '@major-vis/catalog-client'
 import {
   filterMode,
   schedule,
-  scheduleOfferings,
   schedules,
   selectedScheduleIds,
   editingScheduleId,
@@ -22,10 +21,6 @@ import {
   renameSchedule,
   activeTerm,
   setActiveTerm,
-  remote,
-  currentUser,
-  signIn,
-  signOut,
   showPendingSuggestions,
   setShowPendingSuggestions,
   pendingSuggestionsForTerm,
@@ -41,7 +36,6 @@ import ScheduleInstructor from './ScheduleInstructor.js'
 import ScheduleCourseEdit from './ScheduleCourseEdit.js'
 import SchedulePicker from './SchedulePicker.js'
 import ScheduleFilters from './ScheduleFilters.js'
-import ScheduleHelp from './ScheduleHelp.js'
 import ScheduleManage from './ScheduleManage.js'
 import ScheduleAddCourse from './ScheduleAddCourse.js'
 import SuggestedChanges from './SuggestedChanges.js'
@@ -59,7 +53,6 @@ export default {
     ScheduleCourseEdit,
     SchedulePicker,
     ScheduleFilters,
-    ScheduleHelp,
     ScheduleManage,
     ScheduleAddCourse,
     SuggestedChanges,
@@ -96,10 +89,6 @@ export default {
 
     // Modal visibility. The modals own their internal state; these refs only
     // gate whether each is open.
-    const showHelp = ref(false)
-    const toggleHelp = () => {
-      showHelp.value = !showHelp.value
-    }
     const showSchedules = ref(false)
     const showAddCourse = ref(false)
     const showSuggestions = ref(false)
@@ -130,23 +119,6 @@ export default {
       setEditingSchedule(null)
     }
 
-    // Remote sign-in (username self-identify). The shared schedules, pending
-    // suggestions, and ownership roles all require a session.
-    const usernameDraft = ref('')
-    const authError = ref('')
-    const doSignIn = async () => {
-      authError.value = ''
-      const ok = await signIn(usernameDraft.value)
-      if (ok) {
-        usernameDraft.value = ''
-      } else {
-        authError.value = 'Could not sign in — check the username and that the server is up.'
-      }
-    }
-    const doSignOut = async () => {
-      authError.value = ''
-      await signOut()
-    }
     // Renames the edited schedule from the inline input (on Enter or blur).
     const commitRename = () => {
       const s = editingSchedule.value
@@ -169,22 +141,13 @@ export default {
       courseName,
       pickCourse,
       schedule,
-      scheduleOfferings,
       schedules,
       selectedScheduleIds,
       filterMode,
-      showHelp,
-      toggleHelp,
       showSchedules,
       showAddCourse,
       showSuggestions,
       suggestionsScheduleId,
-      remote,
-      currentUser,
-      usernameDraft,
-      authError,
-      doSignIn,
-      doSignOut,
       editingId,
       editingRole,
       editingName,
@@ -209,44 +172,9 @@ export default {
   },
   template: `
     <div v-if="schedule">
-      <button class="back-btn" @click="goScheduleGrid()">← Schedule Overview</button>
+      <SchedulePicker :active="showSchedules" @edit="enterEdit" @manage="showSchedules = true" />
 
-      <div class="schedule-header">
-        <div class="schedule-title-row">
-          <span class="section-title">Schedule Visualization</span>
-          <span class="schedule-sub">
-            {{ scheduleOfferings.length }} offerings ·
-            {{ Object.keys(schedule.byCourse).length }} courses
-          </span>
-          <button class="schedule-help-toggle" title="How to use this page" @click="toggleHelp">?</button>
-        </div>
-
-        <div class="schedule-note">
-          These are made-up, illustrative schedules. They do not reflect actual course offerings or meeting times. Pick one or more to display at once; the "Color by schedule" toggle color-codes each schedule's courses unless a department/instructor filter is active.
-        </div>
-
-        <div v-if="remote && !currentUser" class="schedule-auth-bar">
-          <span class="schedule-auth-label">Sign in to see the shared schedules:</span>
-          <form class="schedule-auth-form" @submit.prevent="doSignIn">
-            <input
-              class="search-input schedule-auth-input"
-              type="text"
-              v-model="usernameDraft"
-              placeholder="username"
-              aria-label="Username"
-            />
-            <button class="filter-btn primary" type="submit" :disabled="!usernameDraft.trim()">Sign in</button>
-          </form>
-          <span v-if="authError" class="schedule-auth-error">{{ authError }}</span>
-        </div>
-        <div v-else-if="remote && currentUser" class="schedule-auth-bar">
-          <span class="schedule-auth-label">Signed in as <strong>{{ currentUser.username }}</strong></span>
-          <button class="filter-btn" @click="doSignOut">Sign out</button>
-        </div>
-
-        <SchedulePicker :active="showSchedules" @edit="enterEdit" @manage="showSchedules = true" />
-
-        <div class="term-tabs">
+      <div class="term-tabs">
           <button
             v-for="t in TERM_KEYS"
             :key="t"
@@ -339,7 +267,6 @@ export default {
             </div>
           </div>
         </div>
-      </div>
 
       <ScheduleFilters :view="view" />
 
@@ -364,7 +291,6 @@ export default {
     </div>
     <div v-else class="loading">Loading schedule...</div>
 
-    <ScheduleHelp :is-open="showHelp" @close="showHelp = false" />
     <ScheduleManage :is-open="showSchedules" @close="showSchedules = false" @edit="enterEdit" />
     <ScheduleAddCourse :is-open="showAddCourse" @close="showAddCourse = false" />
     <SuggestedChanges :is-open="showSuggestions" :schedule-id="suggestionsScheduleId" @close="showSuggestions = false" />
