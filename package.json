@@ -18,8 +18,9 @@
     "validate:catalog": "node packages/catalog-contract/validate.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"**/*.{js,html,css,scss}\"",
-    "format:check": "prettier --check \"**/*.{js,html,css,scss}\"",
+    "format": "prettier --write \"**/*.{js,html,css,scss,vue}\"",
+    "format:check": "prettier --check \"**/*.{js,html,css,scss,vue}\"",
+    "gate": "node scripts/gate.mjs",
     "dev": "vite apps/schedule",
     "dev:browse": "vite apps/browse",
     "dev:planner": "vite apps/planner",
@@ -40,7 +41,5 @@
     "vite": "^8.2.2",
     "vue": "^3.5.42",
     "vue-tsc": "^3.3.11"
-  },
-  "format": "prettier --write \"**/*.{js,html,css,scss,vue}\"",
-  "format:check": "prettier --check \"**/*.{js,html,css,scss,vue}\""
+  }
 }
