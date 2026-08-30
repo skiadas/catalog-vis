@@ -39,7 +39,7 @@ if (!chromePath) {
 const dir = mkdtempSync(join(tmpdir(), 'major-vis-smoke-'))
 const dbPath = join(dir, 'smoke.db')
 const env = { ...process.env, DB_PATH: dbPath, PORT: '0', HOST: '127.0.0.1' }
-const { app, config } = buildServer(env)
+const { app, config } = await buildServer(env)
 
 // The built app must exist — this smoke test exercises the deployed layout.
 if (!existsSync(join(config.repoRoot, 'dist', 'schedule', 'index.html'))) {

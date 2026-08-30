@@ -7,7 +7,7 @@ import { diffOfferings } from '@major-vis/schedule-core/diff'
 
 // A self-contained client: fresh in-memory DB + server + a logged-in username.
 async function authClient(username = 'alice') {
-  const database = openDb(':memory:')
+  const database = await openDb(':memory:')
   const app = createApp({ database, services: ['schedule'] })
   const srv = await startTestServer(app)
   const login = await srv.post('/api/auth/login', { username })
@@ -16,7 +16,7 @@ async function authClient(username = 'alice') {
 }
 
 test('config reports enabled services and anonymous auth', async () => {
-  const database = openDb(':memory:')
+  const database = await openDb(':memory:')
   const app = createApp({ database, services: ['schedule', 'program'] })
   const srv = await startTestServer(app)
   try {
@@ -49,7 +49,7 @@ test('login + session round-trip by username self-identify', async () => {
 })
 
 test('schedules require auth', async () => {
-  const db = openDb(':memory:')
+  const db = await openDb(':memory:')
   const app = createApp({ database: db, services: ['schedule'] })
   const srv = await startTestServer(app)
   try {
@@ -103,7 +103,7 @@ test('owner replaces a term part and version bumps', async () => {
 })
 
 test('non-owner cannot modify but can suggest; others see pending; owner approves', async () => {
-  const database = openDb(':memory:')
+  const database = await openDb(':memory:')
   const app = createApp({ database, services: ['schedule'] })
   const srv = await startTestServer(app)
   try {
@@ -194,7 +194,7 @@ test('non-owner cannot modify but can suggest; others see pending; owner approve
 })
 
 test('concurrent suggestions from many proposers approve independently, in any order', async () => {
-  const database = openDb(':memory:')
+  const database = await openDb(':memory:')
   const app = createApp({ database, services: ['schedule'] })
   const srv = await startTestServer(app)
   try {
@@ -420,7 +420,7 @@ test('one suggestion, per-op resolution: partial approve stays pending, review l
 })
 
 test('per-op withdraw by a separate proposer: rejected+withdrawn derives withdrawn; withdraw-all; edits after outline ops stay allowed', async () => {
-  const database = openDb(':memory:')
+  const database = await openDb(':memory:')
   const app = createApp({ database, services: ['schedule'] })
   const srv = await startTestServer(app)
   try {

@@ -35,9 +35,9 @@ export function mountLocalLayout(app, config) {
   return mountLocalBuiltApps(app, config.repoRoot)
 }
 
-export function buildServer(env = process.env) {
+export async function buildServer(env = process.env) {
   const config = loadConfig(env)
-  const database = openDb(config.dbPath)
+  const database = await openDb(config.dbPath)
   const app = createApp({ database, services: config.services, sessionCookie: config.sessionCookie })
 
   // Compress everything — the catalog artifacts are the big transfers.
@@ -78,7 +78,7 @@ export function buildServer(env = process.env) {
 // Only auto-start when run directly (so test imports don't bind a port).
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
-  const { app, config } = buildServer()
+  const { app, config } = await buildServer()
   app.listen(config.port, config.host, () => {
     console.log(`major-vis server listening on http://${config.host}:${config.port}`)
     console.log(`services: ${config.services.join(', ')}`)

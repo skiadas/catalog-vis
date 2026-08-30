@@ -57,7 +57,7 @@ export function installCookieFetch() {
 
 // An in-memory API server with a cookie-aware store fetch, remote mode on.
 export async function withRemote(fn) {
-  const database = openDb(':memory:')
+  const database = await openDb(':memory:')
   const app = createApp({ database, services: ['schedule'] })
   const srv = await startTestServer(app)
   // Static imports of the store would evaluate before the shims; load it after

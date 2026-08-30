@@ -1,5 +1,5 @@
-// SQLite access layer via the built-in `node:sqlite` (Node >= 22.5, zero
-// external dependencies). Owns the schema, migrations, and the repository
+// SQLite access layer via the built-in `node:sqlite` (Node >= 22.5). Owns the
+// schema (versioned migrations applied by umzug at boot), and the repository
 // functions for users, sessions, schedules, term parts, and suggested changes.
 //
 // The supertype distinction: schedule *records* (name/year/owner/status) with
@@ -10,6 +10,8 @@
 import { DatabaseSync } from 'node:sqlite'
 import path from 'node:path'
 import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { Umzug } from 'umzug'
 import { suggestionStatus } from '@major-vis/schedule-core/diff'
 
 /** @typedef {import('node:sqlite').DatabaseSync} DB */
@@ -85,83 +87,115 @@ import { suggestionStatus } from '@major-vis/schedule-core/diff'
  * @property {string | null} resolved_at
  */
 
-const MIGRATIONS = [
-  `
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-  `,
-  `
-  CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
-  `,
-  `
-  CREATE TABLE IF NOT EXISTS schedules (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    year TEXT NOT NULL DEFAULT '',
-    owner_user_id INTEGER NOT NULL REFERENCES users(id),
-    status TEXT NOT NULL DEFAULT 'draft',   -- 'draft' | 'official'
-    version INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-  `,
-  `
-  CREATE TABLE IF NOT EXISTS schedule_terms (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    schedule_id INTEGER NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
-    term TEXT NOT NULL,                    -- 'F' | 'W' | 'S'
-    payload TEXT NOT NULL DEFAULT '[]',    -- JSON offerings array
-    version INTEGER NOT NULL DEFAULT 0,
-    UNIQUE(schedule_id, term)
-  );
-  `,
-  `
-  CREATE TABLE IF NOT EXISTS schedule_changes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    schedule_id INTEGER NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
-    term TEXT NOT NULL,                       -- 'F' | 'W' | 'S'
-    proposer_user_id INTEGER NOT NULL REFERENCES users(id),
-    base_version INTEGER NOT NULL,            -- informational: what the proposer saw (never enforced)
-    note TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-  `,
-  `
-  -- One row per change of a suggestion. Ops are first-class: each change is
-  -- its own record with its own status lifecycle ('pending' default), so the
-  -- owner resolves changes individually and the parent suggestion's status is
-  -- always derived from these rows. The op column stays a pure diff op (never
-  -- carries resolution state); the position column preserves proposal order.
-  CREATE TABLE IF NOT EXISTS suggestion_ops (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    suggestion_id INTEGER NOT NULL REFERENCES schedule_changes(id) ON DELETE CASCADE,
-    position INTEGER NOT NULL,
-    op TEXT NOT NULL,                         -- JSON diff op (pure payload)
-    status TEXT NOT NULL DEFAULT 'pending',   -- 'pending' | 'accepted' | 'rejected' | 'withdrawn'
-    applied INTEGER NOT NULL DEFAULT 0,       -- accepted op actually changed the term
-    resolved_at TEXT,
-    UNIQUE(suggestion_id, position)
-  );
-  CREATE INDEX IF NOT EXISTS idx_suggestion_ops_suggestion ON suggestion_ops(suggestion_id);
-  `,
-]
+// ---- Migrations -----------------------------------------------------------
 
-export function openDb(dbPath) {
+const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'migrations')
+
+const quietLogger = {
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  debug: () => {},
+}
+
+// umzug hands loggers record messages ({ event, name }) or strings.
+function fmtLog(msg) {
+  if (typeof msg === 'string') return msg
+  return msg.name ? `${msg.event}: ${msg.name}` : msg.event
+}
+
+export const consoleLogger = {
+  info: (msg) => console.log(fmtLog(msg)),
+  warn: (msg) => console.warn(fmtLog(msg)),
+  error: (msg) => console.error(fmtLog(msg)),
+  debug: () => {},
+}
+
+// umzug storage: records each applied migration in a `schema_migrations` table
+// in the same DB (the row is inserted after the migration function succeeds).
+/**
+ * @param {DB} db
+ */
+function sqliteStorage(db) {
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS schema_migrations (
+       name TEXT PRIMARY KEY,
+       created_at TEXT NOT NULL DEFAULT (datetime('now'))
+     )`,
+  )
+  return {
+    /** @param {{ name: string }} m */
+    async logMigration({ name }) {
+      db.prepare('INSERT INTO schema_migrations (name) VALUES (?)').run(name)
+    },
+    /** @param {{ name: string }} m */
+    async unlogMigration({ name }) {
+      db.prepare('DELETE FROM schema_migrations WHERE name = ?').run(name)
+    },
+    async executed() {
+      const rows = /** @type {Array<{ name: string }>} */ (
+        db.prepare('SELECT name FROM schema_migrations ORDER BY name').all()
+      )
+      return rows.map((r) => r.name)
+    },
+  }
+}
+
+// Loads .sql files from `dir` in filename order. Each file runs inside one
+// transaction, so a failed migration leaves no partial DDL behind.
+/**
+ * @param {string} dir
+ * @returns {import('umzug').RunnableMigration<DB>[]}
+ */
+function loadSqlMigrations(dir) {
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .map((f) => ({
+      name: f.replace(/\.sql$/, ''),
+      up: async (ctx) => transaction(ctx.context, (d) => d.exec(fs.readFileSync(path.join(dir, f), 'utf8'))),
+      down: () => {
+        throw new Error(`no down migration for ${f} — migrations are forward-only`)
+      },
+    }))
+}
+
+/**
+ * @param {DB} db
+ * @param {{ dir?: string; logger?: Record<'info' | 'warn' | 'error' | 'debug', (msg: Record<string, unknown>) => void> }} [opts]
+ */
+export function createMigrator(db, { dir = MIGRATIONS_DIR, logger = quietLogger } = {}) {
+  return new Umzug({
+    migrations: loadSqlMigrations(dir),
+    context: db,
+    storage: sqliteStorage(db),
+    logger,
+  })
+}
+
+/**
+ * @param {DB} db
+ * @param {{ dir?: string }} [opts]
+ */
+export async function runMigrations(db, { dir } = {}) {
+  await createMigrator(db, { dir }).up()
+}
+
+// ---- Open / close ----------------------------------------------------------
+
+/**
+ * @param {string} dbPath
+ * @param {{ migrate?: boolean }} [opts]
+ * @returns {Promise<DB>}
+ */
+export async function openDb(dbPath, { migrate = true } = {}) {
   if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(dbPath), { recursive: true })
   const db = new DatabaseSync(dbPath)
   db.exec('PRAGMA journal_mode = WAL;')
   db.exec('PRAGMA foreign_keys = ON;')
-  for (const migration of MIGRATIONS) db.exec(migration)
+  db.exec('PRAGMA busy_timeout = 5000;')
+  if (migrate) await runMigrations(db)
   return db
 }
 

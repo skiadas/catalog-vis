@@ -33,15 +33,26 @@ first enabled service) with the API under `/api`.
 
 ## Storage
 
-SQLite via `node:sqlite` (`DatabaseSync`). Schema (migrated at boot in `src/db.js`):
+SQLite via `node:sqlite` (`DatabaseSync`). The schema is owned by **versioned
+migrations** — `server/migrations/*.sql`, applied in filename order by umzug at
+boot inside `openDb` (each file in one transaction, applied names recorded in
+the `schema_migrations` table). `0001_baseline` creates:
 
 - `users(id, username, created_at)`
-- `sessions(id, user_id, token_hash, created_at, expires_at)`
-- `schedules(id, name, year, owner_user_id, status, version, created_at, updated_at)`
+- `sessions(id, user_id, token_hash, created_at, expires_at)` — token_hash indexed
+- `schedules(id, name, year, owner_user_id, status, version, created_at,
+  updated_at)` — owner FK cascades on user delete
 - `schedule_terms(id, schedule_id, term, payload, version)` — one row per
   (schedule, term); `payload` is the JSON offerings array
-- `schedule_changes(id, schedule_id, term, proposer_user_id, status,
-base_version, operations, note, created_at, resolved_at)` — suggested changes
+- `schedule_changes(id, schedule_id, term, proposer_user_id, base_version,
+  note, created_at)` — suggested changes
+- `suggestion_ops(id, suggestion_id, position, op, status, applied,
+  resolved_at)` — one row per change of a suggestion (suggestion_id indexed)
+
+Migrations are forward-only and run automatically at container boot, so normal
+deploys need no extra step. `npm run migrate up|pending|history` is the manual
+ops interface. Deleting a pre-baseline dev DB (`server/data/`) is a one-time
+step — the baseline owns the schema now.
 
 `server/data/` is gitignored (dev DB); the container persists `/data` as a
 volume.

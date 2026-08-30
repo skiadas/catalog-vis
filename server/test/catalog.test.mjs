@@ -37,7 +37,7 @@ function fixtureDir() {
 
 async function catalogServer(extraEnv = {}) {
   const dir = fixtureDir()
-  const { app, database, config } = buildServer({
+  const { app, database, config } = await buildServer({
     STATIC_DIR: dir,
     DB_PATH: join(dir, 'db.sqlite'),
     PORT: '0',
