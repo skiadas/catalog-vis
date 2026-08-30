@@ -70,6 +70,9 @@ tools/catalog-pipeline/      Python: scrape, codify, extract_core, audit, md_to_
 
 ## How to work here
 
+**Overall philosophy** — don't hand-roll when clean established library
+options exist; prefer boring, replaceable tooling.
+
 **Formatting** — `npx prettier@3.3.3 --write "**/*.{js,html,css,scss,vue}"` (JSON
 and the compiled `apps/*/style.css` are ignored), then `python3 -m black .` and
 `python3 -m compileall -q -x "node_modules|/\.git/" .`. **Never hard-code
