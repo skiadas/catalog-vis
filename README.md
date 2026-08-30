@@ -98,7 +98,11 @@ The deployment is a **single container** (`Dockerfile`): a build stage
 installs the toolchain and builds the apps (`npm ci && npm run build`), a
 deps stage installs only production dependencies (`npm ci --omit=dev` —
 ~17 MB vs the ~130 MB full tree), and the runtime stage runs the Express
-server (`server/`), which serves the assembled layout from one process:
+server on **Alpine** (musl — `node:26-alpine`), which serves the assembled
+layout from one process. The built image is ~64 MB compressed / ~207 MB on
+disk; runtime dependencies must stay pure JS (no glibc-only native
+modules), and `node:sqlite` is compiled into the official Alpine Node
+build:
 
 - the root `index.html` **launcher** — resolves which services are enabled
   (`/api/config`, else `config.json`, else all) and redirects to the first

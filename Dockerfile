@@ -13,9 +13,12 @@ RUN npm ci && npm run build
 
 # Prod-deps stage: the runtime install (npm ci --omit=dev) so build-only
 # tooling — vite, sass, typescript, eslint, playwright, vue … — never enters
-# the runtime image. Measured: ~17 MB vs the ~130 MB full tree. `packages/` is
-# copied because npm workspaces symlink into it during install.
-FROM node:26-slim AS deps
+# the runtime image. Measured: ~17 MB vs the ~130 MB full tree. Alpine (musl)
+# runtime keeps the pull small; all runtime deps are pure JS (node:sqlite is
+# compiled into the official Alpine Node build). `packages/` and `server/` are
+# copied because npm workspaces symlink into them during install — without the
+# dirs npm silently skips the workspace's dependencies.
+FROM node:26-alpine AS deps
 WORKDIR /srv
 COPY package.json package-lock.json ./
 COPY packages packages
@@ -33,7 +36,7 @@ RUN npm ci --omit=dev
 # deployment shape. `packages/` is copied so the workspace symlinks in
 # node_modules (e.g. @major-vis/schedule-core, imported by the server at
 # boot) resolve — without it the server crashes with MODULE_NOT_FOUND.
-FROM node:26-slim
+FROM node:26-alpine
 ENV NODE_ENV=production \
     STATIC_DIR=/srv/static \
     DB_PATH=/data/major-vis.db \
