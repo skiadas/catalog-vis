@@ -53,20 +53,18 @@
                 >
                 <span class="suggested-status">{{ rowLabel(s) }}</span>
               </div>
-              <div v-if="owned && s.status === 'pending'" class="suggested-ops">
-                <div
-                  v-for="(op, i) in s.operations"
-                  :key="i"
-                  class="suggested-op"
-                  :class="'op-' + opStatus(op)"
-                >
-                  <span class="suggested-op-text">{{ describeChange(op) || '(empty change)' }}</span>
-                  <span v-if="opStatus(op) !== 'pending'" class="suggested-op-status">{{
-                    opStatus(op)
-                  }}</span>
+              <div v-if="(owned || isMine(s)) && s.status === 'pending'" class="suggested-ops">
+                <div v-for="e in s.operations" :key="e.id" class="suggested-op" :class="'op-' + opStatus(e)">
+                  <span class="suggested-op-text">{{ describeChange(e.op) || '(empty change)' }}</span>
+                  <span v-if="opStatus(e) !== 'pending'" class="suggested-op-status">{{ opStatus(e) }}</span>
                   <span v-else class="suggested-op-actions">
-                    <button class="filter-btn" @click="doApproveOp(s.id, i)">Approve</button>
-                    <button class="filter-btn" @click="doRejectOp(s.id, i)">Reject</button>
+                    <template v-if="owned">
+                      <button class="filter-btn" @click="doApproveOp(s.id, e.id)">Approve</button>
+                      <button class="filter-btn" @click="doRejectOp(s.id, e.id)">Reject</button>
+                    </template>
+                    <template v-else-if="isMine(s)">
+                      <button class="filter-btn" @click="doWithdrawOp(s.id, e.id)">Withdraw</button>
+                    </template>
                   </span>
                 </div>
               </div>
@@ -74,7 +72,9 @@
               <div v-if="s.note" class="suggested-note">{{ s.note }}</div>
             </div>
             <div v-if="s.status === 'pending' && isMine(s) && !owned" class="suggested-actions">
-              <button class="filter-btn" @click="doWithdraw(s.id)">Withdraw</button>
+              <button class="filter-btn" :disabled="!hasPending(s)" @click="doWithdrawAll(s.id)">
+                Withdraw all
+              </button>
             </div>
           </div>
         </div>
@@ -99,11 +99,12 @@
 //
 // While a suggest session is active on this schedule, the panel leads with the
 // draft's diff preview and a one-click propose (upserting the proposer's own
-// pending suggestion). Suggestion review is per change: the owner approves or
-// rejects each operation of a pending row individually (each op carries its own
-// resolution marker; the row stays pending until every op is resolved, then
-// finalizes to 'approved'/'moot'/'rejected'). A pending row's proposer can
-// withdraw it, even while the owner is mid-review.
+// pending suggestion). Review is per change: each operation of a suggestion is
+// first-class (its own id + resolution: pending/accepted/rejected/withdrawn),
+// and the owner approves or rejects them individually; the proposer can
+// withdraw their own changes one at a time or all at once. A suggestion's
+// status stays 'pending' until every op is decided, then finalizes to its
+// derived summary ('approved'/'moot'/'withdrawn'/'rejected').
 
 import {
   suggestions,
@@ -120,7 +121,7 @@ import {
   activeTerm,
 } from '../src/scheduleStore.js'
 import { TERM_LABELS } from '@major-vis/schedule-core'
-import { renderChanges, describeChange, opResolution } from '@major-vis/schedule-core/diff'
+import { renderChanges, describeChange } from '@major-vis/schedule-core/diff'
 
 import { ref, computed, watch } from 'vue'
 
@@ -162,15 +163,16 @@ export default {
       },
     )
 
-    const opStatus = (op) => opResolution(op)
+    const opStatus = (e) => (e && e.resolution && e.resolution.status) || 'pending'
+    const hasPending = (s) => (s.operations || []).some((e) => opStatus(e) === 'pending')
 
     // The row status pill: final states verbatim; a live row under review shows
     // how much of it is settled ("pending · accepted 1 of 3").
     const rowLabel = (s) => {
       const ops = s.operations || []
-      const settled = ops.filter((op) => opResolution(op) !== 'pending').length
+      const settled = ops.filter((e) => opStatus(e) !== 'pending').length
       if (s.status === 'pending' && settled > 0) {
-        const accepted = ops.filter((op) => opResolution(op) === 'accepted').length
+        const accepted = ops.filter((e) => opStatus(e) === 'accepted').length
         return `${s.status} · ${accepted} of ${ops.length} accepted`
       }
       return s.status
@@ -179,26 +181,31 @@ export default {
     // Resolved without per-op buttons: the change text carries markers.
     const changeText = (s) =>
       (s.operations || [])
-        .map((op) => {
-          const label = opResolution(op)
-          const text = describeChange(op)
+        .map((e) => {
+          const label = opStatus(e)
+          const text = describeChange(e.op)
           return label === 'pending' ? text : `${text} [${label}]`
         })
         .join('\n') || '(no changes)'
 
-    const doApproveOp = async (id, index) => {
-      const saved = await resolveOp(id, index, 'accepted')
+    const doApproveOp = async (id, opId) => {
+      const saved = await resolveOp(id, opId, 'accepted')
       feedback.value = saved ? 'Change approved.' : 'Could not approve (it may no longer be pending).'
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
-    const doRejectOp = async (id, index) => {
-      const saved = await resolveOp(id, index, 'rejected')
+    const doRejectOp = async (id, opId) => {
+      const saved = await resolveOp(id, opId, 'rejected')
       feedback.value = saved ? 'Change rejected.' : 'Could not reject.'
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
-    const doWithdraw = async (id) => {
-      const ok = await withdrawSuggestion(id)
-      feedback.value = ok ? 'Withdrawn — kept in the trail.' : 'Could not withdraw.'
+    const doWithdrawOp = async (id, opId) => {
+      const saved = await withdrawSuggestion(id, opId)
+      feedback.value = saved ? 'Change withdrawn — kept in the trail.' : 'Could not withdraw.'
+      if (props.scheduleId) await refreshSuggestions(props.scheduleId)
+    }
+    const doWithdrawAll = async (id) => {
+      const saved = await withdrawSuggestion(id)
+      feedback.value = saved ? 'Remaining changes withdrawn — kept in the trail.' : 'Could not withdraw.'
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
 
@@ -231,11 +238,13 @@ export default {
       changeText,
       describeChange,
       opStatus,
+      hasPending,
       rowLabel,
       isMine,
       doApproveOp,
       doRejectOp,
-      doWithdraw,
+      doWithdrawOp,
+      doWithdrawAll,
       doPropose,
       exportUrl,
       TERM_LABELS,

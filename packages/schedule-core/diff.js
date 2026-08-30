@@ -8,11 +8,11 @@
 // server's apply logic; both the browser (draft edits -> suggestion) and the
 // server (approve -> apply) use it.
 //
-// Each operation may carry a per-op `resolution` marker ('pending' | 'accepted'
-// | 'rejected', absent = pending) so the owner of a schedule can accept or
-// reject the individual changes of one suggestion. `applyOperations` and
-// `proposeOverlay` honor the marker (rejected ops are never applied or shown);
-// `resolutionStatus` derives the row-level status once every op is resolved.
+// Operations never carry state: review status lives on the *suggestion* — a
+// stored suggestion's `operations` are entries `{ id, op, resolution }`, where
+// `op` is byte-identical to what `diffOfferings` produces. `pureOps` unwraps
+// entries (or passes bare ops through) for the stateless core functions, and
+// `suggestionStatus` derives the row-level status from entry resolutions.
 
 import { addOfferingToSchedule, removeOfferingFromSchedule, updateOfferingInSchedule } from './schedule.js'
 
@@ -78,16 +78,14 @@ function normalize(v) {
 // Apply a list of operations to an offerings array, returning a new array.
 // Unknown/mismatched ops are skipped so a stale suggestion can't corrupt a term;
 // add ops that duplicate an existing offering (same prefix/number/section) are
-// skipped so concurrent approvals can't create duplicates. Ops the owner already
-// rejected (resolution === 'rejected') are skipped, so a partially-resolved
-// suggestion can never reapply a rejected change (nor re-propose it from a draft
-// that replays the ops).
+// skipped so concurrent approvals can't create duplicates. Pure: ops carry no
+// state — callers decide which ops to apply.
 export function applyOperations(offerings, operations) {
   if (!Array.isArray(operations)) return offerings
   const existing = new Set((offerings || []).map(offeringKey))
   let list = offerings
   for (const op of operations) {
-    if (!op || op.resolution === 'rejected') continue
+    if (!op) continue
     if (op.kind === 'add' && op.offering) {
       if (existing.has(offeringKey(op.offering))) continue
       list = addOfferingToSchedule(list, { ...op.offering })
@@ -103,25 +101,31 @@ export function applyOperations(offerings, operations) {
   return list
 }
 
-// The effective resolution of an op ('pending' when the marker is absent).
-export function opResolution(op) {
-  if (!op || op.resolution === 'pending' || op.resolution == null) return 'pending'
-  return op.resolution
+// The op payloads of a suggestion's entries, or the ops themselves when handed
+// a bare operations array (`diffOfferings` output). Entries are
+// `{ id?, op, resolution }` — this unwraps the payload so the stateless core
+// (apply/diff/describe/render) never sees review state.
+export function pureOps(entries) {
+  return (entries || []).filter(Boolean).map((e) => (e && typeof e === 'object' && e.op ? e.op : e))
 }
 
-// Derives the row-level status of a suggestion once every operation has a
-// resolution: 'approved' when at least one accepted op actually changed the
-// term, 'moot' when accepted ops changed nothing (e.g. already applied by
-// another suggestion), 'rejected' when all were rejected. Returns null while
-// any op is still pending — the row stays live until fully resolved.
-export function resolutionStatus(operations) {
-  const ops = operations || []
-  // An empty suggestion changed nothing and never will; it is 'moot' outright.
-  if (!ops.length) return 'moot'
-  if (!ops.every((op) => opResolution(op) !== 'pending')) return null
-  const anyAccepted = ops.some((op) => opResolution(op) === 'accepted')
-  if (!anyAccepted) return 'rejected'
-  return ops.some((op) => opResolution(op) === 'accepted' && op.applied === true) ? 'approved' : 'moot'
+// Derives the suggestion-level status from an entry list. Returns null while
+// any op is unresolved (the proposal is still live); otherwise:
+//   'approved'  — some accepted op actually changed the term
+//   'moot'      — accepted ops changed nothing (e.g. already applied elsewhere)
+//   'withdrawn' — the proposer pulled the remaining ops; outranks 'rejected'
+//                 in mixed rows (the owner accepted nothing)
+//   'rejected'  — the owner rejected everything.
+// An empty entry list is 'moot' (it can never change anything).
+export function suggestionStatus(entries) {
+  const list = entries || []
+  if (!list.length) return 'moot'
+  const statusOf = (e) => (e && e.resolution && e.resolution.status) || 'pending'
+  if (list.some((e) => statusOf(e) === 'pending')) return null
+  if (list.some((e) => statusOf(e) === 'accepted' && e.resolution.applied === true)) return 'approved'
+  if (list.some((e) => statusOf(e) === 'accepted')) return 'moot'
+  if (list.some((e) => statusOf(e) === 'withdrawn')) return 'withdrawn'
+  return 'rejected'
 }
 
 // Human-readable single-op description, e.g.

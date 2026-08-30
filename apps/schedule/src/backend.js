@@ -183,16 +183,16 @@ export async function createSuggestion(scheduleId, payload) {
   }
 }
 
-// Resolves one operation (`index`) of a pending suggestion. Approving returns
+// Resolves one operation (`opId`) of a pending suggestion. Approving returns
 // the server's { term, suggestion } — the term is the published state with that
 // one op applied — and rejecting returns the updated suggestion. Both are null
-// when the request failed (not pending, already resolved, bad index, ...).
-export async function approveSuggestion(id, index) {
+// when the request failed (not pending, already resolved, bad opId, ...).
+export async function approveSuggestion(id, opId) {
   try {
     const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ index }),
+      body: JSON.stringify({ opId }),
     })
     if (!res.ok) return null
     return await res.json()
@@ -201,12 +201,12 @@ export async function approveSuggestion(id, index) {
   }
 }
 
-export async function rejectSuggestion(id, index) {
+export async function rejectSuggestion(id, opId) {
   try {
     const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}/reject`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ index }),
+      body: JSON.stringify({ opId }),
     })
     if (!res.ok) return null
     return await res.json()
@@ -232,11 +232,16 @@ export async function updateSuggestion(id, payload) {
   }
 }
 
-// Withdraws a pending suggestion (soft status change). Returns the updated
+// Withdraws the proposer's own pending change(s): one op when `opId` is given,
+// else every remaining pending op of the suggestion. Returns the updated
 // suggestion or null.
-export async function withdrawSuggestion(id) {
+export async function withdrawSuggestion(id, opId) {
   try {
-    const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}/withdraw`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(opId != null ? { opId } : {}),
+    })
     if (!res.ok) return null
     const data = await res.json()
     return (data && data.suggestion) || null

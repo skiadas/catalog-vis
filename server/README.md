@@ -78,10 +78,10 @@ GET    /api/schedules/:id/terms/:term       -> { term: { offerings, version } }
 PUT    /api/schedules/:id/terms/:term       -> { term }           (owner, full replace)
 POST   /api/schedules/:id/suggestions       -> { suggestion }    (auth; base_version informational)
 GET    /api/schedules/:id/suggestions       -> { suggestions }   (everyone sees pending; own history + owner sees all)
-PATCH  /api/suggestions/:id                 -> { suggestion }    (proposer, pending only)
-DELETE /api/suggestions/:id                 -> { suggestion }    (proposer, pending only; soft 'withdrawn')
-POST   /api/suggestions/:id/approve { index } -> { term, suggestion } (owner; applies that one op)
-POST   /api/suggestions/:id/reject  { index } -> { suggestion }       (owner)
+PATCH  /api/suggestions/:id                 -> { suggestion }    (proposer, while no op is owner-resolved)
+POST   /api/suggestions/:id/approve  { opId } -> { term, suggestion } (owner; applies that one op)
+POST   /api/suggestions/:id/reject   { opId } -> { suggestion }  (owner)
+POST   /api/suggestions/:id/withdraw { opId? } -> { suggestion } (proposer; one op, or every remaining pending op)
 GET    /api/schedules/:id/suggestions/export?fmt=json|md|csv
 ```
 
@@ -97,25 +97,28 @@ so approving one proposal never invalidates others. Unmatched ops no-op,
 duplicate adds dedupe, and an approval that changes nothing is recorded as
 **`moot`**.
 
-**Per-change resolution**: each operation carries its own `resolution` marker
-(`pending` | `accepted` | `rejected`, absent = `pending`; accepted ops also
-record `applied`, whether the op actually changed the term). The owner resolves
-the ops of a pending suggestion **one at a time** — `approve`/`reject` name an
-op by `index` (400 on a missing/out-of-range index, 409 once that op is
-resolved). The row stays `pending` until every op is resolved, then finalizes:
-**`approved`** (some accepted op changed the term), **`moot`** (accepted ops
-changed nothing), or **`rejected`** (all rejected). While any op is resolved the
-proposer is locked out of editing (`PATCH` → 409 `in_review` — ops are
-index-based, so the list must not change mid-review); **withdrawing** is still
-allowed. New proposals then go to a fresh row. `resolutionStatus` /
-`applyOperations` (which never reapplies rejected ops) in
-`@major-vis/schedule-core/diff` implement this; the md/csv export annotates
-resolved ops (`... [accepted]`). Proposers can edit (`PATCH`) or withdraw
-(`DELETE`, soft `withdrawn`) their own pending suggestions while they are
-untouched. The recorded `base_version` is informational only — the paper trail
-keeps every row with proposer, note, operations, and resolution status. Diff
-produce/apply/describe live in `@major-vis/schedule-core/diff`
-(`diffOfferings`, `applyOperations`, `describeChange`, `renderChanges`).
+**Ops are first-class**: each operation of a proposal is stored as its own
+`suggestion_ops` row (id, position, op payload, status, applied, resolved_at),
+so a suggestion's changes are resolved **one at a time** and each carries its
+own lifecycle. `approve`/`reject` name an op by `opId` (400 on an unknown id,
+409 once that op is decided); a proposer can `withdraw` their own ops while
+they're pending — one at a time or every remaining one (the convenience form).
+Owner-decided ops can't be withdrawn; withdrawing never un-applies a change
+already in the term.
+
+The parent suggestion's `status` is **always derived** from its ops (no stored
+column): `pending` while any op is unresolved, then `approved` (some accepted
+op applied), `moot` (accepted ops changed nothing), `withdrawn` (the proposer
+pulled the rest — outranks `rejected` in mixed rows), or `rejected` (owner
+rejected everything); `resolved_at` is the max over the ops'. The proposer can
+`PATCH` the proposal (replacing the ops list, which restarts them as pending)
+only while no op is **owner-resolved** (409 `in_review`); their own withdrawn
+ops don't freeze the list. The md/csv export annotates each op with its status
+(`... [accepted]`). `suggestionStatus`/`pureOps` in
+`@major-vis/schedule-core/diff` implement the derivation and the pure-payload
+unwrapping; `applyOperations`/`proposeOverlay` stay fully stateless. The
+recorded `base_version` is informational only — the paper trail keeps every row
+with proposer, note, ops with per-op status, and timestamps.
 `GET /api/schedules` returns full term payloads (offerings + versions) so the
 app renders directly from the list.
 

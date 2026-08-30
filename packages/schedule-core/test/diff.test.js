@@ -6,8 +6,8 @@ import {
   describeChange,
   renderChanges,
   offeringKey,
-  opResolution,
-  resolutionStatus,
+  pureOps,
+  suggestionStatus,
 } from '../diff.js'
 
 const OFF = (id, extra = {}) => ({
@@ -106,59 +106,36 @@ test('applyOperations dedupes duplicate adds so concurrent approvals stay clean'
   assert.equal(afterRemove[0].time, '9:20-10:30')
 })
 
-test('applyOperations skips ops the owner rejected', () => {
-  const list = [OFF(1, { number: '101' }), OFF(2, { number: '202' })]
-  const rejected = {
-    kind: 'remove',
-    cur: { prefix: 'CS', number: '101', section: 'A' },
-    resolution: 'rejected',
-  }
-  // A rejected removal never lands (even if the identity is currently free).
-  assert.deepEqual(applyOperations(list, [rejected]), list)
-  // Accepted and still-pending ops apply normally (markers don't block them).
-  const accepted = {
-    kind: 'update',
-    cur: { prefix: 'CS', number: '101', section: 'A' },
-    changes: { instructor: 'X' },
-    resolution: 'accepted',
-  }
-  assert.deepEqual(applyOperations(list, [accepted, rejected]), [
-    OFF(1, { number: '101', instructor: 'X' }),
-    OFF(2, { number: '202' }),
-  ])
-  assert.deepEqual(applyOperations(list, [{ ...accepted, resolution: 'pending' }, rejected]), [
-    OFF(1, { number: '101', instructor: 'X' }),
-    OFF(2, { number: '202' }),
-  ])
+test('pureOps unwraps entries and passes bare ops through', () => {
+  const op = { kind: 'remove', cur: { prefix: 'CS', number: '101', section: 'A' } }
+  const entry = { id: 3, op, resolution: { status: 'rejected' } }
+  assert.deepEqual(pureOps([entry]), [op])
+  assert.deepEqual(pureOps(null), [])
+  assert.deepEqual(pureOps([op, entry]), [op, op])
+  assert.deepEqual(pureOps([undefined, null]), [])
 })
 
-test('opResolution defaults to pending and reads the marker', () => {
-  assert.equal(opResolution(undefined), 'pending')
-  assert.equal(opResolution({ kind: 'add' }), 'pending')
-  assert.equal(opResolution({ kind: 'add', resolution: 'pending' }), 'pending')
-  assert.equal(opResolution({ resolution: 'accepted' }), 'accepted')
-  assert.equal(opResolution({ resolution: 'rejected' }), 'rejected')
-})
-
-test('resolutionStatus derives the row status once every op is resolved', () => {
-  const update = (resolution, applied) => ({
-    kind: 'update',
-    cur: { prefix: 'CS', number: '220', section: 'A' },
-    changes: { instructor: 'X' },
-    resolution,
-    ...(applied === undefined ? {} : { applied }),
+test('suggestionStatus derives the row status from entry resolutions', () => {
+  const entry = (status, applied) => ({
+    op: { kind: 'update', cur: { prefix: 'CS', number: '220', section: 'A' }, changes: { instructor: 'X' } },
+    resolution: { status, ...(applied === undefined ? {} : { applied }) },
   })
   // Any pending op keeps the row live.
-  assert.equal(resolutionStatus([update('pending'), update('accepted', true)]), null)
-  assert.equal(resolutionStatus(undefined), 'moot')
-  assert.equal(resolutionStatus([]), 'moot')
+  assert.equal(suggestionStatus([entry('pending'), entry('accepted', true)]), null)
+  // Empty proposals changed nothing and never will.
+  assert.equal(suggestionStatus(undefined), 'moot')
+  assert.equal(suggestionStatus([]), 'moot')
   // All rejected -> rejected.
-  assert.equal(resolutionStatus([update('rejected'), update('rejected')]), 'rejected')
-  // Accepted that changed the term -> approved.
-  assert.equal(resolutionStatus([update('accepted', true), update('rejected')]), 'approved')
+  assert.equal(suggestionStatus([entry('rejected'), entry('rejected')]), 'rejected')
+  // Accepted that changed the term -> approved, even with a rejected sibling.
+  assert.equal(suggestionStatus([entry('accepted', true), entry('rejected')]), 'approved')
   // Accepted but nothing changed (already applied elsewhere) -> moot.
-  assert.equal(resolutionStatus([update('accepted', false), update('rejected')]), 'moot')
-  assert.equal(resolutionStatus([update('accepted', false)]), 'moot')
+  assert.equal(suggestionStatus([entry('accepted', false), entry('rejected')]), 'moot')
+  assert.equal(suggestionStatus([entry('accepted', false)]), 'moot')
+  // Withdrawn outranks rejected; accepted still outranks both.
+  assert.equal(suggestionStatus([entry('withdrawn'), entry('rejected')]), 'withdrawn')
+  assert.equal(suggestionStatus([entry('withdrawn'), entry('accepted', true)]), 'approved')
+  assert.equal(suggestionStatus([entry('withdrawn'), entry('accepted', false)]), 'moot')
 })
 
 test('describeChange reads naturally', () => {

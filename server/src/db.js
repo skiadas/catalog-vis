@@ -10,6 +10,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import path from 'node:path'
 import fs from 'node:fs'
+import { suggestionStatus } from '@major-vis/schedule-core/diff'
 
 /** @typedef {import('node:sqlite').DatabaseSync} DB */
 
@@ -55,10 +56,33 @@ import fs from 'node:fs'
  * @property {string} term
  * @property {number} proposer_user_id
  * @property {number} base_version
- * @property {string} operations
- * @property {string} status
  * @property {string} note
  * @property {string | null} proposer
+ * @property {string} status          — derived from the suggestion_ops rows
+ * @property {string | null} resolved_at — max over the ops' resolved_at
+ * @property {Array<{ id: number, op: object, resolution: { status: string, applied: boolean, resolved_at: string | null } }>} operations
+ */
+
+/**
+ * @typedef {object} SuggestionParentRow
+ * @property {number} id
+ * @property {number} schedule_id
+ * @property {string} term
+ * @property {number} proposer_user_id
+ * @property {number} base_version
+ * @property {string} note
+ * @property {string} created_at
+ * @property {string | null} proposer
+ */
+
+/**
+ * @typedef {object} SuggestionOpRow
+ * @property {number} id
+ * @property {number} position
+ * @property {string} op
+ * @property {string} status
+ * @property {number} applied
+ * @property {string | null} resolved_at
  */
 
 const MIGRATIONS = [
@@ -105,15 +129,30 @@ const MIGRATIONS = [
   CREATE TABLE IF NOT EXISTS schedule_changes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     schedule_id INTEGER NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
-    term TEXT NOT NULL,
+    term TEXT NOT NULL,                       -- 'F' | 'W' | 'S'
     proposer_user_id INTEGER NOT NULL REFERENCES users(id),
-    status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'moot'
-    base_version INTEGER NOT NULL,          -- informational: what the proposer saw (never enforced)
-    operations TEXT NOT NULL DEFAULT '[]',  -- JSON diff ops
+    base_version INTEGER NOT NULL,            -- informational: what the proposer saw (never enforced)
     note TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    resolved_at TEXT
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+  `,
+  `
+  -- One row per change of a suggestion. Ops are first-class: each change is
+  -- its own record with its own status lifecycle ('pending' default), so the
+  -- owner resolves changes individually and the parent suggestion's status is
+  -- always derived from these rows. The op column stays a pure diff op (never
+  -- carries resolution state); the position column preserves proposal order.
+  CREATE TABLE IF NOT EXISTS suggestion_ops (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    suggestion_id INTEGER NOT NULL REFERENCES schedule_changes(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    op TEXT NOT NULL,                         -- JSON diff op (pure payload)
+    status TEXT NOT NULL DEFAULT 'pending',   -- 'pending' | 'accepted' | 'rejected' | 'withdrawn'
+    applied INTEGER NOT NULL DEFAULT 0,       -- accepted op actually changed the term
+    resolved_at TEXT,
+    UNIQUE(suggestion_id, position)
+  );
+  CREATE INDEX IF NOT EXISTS idx_suggestion_ops_suggestion ON suggestion_ops(suggestion_id);
   `,
 ]
 
@@ -383,88 +422,168 @@ export function addSuggestion(db, { scheduleId, term, proposerUserId, baseVersio
     db.prepare('SELECT version FROM schedule_terms WHERE schedule_id = ? AND term = ?').get(scheduleId, term)
   )
   if (!existing) throw new Error('term not found')
-  const info = db
-    .prepare(
-      `INSERT INTO schedule_changes
-         (schedule_id, term, proposer_user_id, base_version, operations, note)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    )
-    .run(scheduleId, term, proposerUserId, baseVersion, JSON.stringify(operations || []), note || '')
-  return getSuggestion(db, Number(info.lastInsertRowid))
+  const info = transaction(db, () => {
+    const parent = db
+      .prepare(
+        `INSERT INTO schedule_changes
+           (schedule_id, term, proposer_user_id, base_version, note)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(scheduleId, term, proposerUserId, baseVersion, note || '')
+    const suggestionId = Number(parent.lastInsertRowid)
+    insertOps(db, suggestionId, operations || [])
+    return suggestionId
+  })
+  return getSuggestion(db, info)
 }
 
-// Replaces a pending suggestion's operations and/or note (proposer editing their
-// own proposal). An optional status change can ride along — the resolution
-// handlers use this to finalize a row's status once every op is resolved.
-// Returns the updated suggestion or null if the id is unknown.
+// Replaces a pending suggestion's operations wholesale (proposer editing their
+// own proposal). Only call while no op is owner-resolved — the replacement
+// starts every op fresh as 'pending' (a proposer's own withdrawn ops are
+// dropped by the edit; they were never applied). Returns the updated suggestion
+// or null if the id is unknown.
 /**
  * @param {DB} db
  * @param {number} id
- * @param {{ operations?: unknown[]; note?: string; status?: string }} changes
+ * @param {{ operations?: unknown[]; note?: string }} changes
  */
-export function updateSuggestion(db, id, { operations, note, status }) {
-  const fields = []
-  const vals = []
-  if (operations !== undefined) {
-    fields.push('operations = ?')
-    vals.push(JSON.stringify(operations))
-  }
-  if (note !== undefined) {
-    fields.push('note = ?')
-    vals.push(note)
-  }
-  if (status !== undefined) {
-    fields.push('status = ?')
-    vals.push(status)
-    if (status !== 'pending') {
-      fields.push('resolved_at = ?')
-      vals.push(new Date().toISOString())
+export function updateSuggestion(db, id, { operations, note }) {
+  transaction(db, () => {
+    if (operations !== undefined) insertOps(db, id, operations)
+    if (note !== undefined) {
+      db.prepare(`UPDATE schedule_changes SET note = ? WHERE id = ?`).run(note, id)
     }
-  }
-  if (!fields.length) return getSuggestion(db, id)
-  db.prepare(`UPDATE schedule_changes SET ${fields.join(', ')} WHERE id = ?`).run(...vals, id)
+  })
   return getSuggestion(db, id)
+}
+
+// Inserts the pure op payloads as fresh 'pending' suggestion_ops rows (deleting
+// any existing rows for the suggestion first).
+/**
+ * @param {DB} db
+ * @param {number} suggestionId
+ * @param {unknown[]} operations
+ */
+function insertOps(db, suggestionId, operations) {
+  db.prepare(`DELETE FROM suggestion_ops WHERE suggestion_id = ?`).run(suggestionId)
+  const insert = db.prepare(`INSERT INTO suggestion_ops (suggestion_id, position, op) VALUES (?, ?, ?)`)
+  ;(operations || []).forEach((op, position) => {
+    insert.run(suggestionId, position, JSON.stringify(op))
+  })
+}
+
+// Sets one op's resolution (status + whether applying it changed the term).
+/**
+ * @param {DB} db
+ * @param {number} opId
+ * @param {{ status: string; applied: boolean }} resolution
+ */
+export function setOpResolution(db, opId, { status, applied }) {
+  db.prepare(
+    `UPDATE suggestion_ops SET status = ?, applied = ?, resolved_at = ?
+     WHERE id = ?`,
+  ).run(status, applied ? 1 : 0, new Date().toISOString(), opId)
+}
+
+// Withdraws ops of a suggestion: `opIds` restricts to those ids, otherwise
+// every still-pending op. Returns the number of ops withdrawn (0 when nothing
+// was pending).
+/**
+ * @param {DB} db
+ * @param {number} suggestionId
+ * @param {number[] | undefined} opIds
+ */
+export function withdrawOps(db, suggestionId, opIds) {
+  const where = opIds ? `AND id IN (${opIds.map(() => '?').join(',')})` : ''
+  const params = opIds ? [...opIds] : []
+  const info = db
+    .prepare(
+      `UPDATE suggestion_ops
+       SET status = 'withdrawn', resolved_at = ?
+       WHERE suggestion_id = ? AND status = 'pending' ${where}`,
+    )
+    .run(new Date().toISOString(), suggestionId, ...params)
+  return Number(info.changes)
 }
 
 /**
  * @param {DB} db
+ * @returns {SuggestionRow | null}
  */
 export function getSuggestion(db, id) {
-  const row = /** @type {SuggestionRow | undefined} */ (
+  const row = /** @type {SuggestionParentRow | undefined} */ (
     db
       .prepare(
-        `SELECT c.*, p.username AS proposer FROM schedule_changes c
-       JOIN users p ON p.id = c.proposer_user_id WHERE c.id = ?`,
+        `SELECT c.id, c.schedule_id, c.term, c.proposer_user_id, c.base_version, c.note,
+                c.created_at, p.username AS proposer
+         FROM schedule_changes c
+         JOIN users p ON p.id = c.proposer_user_id WHERE c.id = ?`,
       )
       .get(id)
   )
   if (!row) return null
-  return { ...row, operations: safeParse(row.operations) }
+  return composeSuggestion(db, row)
 }
 
 /**
  * @param {DB} db
+ * @returns {SuggestionRow[]}
  */
 export function listSuggestions(db, scheduleId) {
-  const rows = /** @type {SuggestionRow[]} */ (
+  const rows = /** @type {SuggestionParentRow[]} */ (
     db
       .prepare(
-        `SELECT c.*, p.username AS proposer FROM schedule_changes c
-       JOIN users p ON p.id = c.proposer_user_id
-       WHERE c.schedule_id = ? ORDER BY c.created_at DESC`,
+        `SELECT c.id, c.schedule_id, c.term, c.proposer_user_id, c.base_version, c.note,
+                c.created_at, p.username AS proposer
+         FROM schedule_changes c
+         JOIN users p ON p.id = c.proposer_user_id
+         WHERE c.schedule_id = ? ORDER BY c.created_at DESC`,
       )
       .all(scheduleId)
   )
-  return rows.map((r) => ({ ...r, operations: safeParse(r.operations) }))
+  return rows.map((r) => composeSuggestion(db, r))
 }
 
+// Composes a suggestion row from its suggestion_ops children: the status is
+// always derived from the ops ('pending' while any op is unresolved), as is
+// resolved_at (max over the ops). `operations` is the first-class entry list
+// [{ id, op, resolution }] in position order.
 /**
  * @param {DB} db
+ * @param {SuggestionParentRow} row
+ * @returns {SuggestionRow}
  */
-export function setSuggestionStatus(db, id, status) {
-  const resolved = status === 'pending' ? null : new Date().toISOString()
-  db.prepare(`UPDATE schedule_changes SET status = ?, resolved_at = ? WHERE id = ?`).run(status, resolved, id)
-  return getSuggestion(db, id)
+function composeSuggestion(db, row) {
+  const ops = /** @type {SuggestionOpRow[]} */ (
+    db
+      .prepare(
+        `SELECT id, position, op, status, applied, resolved_at
+         FROM suggestion_ops WHERE suggestion_id = ? ORDER BY position`,
+      )
+      .all(row.id)
+  )
+  const entries = ops.map((o) => ({
+    id: o.id,
+    op: safeParse(o.op),
+    resolution: {
+      status: o.status,
+      applied: Boolean(o.applied),
+      resolved_at: o.resolved_at,
+    },
+  }))
+  const status = suggestionStatus(entries) || 'pending'
+  const resolvedAt =
+    entries
+      .map((e) => e.resolution.resolved_at)
+      .filter(Boolean)
+      .sort()
+      .at(-1) || null
+  return {
+    ...row,
+    status,
+    resolved_at: resolvedAt,
+    operations: entries,
+  }
 }
 
 function safeParse(str) {

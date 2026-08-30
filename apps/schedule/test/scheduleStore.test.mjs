@@ -137,8 +137,9 @@ test('non-owner suggest sessions consolidate into one upserted proposal; externa
     assert.ok(proposed)
     assert.equal(proposed.status, 'pending')
     assert.equal(proposed.operations.length, 1)
-    assert.equal(proposed.operations[0].kind, 'update')
-    assert.equal(proposed.operations[0].changes.time, '14:15-16:00')
+    assert.equal(proposed.operations[0].op.kind, 'update')
+    assert.equal(proposed.operations[0].op.changes.time, '14:15-16:00')
+    assert.equal(proposed.operations[0].resolution.status, 'pending')
 
     // Re-proposing an unchanged draft is a no-op; editing again upserts the
     // same row (still one pending suggestion for physics).
@@ -152,12 +153,16 @@ test('non-owner suggest sessions consolidate into one upserted proposal; externa
     const revised = await store.proposeDraft(schedule.id, '')
     assert.ok(revised)
     assert.equal(revised.id, proposed.id)
-    assert.equal(revised.operations[0].changes.time, '8:00-9:45')
+    assert.equal(revised.operations[0].op.changes.time, '8:00-9:45')
     const own = store.suggestionsBySchedule.value[schedule.id].filter((s) => s.status === 'pending')
     assert.equal(own.length, 1)
 
     // The owner approves it; physics sees the resolved history.
-    const approved = await registrar.post(`/api/suggestions/${proposed.id}/approve`, { index: 0 })
+    // The upserted revision replaced the ops (new child rows), so approve the
+    // current revision's op id.
+    const approved = await registrar.post(`/api/suggestions/${revised.id}/approve`, {
+      opId: revised.operations[0].id,
+    })
     assert.equal(approved.status, 200)
     await store.refreshSuggestions(schedule.id)
     const history = store.suggestionsBySchedule.value[schedule.id]
@@ -184,7 +189,8 @@ test('non-owner suggest sessions consolidate into one upserted proposal; externa
     const bioProposal = await store.proposeDraft(schedule.id, '')
     assert.ok(bioProposal)
     assert.equal(bioProposal.operations.length, 1)
-    assert.equal(bioProposal.operations[0].cur.number, '161')
+    assert.equal(bioProposal.operations[0].op.cur.number, '161')
+    assert.equal(bioProposal.operations[0].resolution.status, 'pending')
 
     // The owner adds MAT 131 without approving BIO's proposal; physics re-
     // enters suggest: the draft = fresh published state + replayed own ops.
@@ -206,7 +212,7 @@ test('non-owner suggest sessions consolidate into one upserted proposal; externa
     // physics may still withdraw the pending BIO proposal.
     const bio = store.suggestionsBySchedule.value[schedule.id].find((s) => s.status === 'pending')
     assert.ok(bio)
-    assert.equal(await store.withdrawSuggestion(bio.id), true)
+    assert.ok(await store.withdrawSuggestion(bio.id))
   })
 })
 
@@ -227,7 +233,7 @@ test('offline trail mirrors the lifecycle: propose, withdraw, propose again, sel
     assert.equal(store.suggestionsBySchedule.value[id].length, 1)
 
     // Withdraw leaves the trail honest.
-    assert.equal(await store.withdrawSuggestion(row.id), true)
+    assert.ok(await store.withdrawSuggestion(row.id))
     let rows = JSON.parse(localStorage.getItem('major-vis.schedule.suggestions'))
     assert.equal(rows.length, 1)
     assert.equal(rows[0].status, 'withdrawn')
@@ -237,7 +243,7 @@ test('offline trail mirrors the lifecycle: propose, withdraw, propose again, sel
     store.moveOffering(id, 'CS', '101', 'A', { fromDay: 'T', toDay: 'T', group: 'TR', time: '14:15-16:00' })
     const row2 = await store.proposeDraft(id, '')
     assert.ok(row2)
-    const resolved = await store.resolveOp(row2.id, 0, 'accepted')
+    const resolved = await store.resolveOp(row2.id, row2.operations[0].id, 'accepted')
     assert.ok(resolved)
     assert.equal(resolved.status, 'approved')
     rows = JSON.parse(localStorage.getItem('major-vis.schedule.suggestions'))
@@ -290,11 +296,12 @@ test('offline per-op resolution: accept one change, reject the other, row finali
     assert.equal(row.operations.length, 2)
 
     // Accepting the first change applies only it; the row stays pending.
-    const first = await store.resolveOp(row.id, 0, 'accepted')
+    const [moveEntry, addEntry] = row.operations
+    const first = await store.resolveOp(row.id, moveEntry.id, 'accepted')
     assert.ok(first)
     assert.equal(first.status, 'pending')
-    assert.equal(first.operations[0].resolution, 'accepted')
-    assert.equal(first.operations[1].resolution, 'pending')
+    assert.equal(first.operations[0].resolution.status, 'accepted')
+    assert.equal(first.operations[1].resolution.status, 'pending')
     // viewOfferings renders the draft during a suggest session; read the
     // published part to see what the accept actually published.
     let published = store.scheduleById(id).terms.F.offerings
@@ -302,15 +309,15 @@ test('offline per-op resolution: accept one change, reject the other, row finali
     assert.ok(!published.some((o) => o.number === '161'), 'unresolved add NOT applied')
 
     // Rejecting the second change finalizes the row as approved (one applied).
-    const second = await store.resolveOp(row.id, 1, 'rejected')
+    const second = await store.resolveOp(row.id, addEntry.id, 'rejected')
     assert.ok(second)
     assert.equal(second.status, 'approved')
-    assert.equal(second.operations[1].resolution, 'rejected')
+    assert.equal(second.operations[1].resolution.status, 'rejected')
     const trail = JSON.parse(localStorage.getItem('major-vis.schedule.suggestions'))
     assert.equal(trail.length, 1)
     assert.equal(trail[0].status, 'approved')
     assert.deepEqual(
-      trail[0].operations.map((o) => o.resolution),
+      trail[0].operations.map((e) => e.resolution.status),
       ['accepted', 'rejected'],
     )
 
@@ -318,8 +325,34 @@ test('offline per-op resolution: accept one change, reject the other, row finali
     published = store.scheduleById(id).terms.F.offerings
     assert.ok(!published.some((o) => o.number === '161'))
 
+    // Per-op withdrawal: pulling one change keeps the row live; the other op
+    // stays resolvable. Withdrawing it all finalizes as 'withdrawn'.
+    await store.setEditingSchedule(id, 'suggest')
+    store.moveOffering(id, 'CS', '101', 'A', { fromDay: 'T', toDay: 'T', group: 'TR', time: '8:00-9:45' })
+    await store.setEditingSchedule(null)
+    await store.setEditingSchedule(id, 'suggest')
+    store.addCourseToSchedule(id, 'BIO 161')
+    const row3 = await store.proposeDraft(id, 'withdraw me')
+    assert.equal(row3.operations.length, 2)
+    const [opA] = row3.operations
+    const partial = await store.withdrawSuggestion(row3.id, opA.id)
+    assert.ok(partial)
+    assert.equal(partial.status, 'pending', 'one unsettled op keeps the row live')
+    assert.equal(partial.operations[0].resolution.status, 'withdrawn')
+    assert.equal(partial.operations[1].resolution.status, 'pending')
+    assert.ok(partial.operations[0].resolution.resolved_at)
+    const all = await store.withdrawSuggestion(row3.id)
+    assert.ok(all)
+    assert.equal(all.status, 'withdrawn')
+    assert.deepEqual(
+      all.operations.map((e) => e.resolution.status),
+      ['withdrawn', 'withdrawn'],
+    )
+    assert.ok(all.resolved_at)
+
     // Resolving an already-resolved op is refused.
-    assert.equal(await store.resolveOp(row.id, 0, 'accepted'), null)
-    assert.equal(await store.resolveOp(row.id, 0, 'rejected'), null)
+    assert.equal(await store.resolveOp(row.id, moveEntry.id, 'accepted'), null)
+    assert.equal(await store.resolveOp(row.id, 'unknown_id', 'rejected'), null)
+    assert.equal(await store.resolveOp(row.id, moveEntry.id, 'rejected'), null)
   })
 })

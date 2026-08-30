@@ -9,43 +9,35 @@
 import crypto from 'node:crypto'
 import express from 'express'
 import * as db from './db.js'
-import {
-  applyOperations,
-  diffOfferings,
-  opResolution,
-  resolutionStatus,
-  describeChange,
-} from '@major-vis/schedule-core/diff'
+import { applyOperations, diffOfferings, describeChange } from '@major-vis/schedule-core/diff'
 
 const TERMS = ['F', 'W', 'S']
 
-// New operations start unresolved; the marker rides inside each op so the whole
-// suggestion persists in one JSON column with no schema change.
-function normalizeOperations(operations) {
-  return (operations || []).map((op) => ({ ...(op || {}), resolution: 'pending' }))
+// The suggestion a resolve request names an op of, or null when the opId is
+// unknown. Ops are first-class (suggestion_ops rows), so resolution targets an
+// op id, never a position.
+function entryFor(suggestion, opId) {
+  const id = Number(opId)
+  const entry = (suggestion.operations || []).find((e) => Number(e.id) === id)
+  return entry || null
 }
 
-// The index of an operation a resolve request names, or null when invalid.
-function opIndex(value, operations) {
-  const index = Number(value)
-  return Number.isInteger(index) && index >= 0 && index < (operations || []).length ? index : null
+// Whether any op of the suggestion has been decided by the owner — the
+// proposal is "in review" and the proposer may no longer replace its ops.
+function inReview(suggestion) {
+  return (suggestion.operations || []).some((e) => {
+    const status = e.resolution && e.resolution.status
+    return status === 'accepted' || status === 'rejected'
+  })
 }
 
-// Applies a per-op resolution marker to a suggestion and finalizes the row's
-// status ('approved' | 'moot' | 'rejected') when every op is resolved; the row
-// stays 'pending' (live for everyone) while any op remains unresolved.
-function resolveSuggestion(database, suggestion, operations) {
-  const finalStatus = resolutionStatus(operations)
-  const updated = db.updateSuggestion(database, suggestion.id, { operations })
-  return finalStatus ? db.setSuggestionStatus(database, suggestion.id, finalStatus) : updated
-}
-
-// Renders ops with their resolution markers appended for the export trail
-// ("CS 220 A: ... [accepted]"); pending ops render bare.
-function renderOpsWithMarkers(operations) {
-  return (operations || []).map((op) => {
-    const text = describeChange(op)
-    return opResolution(op) === 'pending' ? text : `${text} [${opResolution(op)}]`
+// Renders the ops of a suggestion with their resolution statuses appended for
+// the export trail ("CS 220 A: ... [accepted]"); pending ops render bare.
+function renderOpsWithStatuses(operations) {
+  return (operations || []).map((e) => {
+    const text = describeChange(e.op)
+    const status = e.resolution && e.resolution.status
+    return !status || status === 'pending' ? text : `${text} [${status}]`
   })
 }
 
@@ -191,11 +183,14 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
 
   // ---- Suggested changes -------------------------------------------------
   // Anyone proposes a change to a term as identity-based diff operations
-  // (add/remove/update with absolute values). Many suggestions from many
-  // proposers stay live concurrently: approving one never invalidates others —
-  // approval applies the ops to whatever the term's current state is (unmatched
-  // ops no-op, duplicate adds dedupe). `baseVersion` is recorded for the paper
-  // trail only, never enforced.
+  // (add/remove/update with absolute values). Ops are first-class: each one is
+  // stored as its own suggestion_ops row, so the owner resolves the changes of
+  // a suggestion individually (accepted/rejected) and the proposer can pull
+  // their own changes back (withdrawn). The suggestion's status is always
+  // derived from its ops. Many suggestions from many proposers stay live
+  // concurrently: approving one op never invalidates others — it applies to
+  // whatever the term's current state is (unmatched ops no-op, duplicate adds
+  // dedupe). `baseVersion` is recorded for the paper trail only, never enforced.
   app.post('/api/schedules/:id/suggestions', requireAuth, (req, res) => {
     const schedule = db.getSchedule(database, Number(req.params.id))
     if (!schedule) return res.status(404).json({ error: 'not_found' })
@@ -211,7 +206,7 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
       term,
       proposerUserId: req.user.id,
       baseVersion,
-      operations: normalizeOperations(operations),
+      operations,
       note,
     })
     res.status(201).json({ suggestion })
@@ -223,7 +218,8 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     const all = db.listSuggestions(database, schedule.id)
     // Everyone sees the live (pending) suggestions from every proposer so
     // departments can coordinate; history (approved/rejected/withdrawn/moot) is
-    // visible to the owner and to the row's own proposer.
+    // visible to the owner and to the row's own proposer. `status` is derived
+    // from the ops, so 'pending' here means "some op is still unresolved".
     const visible =
       schedule.owner_user_id === req.user.id
         ? all
@@ -234,45 +230,53 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
   // A proposer can edit their own pending suggestion (new operations and/or
   // note); pending only, so the trail is stable once resolved. Editing is also
   // refused once the owner has resolved any operation ('in_review') — partial
-  // resolutions target ops by index, so the list must not change mid-review.
-  // A proposer can still withdraw.
+  // resolutions address ops by id, and the proposal's remaining changes must
+  // not move mid-review. The proposer's own outlined ops don't freeze the list
+  // (they can always withdraw individually); ops replaced by an edit restart
+  // as pending, dropping withdrawn ones that were never applied.
   app.patch('/api/suggestions/:id', requireAuth, (req, res) => {
     const suggestion = db.getSuggestion(database, Number(req.params.id))
     if (!suggestion) return res.status(404).json({ error: 'not_found' })
     if (suggestion.proposer_user_id !== req.user.id) return res.status(403).json({ error: 'not_proposer' })
     if (suggestion.status !== 'pending') return res.status(409).json({ error: 'not_pending' })
-    if (suggestion.operations.some((op) => opResolution(op) !== 'pending'))
-      return res.status(409).json({ error: 'in_review' })
+    if (inReview(suggestion)) return res.status(409).json({ error: 'in_review' })
     const operations = Array.isArray(req.body && req.body.operations) ? req.body.operations : undefined
     const note = req.body && typeof req.body.note === 'string' ? req.body.note.trim() : undefined
     if (operations === undefined && note === undefined)
       return res.status(400).json({ error: 'nothing_to_update' })
     const updated = db.updateSuggestion(database, suggestion.id, {
-      ...(operations !== undefined ? { operations: normalizeOperations(operations) } : {}),
+      ...(operations !== undefined ? { operations } : {}),
       ...(note !== undefined ? { note } : {}),
     })
     res.json({ suggestion: updated })
   })
 
-  // A proposer can withdraw their own pending suggestion. Withdraw is a soft
-  // status change: the row stays in the trail as 'withdrawn'.
-  app.delete('/api/suggestions/:id', requireAuth, (req, res) => {
+  // A proposer withdraws their own pending changes: one op (with `opId`), or
+  // every remaining pending op of the proposal (the convenience form). Owner-
+  // decided ops (accepted/rejected) are never touched; withdrawal is a soft
+  // status — the op stays in the trail as 'withdrawn'.
+  app.post('/api/suggestions/:id/withdraw', requireAuth, (req, res) => {
     const suggestion = db.getSuggestion(database, Number(req.params.id))
     if (!suggestion) return res.status(404).json({ error: 'not_found' })
     if (suggestion.proposer_user_id !== req.user.id) return res.status(403).json({ error: 'not_proposer' })
     if (suggestion.status !== 'pending') return res.status(409).json({ error: 'not_pending' })
-    const withdrawn = db.setSuggestionStatus(database, suggestion.id, 'withdrawn')
-    res.json({ suggestion: withdrawn })
+    const opIds = req.body && req.body.opId != null ? [Number(req.body.opId)] : undefined
+    if (opIds) {
+      const entry = entryFor(suggestion, opIds[0])
+      if (!entry) return res.status(400).json({ error: 'bad_op' })
+      if (entry.resolution.status !== 'pending') return res.status(409).json({ error: 'already_resolved' })
+    }
+    const withdrawn = db.withdrawOps(database, suggestion.id, opIds)
+    if (!withdrawn) return res.status(409).json({ error: 'nothing_pending' })
+    res.json({ suggestion: db.getSuggestion(database, suggestion.id) })
   })
 
   // Owner resolves one operation of a pending suggestion against the current
   // term state: approving applies exactly that op (unmatched ops no-op, so
   // concurrent suggestions from many proposers each stay live), rejecting
-  // records the decision without changing the term. Each op carries its own
-  // resolution marker; the row stays 'pending' until every op is resolved, then
-  // becomes 'approved' (some accepted op changed the term), 'moot' (accepted
-  // ops changed nothing), or 'rejected' (all rejected) — the trail reflects what
-  // actually happened.
+  // records the decision without changing the term, and the proposal stays
+  // 'pending' until every op is resolved — the trail reflects what actually
+  // happened, one change at a time.
   app.post('/api/suggestions/:id/approve', requireAuth, (req, res) => {
     const suggestion = db.getSuggestion(database, Number(req.params.id))
     if (!suggestion) return res.status(404).json({ error: 'not_found' })
@@ -280,20 +284,16 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     const schedule = db.getSchedule(database, suggestion.schedule_id)
     if (!schedule || schedule.owner_user_id !== req.user.id)
       return res.status(403).json({ error: 'not_owner' })
-    const index = opIndex(req.body && req.body.index, suggestion.operations)
-    if (index == null) return res.status(400).json({ error: 'bad_index' })
-    const op = suggestion.operations[index]
-    if (opResolution(op) !== 'pending') return res.status(409).json({ error: 'already_resolved' })
+    const entry = entryFor(suggestion, req.body && req.body.opId)
+    if (!entry) return res.status(400).json({ error: 'bad_op' })
+    if (entry.resolution.status !== 'pending') return res.status(409).json({ error: 'already_resolved' })
     const current = db.getTerm(database, schedule.id, suggestion.term)
     if (!current) return res.status(404).json({ error: 'not_found' })
-    const appliedOff = applyOperations(current.offerings, [op])
+    const appliedOff = applyOperations(current.offerings, [entry.op])
     const changed = diffOfferings(current.offerings, appliedOff).length > 0
     const term = changed ? db.setTermOfferings(database, schedule.id, suggestion.term, appliedOff) : current
-    const operations = suggestion.operations.map((o, i) =>
-      i === index ? { ...o, resolution: 'accepted', applied: changed } : o,
-    )
-    const saved = resolveSuggestion(database, suggestion, operations)
-    res.json({ term, suggestion: saved })
+    db.setOpResolution(database, entry.id, { status: 'accepted', applied: changed })
+    res.json({ term, suggestion: db.getSuggestion(database, suggestion.id) })
   })
 
   app.post('/api/suggestions/:id/reject', requireAuth, (req, res) => {
@@ -303,15 +303,11 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     const schedule = db.getSchedule(database, suggestion.schedule_id)
     if (!schedule || schedule.owner_user_id !== req.user.id)
       return res.status(403).json({ error: 'not_owner' })
-    const index = opIndex(req.body && req.body.index, suggestion.operations)
-    if (index == null) return res.status(400).json({ error: 'bad_index' })
-    const op = suggestion.operations[index]
-    if (opResolution(op) !== 'pending') return res.status(409).json({ error: 'already_resolved' })
-    const operations = suggestion.operations.map((o, i) =>
-      i === index ? { ...o, resolution: 'rejected' } : o,
-    )
-    const saved = resolveSuggestion(database, suggestion, operations)
-    res.json({ suggestion: saved })
+    const entry = entryFor(suggestion, req.body && req.body.opId)
+    if (!entry) return res.status(400).json({ error: 'bad_op' })
+    if (entry.resolution.status !== 'pending') return res.status(409).json({ error: 'already_resolved' })
+    db.setOpResolution(database, entry.id, { status: 'rejected', applied: false })
+    res.json({ suggestion: db.getSuggestion(database, suggestion.id) })
   })
 
   app.get('/api/schedules/:id/suggestions/export', requireAuth, (req, res) => {
@@ -325,7 +321,7 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     const fmt = req.query.fmt === 'json' || !req.query.fmt ? 'json' : req.query.fmt === 'md' ? 'md' : 'csv'
     if (fmt === 'md') {
       const lines = visible.map((c) => {
-        const ops = renderOpsWithMarkers(c.operations).join('; ') || '(empty)'
+        const ops = renderOpsWithStatuses(c.operations).join('; ') || '(empty)'
         return `- **Suggestion #${c.id}** (${c.term}, by ${c.proposer}): ${ops}${c.note ? ' — ' + c.note : ''} [${c.status}]`
       })
       return res.type('text/markdown').send(lines.join('\n') || '_No suggestions._')
@@ -333,7 +329,7 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     if (fmt === 'csv') {
       const rows = [['id', 'term', 'proposer', 'status', 'base_version', 'change']]
       for (const c of visible) {
-        const desc = renderOpsWithMarkers(c.operations).join('; ')
+        const desc = renderOpsWithStatuses(c.operations).join('; ')
         rows.push([c.id, c.term, c.proposer, c.status, c.base_version, desc || '(empty)'])
       }
       const csv = rows.map((r) => r.map(csvCell).join(',')).join('\n')

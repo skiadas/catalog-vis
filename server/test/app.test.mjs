@@ -146,7 +146,9 @@ test('non-owner cannot modify but can suggest; others see pending; owner approve
     assert.equal(sug.status, 201)
 
     // Bob (not owner) cannot approve.
-    const approveAsBob = await bob.post(`/api/suggestions/${sug.json.suggestion.id}/approve`, { index: 0 })
+    const approveAsBob = await bob.post(`/api/suggestions/${sug.json.suggestion.id}/approve`, {
+      opId: sug.json.suggestion.operations[0].id,
+    })
     assert.equal(approveAsBob.status, 403)
 
     // Carol (another non-owner) DOES see Bob's pending suggestion.
@@ -157,7 +159,9 @@ test('non-owner cannot modify but can suggest; others see pending; owner approve
     // Owner sees it and approves; the response names the status.
     const ownerView = await alice.get(`/api/schedules/${schedule.id}/suggestions`)
     assert.equal(ownerView.json.suggestions.length, 1)
-    const approved = await alice.post(`/api/suggestions/${sug.json.suggestion.id}/approve`, { index: 0 })
+    const approved = await alice.post(`/api/suggestions/${sug.json.suggestion.id}/approve`, {
+      opId: sug.json.suggestion.operations[0].id,
+    })
     assert.equal(approved.status, 200)
     assert.equal(approved.json.suggestion.status, 'approved')
     assert.equal(approved.json.term.offerings[0].instructor, 'Skiadas')
@@ -176,7 +180,9 @@ test('non-owner cannot modify but can suggest; others see pending; owner approve
       baseVersion: 2,
       operations: [{ kind: 'remove', cur: { prefix: 'CS', number: '220', section: 'A' } }],
     })
-    await alice.post(`/api/suggestions/${carolSug.json.suggestion.id}/reject`, { index: 0 })
+    await alice.post(`/api/suggestions/${carolSug.json.suggestion.id}/reject`, {
+      opId: carolSug.json.suggestion.operations[0].id,
+    })
     const carolOwn = await carol.get(`/api/schedules/${schedule.id}/suggestions`)
     assert.equal(carolOwn.json.suggestions.length, 1)
     assert.equal(carolOwn.json.suggestions[0].proposer, 'carol')
@@ -232,9 +238,9 @@ test('concurrent suggestions from many proposers approve independently, in any o
     ).json.suggestion
 
     // Math's proposal is still live after Physics' is approved (no invalidation).
-    const mathOk = await alice.post(`/api/suggestions/${mat.id}/approve`, { index: 0 })
+    const mathOk = await alice.post(`/api/suggestions/${mat.id}/approve`, { opId: mat.operations[0].id })
     assert.equal(mathOk.status, 200)
-    const physOk = await alice.post(`/api/suggestions/${phy.id}/approve`, { index: 0 })
+    const physOk = await alice.post(`/api/suggestions/${phy.id}/approve`, { opId: phy.operations[0].id })
     assert.equal(physOk.status, 200)
 
     const after = (await alice.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
@@ -276,7 +282,7 @@ test('proposer can edit, then withdraw, their own pending suggestion; moot on no
     const other = srv.newClient()
     await other.post('/api/auth/login', { username: 'bob' })
     assert.equal((await other.patch(`/api/suggestions/${sug.id}`, { note: 'hijack' })).status, 403)
-    assert.equal((await other.del(`/api/suggestions/${sug.id}`)).status, 403)
+    assert.equal((await other.post(`/api/suggestions/${sug.id}/withdraw`, {})).status, 403)
 
     // The proposer replaces the operations (a stale state, but a valid one: the
     // term changed under the proposal) and updates the note.
@@ -293,12 +299,15 @@ test('proposer can edit, then withdraw, their own pending suggestion; moot on no
     })
     assert.equal(edited.status, 200)
     assert.equal(edited.json.suggestion.note, 'reconsidered: just move the time')
-    assert.equal(edited.json.suggestion.operations[0].kind, 'update')
+    assert.equal(edited.json.suggestion.operations[0].op.kind, 'update')
+    assert.equal(edited.json.suggestion.operations[0].resolution.status, 'pending')
 
     // The owner deletes the course directly (the term moved on), so approving
     // the suggestion changes nothing -> moot.
     await srv.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [] })
-    const approve = await srv.post(`/api/suggestions/${sug.id}/approve`, { index: 0 })
+    const approve = await srv.post(`/api/suggestions/${sug.id}/approve`, {
+      opId: edited.json.suggestion.operations[0].id,
+    })
     assert.equal(approve.status, 200)
     assert.equal(approve.json.suggestion.status, 'moot')
     const termAfter = (await srv.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
@@ -317,9 +326,12 @@ test('proposer can edit, then withdraw, their own pending suggestion; moot on no
         ],
       })
     ).json.suggestion
-    const withdrawn = await srv.del(`/api/suggestions/${second.id}`)
+    const withdrawn = await srv.post(`/api/suggestions/${second.id}/withdraw`, {})
     assert.equal(withdrawn.status, 200)
     assert.equal(withdrawn.json.suggestion.status, 'withdrawn')
+    assert.equal(withdrawn.json.suggestion.operations[0].resolution.status, 'withdrawn')
+    // Withdrawing an already-withdrawn (no longer pending) proposal is refused.
+    assert.equal((await srv.post(`/api/suggestions/${second.id}/withdraw`, {})).status, 409)
     const trail = (await srv.get(`/api/schedules/${schedule.id}/suggestions`)).json.suggestions
     assert.equal(trail.length, 2)
     assert.deepEqual(trail.map((c) => c.status).sort(), ['moot', 'withdrawn'])
@@ -360,20 +372,22 @@ test('one suggestion, per-op resolution: partial approve stays pending, review l
         ],
       })
     ).json.suggestion
-    assert.ok(sug.operations.every((o) => o.resolution === 'pending'))
+    assert.ok(sug.operations.every((o) => o.resolution.status === 'pending'))
+    assert.ok(sug.operations.every((o) => Number.isInteger(o.id)))
+    const [csOp, matOp] = sug.operations
 
-    // Missing/out-of-range index is refused.
+    // Missing/unknown op ids are refused.
     assert.equal((await srv.post(`/api/suggestions/${sug.id}/approve`, {})).status, 400)
-    assert.equal((await srv.post(`/api/suggestions/${sug.id}/approve`, { index: 2 })).status, 400)
-    assert.equal((await srv.post(`/api/suggestions/${sug.id}/reject`, { index: 99 })).status, 400)
+    assert.equal((await srv.post(`/api/suggestions/${sug.id}/approve`, { opId: 9999 })).status, 400)
+    assert.equal((await srv.post(`/api/suggestions/${sug.id}/reject`, { opId: 'nope' })).status, 400)
 
     // Approving one op changes only that part of the term; the row stays live.
-    const first = await srv.post(`/api/suggestions/${sug.id}/approve`, { index: 0 })
+    const first = await srv.post(`/api/suggestions/${sug.id}/approve`, { opId: csOp.id })
     assert.equal(first.status, 200)
     assert.equal(first.json.suggestion.status, 'pending')
-    assert.equal(first.json.suggestion.operations[0].resolution, 'accepted')
-    assert.ok(first.json.suggestion.operations[0].applied === true)
-    assert.equal(first.json.suggestion.operations[1].resolution, 'pending')
+    assert.equal(first.json.suggestion.operations[0].resolution.status, 'accepted')
+    assert.ok(first.json.suggestion.operations[0].resolution.applied === true)
+    assert.equal(first.json.suggestion.operations[1].resolution.status, 'pending')
     assert.equal(first.json.term.offerings.find((o) => o.prefix === 'CS').instructor, 'Novak')
     assert.equal(first.json.term.offerings.find((o) => o.prefix === 'MAT').time, '10:00-11:45')
 
@@ -384,21 +398,151 @@ test('one suggestion, per-op resolution: partial approve stays pending, review l
     assert.equal(edit.json.error, 'in_review')
 
     // ...and re-resolving an already-resolved op is refused.
-    assert.equal((await srv.post(`/api/suggestions/${sug.id}/approve`, { index: 0 })).status, 409)
+    assert.equal((await srv.post(`/api/suggestions/${sug.id}/approve`, { opId: csOp.id })).status, 409)
 
-    // Rejecting the remaining op finalizes the row as approved (one applied,
-    // one rejected).
-    const second = await srv.post(`/api/suggestions/${sug.id}/reject`, { index: 1 })
-    assert.equal(second.status, 200)
-    assert.equal(second.json.suggestion.status, 'approved')
-    assert.equal(second.json.suggestion.operations[1].resolution, 'rejected')
-    assert.ok(second.json.suggestion.resolved_at)
+    // The proposer can still withdraw the remaining pending op; the row now has
+    // one applied accepted change and one withdrawn -> derived 'approved'.
+    const pulled = await srv.post(`/api/suggestions/${sug.id}/withdraw`, { opId: matOp.id })
+    assert.equal(pulled.status, 200)
+    assert.equal(pulled.json.suggestion.status, 'approved')
+    assert.equal(pulled.json.suggestion.operations[0].resolution.status, 'accepted')
+    assert.equal(pulled.json.suggestion.operations[1].resolution.status, 'withdrawn')
+    assert.ok(pulled.json.suggestion.resolved_at)
 
-    // Resolving a resolved row is refused.
-    assert.equal((await srv.post(`/api/suggestions/${sug.id}/reject`, { index: 1 })).status, 409)
+    // Proposal-level state is fully decided: any further action is refused.
+    assert.equal((await srv.post(`/api/suggestions/${sug.id}/reject`, { opId: matOp.id })).status, 409)
+    assert.equal((await srv.post(`/api/suggestions/${sug.id}/withdraw`, {})).status, 409)
+    assert.equal((await srv.patch(`/api/suggestions/${sug.id}`, { note: 'late' })).status, 409)
   } finally {
     srv.close()
     db.close()
+  }
+})
+
+test('per-op withdraw by a separate proposer: rejected+withdrawn derives withdrawn; withdraw-all; edits after outline ops stay allowed', async () => {
+  const database = openDb(':memory:')
+  const app = createApp({ database, services: ['schedule'] })
+  const srv = await startTestServer(app)
+  try {
+    const registrar = srv.newClient()
+    const math = srv.newClient()
+    assert.equal((await registrar.post('/api/auth/login', { username: 'registrar' })).status, 200)
+    assert.equal((await math.post('/api/auth/login', { username: 'math' })).status, 200)
+    const { schedule } = (await registrar.post('/api/schedules', { name: 'Withdraw', year: '2026-27' })).json
+    await registrar.put(`/api/schedules/${schedule.id}/terms/F`, {
+      offerings: [
+        { prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '10:00-11:45' },
+        { prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '9:20-10:30' },
+      ],
+    })
+    const term = (await registrar.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
+
+    const propose = (ops) =>
+      math.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: term.version,
+        operations: ops,
+      })
+
+    // Math proposes two moves. The registrar rejects one; math withdraws the
+    // other -> the suggestion derives 'withdrawn' (never applied, and the
+    // withdrawn status outranks rejected in the summary).
+    const mixed = (
+      await propose([
+        {
+          kind: 'update',
+          cur: { prefix: 'MAT', number: '131', section: 'A' },
+          changes: { time: '14:15-16:00' },
+          diff: [],
+        },
+        {
+          kind: 'update',
+          cur: { prefix: 'PHY', number: '121', section: 'A' },
+          changes: { time: '12:00-13:10' },
+          diff: [],
+        },
+      ])
+    ).json.suggestion
+    const [matOp, phyOp] = mixed.operations
+    assert.equal(
+      (await registrar.post(`/api/suggestions/${mixed.id}/reject`, { opId: matOp.id })).status,
+      200,
+    )
+    const pulled = await math.post(`/api/suggestions/${mixed.id}/withdraw`, { opId: phyOp.id })
+    assert.equal(pulled.status, 200)
+    assert.equal(pulled.json.suggestion.status, 'withdrawn')
+    assert.deepEqual(
+      pulled.json.suggestion.operations.map((e) => e.resolution.status),
+      ['rejected', 'withdrawn'],
+    )
+    // The term was never touched.
+    assert.equal((await registrar.get(`/api/schedules/${schedule.id}/terms/F`)).json.term.offerings.length, 2)
+
+    // A second proposal, withdrawn wholesale: all ops become 'withdrawn'.
+    const second = (
+      await propose([
+        {
+          kind: 'update',
+          cur: { prefix: 'MAT', number: '131', section: 'A' },
+          changes: { time: '14:15-16:00' },
+          diff: [],
+        },
+      ])
+    ).json.suggestion
+    const gone = await math.post(`/api/suggestions/${second.id}/withdraw`, {})
+    assert.equal(gone.status, 200)
+    assert.equal(gone.json.suggestion.status, 'withdrawn')
+    assert.equal(gone.json.suggestion.operations[0].resolution.status, 'withdrawn')
+
+    // A third proposal: math withdraws one op while another is still pending (and
+    // the owner made no decision). The row stays live ('pending'), and the op
+    // replacement edit is still allowed — the outline op is dropped and the list
+    // restarts pending.
+    const third = (
+      await propose([
+        {
+          kind: 'update',
+          cur: { prefix: 'MAT', number: '131', section: 'A' },
+          changes: { time: '14:15-16:00' },
+          diff: [],
+        },
+        {
+          kind: 'update',
+          cur: { prefix: 'PHY', number: '121', section: 'A' },
+          changes: { time: '12:00-13:10' },
+          diff: [],
+        },
+      ])
+    ).json.suggestion
+    const partialPull = await math.post(`/api/suggestions/${third.id}/withdraw`, {
+      opId: third.operations[0].id,
+    })
+    assert.equal(partialPull.status, 200)
+    assert.equal(partialPull.json.suggestion.status, 'pending')
+    const revised = await math.patch(`/api/suggestions/${third.id}`, {
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'MAT', number: '131', section: 'A' },
+          changes: { time: '14:15-16:00' },
+          diff: [],
+        },
+      ],
+    })
+    assert.equal(revised.status, 200)
+    assert.equal(revised.json.suggestion.operations.length, 1)
+    assert.deepEqual(
+      revised.json.suggestion.operations.map((e) => e.resolution.status),
+      ['pending'],
+    )
+
+    // An already-finalized row refuses a late edit.
+    const late = await math.patch(`/api/suggestions/${mixed.id}`, { note: 'late' })
+    assert.equal(late.status, 409)
+    assert.equal(late.json.error, 'not_pending')
+  } finally {
+    srv.close()
+    database.close()
   }
 })
 
