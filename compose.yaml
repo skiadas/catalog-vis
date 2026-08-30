@@ -1,0 +1,18 @@
+services:
+  major-vis:
+    image: ghcr.io/skiadas/catalog-vis:${IMAGE_TAG:-latest}
+    container_name: major-vis
+    restart: unless-stopped
+    mem_limit: 512m
+    ports:
+      - "${PUBLIC_PORT:-8080}:8080"
+    environment:
+      SERVICES: ${SERVICES:-schedule}
+      PORT: "8080"
+      HOST: 0.0.0.0
+      DB_PATH: /data/major-vis.db
+    volumes:
+      - major-vis-data:/data
+
+volumes:
+  major-vis-data:

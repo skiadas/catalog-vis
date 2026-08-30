@@ -109,13 +109,27 @@ the assembled layout from one process:
   schedules/terms, suggested changes) backed by SQLite via the built-in
   `node:sqlite` module — no native dependencies.
 
+To run it on a server, copy `compose.yaml` anywhere on the box and start the
+stack — Compose creates the `major-vis-data` named volume (the SQLite DB lives
+there via `DB_PATH=/data/major-vis.db`), maps port `8080` (override with
+`PUBLIC_PORT`), and sets `restart: unless-stopped` plus a `512m` memory cap:
+
 ```sh
-docker pull ghcr.io/<owner>/major-vis:latest
-docker run --rm -p 8080:8080 -v major-vis-data:/data ghcr.io/<owner>/major-vis:latest
+docker compose up -d
 ```
 
 Set `SERVICES` to a comma-separated list of `program | schedule | planner` to
 choose which apps are exposed (default `schedule`); `PORT`/`HOST` cover the
-listen socket, `DB_PATH` (default `/data/major-vis.db`) the SQLite file. See
-`server/README.md`. The hostname-split seams (each app on its own host, the
-catalog API served elsewhere) exist but are not used yet.
+listen socket. See `server/README.md`. The hostname-split seams (each app on
+its own host, the catalog API served elsewhere) exist but are not used yet.
+
+**Auto-updates**: `deploy/update.sh` pulls the latest image from GHCR and — if
+the image actually changed — recreates the container without touching the
+volume. Run it from cron:
+
+```sh
+0 3 * * * /opt/major-vis/deploy/update.sh >> /var/log/major-vis-update.log 2>&1
+```
+
+(cron has a minimal `PATH`; set one in the crontab or use absolute docker
+paths, and note `IMAGE_TAG`/`PUBLIC_PORT`/`SERVICES` are honored by both files.)
