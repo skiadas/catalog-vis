@@ -17,6 +17,17 @@ export default [
     },
   },
   {
+    // Root configs that run under Node (the Playwright test runner).
+    files: ['playwright.config.js'],
+    languageOptions: {
+      ecmaVersion: 2025,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
     files: ['**/*.js'],
     languageOptions: {
       ecmaVersion: 2025,
