@@ -7,7 +7,11 @@
     <span class="top-nav-title">Schedule Visualization</span>
     <div class="top-nav-right">
       <button class="schedule-help-toggle" title="How to use this page" @click="toggleHelp">?</button>
-      <div v-if="remote && !currentUser" class="schedule-auth-cluster">
+      <div v-if="offlineMode" class="schedule-auth-cluster">
+        <span class="schedule-offline-badge">ⓘ Offline — testing only · work stays in this browser</span>
+        <button class="filter-btn" @click="openAuthPrompt()">Go online</button>
+      </div>
+      <div v-else-if="remote && !currentUser" class="schedule-auth-cluster">
         <form class="schedule-auth-form" @submit.prevent="doSignIn">
           <input
             class="search-input schedule-auth-input"
@@ -34,22 +38,25 @@
   <RouterView v-else />
 
   <ScheduleHelp :is-open="showHelp" @close="showHelp = false" />
+  <AuthPrompt />
 </template>
 
 <script>
 // Schedule app root: the top-nav carries the schedule title, remote sign-in,
 // and the help toggle; the app body below is the route component (ScheduleApp,
 // which starts with the schedule picker). main.js loads the catalog and seeds
-// the collection first.
+// the collection first. The auth prompt (sign in or work offline) is shown at
+// boot when a server is present but the visitor has no session.
 import { errorMessage, loading } from '@major-vis/catalog-client'
-import { remote, currentUser, signIn, signOut } from './src/scheduleStore.js'
+import { remote, currentUser, offlineMode, openAuthPrompt, signIn, signOut } from './src/scheduleStore.js'
 import ScheduleHelp from './components/ScheduleHelp.vue'
+import AuthPrompt from './components/AuthPrompt.vue'
 
 import { ref } from 'vue'
 
 export default {
   name: 'ScheduleAppRoot',
-  components: { ScheduleHelp },
+  components: { ScheduleHelp, AuthPrompt },
   setup() {
     // Remote sign-in (username self-identify). The shared schedules, pending
     // suggestions, and ownership roles all require a session.
@@ -77,6 +84,8 @@ export default {
       errorMessage,
       remote,
       currentUser,
+      offlineMode,
+      openAuthPrompt,
       usernameDraft,
       authError,
       doSignIn,

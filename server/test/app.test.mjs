@@ -41,7 +41,10 @@ test('login + session round-trip by username self-identify', async () => {
     const logout = await srv.post('/api/auth/logout', {})
     assert.equal(logout.status, 200)
     const after = await srv.get('/api/auth/session')
-    assert.equal(after.status, 401)
+    // No session reports user:null (data, not a 401) — the schedule app boots
+    // with this check before any sign-in.
+    assert.equal(after.status, 200)
+    assert.equal(after.json.user, null)
   } finally {
     srv.close()
     db.close()

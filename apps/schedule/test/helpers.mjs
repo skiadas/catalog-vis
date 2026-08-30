@@ -90,6 +90,8 @@ export function resetStore(store) {
   store.pendingDrafts.value = {}
   store.suggestionsBySchedule.value = {}
   store.setShowPendingSuggestions(true)
+  store.authPromptOpen.value = false
+  store.serverDetected.value = false
   memoryStorage.clear()
 }
 

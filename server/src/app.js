@@ -114,9 +114,10 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     res.json({ user: { id: user.id, username: user.username } })
   })
 
+  // Reports the current session's user, or user:null when unauthenticated (the
+  // store treats a missing session as data, not an error — mirrors /api/config).
   app.get('/api/auth/session', (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'not_authenticated' })
-    res.json({ user: { id: req.user.id, username: req.user.username } })
+    res.json({ user: req.user ? { id: req.user.id, username: req.user.username } : null })
   })
 
   app.post('/api/auth/logout', (req, res) => {

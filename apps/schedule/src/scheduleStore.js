@@ -49,6 +49,19 @@ export const activeTerm = ref('F')
 // store then mirrors writes to the API instead of localStorage.
 export const remote = ref(false)
 
+// True when a major-vis server answered the boot /api/config ping, whether or
+// not the user signed in (or chose offline mode). Drives the auth-prompt
+// dialog and the offline badge in the top nav.
+export const serverDetected = ref(false)
+
+// Whether the auth-prompt dialog is open (server present, no session yet, or
+// the user is leaving offline mode).
+export const authPromptOpen = ref(false)
+
+// True when a server is present but the user chose to work offline (local-only
+// storage for testing). The top nav shows the offline badge + "Go online".
+export const offlineMode = computed(() => serverDetected.value && !remote.value)
+
 // Whether to color courses by schedule when multiple schedules are shown and no
 // department/instructor filter is active. Off by default (grid shows clean count
 // summaries); can be toggled on to see each schedule's actual course list.
@@ -95,6 +108,7 @@ const LS_COLOR = 'major-vis.schedule.color'
 const LS_TERM = 'major-vis.schedule.term'
 const LS_PENDING = 'major-vis.schedule.pending'
 const LS_TRAIL = 'major-vis.schedule.suggestions'
+const LS_OFFLINE = 'major-vis.schedule.offline'
 
 export function setColorSchedules(v) {
   colorSchedules.value = !!v
@@ -119,6 +133,42 @@ export function setActiveTerm(term) {
 // edits are mirrored to the backend rather than persisted to localStorage.
 export function setRemote(v) {
   remote.value = !!v
+}
+
+// Opens/closes the "sign in or work offline" auth prompt.
+export function openAuthPrompt() {
+  authPromptOpen.value = true
+}
+export function closeAuthPrompt() {
+  authPromptOpen.value = false
+}
+
+// The user chose to work offline (testing only): flip to local-only storage,
+// remember the choice so reloads stay offline, and seed the local sample. Any
+// data created in offline mode lives only in this browser and never transfers
+// to the server.
+export function workOffline() {
+  setRemote(false)
+  if (typeof window !== 'undefined') localStorage.setItem(LS_OFFLINE, '1')
+  closeAuthPrompt()
+  seedSampleSchedule()
+}
+
+// Attempts to resume online (server) mode — the user chose "Go online" from
+// the offline badge, or "Sign in" in the dialog. Clears the offline choice and
+// re-enables remote mode. Returns true when a session was found and the server
+// collection loaded (the dialog closes); false when there is no session yet
+// (the dialog shows the sign-in form). Server state fully replaces whatever
+// offline work was in this browser.
+export async function resumeOnline() {
+  if (typeof window !== 'undefined') localStorage.removeItem(LS_OFFLINE)
+  if (!serverDetected.value) return false
+  setRemote(true)
+  const user = await loadCurrentUser()
+  if (!user) return false
+  closeAuthPrompt()
+  if (await loadServerState()) restoreAux()
+  return true
 }
 
 // ---- Ownership + suggested changes --------------------------------------
@@ -1028,20 +1078,27 @@ function seedSchedules(seedList) {
 }
 
 // Bootstraps the collection. When the app is served by the major-vis backend it
-// loads the shared schedule list from the API (an unauthenticated visit stays
-// empty — the auth bar offers sign-in); otherwise it seeds the local sample
-// schedule. Call after `loadCatalog` (it consults the catalog for the sample
-// generation).
+// checks for an existing session: a returning user loads the shared schedule
+// list silently; a visitor without a session sees the auth prompt (sign in, or
+// work offline with local-only storage). A serverless deployment seeds the
+// local sample schedule directly. Call after `loadCatalog` (it consults the
+// catalog for the sample generation).
 export async function initScheduleCollection() {
   if (typeof window === 'undefined') return
   const isRemote = await backend.detectRemote()
-  setRemote(isRemote)
-  if (isRemote) {
-    await loadCurrentUser()
-    if (await loadServerState()) restoreAux()
+  serverDetected.value = isRemote
+  if (!isRemote || localStorage.getItem(LS_OFFLINE) === '1') {
+    setRemote(false)
+    seedSampleSchedule()
     return
   }
-  seedSampleSchedule()
+  setRemote(true)
+  const user = await loadCurrentUser()
+  if (!user) {
+    openAuthPrompt()
+    return
+  }
+  if (await loadServerState()) restoreAux()
 }
 
 function restoreAux() {

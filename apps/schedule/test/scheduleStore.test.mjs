@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'node:net'
 
-import { withRemote, flush } from './helpers.mjs'
+import { withRemote, flush, resetStore } from './helpers.mjs'
 
 const COURSE = {
   prefix: 'CS',
@@ -54,6 +54,92 @@ test('signIn loads the shared schedules from the server and selects the first', 
       true,
     )
   })
+})
+
+test('boot without a session opens the auth prompt and fetches no schedules', async () => {
+  await withRemote(async ({ store }) => {
+    await store.initScheduleCollection()
+    assert.equal(store.serverDetected.value, true)
+    assert.equal(store.remote.value, true)
+    assert.equal(store.authPromptOpen.value, true, 'no session -> prompt, not a 401 flood')
+    assert.equal(store.currentUser.value, null)
+    assert.equal(store.schedules.value.length, 0)
+  })
+})
+
+test('workOffline seeds the local sample and a re-boot stays offline without prompting', async () => {
+  await withRemote(async ({ store }) => {
+    await store.initScheduleCollection()
+    assert.equal(store.authPromptOpen.value, true)
+
+    store.workOffline()
+    assert.equal(store.remote.value, false)
+    assert.equal(store.offlineMode.value, true)
+    assert.equal(store.authPromptOpen.value, false)
+    assert.equal(localStorage.getItem('major-vis.schedule.offline'), '1')
+    assert.ok(store.schedules.value.length > 0, 'sample schedule seeded locally')
+
+    // Simulate a reload: the remembered offline choice skips the prompt.
+    store.schedules.value = []
+    store.setRemote(true)
+    store.serverDetected.value = false
+    await store.initScheduleCollection()
+    assert.equal(store.remote.value, false)
+    assert.equal(store.authPromptOpen.value, false)
+    assert.ok(store.schedules.value.length > 0)
+  })
+})
+
+test('resumeOnline from offline restores the server view when a session is live', async () => {
+  await withRemote(async ({ store }) => {
+    await store.initScheduleCollection()
+    assert.equal(store.authPromptOpen.value, true)
+    // Sign in (session cookie lands in the fetch shim), then choose offline.
+    assert.equal(await store.signIn('registrar'), true)
+    assert.equal(store.currentUser.value.username, 'registrar')
+    store.closeAuthPrompt()
+    store.workOffline()
+    assert.equal(store.offlineMode.value, true)
+    assert.ok(store.schedules.value.length > 0, 'local sample replaces the server view')
+
+    // Going online picks the session back up: server state fully replaces the
+    // offline work (which never transfers).
+    assert.equal(await store.resumeOnline(), true)
+    assert.equal(store.remote.value, true)
+    assert.equal(store.offlineMode.value, false)
+    assert.equal(store.authPromptOpen.value, false)
+    assert.equal(store.currentUser.value.username, 'registrar')
+    assert.equal(store.schedules.value.length, 0, 'empty server collection (offline work not merged)')
+  })
+})
+
+test('resumeOnline without a session leaves online mode for the sign-in form', async () => {
+  await withRemote(async ({ store }) => {
+    await store.initScheduleCollection()
+    store.workOffline()
+    assert.equal(store.offlineMode.value, true)
+    assert.equal(await store.resumeOnline(), false, 'no session -> form, not a restore')
+    assert.equal(store.remote.value, true)
+    assert.equal(localStorage.getItem('major-vis.schedule.offline'), null, 'offline choice cleared')
+  })
+})
+
+test('serverless boot seeds the local sample schedule directly', async () => {
+  const store = await import('../src/scheduleStore.js')
+  const { setApiBase } = await import('../src/backend.js')
+  const port = await freePort()
+  setApiBase(`http://127.0.0.1:${port}/api`)
+  try {
+    resetStore(store)
+    store.setRemote(true) // stale remote flag from an earlier test; init overrides
+    await store.initScheduleCollection()
+    assert.equal(store.serverDetected.value, false)
+    assert.equal(store.remote.value, false)
+    assert.equal(store.authPromptOpen.value, false)
+    assert.ok(store.schedules.value.length > 0, 'sample schedule seeded')
+  } finally {
+    resetStore(store)
+  }
 })
 
 test('refreshAllSuggestions never fetches suggestions for client-only schedule ids', async () => {

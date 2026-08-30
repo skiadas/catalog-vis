@@ -1,8 +1,10 @@
 // Local-only smoke test for the schedule app's core flows, run against the
 // FULL stack: the Express server (temp DB, built apps from dist/) + a real
-// headless browser (system Chrome via playwright-core). Walks sign-in, schedule
-// creation, and the edit/suggest mode menu, and fails on page errors or
-// unexpected console errors. `npm run test:smoke`.
+// headless browser (system Chrome via playwright-core). Walks the boot auth
+// prompt (sign in), schedule creation, and the edit/suggest mode menu, then a
+// fresh visitor choosing "Work offline" (local-only testing mode, no 401s at
+// boot), and fails on page errors or unexpected console errors.
+// `npm run test:smoke`.
 //
 // Requirements: `npm run build` first (dist/<name> bundles are served), and a
 // Chrome installation (or CHROME_PATH pointing at one). Not wired into CI.
@@ -65,18 +67,20 @@ page.on('pageerror', (err) => {
 page.on('console', (msg) => {
   if (!trackingErrors || msg.type() !== 'error') return
   const text = msg.text()
-  // Expected: the pre-sign-in 401 noise and favicon misses.
-  if (text.includes('401') || text.includes('favicon')) return
+  // Expected: favicon misses.
+  if (text.includes('favicon')) return
   unexpectedConsole.push(text)
 })
 
 try {
   await page.goto(base, { waitUntil: 'networkidle' })
 
-  // --- Sign in ---
-  await page.getByLabel('Username').waitFor({ timeout: 10000 })
-  await page.getByLabel('Username').fill('registrar')
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  // --- Sign in via the boot auth prompt ---
+  await page.getByRole('dialog').waitFor({ timeout: 10000 })
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Sign in' }).click()
+  await dialog.getByLabel('Username').fill('registrar')
+  await dialog.getByRole('button', { name: 'Sign in' }).click()
   await page.getByText('Signed in as registrar').waitFor({ timeout: 10000 })
   trackingErrors = true
 
@@ -108,6 +112,36 @@ try {
   await page.getByText('Suggestion mode:').waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: 'Done' }).click()
 
+  // --- Offline phase: a fresh visitor chooses "Work offline" (local-only) ---
+  // New context = no session cookie, empty localStorage: the prompt must
+  // appear, choosing offline shows the persistent badge and the local sample,
+  // and boot makes no authenticated calls (no 401 console errors).
+  const ctx2 = await browser.newContext()
+  const page2 = await ctx2.newPage()
+  const offlineConsole = []
+  const offlineErrors = []
+  page2.on('pageerror', (err) => offlineErrors.push(String(err)))
+  page2.on('console', (msg) => {
+    if (msg.type() !== 'error') return
+    const text = msg.text()
+    if (text.includes('favicon')) return
+    offlineConsole.push(text)
+  })
+  await page2.goto(base, { waitUntil: 'networkidle' })
+  const dialog2 = page2.getByRole('dialog')
+  await dialog2.waitFor({ timeout: 10000 })
+  await dialog2.getByRole('button', { name: 'Work offline' }).click()
+  await dialog2.waitFor({ state: 'detached', timeout: 5000 })
+  await page2.getByText('Offline — testing only').waitFor({ timeout: 5000 })
+  await page2.getByText('Sample schedule').first().waitFor({ timeout: 5000 })
+  await ctx2.close()
+  if (offlineErrors.length) {
+    await fail(`offline page errors: ${offlineErrors.join(' | ')}`)
+  }
+  if (offlineConsole.some((t) => t.includes('401'))) {
+    await fail(`offline boot produced 401 console errors: ${offlineConsole.join(' | ')}`)
+  }
+
   // --- Assertions ---
   if (pageErrors.length) {
     await fail(`page errors: ${pageErrors.join(' | ')}`)
@@ -115,7 +149,7 @@ try {
   if (unexpectedConsole.length) {
     await fail(`console errors: ${unexpectedConsole.slice(0, 5).join(' | ')}`)
   }
-  console.log('SMOKE OK: sign-in, create, edit/suggest menus, no console errors.')
+  console.log('SMOKE OK: dialog sign-in, create, edit/suggest menus, offline mode, no console errors.')
 } catch (err) {
   await fail(String(err))
 } finally {

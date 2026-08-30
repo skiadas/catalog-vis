@@ -19,6 +19,9 @@ college-hosted source.
 - `major-vis.schedule.term` — the active term (`F`/`W`/`S`)
 - `major-vis.schedule.pending` — pending-suggestion overlay toggle
 - `major-vis.schedule.suggestions` — the offline suggestion trail (serverless mode)
+- `major-vis.schedule.offline` — "1" when the user chose **work offline** on a
+  server-backed deployment (local-only testing mode; see the auth-prompt
+  section below)
 
 A **schedule** is a named, yearly entry that owns three term parts (Fall/Winter/
 Spring), each a separate `offerings` collection; the app edits one term at a time
@@ -66,9 +69,16 @@ published state.
 When the app is served by the backend (`server/`), `initScheduleCollection`
 pings `/api/config` and switches to **remote mode**: the schedule list and term
 edits are mirrored to the API (`apps/schedule/src/backend.js`) instead of
-`localStorage`. An unauthenticated visit shows an empty collection with the
-**sign-in bar** (username self-identify) — owners are whoever created a
-schedule. Suggestions are concurrent: any number of departments may hold
+`localStorage`. A visitor without a session sees the **auth prompt** — sign in
+(username self-identify; owners are whoever created a schedule), or **work
+offline**. Offline mode is for testing use only: the app runs entirely on
+`localStorage` (option "Work offline" remembers the choice in
+`major-vis.schedule.offline`), the top nav shows an "Offline — testing only"
+badge with a "Go online" button, and nothing created offline **ever transfers**
+to the server — going online replaces the browser's view with the server's
+collection (the prompt repeats the warning when leaving offline mode). A
+returning visitor with a live session loads the shared collection silently,
+no prompt. Suggestions are concurrent: any number of departments may hold
 live pending proposals ("suggested moves"), visible to everyone — pending
 suggestions render as dashed overlay blocks on the calendar (the "Show
 proposals" toggle, on by default), so departments see where each other plan to
