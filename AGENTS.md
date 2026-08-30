@@ -99,7 +99,7 @@ checks CI runs, all must pass _before_ you commit:
 
 When a slice is committed and the work is done, run `npm run build` **once
 more** so the deployment output (`dist/`, gitignored) is fresh before handing
-back to the user — the smoke test, local `npm run serve` runs, and the
+back to the user — the E2E suite, local `npm run serve` runs, and the
 container all consume the built bundles, not sources.
 
 **Definition of done for a change to app/store logic or UI** — passing the
@@ -110,12 +110,15 @@ checks above proves the build stays green, not that a feature works:
   the change alters behavior (see `apps/schedule/test/scheduleStore.test.mjs`
   and its helpers — the harness shims localStorage and a cookie-aware fetch;
   `backend.setApiBase` points the store at the test server).
-- **UI interactions** are exercised by the local-only smoke test
-  (`npm run test:smoke` — requires `npm run build` first and system Chrome /
-  `CHROME_PATH`; drives sign-in, creation, and the edit/suggest menus in a
-  headless browser and fails on console errors) or, when the smoke test can't
-  cover the flow, an explicit manual run of the full stack (`npm run build &&
-  npm run serve`).
+- **UI interactions** are exercised by the Playwright E2E suite
+  (`npm run test:e2e` — bundled Chromium, one-time `npx playwright install
+  chromium`; the config's webServer builds the apps and boots a scratch-DB
+  server; drives sign-in, creation, and the edit/suggest menus plus the
+  meeting-pattern guards/strip/rail and the offline boot in a headless
+  browser and fails on console errors). It also runs in CI as its own
+  main-only workflow (`.github/workflows/e2e.yml` — slow, separate from the
+  fast gate). When the suite can't cover a flow, verify with an explicit
+  manual run of the full stack (`npm run build && npm run serve`).
 - **Coverage**: `npm run test:coverage` reports Node-test-file coverage; check
   it when adding suites so untested files don't accumulate silently.
 

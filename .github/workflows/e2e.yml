@@ -1,0 +1,36 @@
+name: E2E
+
+# The slow browser suite (Playwright, bundled Chromium against the full
+# built stack). Runs separately from the fast ci.yml gate; main-only for now
+# (no PR workflows); workflow_dispatch allows manual runs.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Install JS tooling
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the E2E suite
+        run: npx playwright test

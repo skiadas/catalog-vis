@@ -74,6 +74,7 @@ npm run typecheck        # tsc checkJs across apps/packages/server
 npm run build            # Vite bundles the three apps into dist/<name>/
 npm run dev              # schedule app dev server at http://localhost:5173
 npm run serve            # run the backend (Express + SQLite) at http://localhost:8080
+npm run test:e2e         # Playwright E2E (bundled Chromium; one-time `npx playwright install chromium`)
 npm run validate:catalog # committed JSON conforms to the contract schemas
 npm run lint             # eslint
 npm run format           # prettier --write
@@ -90,9 +91,10 @@ python3 tools/catalog-pipeline/test_data.py  # data invariants (npm run test:dat
 ## How it's deployed
 
 GitHub Actions runs lint/format/tests/typecheck/build/schema-validation on
-every push (`.github/workflows/ci.yml`, Node 26 / Python 3.12); pushes to
-`main` and `v*` tags build the container and publish it to GHCR
-(`.github/workflows/publish.yml`).
+every push (`.github/workflows/ci.yml`, Node 26 / Python 3.12); the slower
+Playwright E2E suite runs as its own main-only workflow
+(`.github/workflows/e2e.yml`); pushes to `main` and `v*` tags build the
+container and publish it to GHCR (`.github/workflows/publish.yml`).
 
 The deployment is a **single container** (`Dockerfile`): a build stage
 installs the toolchain and builds the apps (`npm ci && npm run build`), a

@@ -4,6 +4,10 @@ node_modules/
 # Built app bundles (npm run build / vite) — dist/ is deployment output
 dist/
 
+# Playwright artifacts (failed-test traces, HTML report)
+test-results/
+playwright-report/
+
 # Python
 __pycache__/
 *.pyc
