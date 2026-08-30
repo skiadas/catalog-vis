@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 import { readFile, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
 import { compile } from 'sass'
 
 const repoRoot = fileURLToPath(new URL('.', import.meta.url))
@@ -88,18 +89,10 @@ export function appConfig(name) {
   return defineConfig({
     root: resolve(repoRoot, 'apps', name),
     base: './',
-    plugins: [catalogDevPlugin, scssPlugin(name)],
+    plugins: [vue(), catalogDevPlugin, scssPlugin(name)],
     build: {
       outDir: resolve(repoRoot, 'dist', name),
       emptyOutDir: true,
-    },
-    resolve: {
-      alias: {
-        // The apps are plain template strings rendered at runtime (no .vue
-        // single-file components), so they need the full Vue build that ships
-        // the template compiler rather than the runtime-only default export.
-        vue: 'vue/dist/vue.esm-bundler.js',
-      },
     },
     define: {
       // Feature flags the full Vue build expects; Options API must stay on

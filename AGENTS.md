@@ -39,15 +39,18 @@ tools/catalog-pipeline/      Python: scrape, codify, extract_core, audit, md_to_
 
 ## Cross-cutting facts
 
-- **Apps are built with Vite; TypeScript type-checks the JS.** Each app is an
-  independent Vite root (`apps/<name>`, wired by `vite.apps.mjs`) that builds a
-  self-contained `dist/<name>/` bundle. Bare `@major-vis/*` specifiers resolve
-  through the workspace `package.json` `exports` fields — there are **no import
-  maps** anymore, so `npm run build` and `npm run typecheck` (tsc `checkJs`)
-  catch bad imports/exports at build time, before a browser ever loads an app.
-  Apps run on the full Vue build (altered via the `vue/esm-bundler` alias in
-  `vite.apps.mjs`) because components are plain template strings, not SFCs.
-  Pure packages never import Vue (`schedule-core`, `degree-audit`,
+- **Apps are built with Vite; TypeScript type-checks the JS and the SFCs.**
+  Each app is an independent Vite root (`apps/<name>`, wired by
+  `vite.apps.mjs`) that builds a self-contained `dist/<name>/` bundle. Bare
+  `@major-vis/*` specifiers resolve through the workspace `package.json`
+  `exports` fields — there are **no import maps** anymore, so `npm run build`
+  and `npm run typecheck` catch bad imports/exports at build time, before a
+  browser ever loads an app. Components are `.vue` single-file components
+  (Options API + template) compiled by `@vitejs/plugin-vue`; `npm run
+  typecheck` runs **vue-tsc**, which type-checks template bindings against
+  each component's props/setup scope — a template referencing a binding the
+  component never returns is a compile error, not a browser crash. Pure
+  packages never import Vue (`schedule-core`, `degree-audit`,
   `catalog-contract`, `app-config`); `catalog-client` and `router` import Vue
   on purpose. CSS is authored as SCSS (`style/`, shared partials in
   `style/partials/`) and compiled by Vite into each app build via an inline
@@ -67,7 +70,7 @@ tools/catalog-pipeline/      Python: scrape, codify, extract_core, audit, md_to_
 
 ## How to work here
 
-**Formatting** — `npx prettier@3.3.3 --write "**/*.{js,html,css,scss}"` (JSON
+**Formatting** — `npx prettier@3.3.3 --write "**/*.{js,html,css,scss,vue}"` (JSON
 and the compiled `apps/*/style.css` are ignored), then `python3 -m black .` and
 `python3 -m compileall -q -x "node_modules|/\.git/" .`. **Never hard-code
 design tokens**: inherit before you set · token before you repeat · name a
@@ -81,9 +84,9 @@ coherent slice, run the checks below, and commit before moving on. This repo
 wants autonomous small commits; do not wait for explicit permission, but do
 inspect `git status`/`git diff` so only intended files are staged. Run the same
 checks CI runs, all must pass _before_ you commit:
-- `npx prettier@3.3.3 --check "**/*.{js,html,css,scss}"`
+- `npx prettier@3.3.3 --check "**/*.{js,html,css,scss,vue}"`
 - `npm test` (workspaces: degree-audit, schedule-core, catalog-contract)
-- `npm run typecheck` (tsc checkJs across apps/packages/server)
+- `npm run typecheck` (vue-tsc: checkJs across apps/packages/server + SFC template bindings)
 - `npm run build` (Vite bundles each app; fails on bad imports/exports)
 - `npm run validate:catalog` (contract schemas)
 - `npm run test:data` (Python data-integrity)

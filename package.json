@@ -24,11 +24,13 @@
     "dev:browse": "vite apps/browse",
     "dev:planner": "vite apps/planner",
     "build": "vite build apps/schedule && vite build apps/browse && vite build apps/planner",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "vue-tsc -p tsconfig.json",
     "check:apps": "npm run build && npm run typecheck"
   },
   "devDependencies": {
     "@types/node": "^26",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "@vue/language-core": "^3.3.11",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
     "playwright-core": "^1.62.1",
@@ -36,6 +38,9 @@
     "sass": "^1.102.0",
     "typescript": "^5.9.3",
     "vite": "^8.2.2",
-    "vue": "^3.5.42"
-  }
+    "vue": "^3.5.42",
+    "vue-tsc": "^3.3.11"
+  },
+  "format": "prettier --write \"**/*.{js,html,css,scss,vue}\"",
+  "format:check": "prettier --check \"**/*.{js,html,css,scss,vue}\""
 }

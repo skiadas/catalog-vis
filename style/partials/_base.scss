@@ -176,14 +176,6 @@ body {
   color: var(--primary);
   margin-bottom: 8px;
 }
-.req-block .req-total {
-  font-size: var(--font-md);
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
-.req-block .req-courses {
-  @include flex-row;
-}
 .course-chip {
   display: inline-flex;
   align-items: center;

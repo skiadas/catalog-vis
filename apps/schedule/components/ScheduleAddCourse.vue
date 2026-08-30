@@ -1,3 +1,42 @@
+<template>
+  <div v-if="props.isOpen" class="modal-overlay" @click.self="close">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="schedule-add-course-title">
+      <div class="modal-head">
+        <h3 id="schedule-add-course-title">Add a course to {{ editingName }}</h3>
+        <button class="modal-close" @click="close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-intro">
+          Pick a catalog course to add it in its default slot — its edit window opens next so you can
+          customize it right away.
+          <template v-if="editingRole === 'suggest'">
+            It will be part of your proposal, not written to the schedule directly.</template
+          >
+        </p>
+        <input
+          class="search-input schedule-add-search"
+          type="search"
+          placeholder="Search code or name…"
+          v-model="addCourseQuery"
+        />
+        <div class="schedule-add-list">
+          <button
+            v-for="code in addCourseResults"
+            :key="code"
+            class="course-picker-option schedule-add-option"
+            @click="addCourse(code)"
+          >
+            <span class="planner-pick-code">{{ code }}</span>
+            <span class="planner-pick-name">{{ courseName(code) }}</span>
+          </button>
+          <div v-if="!addCourseResults.length" class="course-picker-empty">No courses match.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
 // "Add a course" modal for the schedule being edited. Adds the picked catalog
 // course to the edited schedule on its default slot, then opens its course
 // editor for further customization. Visibility via the `isOpen` prop.
@@ -58,39 +97,5 @@ export default {
       courseName,
     }
   },
-  template: `
-    <div v-if="props.isOpen" class="modal-overlay" @click.self="close">
-      <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="schedule-add-course-title">
-        <div class="modal-head">
-          <h3 id="schedule-add-course-title">Add a course to {{ editingName }}</h3>
-          <button class="modal-close" @click="close" aria-label="Close">×</button>
-        </div>
-        <div class="modal-body">
-          <p class="modal-intro">
-            Pick a catalog course to add it in its default slot — its edit window opens next
-            so you can customize it right away.
-            <template v-if="editingRole === 'suggest'"> It will be part of your proposal, not written to the schedule directly.</template>
-          </p>
-          <input
-            class="search-input schedule-add-search"
-            type="search"
-            placeholder="Search code or name…"
-            v-model="addCourseQuery"
-          />
-          <div class="schedule-add-list">
-            <button
-              v-for="code in addCourseResults"
-              :key="code"
-              class="course-picker-option schedule-add-option"
-              @click="addCourse(code)"
-            >
-              <span class="planner-pick-code">{{ code }}</span>
-              <span class="planner-pick-name">{{ courseName(code) }}</span>
-            </button>
-            <div v-if="!addCourseResults.length" class="course-picker-empty">No courses match.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
 }
+</script>

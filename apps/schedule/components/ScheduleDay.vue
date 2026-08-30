@@ -1,3 +1,48 @@
+<template>
+  <div>
+    <div class="detail-header nav-header">
+      <button class="nav-arrow" @click="prevDay">←</button>
+      <h2>{{ WEEKDAY_NAMES[day] }}</h2>
+      <button class="nav-arrow" @click="nextDay">→</button>
+    </div>
+    <p class="results-count" v-if="!hasAny">No classes scheduled this day.</p>
+
+    <div
+      v-for="t in dayTimes"
+      :key="t.time"
+      class="day-slot-card"
+      :class="{ 'drag-over': dragOver === t.key }"
+      @dragover="zoneOver($event, t)"
+      @dragleave="zoneLeave"
+      @drop="zoneDrop($event, t)"
+    >
+      <div class="day-slot-head" @click="goScheduleSlot(day, t.time)">
+        <span class="day-slot-time">{{ formatTime(t.time) }}</span>
+        <span class="day-slot-count"
+          >{{ itemsFor(t.time).length }} offering{{ itemsFor(t.time).length !== 1 ? 's' : '' }}</span
+        >
+      </div>
+      <div class="day-slot-items" v-if="itemsFor(t.time).length">
+        <CoursePill
+          v-for="it in itemsFor(t.time)"
+          :key="it.code + it.o.section + it.sid"
+          :item="it"
+          :filter-active="filter.active"
+          :color="filter.color(it)"
+          :editable="isEditable(it)"
+          :draggable="isEditable(it)"
+          :drag-day="day"
+          :proposed="proposalFor(it) ? itemTitle(it) : ''"
+          :removed="removalFor(it) ? itemTitle(it) : ''"
+          @edit="openCourseEdit(it)"
+        />
+      </div>
+      <div class="day-slot-empty" v-else>No offerings</div>
+    </div>
+  </div>
+</template>
+
+<script>
 import { route } from '../router.js'
 import {
   WEEKDAYS,
@@ -26,7 +71,7 @@ import {
 } from '../src/scheduleStore.js'
 import { goScheduleSlot, goScheduleCourse, goScheduleDay } from '../router.js'
 import { useScheduleDrag } from '../scheduleDrag.js'
-import CoursePill from './CoursePill.js'
+import CoursePill from './CoursePill.vue'
 
 import { computed } from 'vue'
 
@@ -149,45 +194,5 @@ export default {
       openCourseEdit,
     }
   },
-  template: `
-    <div>
-      <div class="detail-header nav-header">
-        <button class="nav-arrow" @click="prevDay">←</button>
-        <h2>{{ WEEKDAY_NAMES[day] }}</h2>
-        <button class="nav-arrow" @click="nextDay">→</button>
-      </div>
-      <p class="results-count" v-if="!hasAny">No classes scheduled this day.</p>
-
-      <div
-        v-for="t in dayTimes"
-        :key="t.time"
-        class="day-slot-card"
-        :class="{ 'drag-over': dragOver === t.key }"
-        @dragover="zoneOver($event, t)"
-        @dragleave="zoneLeave"
-        @drop="zoneDrop($event, t)"
-      >
-        <div class="day-slot-head" @click="goScheduleSlot(day, t.time)">
-          <span class="day-slot-time">{{ formatTime(t.time) }}</span>
-          <span class="day-slot-count">{{ itemsFor(t.time).length }} offering{{ itemsFor(t.time).length !== 1 ? 's' : '' }}</span>
-        </div>
-        <div class="day-slot-items" v-if="itemsFor(t.time).length">
-          <CoursePill
-            v-for="it in itemsFor(t.time)"
-            :key="it.code + it.o.section + it.sid"
-            :item="it"
-            :filter-active="filter.active"
-            :color="filter.color(it)"
-            :editable="isEditable(it)"
-            :draggable="isEditable(it)"
-            :drag-day="day"
-            :proposed="proposalFor(it) ? itemTitle(it) : ''"
-            :removed="removalFor(it) ? itemTitle(it) : ''"
-            @edit="openCourseEdit(it)"
-          />
-        </div>
-        <div class="day-slot-empty" v-else>No offerings</div>
-      </div>
-    </div>
-  `,
 }
+</script>

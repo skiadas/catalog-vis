@@ -1,3 +1,36 @@
+<template>
+  <div>
+    <div class="filter-panel" v-if="showFilter && filterPanelOpen && filterMode === 'dept'">
+      <span class="filter-label">Departments:</span>
+      <span
+        v-for="d in depts"
+        :key="d"
+        class="filter-chip"
+        :class="{ active: selectedDepartments.includes(d) }"
+        :style="selectedDepartments.includes(d) ? { backgroundColor: colorForDept(d) } : {}"
+        @click="toggleDept(d)"
+        >{{ d }}</span
+      >
+      <button v-if="selectedDepartments.length" class="filter-clear" @click="clearDepts">Clear</button>
+    </div>
+
+    <div class="filter-panel" v-if="showFilter && filterPanelOpen && filterMode === 'instructor'">
+      <span class="filter-label">Instructors:</span>
+      <span
+        v-for="i in instructors"
+        :key="i"
+        class="filter-chip"
+        :class="{ active: selectedInstructors.includes(i) }"
+        :style="selectedInstructors.includes(i) ? { backgroundColor: colorForInstructor(i) } : {}"
+        @click="toggleInstructor(i)"
+        >{{ i }}</span
+      >
+      <button v-if="selectedInstructors.length" class="filter-clear" @click="clearInstructors">Clear</button>
+    </div>
+  </div>
+</template>
+
+<script>
 // Department / instructor filter chips for the schedule views. Reads the
 // selected filters and the schedule index from the module stores directly;
 // rendered as a sibling of the schedule header (below the toolbar).
@@ -62,33 +95,5 @@ export default {
       colorForInstructor,
     }
   },
-  template: `
-    <div>
-      <div class="filter-panel" v-if="showFilter && filterPanelOpen && filterMode === 'dept'">
-        <span class="filter-label">Departments:</span>
-        <span
-          v-for="d in depts"
-          :key="d"
-          class="filter-chip"
-          :class="{ active: selectedDepartments.includes(d) }"
-          :style="selectedDepartments.includes(d) ? { backgroundColor: colorForDept(d) } : {}"
-          @click="toggleDept(d)"
-        >{{ d }}</span>
-        <button v-if="selectedDepartments.length" class="filter-clear" @click="clearDepts">Clear</button>
-      </div>
-
-      <div class="filter-panel" v-if="showFilter && filterPanelOpen && filterMode === 'instructor'">
-        <span class="filter-label">Instructors:</span>
-        <span
-          v-for="i in instructors"
-          :key="i"
-          class="filter-chip"
-          :class="{ active: selectedInstructors.includes(i) }"
-          :style="selectedInstructors.includes(i) ? { backgroundColor: colorForInstructor(i) } : {}"
-          @click="toggleInstructor(i)"
-        >{{ i }}</span>
-        <button v-if="selectedInstructors.length" class="filter-clear" @click="clearInstructors">Clear</button>
-      </div>
-    </div>
-  `,
 }
+</script>

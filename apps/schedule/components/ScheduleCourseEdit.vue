@@ -1,3 +1,149 @@
+<template>
+  <div class="modal-overlay" @click.self="$emit('close')">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="course-edit-title">
+      <div class="modal-head">
+        <h3 id="course-edit-title">Edit {{ offering.code }}</h3>
+        <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-intro">
+          {{ courseName }} — editing this offering in <strong>{{ schedule.name }}</strong> ({{ termLabel }}).
+          <template v-if="editingRole === 'suggest'"
+            >These changes are collected into a proposal for the owner; nothing is written to the schedule
+            until it's approved.</template
+          >
+          <template v-else>Any changes are saved to this schedule in your browser.</template>
+        </p>
+
+        <div class="field">
+          <label>Instructor</label>
+          <div class="filter-group">
+            <button class="filter-btn" :class="{ active: !showAll }" @click="showAll = false">
+              Department
+            </button>
+            <button class="filter-btn" :class="{ active: showAll }" @click="showAll = true">
+              All instructors
+            </button>
+          </div>
+          <select class="search-input" v-model="instructorSel">
+            <option value="">— No instructor —</option>
+            <option v-for="i in instructorOptions" :key="i" :value="i">{{ i }}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="course-edit-section">Section</label>
+          <input
+            id="course-edit-section"
+            class="search-input"
+            type="text"
+            maxlength="4"
+            v-model="sectionSel"
+            placeholder="A"
+          />
+        </div>
+
+        <div class="field">
+          <label>Meeting time</label>
+          <div class="filter-group">
+            <button class="filter-btn" :class="{ active: timeMode === 'slot' }" @click="timeMode = 'slot'">
+              Time slot
+            </button>
+            <button
+              class="filter-btn"
+              :class="{ active: timeMode === 'custom' }"
+              @click="timeMode = 'custom'"
+            >
+              Custom time
+            </button>
+            <button class="filter-btn" :class="{ active: timeMode === 'none' }" @click="timeMode = 'none'">
+              No meeting time
+            </button>
+          </div>
+
+          <div v-if="timeMode !== 'none'" class="slot-time-groups">
+            <div
+              class="slot-time-group"
+              v-for="g in dayGroups"
+              :key="g.label"
+              :class="{ inactive: timeGroupSel !== g.label }"
+            >
+              <button
+                class="slot-time-group-name"
+                :class="{ active: timeGroupSel === g.label }"
+                @click="pickGroup(g.label)"
+              >
+                {{ g.label }}
+              </button>
+              <div class="slot-time-group-days">
+                <button
+                  v-for="d in g.days"
+                  :key="d"
+                  type="button"
+                  class="day-chip"
+                  :class="{ active: daysSel.includes(d), disabled: timeGroupSel !== g.label }"
+                  :disabled="timeGroupSel !== g.label"
+                  @click="timeGroupSel === g.label && toggleDay(d)"
+                >
+                  {{ d }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="timeMode === 'slot'" class="slot-time-opts">
+              <button
+                v-for="s in slotOptions"
+                :key="s"
+                type="button"
+                class="filter-btn slot-time-btn"
+                :class="{ active: timeSel === s }"
+                @click="timeSel = s"
+              >
+                {{ formatTime(s) }}
+              </button>
+            </div>
+
+            <div v-if="timeMode === 'custom'" class="custom-time-row">
+              <input class="search-input" type="time" v-model="customStart" aria-label="Start time" />
+              <span class="custom-time-sep">to</span>
+              <input class="search-input" type="time" v-model="customEnd" aria-label="End time" />
+            </div>
+          </div>
+          <p v-else class="field-hint">
+            Independent studies and the like can sit in the schedule without a meeting time.
+          </p>
+        </div>
+
+        <div class="controls">
+          <button class="filter-btn remove-course-btn" @click="removeCourse">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" y1="11" x2="10" y2="17" />
+              <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
+            Remove course
+          </button>
+          <span class="controls-spacer"></span>
+          <button class="filter-btn" @click="$emit('close')">Cancel</button>
+          <button class="filter-btn primary" :disabled="!canSave" @click="save">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
 import {
   WEEKDAYS,
   formatTime,
@@ -183,95 +329,5 @@ export default {
       GROUP_DAYS,
     }
   },
-  template: `
-    <div class="modal-overlay" @click.self="$emit('close')">
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="course-edit-title">
-        <div class="modal-head">
-          <h3 id="course-edit-title">Edit {{ offering.code }}</h3>
-          <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
-        </div>
-        <div class="modal-body">
-          <p class="modal-intro">
-            {{ courseName }} — editing this offering in <strong>{{ schedule.name }}</strong>
-            ({{ termLabel }}).
-            <template v-if="editingRole === 'suggest'">These changes are collected into a proposal for the owner; nothing is written to the schedule until it's approved.</template>
-            <template v-else>Any changes are saved to this schedule in your browser.</template>
-          </p>
-
-          <div class="field">
-            <label>Instructor</label>
-            <div class="filter-group">
-              <button class="filter-btn" :class="{ active: !showAll }" @click="showAll = false">Department</button>
-              <button class="filter-btn" :class="{ active: showAll }" @click="showAll = true">All instructors</button>
-            </div>
-            <select class="search-input" v-model="instructorSel">
-              <option value="">— No instructor —</option>
-              <option v-for="i in instructorOptions" :key="i" :value="i">{{ i }}</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="course-edit-section">Section</label>
-            <input id="course-edit-section" class="search-input" type="text" maxlength="4" v-model="sectionSel" placeholder="A" />
-          </div>
-
-          <div class="field">
-            <label>Meeting time</label>
-            <div class="filter-group">
-              <button class="filter-btn" :class="{ active: timeMode === 'slot' }" @click="timeMode = 'slot'">Time slot</button>
-              <button class="filter-btn" :class="{ active: timeMode === 'custom' }" @click="timeMode = 'custom'">Custom time</button>
-              <button class="filter-btn" :class="{ active: timeMode === 'none' }" @click="timeMode = 'none'">No meeting time</button>
-            </div>
-
-            <div v-if="timeMode !== 'none'" class="slot-time-groups">
-              <div class="slot-time-group" v-for="g in dayGroups" :key="g.label" :class="{ inactive: timeGroupSel !== g.label }">
-                <button class="slot-time-group-name" :class="{ active: timeGroupSel === g.label }" @click="pickGroup(g.label)">
-                  {{ g.label }}
-                </button>
-                <div class="slot-time-group-days">
-                  <button
-                    v-for="d in g.days"
-                    :key="d"
-                    type="button"
-                    class="day-chip"
-                    :class="{ active: daysSel.includes(d), disabled: timeGroupSel !== g.label }"
-                    :disabled="timeGroupSel !== g.label"
-                    @click="timeGroupSel === g.label && toggleDay(d)"
-                  >{{ d }}</button>
-                </div>
-              </div>
-
-              <div v-if="timeMode === 'slot'" class="slot-time-opts">
-                <button
-                  v-for="s in slotOptions"
-                  :key="s"
-                  type="button"
-                  class="filter-btn slot-time-btn"
-                  :class="{ active: timeSel === s }"
-                  @click="timeSel = s"
-                >{{ formatTime(s) }}</button>
-              </div>
-
-              <div v-if="timeMode === 'custom'" class="custom-time-row">
-                <input class="search-input" type="time" v-model="customStart" aria-label="Start time" />
-                <span class="custom-time-sep">to</span>
-                <input class="search-input" type="time" v-model="customEnd" aria-label="End time" />
-              </div>
-            </div>
-            <p v-else class="field-hint">Independent studies and the like can sit in the schedule without a meeting time.</p>
-          </div>
-
-          <div class="controls">
-            <button class="filter-btn remove-course-btn" @click="removeCourse">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-              Remove course
-            </button>
-            <span class="controls-spacer"></span>
-            <button class="filter-btn" @click="$emit('close')">Cancel</button>
-            <button class="filter-btn primary" :disabled="!canSave" @click="save">Save changes</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
 }
+</script>

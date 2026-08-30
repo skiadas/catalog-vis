@@ -1,7 +1,21 @@
+<template>
+  <div class="req-section">
+    <div v-if="section.heading" class="req-section-heading">{{ section.heading }}</div>
+    <div class="req-items">
+      <div v-for="(item, idx) in groupedItems" :key="idx" class="req-item">
+        <RequirementItem :item="item" />
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import RequirementItem from './RequirementItem.vue'
 import { computed } from 'vue'
 
 export default {
   name: 'RequirementSection',
+  components: { RequirementItem },
   props: {
     section: { type: Object, required: true },
   },
@@ -28,14 +42,5 @@ export default {
 
     return { groupedItems }
   },
-  template: `
-    <div class="req-section">
-      <div v-if="section.heading" class="req-section-heading">{{ section.heading }}</div>
-      <div class="req-items">
-        <div v-for="(item, idx) in groupedItems" :key="idx" class="req-item">
-          <RequirementItem :item="item" />
-        </div>
-      </div>
-    </div>
-  `,
 }
+</script>

@@ -1,3 +1,92 @@
+<template>
+  <div>
+    <WeeklyCalendar :on-day-click="goScheduleDay" :striped="filter.active" :range="dayRange">
+      <template #daycol="{ day }">
+        <div
+          v-for="z in dropZones(day)"
+          :key="z.key"
+          class="cal-block cal-dropzone"
+          :class="{ over: dragOver === z.key }"
+          :style="z.style"
+          @dragover="zoneOver($event, z)"
+          @dragleave="zoneLeave"
+          @drop="zoneDrop($event, z)"
+        ></div>
+        <div
+          v-for="b in blocksInDay(day)"
+          :key="b.key"
+          class="cal-block"
+          :class="{ filtered: b.active, over: dragOver === dayGroup(day) + '|' + b.slot.time }"
+          :title="b.title"
+          :style="b.style"
+          @click="goScheduleSlot(day, b.slot.time)"
+          @dragover="
+            zoneOver($event, {
+              key: dayGroup(day) + '|' + b.slot.time,
+              day,
+              days: dayGroup(day),
+              time: b.slot.time,
+            })
+          "
+          @dragleave="zoneLeave"
+          @drop="zoneDrop($event, { day, days: dayGroup(day), time: b.slot.time })"
+        >
+          <template v-if="filter.active">
+            <div class="cal-block-time">{{ formatTime(b.slot.time) }}</div>
+            <div class="cal-block-depts">
+              <span
+                v-for="it in b.slot.items"
+                :key="it.code + it.o.section + it.sid"
+                class="filter-offering"
+                :class="{ draggable: isEditable(it), proposed: proposalFor(it), removed: removalFor(it) }"
+                :style="{ backgroundColor: filter.color(it) }"
+                :draggable="isEditable(it)"
+                @click.stop="goScheduleCourse(it.code)"
+                @dragstart="onDragStart($event, it, day)"
+                :title="itemTitle(it) || (isEditable(it) ? 'Drag to move' : '')"
+              >
+                <span class="filter-offering-main"
+                  >{{ it.code }}{{ it.o.section
+                  }}<span class="do-inst">{{ briefInstructor(it.o.instructor) }}</span></span
+                >
+                <button
+                  v-if="isEditable(it)"
+                  class="filter-offering-edit"
+                  :title="'Edit ' + it.code"
+                  aria-label="Edit course"
+                  @click.stop="openCourseEdit(it)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                  </svg>
+                </button>
+              </span>
+            </div>
+          </template>
+          <template v-else>
+            <div class="cal-block-count">
+              {{ b.slot.items.length }}
+              <span class="cal-block-label">course{{ b.slot.items.length !== 1 ? 's' : '' }}</span>
+            </div>
+            <div class="cal-block-time">{{ formatTime(b.slot.time) }}</div>
+          </template>
+        </div>
+      </template>
+    </WeeklyCalendar>
+  </div>
+</template>
+
+<script>
 import {
   buildIndex,
   daySlotBlocks,
@@ -26,7 +115,7 @@ import {
 } from '../src/scheduleStore.js'
 import { goScheduleSlot, goScheduleDay, goScheduleCourse } from '../router.js'
 import { useScheduleDrag } from '../scheduleDrag.js'
-import WeeklyCalendar from './WeeklyCalendar.js'
+import WeeklyCalendar from './WeeklyCalendar.vue'
 
 import { computed } from 'vue'
 
@@ -197,66 +286,5 @@ export default {
       itemTitle,
     }
   },
-  template: `
-    <div>
-      <WeeklyCalendar :on-day-click="goScheduleDay" :striped="filter.active" :range="dayRange">
-        <template #daycol="{ day }">
-          <div
-            v-for="z in dropZones(day)"
-            :key="z.key"
-            class="cal-block cal-dropzone"
-            :class="{ over: dragOver === z.key }"
-            :style="z.style"
-            @dragover="zoneOver($event, z)"
-            @dragleave="zoneLeave"
-            @drop="zoneDrop($event, z)"
-          ></div>
-          <div
-            v-for="b in blocksInDay(day)"
-            :key="b.key"
-            class="cal-block"
-            :class="{ filtered: b.active, over: dragOver === dayGroup(day) + '|' + b.slot.time }"
-            :title="b.title"
-            :style="b.style"
-            @click="goScheduleSlot(day, b.slot.time)"
-            @dragover="zoneOver($event, { key: dayGroup(day) + '|' + b.slot.time, day, days: dayGroup(day), time: b.slot.time })"
-            @dragleave="zoneLeave"
-            @drop="zoneDrop($event, { day, days: dayGroup(day), time: b.slot.time })"
-          >
-            <template v-if="filter.active">
-              <div class="cal-block-time">{{ formatTime(b.slot.time) }}</div>
-              <div class="cal-block-depts">
-                <span
-                  v-for="it in b.slot.items"
-                  :key="it.code + it.o.section + it.sid"
-                  class="filter-offering"
-                  :class="{ draggable: isEditable(it), proposed: proposalFor(it), removed: removalFor(it) }"
-                  :style="{ backgroundColor: filter.color(it) }"
-                  :draggable="isEditable(it)"
-                  @click.stop="goScheduleCourse(it.code)"
-                  @dragstart="onDragStart($event, it, day)"
-                  :title="itemTitle(it) || (isEditable(it) ? 'Drag to move' : '')"
-                >
-                  <span class="filter-offering-main">{{ it.code }}{{ it.o.section }}<span class="do-inst">{{ briefInstructor(it.o.instructor) }}</span></span>
-                  <button
-                    v-if="isEditable(it)"
-                    class="filter-offering-edit"
-                    :title="'Edit ' + it.code"
-                    aria-label="Edit course"
-                    @click.stop="openCourseEdit(it)"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                  </button>
-                </span>
-              </div>
-            </template>
-            <template v-else>
-              <div class="cal-block-count">{{ b.slot.items.length }} <span class="cal-block-label">course{{ b.slot.items.length !== 1 ? 's' : '' }}</span></div>
-              <div class="cal-block-time">{{ formatTime(b.slot.time) }}</div>
-            </template>
-          </div>
-        </template>
-      </WeeklyCalendar>
-    </div>
-  `,
 }
+</script>
