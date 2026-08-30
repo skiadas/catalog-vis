@@ -363,7 +363,7 @@
 .cal-ruler {
   flex: 0 0 56px;
   position: relative;
-  height: 480px;
+  height: var(--cal-height, 480px);
 }
 .cal-ruler .cal-hour {
   position: absolute;
@@ -375,7 +375,7 @@
 .cal-daycol {
   flex: 1;
   position: relative;
-  height: 480px;
+  height: var(--cal-height, 480px);
   border-left: 1px solid var(--border);
   background: var(--gray-50);
 } /* Gentle non-white slot tint; applied when a grid filter is active so slot
