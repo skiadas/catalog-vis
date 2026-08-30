@@ -1,5 +1,6 @@
-# Build stage: install the toolchain and produce the three built apps. Vite
-# compiles the SCSS (style/*.scss) and bundles each app into dist/<name>/.
+# Build stage: install the full toolchain (dev deps included) and produce the
+# three built apps. Vite compiles the SCSS (style/*.scss) and bundles each app
+# into dist/<name>/.
 FROM node:26-slim AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
@@ -10,6 +11,17 @@ COPY style style
 COPY vite.apps.mjs ./
 RUN npm ci && npm run build
 
+# Prod-deps stage: the runtime install (npm ci --omit=dev) so build-only
+# tooling — vite, sass, typescript, eslint, playwright, vue … — never enters
+# the runtime image. Measured: ~17 MB vs the ~130 MB full tree. `packages/` is
+# copied because npm workspaces symlink into it during install.
+FROM node:26-slim AS deps
+WORKDIR /srv
+COPY package.json package-lock.json ./
+COPY packages packages
+COPY server server
+RUN npm ci --omit=dev
+
 # Runtime stage: the Express server is the single process that serves the
 # built apps, the catalog API, and the backend API from an assembled layout
 # (/srv/static):
@@ -18,7 +30,9 @@ RUN npm ci && npm run build
 #   apps/<name>/                      — the built apps, from dist/<name>/
 # The apps' relative seams (loadCatalog's baseUrl '../../', the schedule API
 # base '../../api') resolve to that root, so the layout mirrors the repo-root
-# deployment shape.
+# deployment shape. `packages/` is copied so the workspace symlinks in
+# node_modules (e.g. @major-vis/schedule-core, imported by the server at
+# boot) resolve — without it the server crashes with MODULE_NOT_FOUND.
 FROM node:26-slim
 ENV NODE_ENV=production \
     STATIC_DIR=/srv/static \
@@ -27,9 +41,9 @@ ENV NODE_ENV=production \
     PORT=8080 \
     HOST=0.0.0.0
 WORKDIR /srv
-COPY package.json package-lock.json ./
+COPY --from=deps /srv/node_modules node_modules
+COPY packages packages
 COPY server server
-COPY --from=build /src/node_modules node_modules
 COPY index.html config.json majors.json requirements_parsed.json core_requirements.json /srv/static/
 COPY --from=build /src/dist/browse /srv/static/apps/browse
 COPY --from=build /src/dist/schedule /srv/static/apps/schedule

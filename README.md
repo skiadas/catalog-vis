@@ -94,9 +94,11 @@ every push (`.github/workflows/ci.yml`, Node 26 / Python 3.12); pushes to
 `main` and `v*` tags build the container and publish it to GHCR
 (`.github/workflows/publish.yml`).
 
-The deployment is a **single container** (`Dockerfile`): the image builds the
-apps (`npm ci && npm run build`), then the Express server (`server/`) serves
-the assembled layout from one process:
+The deployment is a **single container** (`Dockerfile`): a build stage
+installs the toolchain and builds the apps (`npm ci && npm run build`), a
+deps stage installs only production dependencies (`npm ci --omit=dev` —
+~17 MB vs the ~130 MB full tree), and the runtime stage runs the Express
+server (`server/`), which serves the assembled layout from one process:
 
 - the root `index.html` **launcher** — resolves which services are enabled
   (`/api/config`, else `config.json`, else all) and redirects to the first
