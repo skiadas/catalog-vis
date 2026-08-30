@@ -1,9 +1,10 @@
 // Local-only smoke test for the schedule app's core flows, run against the
 // FULL stack: the Express server (temp DB, built apps from dist/) + a real
 // headless browser (system Chrome via playwright-core). Walks the boot auth
-// prompt (sign in), schedule creation, and the edit/suggest mode menu, then a
-// fresh visitor choosing "Work offline" (local-only testing mode, no 401s at
-// boot), and fails on page errors or unexpected console errors.
+// prompt (sign in), schedule creation, the edit/suggest mode menu, the meeting
+// pattern guards (day-group switches, no-meeting strip, off-pattern rails),
+// and a fresh visitor choosing "Work offline" (local-only testing mode, no
+// 401s at boot), and fails on page errors or unexpected console errors.
 // `npm run test:smoke`.
 //
 // Requirements: `npm run build` first (dist/<name> bundles are served), and a
@@ -32,9 +33,7 @@ async function fail(message) {
 
 const chromePath = findChrome()
 if (!chromePath) {
-  console.error(
-    'SMOKE SKIP: no Chrome found. Set CHROME_PATH to a Chrome binary to run the smoke test.',
-  )
+  console.error('SMOKE SKIP: no Chrome found. Set CHROME_PATH to a Chrome binary to run the smoke test.')
   process.exit(1)
 }
 
@@ -112,6 +111,52 @@ try {
   await page.getByText('Suggestion mode:').waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: 'Done' }).click()
 
+  // --- Edit-mode meeting-pattern flows (the TR->MWF guard + the strip/rail) ---
+  await page.locator('.schedule-pill-edit').first().click()
+  await menu.getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').waitFor({ timeout: 5000 })
+
+  // Add a course: its editor opens immediately, pre-slotted MWF 8:00-9:10.
+  await page.getByRole('button', { name: '＋ Add course' }).click()
+  const addm = page.locator('.modal')
+  await addm.waitFor({ state: 'visible', timeout: 5000 })
+  await addm.getByPlaceholder('Search code or name…').fill('BIO')
+  await addm.locator('.schedule-add-option').first().click()
+  const em = page.locator('.modal')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  const saveBtn = em.getByRole('button', { name: 'Save changes' })
+
+  // Switching day groups clears the stale band and disables Save until a slot
+  // of the new group is picked (MWF 8:00-9:10 -> TR must re-pick).
+  await em.getByRole('button', { name: 'TR', exact: true }).click()
+  await em.getByText('Pick a time slot for TR.').waitFor({ timeout: 5000 })
+  if (await saveBtn.isEnabled()) await fail('Save stayed enabled after a TR switch without a slot')
+  await em.locator('.slot-time-btn').first().click()
+  await em.getByText('Pick a time slot for TR.').waitFor({ state: 'detached', timeout: 5000 })
+
+  // "No meeting time" lands the course in the strip under the grid.
+  await em.getByRole('button', { name: 'No meeting time' }).click()
+  await saveBtn.click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.getByText('No meeting times').waitFor({ timeout: 5000 })
+  await page.locator('.no-meeting-pattern', { hasText: 'No meeting time' }).first().waitFor({ timeout: 5000 })
+
+  // Reopen from the strip; a custom time past 16:00 needs a day picked first
+  // (Save stays disabled without one) and renders as a clipped off-pattern
+  // rail: dashed 'custom' block with a clipped-bottom notch.
+  await page.locator('.no-meeting-strip .slot-pill-edit').first().click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await em.getByRole('button', { name: 'Custom time' }).click()
+  if (await saveBtn.isEnabled()) await fail('Save stayed enabled with no day selected')
+  await em.locator('.day-chip').first().click()
+  await em.getByLabel('Start time').fill('15:00')
+  await em.getByLabel('End time').fill('18:00')
+  await saveBtn.click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.locator('.cal-block.off-pattern.clipped-bottom').first().waitFor({ timeout: 5000 })
+  await page.locator('.cal-block-tag', { hasText: 'custom' }).first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+
   // --- Offline phase: a fresh visitor chooses "Work offline" (local-only) ---
   // New context = no session cookie, empty localStorage: the prompt must
   // appear, choosing offline shows the persistent badge and the local sample,
@@ -149,7 +194,9 @@ try {
   if (unexpectedConsole.length) {
     await fail(`console errors: ${unexpectedConsole.slice(0, 5).join(' | ')}`)
   }
-  console.log('SMOKE OK: dialog sign-in, create, edit/suggest menus, offline mode, no console errors.')
+  console.log(
+    'SMOKE OK: sign-in, create, edit/suggest menus, meeting-pattern guards + strip/rail, offline mode, no console errors.',
+  )
 } catch (err) {
   await fail(String(err))
 } finally {
