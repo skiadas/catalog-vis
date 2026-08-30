@@ -88,7 +88,8 @@ import {
   parsedRequirements,
   programTracks,
 } from '@major-vis/catalog-client'
-import { route, goToCourse, goHome, plannerUrl } from '../router.js'
+import { goToCourse, goHome, plannerUrl } from '../router.js'
+import { useRoute } from 'vue-router'
 import RequirementSection from './RequirementSection.vue'
 
 import { computed } from 'vue'
@@ -97,13 +98,15 @@ export default {
   name: 'ProgramDetail',
   components: { RequirementSection },
   setup() {
+    const route = useRoute()
+    const programId = computed(() => String(route.params.id ?? ''))
     const currentProgram = computed(() => {
-      return programs.value.find((p) => p.id === route.value.params.id) || null
+      return programs.value.find((p) => p.id === programId.value) || null
     })
     const currentParsed = computed(() => {
-      return parsedRequirements.value[route.value.params.id] || null
+      return parsedRequirements.value[programId.value] || null
     })
-    const tracks = computed(() => programTracks(route.value.params.id))
+    const tracks = computed(() => programTracks(programId.value))
     return {
       currentProgram,
       currentParsed,

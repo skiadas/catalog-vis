@@ -60,7 +60,7 @@
 </template>
 
 <script>
-import { route } from '../router.js'
+import { useRoute } from 'vue-router'
 import { schedule, scheduleOfferings } from '../src/scheduleStore.js'
 import { courseByCode, courseName } from '@major-vis/catalog-client'
 import { conflictsForCourse, formatTime } from '@major-vis/schedule-core'
@@ -71,7 +71,8 @@ import { computed } from 'vue'
 export default {
   name: 'ScheduleCourse',
   setup() {
-    const code = computed(() => route.value.params.code)
+    const route = useRoute()
+    const code = computed(() => String(route.params.code || ''))
     const sections = computed(
       () => (schedule.value && code.value ? schedule.value.byCourse[code.value] : []) || [],
     )

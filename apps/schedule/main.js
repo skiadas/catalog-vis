@@ -6,12 +6,12 @@
 // Standalone app: no cross-app navigation. The root launcher (index.html) is
 // the only place that knows the other apps exist.
 import { loadCatalog } from '@major-vis/catalog-client'
-import { initRouter } from './router.js'
 import { createApp } from 'vue'
+import { router } from './router.js'
 import { initScheduleCollection } from './src/scheduleStore.js'
 import App from './App.vue'
 
-initRouter()
+createApp(App).use(router).mount('#app')
 // Load the catalog (baseUrl reaches the repo-root JSON when co-deployed), then
 // seed the schedule collection — from the backend when one is present, else the
 // local "Sample schedule". A catalog load failure rejects (App.vue renders
@@ -20,5 +20,3 @@ initRouter()
 loadCatalog({ baseUrl: '../../' })
   .then(initScheduleCollection)
   .catch(() => {})
-
-createApp(App).mount('#app')

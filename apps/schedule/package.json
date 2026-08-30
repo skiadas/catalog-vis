@@ -6,9 +6,9 @@
   "private": true,
   "dependencies": {
     "@major-vis/catalog-client": "*",
-    "@major-vis/router": "*",
     "@major-vis/schedule-core": "*",
-    "vue": "^3.5.42"
+    "vue": "^3.5.42",
+    "vue-router": "^4.6.4"
   },
   "license": "UNLICENSED"
 }

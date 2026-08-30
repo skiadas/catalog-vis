@@ -51,7 +51,7 @@
 </template>
 
 <script>
-import { route } from '../router.js'
+import { useRoute } from 'vue-router'
 import { schedule } from '../src/scheduleStore.js'
 import { instructorConflicts, compareInstructors } from '@major-vis/schedule-core'
 import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../router.js'
@@ -63,10 +63,11 @@ export default {
   name: 'ScheduleInstructor',
   components: { WeeklyCalendar },
   setup() {
+    const route = useRoute()
     const instructors = computed(() =>
       schedule.value ? Object.keys(schedule.value.byInstructor).sort(compareInstructors) : [],
     )
-    const name = computed(() => route.value.params.instructor)
+    const name = computed(() => String(route.params.instructor || ''))
     const items = computed(
       () => (schedule.value && name.value ? schedule.value.byInstructor[name.value] : []) || [],
     )

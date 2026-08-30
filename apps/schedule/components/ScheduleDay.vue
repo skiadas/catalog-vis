@@ -43,7 +43,7 @@
 </template>
 
 <script>
-import { route } from '../router.js'
+import { useRoute } from 'vue-router'
 import {
   WEEKDAYS,
   WEEKDAY_NAMES,
@@ -79,7 +79,8 @@ export default {
   name: 'ScheduleDay',
   components: { CoursePill },
   setup() {
-    const day = computed(() => route.value.params.day)
+    const route = useRoute()
+    const day = computed(() => String(route.params.day || ''))
     const dayGroup = (d) => termDayGroup(activeTerm.value, d)
 
     // Pending-suggestion overlay for this day's index (see ScheduleGrid).

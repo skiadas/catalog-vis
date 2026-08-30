@@ -28,7 +28,6 @@ packages/
   app-config/                browser service + auth config (loadConfig/isEnabled + launcher contract)
   degree-audit/              pure requirements evaluator (node --test-able)
   schedule-core/             pure schedule domain model + generator (node --test-able)
-  router/                    tiny hash-router factory (createRouter)
 server/                      Node backend: Express + built-in node:sqlite + auth + schedules/suggestions API; serves the built apps + catalog API + launcher (the container process)
 apps/
   browse/                    program & course catalog
@@ -51,8 +50,9 @@ tools/catalog-pipeline/      Python: scrape, codify, extract_core, audit, md_to_
   each component's props/setup scope — a template referencing a binding the
   component never returns is a compile error, not a browser crash. Pure
   packages never import Vue (`schedule-core`, `degree-audit`,
-  `catalog-contract`, `app-config`); `catalog-client` and `router` import Vue
-  on purpose. CSS is authored as SCSS (`style/`, shared partials in
+  `catalog-contract`, `app-config`); `catalog-client` imports Vue on purpose.
+  Navigation is **vue-router** (hash history) wired per app in its
+  `apps/<name>/router.js`. CSS is authored as SCSS (`style/`, shared partials in
   `style/partials/`) and compiled by Vite into each app build via an inline
   plugin in `vite.apps.mjs` — the compiled `apps/*/style.css` is **not** in
   version control, and a SCSS error fails the build.

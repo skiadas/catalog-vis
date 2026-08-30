@@ -31,25 +31,25 @@
 
   <div v-if="loading" class="loading">Loading catalog data...</div>
   <div v-else-if="errorMessage" class="catalog-error">{{ errorMessage }}</div>
-  <ScheduleApp v-else />
+  <RouterView v-else />
 
   <ScheduleHelp :is-open="showHelp" @close="showHelp = false" />
 </template>
 
 <script>
 // Schedule app root: the top-nav carries the schedule title, remote sign-in,
-// and the help toggle; the app body below starts with the schedule picker
-// (ScheduleApp). main.js loads the catalog and seeds the collection first.
+// and the help toggle; the app body below is the route component (ScheduleApp,
+// which starts with the schedule picker). main.js loads the catalog and seeds
+// the collection first.
 import { errorMessage, loading } from '@major-vis/catalog-client'
 import { remote, currentUser, signIn, signOut } from './src/scheduleStore.js'
-import ScheduleApp from './components/ScheduleApp.vue'
 import ScheduleHelp from './components/ScheduleHelp.vue'
 
 import { ref } from 'vue'
 
 export default {
   name: 'ScheduleAppRoot',
-  components: { ScheduleApp, ScheduleHelp },
+  components: { ScheduleHelp },
   setup() {
     // Remote sign-in (username self-identify). The shared schedules, pending
     // suggestions, and ownership roles all require a session.

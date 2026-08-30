@@ -182,7 +182,7 @@
 // modals read the schedule store directly; picker/filters take the pieces of
 // view state they need as props.
 
-import { route } from '../router.js'
+import { useRoute } from 'vue-router'
 import { goScheduleGrid, goScheduleCourse, goScheduleInstructor } from '../router.js'
 import { courseName } from '@major-vis/catalog-client'
 import {
@@ -239,12 +239,13 @@ export default {
     SuggestedChanges,
   },
   setup() {
-    const view = computed(() => route.value.params.scheduleView || 'grid')
+    const route = useRoute()
+    const view = computed(() => String(route.meta.scheduleView || 'grid'))
     const sortedCourses = computed(() => {
       if (!schedule.value) return []
       return Object.keys(schedule.value.byCourse).sort()
     })
-    const selectedCode = computed(() => route.value.params.code || '')
+    const selectedCode = computed(() => String(route.params.code || ''))
     const showFilter = computed(() => ['grid', 'day', 'slot'].includes(view.value))
 
     // Filter mode buttons: clicking the active mode collapses the chips panel

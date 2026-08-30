@@ -1,59 +1,56 @@
-import { createRouter } from '@major-vis/router'
+// Schedule app navigation: vue-router (hash history) with declarative routes.
+// Every route renders the same ScheduleApp shell (via <RouterView>);
+// `meta.scheduleView` picks the sub-view (grid/day/slot/course/instructor)
+// exactly like the old `params.scheduleView` discriminator, keeping deep
+// links unchanged.
+import { createRouter, createWebHashHistory } from 'vue-router'
+import ScheduleApp from './components/ScheduleApp.vue'
 
+/** @type {import('vue-router').RouteRecordRaw[]} */
 const routes = [
+  { path: '/', name: 'schedule-grid', component: ScheduleApp, meta: { scheduleView: 'grid' } },
+  { path: '/day/:day', name: 'schedule-day', component: ScheduleApp, meta: { scheduleView: 'day' } },
   {
-    view: 'schedule-grid',
-    parse: (p) => (p.length === 0 ? { scheduleView: 'grid' } : null),
-    href: () => '/',
+    path: '/slot/:day/:time',
+    name: 'schedule-slot',
+    component: ScheduleApp,
+    meta: { scheduleView: 'slot' },
   },
   {
-    view: 'schedule-day',
-    parse: (p) => (p[0] === 'day' && p[1] ? { scheduleView: 'day', day: p[1] } : null),
-    href: ({ day }) => `/day/${day}`,
+    path: '/course/:code',
+    name: 'schedule-course',
+    component: ScheduleApp,
+    meta: { scheduleView: 'course' },
   },
   {
-    view: 'schedule-slot',
-    parse: (p) =>
-      p[0] === 'slot' && p[1] && p[2]
-        ? { scheduleView: 'slot', day: p[1], time: decodeURIComponent(p[2]) }
-        : null,
-    href: ({ day, time }) => `/slot/${day}/${encodeURIComponent(time)}`,
+    path: '/instructor/:instructor',
+    name: 'schedule-instructor',
+    component: ScheduleApp,
+    meta: { scheduleView: 'instructor' },
   },
-  {
-    view: 'schedule-course',
-    parse: (p) =>
-      p[0] === 'course' && p[1] ? { scheduleView: 'course', code: decodeURIComponent(p[1]) } : null,
-    href: ({ code }) => `/course/${encodeURIComponent(code)}`,
-  },
-  {
-    view: 'schedule-instructor',
-    parse: (p) =>
-      p[0] === 'instructor' && p[1]
-        ? { scheduleView: 'instructor', instructor: decodeURIComponent(p[1]) }
-        : null,
-    href: ({ instructor }) => `/instructor/${encodeURIComponent(instructor)}`,
-  },
+  { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
-const router = createRouter(routes, 'schedule-grid')
-export const route = router.route
-export const initRouter = router.init
+export const router = createRouter({
+  history: createWebHashHistory(),
+  routes,
+})
 
 export function goSchedule() {
-  router.navigate('schedule-grid')
+  router.push({ name: 'schedule-grid' })
 }
 export function goScheduleGrid() {
-  router.navigate('schedule-grid')
+  router.push({ name: 'schedule-grid' })
 }
 export function goScheduleDay(day) {
-  router.navigate('schedule-day', { day })
+  router.push({ name: 'schedule-day', params: { day } })
 }
 export function goScheduleSlot(day, time) {
-  router.navigate('schedule-slot', { day, time })
+  if (time) router.push({ name: 'schedule-slot', params: { day, time } })
 }
 export function goScheduleCourse(code) {
-  router.navigate('schedule-course', { code })
+  router.push({ name: 'schedule-course', params: { code } })
 }
 export function goScheduleInstructor(name) {
-  router.navigate('schedule-instructor', { instructor: name })
+  router.push({ name: 'schedule-instructor', params: { instructor: name } })
 }

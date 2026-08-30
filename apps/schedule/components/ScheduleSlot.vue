@@ -28,7 +28,7 @@
 </template>
 
 <script>
-import { route } from '../router.js'
+import { useRoute } from 'vue-router'
 import {
   WEEKDAYS,
   WEEKDAY_NAMES,
@@ -61,8 +61,9 @@ export default {
   name: 'ScheduleSlot',
   components: { CoursePill },
   setup() {
-    const day = computed(() => route.value.params.day)
-    const time = computed(() => route.value.params.time)
+    const route = useRoute()
+    const day = computed(() => String(route.params.day || ''))
+    const time = computed(() => String(route.params.time || ''))
 
     // Pending-suggestion overlay for this slot's index (see ScheduleGrid).
     const overlay = computed(() => {

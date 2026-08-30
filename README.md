@@ -15,7 +15,6 @@ packages/                    shared, build-free packages (npm workspaces)
   app-config/                browser service + auth configuration (loadConfig, isEnabled)
   degree-audit/              pure requirements evaluator
   schedule-core/             pure schedule domain model + generator
-  router/                    tiny hash-router factory
 apps/                        the three user-facing apps (each a Vite root, wired by vite.apps.mjs)
   browse/                    program & course catalog
   schedule/                  schedule review/editing

@@ -42,14 +42,16 @@
 
 <script>
 import { courseByCode, programsUsingCourse } from '@major-vis/catalog-client'
-import { route, goToCourse, goToProgram, goHome } from '../router.js'
+import { useRoute } from 'vue-router'
+import { goToCourse, goToProgram, goHome } from '../router.js'
 
 import { computed } from 'vue'
 
 export default {
   name: 'CourseDetail',
   setup() {
-    const currentCourse = computed(() => courseByCode(route.value.params.code))
+    const route = useRoute()
+    const currentCourse = computed(() => courseByCode(String(route.params.code ?? '')))
     const usage = computed(() => {
       if (!currentCourse.value) return []
       return programsUsingCourse(currentCourse.value.course_code)
