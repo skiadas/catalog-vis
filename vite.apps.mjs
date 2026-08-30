@@ -8,10 +8,9 @@
 // bad imports a build-time error instead of a browser runtime crash.
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
-import { readFile, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { readFile } from 'node:fs'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { compile } from 'sass'
 
 const repoRoot = fileURLToPath(new URL('.', import.meta.url))
 
@@ -40,56 +39,16 @@ const catalogDevPlugin = {
   },
 }
 
-// Compiles the app's stylesheet from SCSS (style/<name>.scss + partials) and
-// writes `apps/<name>/style.css`. The compiled file is deliberately NOT in
-// version control: Vite produces it here, in dev (served fresh from the
-// middleware, invalidated on any SCSS change) and in build (written in
-// `buildStart` so the index.html `<link>` resolves before the bundle runs).
-// The SCSS sources are the only authority; a compile error fails the build.
-function scssPlugin(name) {
-  const sources = () => {
-    const partialsDir = resolve(repoRoot, 'style', 'partials')
-    return [
-      resolve(repoRoot, 'style', `${name}.scss`),
-      ...readdirSync(partialsDir)
-        .filter((f) => f.endsWith('.scss'))
-        .map((f) => resolve(partialsDir, f)),
-    ]
-  }
-  const mtimeKey = () =>
-    sources()
-      .map((f) => statSync(f).mtimeMs)
-      .join(':')
-  let cache = { key: '', css: '' }
-  const compiled = () => {
-    const key = mtimeKey()
-    if (cache.key !== key) {
-      cache = { key, css: compile(resolve(repoRoot, 'style', `${name}.scss`)).css }
-      writeFileSync(resolve(repoRoot, 'apps', name, 'style.css'), cache.css)
-    }
-    return cache.css
-  }
-  return {
-    name: 'major-vis-scss',
-    buildStart() {
-      compiled()
-    },
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        if (req.url.split('?')[0] !== '/style.css') return next()
-        res.setHeader('Content-Type', 'text/css')
-        res.setHeader('Cache-Control', 'no-store')
-        res.end(compiled())
-      })
-    },
-  }
-}
-
+// Compiles the app's stylesheet from SCSS (style/<name>.scss + partials) via
+// Vite's native sass support: each app's main.js imports its entry
+// (../../style/<name>.scss), Vite compiles it in dev (with HMR) and emits a
+// hashed CSS asset in build. The SCSS sources are the only authority; a
+// compile error fails the build.
 export function appConfig(name) {
   return defineConfig({
     root: resolve(repoRoot, 'apps', name),
     base: './',
-    plugins: [vue(), catalogDevPlugin, scssPlugin(name)],
+    plugins: [vue(), catalogDevPlugin],
     build: {
       outDir: resolve(repoRoot, 'dist', name),
       emptyOutDir: true,

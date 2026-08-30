@@ -53,9 +53,10 @@ tools/catalog-pipeline/      Python: scrape, codify, extract_core, audit, md_to_
   `catalog-contract`, `app-config`); `catalog-client` imports Vue on purpose.
   Navigation is **vue-router** (hash history) wired per app in its
   `apps/<name>/router.js`. CSS is authored as SCSS (`style/`, shared partials in
-  `style/partials/`) and compiled by Vite into each app build via an inline
-  plugin in `vite.apps.mjs` — the compiled `apps/*/style.css` is **not** in
-  version control, and a SCSS error fails the build.
+  `style/partials/`) and imported from each app's `main.js`
+  (`../../style/<name>.scss`); Vite compiles it with `sass` natively (dev
+  injects it with HMR; build emits a hashed CSS asset in `dist/<name>/assets/`),
+  and a SCSS error fails the build.
 - **The catalog is three root JSON files** (`majors.json`,
   `requirements_parsed.json`, `core_requirements.json`), validated against the
   contract schemas by `npm run validate:catalog` (run in CI). The pipeline is the
@@ -74,7 +75,7 @@ tools/catalog-pipeline/      Python: scrape, codify, extract_core, audit, md_to_
 options exist; prefer boring, replaceable tooling.
 
 **Formatting** — `npx prettier@3.3.3 --write "**/*.{js,html,css,scss,vue}"` (JSON
-and the compiled `apps/*/style.css` are ignored), then `python3 -m black .` and
+is ignored), then `python3 -m black .` and
 `python3 -m compileall -q -x "node_modules|/\.git/" .`. **Never hard-code
 design tokens**: inherit before you set · token before you repeat · name a
 repeated look once.

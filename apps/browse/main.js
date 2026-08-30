@@ -5,6 +5,7 @@ import { loadCatalog } from '@major-vis/catalog-client'
 import { createApp } from 'vue'
 import { router } from './router.js'
 import App from './App.vue'
+import '../../style/browse.scss'
 
 createApp(App).use(router).mount('#app')
 // A catalog load failure rejects; App.vue renders `errorMessage` instead.

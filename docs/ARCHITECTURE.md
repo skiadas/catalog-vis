@@ -52,15 +52,16 @@ resolve through the workspace `package.json` `exports` fields at build time
 (`npm run build`, or the `npm run dev`/`dev:browse`/`dev:planner` dev servers).
 That is why `catalog-client` and the app stores are "browser-only" while the
 pure packages never import Vue. The only preprocessing step is **CSS**:
-authored in SCSS under `style/` and compiled by an inline Vite plugin (`scss`
-in `vite.apps.mjs`) — in dev (served fresh, invalidated on SCSS change) and in
-build (bundled into `dist/<name>/`). The compiled `apps/<name>/style.css` is
-**not** in version control, and a SCSS error fails the build.
+authored in SCSS under `style/` and imported from each app's `main.js`
+(`../../style/<name>.scss`); Vite compiles it with `sass` natively — in dev
+(injected with HMR) and in build (emitted as a hashed CSS asset in
+`dist/<name>/assets/`). A SCSS error fails the build.
 
 ### 2. Workspace resolution replaces per-app import maps
 
 Because every app builds through Vite, each app's `index.html` is trivial — a
-root-relative `/main.js` and `./style.css` link. Packages expose `exports`
+root-relative `/main.js` (the styles come in via the SCSS import inside it).
+Packages expose `exports`
 maps (with a separate `types` condition for tsc `checkJs`), and the Vite build
 emits **relative** asset URLs (`base: './'` in `vite.apps.mjs`), so a built
 app is location-independent: it runs from `/apps/<name>/` in the container

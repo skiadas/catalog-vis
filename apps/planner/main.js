@@ -6,6 +6,7 @@ import { createApp } from 'vue'
 import { addTrack } from './src/plannerStore.js'
 import { router } from './router.js'
 import App from './App.vue'
+import '../../style/planner.scss'
 
 createApp(App).use(router).mount('#app')
 // Cross-app deep link from the browse app: #/?program=<id>&track=<trackKey>.

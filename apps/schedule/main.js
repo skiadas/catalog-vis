@@ -10,6 +10,7 @@ import { createApp } from 'vue'
 import { router } from './router.js'
 import { initScheduleCollection } from './src/scheduleStore.js'
 import App from './App.vue'
+import '../../style/schedule.scss'
 
 createApp(App).use(router).mount('#app')
 // Load the catalog (baseUrl reaches the repo-root JSON when co-deployed), then
