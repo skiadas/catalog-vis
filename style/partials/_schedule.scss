@@ -194,7 +194,7 @@
 /* Segmented control: connected buttons with end-only radii. Used for the
    view tabs, the term selector, and the filter-mode pair. */
 .seg {
-  @include flex-row;
+  display: flex;
   align-items: center;
 }
 .seg .seg-btn {
