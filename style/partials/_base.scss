@@ -412,6 +412,23 @@ body {
   color: var(--text-muted);
   margin-bottom: 6px;
 }
+/* Side-by-side form columns (e.g. course editor: instructor | section). */
+.field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.field-row .field {
+  flex: 1;
+  min-width: 0;
+}
+.field-row .field.field-fit {
+  flex: 0 0 112px;
+}
+.field-row .search-input {
+  width: 100%;
+  min-width: 0;
+}
 .modal-overlay {
   position: fixed;
   inset: 0;

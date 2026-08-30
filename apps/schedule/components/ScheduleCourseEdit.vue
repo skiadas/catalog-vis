@@ -15,48 +15,46 @@
           <template v-else>Any changes are saved to this schedule in your browser.</template>
         </p>
 
-        <div class="field">
-          <label>Instructor</label>
-          <div class="filter-group">
-            <button class="filter-btn" :class="{ active: !showAll }" @click="showAll = false">
-              Department
-            </button>
-            <button class="filter-btn" :class="{ active: showAll }" @click="showAll = true">
-              All instructors
-            </button>
+        <div class="field-row">
+          <div class="field">
+            <label>Instructor</label>
+            <div class="filter-group">
+              <button class="filter-btn" :class="{ active: !showAll }" @click="showAll = false">
+                Department
+              </button>
+              <button class="filter-btn" :class="{ active: showAll }" @click="showAll = true">
+                All instructors
+              </button>
+            </div>
+            <select class="search-input" v-model="instructorSel">
+              <option value="">— No instructor —</option>
+              <option v-for="i in instructorOptions" :key="i" :value="i">{{ i }}</option>
+            </select>
           </div>
-          <select class="search-input" v-model="instructorSel">
-            <option value="">— No instructor —</option>
-            <option v-for="i in instructorOptions" :key="i" :value="i">{{ i }}</option>
-          </select>
-        </div>
 
-        <div class="field">
-          <label for="course-edit-section">Section</label>
-          <input
-            id="course-edit-section"
-            class="search-input"
-            type="text"
-            maxlength="4"
-            v-model="sectionSel"
-            placeholder="A"
-          />
+          <div class="field field-fit">
+            <label for="course-edit-section">Section</label>
+            <input
+              id="course-edit-section"
+              class="search-input"
+              type="text"
+              maxlength="4"
+              v-model="sectionSel"
+              placeholder="A"
+            />
+          </div>
         </div>
 
         <div class="field">
           <label>Meeting time</label>
-          <div class="filter-group">
-            <button class="filter-btn" :class="{ active: timeMode === 'slot' }" @click="timeMode = 'slot'">
+          <div class="seg" role="group" aria-label="Meeting time">
+            <button class="seg-btn" :class="{ active: timeMode === 'slot' }" @click="timeMode = 'slot'">
               Time slot
             </button>
-            <button
-              class="filter-btn"
-              :class="{ active: timeMode === 'custom' }"
-              @click="timeMode = 'custom'"
-            >
+            <button class="seg-btn" :class="{ active: timeMode === 'custom' }" @click="timeMode = 'custom'">
               Custom time
             </button>
-            <button class="filter-btn" :class="{ active: timeMode === 'none' }" @click="timeMode = 'none'">
+            <button class="seg-btn" :class="{ active: timeMode === 'none' }" @click="timeMode = 'none'">
               No meeting time
             </button>
           </div>
@@ -88,25 +86,39 @@
                   {{ d }}
                 </button>
               </div>
-            </div>
-
-            <div v-if="timeMode === 'slot'" class="slot-time-opts">
-              <button
-                v-for="s in slotOptions"
-                :key="s"
-                type="button"
-                class="filter-btn slot-time-btn"
-                :class="{ active: timeSel === s }"
-                @click="timeSel = s"
-              >
-                {{ formatTime(s) }}
-              </button>
+              <div v-if="timeMode === 'slot'" class="slot-time-opts">
+                <button
+                  v-for="s in slotsForGroup(g.label)"
+                  :key="s"
+                  type="button"
+                  class="filter-btn slot-time-btn"
+                  :class="{ active: timeSel === s }"
+                  :disabled="timeGroupSel !== g.label"
+                  @click="timeGroupSel === g.label && (timeSel = s)"
+                >
+                  {{ s }}
+                </button>
+              </div>
             </div>
 
             <div v-if="timeMode === 'custom'" class="custom-time-row">
-              <input class="search-input" type="time" v-model="customStart" aria-label="Start time" />
+              <input
+                class="search-input"
+                type="time"
+                step="300"
+                v-model="customStart"
+                aria-label="Start time"
+                @change="customStart = snapToFive(customStart)"
+              />
               <span class="custom-time-sep">to</span>
-              <input class="search-input" type="time" v-model="customEnd" aria-label="End time" />
+              <input
+                class="search-input"
+                type="time"
+                step="300"
+                v-model="customEnd"
+                aria-label="End time"
+                @change="customEnd = snapToFive(customEnd)"
+              />
             </div>
             <p v-if="timeHint" class="field-hint">{{ timeHint }}</p>
           </div>
@@ -145,13 +157,7 @@
 </template>
 
 <script>
-import {
-  WEEKDAYS,
-  formatTime,
-  compareInstructors,
-  termConfig,
-  termSlotOptions,
-} from '@major-vis/schedule-core'
+import { WEEKDAYS, compareInstructors, termConfig, termSlotOptions } from '@major-vis/schedule-core'
 import {
   scheduleById,
   updateOffering,
@@ -248,19 +254,18 @@ export default {
       daysSel.value = daysSel.value.includes(d) ? daysSel.value.filter((x) => x !== d) : [...daysSel.value, d]
     }
 
-    // Term slot bands for the active day group (incl. consecutive pairs in Spring).
-    const groupSlots = computed(() => {
-      const label = timeGroupSel.value
+    // Term slot bands for one day group, rendered next to that group's days
+    // (incl. consecutive pairs in Spring). An existing off-pattern time
+    // (imported custom band) stays selectable in its group so an untouched
+    // course can be saved as-is; it just keeps the custom look.
+    const slotsForGroup = (label) => {
       const day = (GROUP_DAYS[label] || 'M')[0]
-      return termSlotOptions(activeTerm.value, day).map((s) => s.time)
-    })
-    const slotOptions = computed(() => {
-      const base = groupSlots.value
-      // An existing off-pattern time (imported custom band) stays selectable so
-      // an untouched course can be saved as-is; it just keeps the custom look.
-      if (timeSel.value && !base.includes(timeSel.value)) return [...base, timeSel.value]
+      const base = termSlotOptions(activeTerm.value, day).map((s) => s.time)
+      if (timeGroupSel.value === label && timeSel.value && !base.includes(timeSel.value)) {
+        return [...base, timeSel.value]
+      }
       return base
-    })
+    }
 
     // Saving gives the course a real meeting pattern only when a time was
     // actually chosen for the selected day group and at least one day is on.
@@ -268,8 +273,19 @@ export default {
       if (timeMode.value === 'none') return true
       if (!daysSel.value.length) return false
       if (timeMode.value === 'custom') return Boolean(customStart.value && customEnd.value)
-      return Boolean(timeSel.value && slotOptions.value.includes(timeSel.value))
+      return Boolean(timeSel.value && slotsForGroup(timeGroupSel.value).includes(timeSel.value))
     })
+
+    // Custom times snap to five-minute steps (00/05/…/55): the native picker
+    // steps by 5 (step="300") and typed values are rounded on change and again
+    // at save, so an off-step minute can never be written from the UI.
+    const snapToFive = (v) => {
+      if (!v) return ''
+      const [h, m] = v.split(':').map(Number)
+      const snapped = Math.round(m / 5) * 5
+      const nh = (h + Math.floor(snapped / 60)) % 24
+      return `${String(nh).padStart(2, '0')}:${String(snapped % 60).padStart(2, '0')}`
+    }
 
     const timeHint = computed(() => {
       if (timeMode.value === 'none') return ''
@@ -290,7 +306,7 @@ export default {
         time = ''
       } else if (timeMode.value === 'custom') {
         days = WEEKDAYS.filter((d) => daysSel.value.includes(d)).join('')
-        time = `${customStart.value}-${customEnd.value}`
+        time = `${snapToFive(customStart.value)}-${snapToFive(customEnd.value)}`
       } else {
         days = WEEKDAYS.filter((d) => daysSel.value.includes(d)).join('')
         time = timeSel.value
@@ -325,7 +341,7 @@ export default {
       sectionSel,
       timeMode,
       timeSel,
-      slotOptions,
+      slotsForGroup,
       dayGroups,
       daysSel,
       timeGroupSel,
@@ -333,13 +349,13 @@ export default {
       toggleDay,
       customStart,
       customEnd,
+      snapToFive,
       canSave,
       timeHint,
       save,
       removeCourse,
       courseName,
       termLabel,
-      formatTime,
       activeTerm,
       editingRole,
       GROUP_DAYS,

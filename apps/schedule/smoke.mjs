@@ -131,7 +131,8 @@ try {
   await em.getByRole('button', { name: 'TR', exact: true }).click()
   await em.getByText('Pick a time slot for TR.').waitFor({ timeout: 5000 })
   if (await saveBtn.isEnabled()) await fail('Save stayed enabled after a TR switch without a slot')
-  await em.locator('.slot-time-btn').first().click()
+  // 8:00-9:45 is a TR-only band: the first slot of the newly-active TR row.
+  await em.locator('.slot-time-btn', { hasText: '8:00-9:45' }).click()
   await em.getByText('Pick a time slot for TR.').waitFor({ state: 'detached', timeout: 5000 })
 
   // "No meeting time" lands the course in the strip under the grid.
