@@ -7,6 +7,12 @@
 // change instructor from Wahl to Skiadas"). This is the pure counterpart to the
 // server's apply logic; both the browser (draft edits -> suggestion) and the
 // server (approve -> apply) use it.
+//
+// Each operation may carry a per-op `resolution` marker ('pending' | 'accepted'
+// | 'rejected', absent = pending) so the owner of a schedule can accept or
+// reject the individual changes of one suggestion. `applyOperations` and
+// `proposeOverlay` honor the marker (rejected ops are never applied or shown);
+// `resolutionStatus` derives the row-level status once every op is resolved.
 
 import { addOfferingToSchedule, removeOfferingFromSchedule, updateOfferingInSchedule } from './schedule.js'
 
@@ -72,13 +78,16 @@ function normalize(v) {
 // Apply a list of operations to an offerings array, returning a new array.
 // Unknown/mismatched ops are skipped so a stale suggestion can't corrupt a term;
 // add ops that duplicate an existing offering (same prefix/number/section) are
-// skipped so concurrent approvals can't create duplicates.
+// skipped so concurrent approvals can't create duplicates. Ops the owner already
+// rejected (resolution === 'rejected') are skipped, so a partially-resolved
+// suggestion can never reapply a rejected change (nor re-propose it from a draft
+// that replays the ops).
 export function applyOperations(offerings, operations) {
   if (!Array.isArray(operations)) return offerings
   const existing = new Set((offerings || []).map(offeringKey))
   let list = offerings
   for (const op of operations) {
-    if (!op) continue
+    if (!op || op.resolution === 'rejected') continue
     if (op.kind === 'add' && op.offering) {
       if (existing.has(offeringKey(op.offering))) continue
       list = addOfferingToSchedule(list, { ...op.offering })
@@ -92,6 +101,27 @@ export function applyOperations(offerings, operations) {
     }
   }
   return list
+}
+
+// The effective resolution of an op ('pending' when the marker is absent).
+export function opResolution(op) {
+  if (!op || op.resolution === 'pending' || op.resolution == null) return 'pending'
+  return op.resolution
+}
+
+// Derives the row-level status of a suggestion once every operation has a
+// resolution: 'approved' when at least one accepted op actually changed the
+// term, 'moot' when accepted ops changed nothing (e.g. already applied by
+// another suggestion), 'rejected' when all were rejected. Returns null while
+// any op is still pending — the row stays live until fully resolved.
+export function resolutionStatus(operations) {
+  const ops = operations || []
+  // An empty suggestion changed nothing and never will; it is 'moot' outright.
+  if (!ops.length) return 'moot'
+  if (!ops.every((op) => opResolution(op) !== 'pending')) return null
+  const anyAccepted = ops.some((op) => opResolution(op) === 'accepted')
+  if (!anyAccepted) return 'rejected'
+  return ops.some((op) => opResolution(op) === 'accepted' && op.applied === true) ? 'approved' : 'moot'
 }
 
 // Human-readable single-op description, e.g.

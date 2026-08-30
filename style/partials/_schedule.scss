@@ -1034,6 +1034,50 @@
   @include flex-row;
   flex: 0 0 auto;
 }
+.suggested-ops {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+.suggested-op {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13.5px;
+}
+.suggested-op-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.suggested-op-actions {
+  display: inline-flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.suggested-op-status {
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+.suggested-op.op-accepted {
+  background: var(--success-bg);
+  border-color: color-mix(in srgb, var(--success) 45%, transparent);
+}
+.suggested-op.op-accepted .suggested-op-status {
+  color: var(--success);
+}
+.suggested-op.op-rejected {
+  background: var(--danger-bg);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.suggested-op.op-rejected .suggested-op-status {
+  color: var(--danger);
+}
 
 /* Edit/suggest mode picker (pencil menu) */
 

@@ -5,15 +5,16 @@
 //
 // While a suggest session is active on this schedule, the panel leads with the
 // draft's diff preview and a one-click propose (upserting the proposer's own
-// pending suggestion). Suggestion actions: the owner approves/rejects pending
-// rows; a pending row's proposer can withdraw it. An approval that changes
-// nothing is recorded as 'moot'.
+// pending suggestion). Suggestion review is per change: the owner approves or
+// rejects each operation of a pending row individually (each op carries its own
+// resolution marker; the row stays pending until every op is resolved, then
+// finalizes to 'approved'/'moot'/'rejected'). A pending row's proposer can
+// withdraw it, even while the owner is mid-review.
 
 import {
   suggestions,
   refreshSuggestions,
-  approveSuggestion,
-  rejectSuggestion,
+  resolveOp,
   withdrawSuggestion,
   proposeDraft,
   draftOperations,
@@ -25,7 +26,7 @@ import {
   activeTerm,
 } from '../src/scheduleStore.js'
 import { TERM_LABELS } from '@major-vis/schedule-core'
-import { renderChanges } from '@major-vis/schedule-core/diff'
+import { renderChanges, describeChange, opResolution } from '@major-vis/schedule-core/diff'
 
 import { ref, computed, watch } from 'vue'
 
@@ -67,16 +68,38 @@ export default {
       },
     )
 
-    const changeText = (s) => renderChanges(s.operations || [], 'text') || '(no changes)'
+    const opStatus = (op) => opResolution(op)
 
-    const doApprove = async (id) => {
-      const ok = await approveSuggestion(id)
-      feedback.value = ok ? 'Approved.' : 'Could not approve (it may no longer be pending).'
+    // The row status pill: final states verbatim; a live row under review shows
+    // how much of it is settled ("pending · accepted 1 of 3").
+    const rowLabel = (s) => {
+      const ops = s.operations || []
+      const settled = ops.filter((op) => opResolution(op) !== 'pending').length
+      if (s.status === 'pending' && settled > 0) {
+        const accepted = ops.filter((op) => opResolution(op) === 'accepted').length
+        return `${s.status} · ${accepted} of ${ops.length} accepted`
+      }
+      return s.status
+    }
+
+    // Resolved without per-op buttons: the change text carries markers.
+    const changeText = (s) =>
+      (s.operations || [])
+        .map((op) => {
+          const label = opResolution(op)
+          const text = describeChange(op)
+          return label === 'pending' ? text : `${text} [${label}]`
+        })
+        .join('\n') || '(no changes)'
+
+    const doApproveOp = async (id, index) => {
+      const saved = await resolveOp(id, index, 'accepted')
+      feedback.value = saved ? 'Change approved.' : 'Could not approve (it may no longer be pending).'
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
-    const doReject = async (id) => {
-      const ok = await rejectSuggestion(id)
-      feedback.value = ok ? 'Rejected.' : 'Could not reject.'
+    const doRejectOp = async (id, index) => {
+      const saved = await resolveOp(id, index, 'rejected')
+      feedback.value = saved ? 'Change rejected.' : 'Could not reject.'
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
     const doWithdraw = async (id) => {
@@ -112,9 +135,11 @@ export default {
       draftText,
       draftOps,
       changeText,
+      opStatus,
+      rowLabel,
       isMine,
-      doApprove,
-      doReject,
+      doApproveOp,
+      doRejectOp,
       doWithdraw,
       doPropose,
       exportUrl,
@@ -155,7 +180,7 @@ export default {
 
           <p class="modal-intro" v-else>
             {{ owned
-              ? 'Pending changes from the departments are live: approve or reject each one; the trail keeps everything that happened.'
+              ? 'Pending changes from the departments are live: approve or reject each change individually; the trail keeps everything that happened.'
               : "You don't own this schedule. Proposals here are suggestions for the owner — make your changes via 'Suggest changes'." }}
           </p>
 
@@ -166,15 +191,28 @@ export default {
                 <div class="suggested-head">
                   <span class="suggested-pill">{{ TERM_LABELS[s.term] || s.term }}</span>
                   <span class="suggested-who">#{{ s.id }} · {{ s.proposer }}{{ isMine(s) ? ' (yours)' : '' }}</span>
-                  <span class="suggested-status">{{ s.status }}</span>
+                  <span class="suggested-status">{{ rowLabel(s) }}</span>
                 </div>
-                <div class="suggested-change">{{ changeText(s) }}</div>
+                <div v-if="owned && s.status === 'pending'" class="suggested-ops">
+                  <div
+                    v-for="(op, i) in s.operations"
+                    :key="i"
+                    class="suggested-op"
+                    :class="'op-' + opStatus(op)"
+                  >
+                    <span class="suggested-op-text">{{ describeChange(op) || '(empty change)' }}</span>
+                    <span v-if="opStatus(op) !== 'pending'" class="suggested-op-status">{{ opStatus(op) }}</span>
+                    <span v-else class="suggested-op-actions">
+                      <button class="filter-btn" @click="doApproveOp(s.id, i)">Approve</button>
+                      <button class="filter-btn" @click="doRejectOp(s.id, i)">Reject</button>
+                    </span>
+                  </div>
+                </div>
+                <div v-else class="suggested-change">{{ changeText(s) }}</div>
                 <div v-if="s.note" class="suggested-note">{{ s.note }}</div>
               </div>
-              <div v-if="s.status === 'pending'" class="suggested-actions">
-                <button v-if="owned" class="filter-btn" @click="doApprove(s.id)">Approve</button>
-                <button v-if="owned" class="filter-btn" @click="doReject(s.id)">Reject</button>
-                <button v-if="isMine(s) && !owned" class="filter-btn" @click="doWithdraw(s.id)">Withdraw</button>
+              <div v-if="s.status === 'pending' && isMine(s) && !owned" class="suggested-actions">
+                <button class="filter-btn" @click="doWithdraw(s.id)">Withdraw</button>
               </div>
             </div>
           </div>

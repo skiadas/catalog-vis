@@ -80,7 +80,7 @@ test('refreshAllSuggestions never fetches suggestions for client-only schedule i
 })
 
 test('addSchedule waits for the server; a failed create leaves no ghost', async () => {
-  await withRemote(async ({ srv, store, base }) => {
+  await withRemote(async ({ store }) => {
     await store.signIn('alice')
 
     const id = await store.addSchedule('Real', '2026-27', [])
@@ -156,8 +156,8 @@ test('non-owner suggest sessions consolidate into one upserted proposal; externa
     const own = store.suggestionsBySchedule.value[schedule.id].filter((s) => s.status === 'pending')
     assert.equal(own.length, 1)
 
-    // The owner approves; physics sees the resolved history.
-    const approved = await registrar.post(`/api/suggestions/${proposed.id}/approve`, {})
+    // The owner approves it; physics sees the resolved history.
+    const approved = await registrar.post(`/api/suggestions/${proposed.id}/approve`, { index: 0 })
     assert.equal(approved.status, 200)
     await store.refreshSuggestions(schedule.id)
     const history = store.suggestionsBySchedule.value[schedule.id]
@@ -237,7 +237,9 @@ test('offline trail mirrors the lifecycle: propose, withdraw, propose again, sel
     store.moveOffering(id, 'CS', '101', 'A', { fromDay: 'T', toDay: 'T', group: 'TR', time: '14:15-16:00' })
     const row2 = await store.proposeDraft(id, '')
     assert.ok(row2)
-    assert.equal(await store.approveSuggestion(row2.id), true)
+    const resolved = await store.resolveOp(row2.id, 0, 'accepted')
+    assert.ok(resolved)
+    assert.equal(resolved.status, 'approved')
     rows = JSON.parse(localStorage.getItem('major-vis.schedule.suggestions'))
     assert.equal(rows.length, 2)
     assert.equal(rows.find((r) => r.id === row2.id).status, 'approved')
@@ -245,5 +247,56 @@ test('offline trail mirrors the lifecycle: propose, withdraw, propose again, sel
     const course = term.find((o) => o.number === '101')
     assert.equal(course.days, 'TR')
     assert.equal(course.time, '14:15-16:00')
+  })
+})
+
+test('offline per-op resolution: accept one change, reject the other, row finalizes only when all resolve', async () => {
+  await withRemote(async ({ store }) => {
+    // Make the store offline for this test (same process, remote back off).
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Local', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+    await store.setEditingSchedule(id, 'suggest')
+    store.moveOffering(id, 'CS', '101', 'A', { fromDay: 'M', toDay: 'T', group: 'TR', time: '10:00-11:45' })
+    store.addCourseToSchedule(id, 'BIO 161')
+
+    const row = await store.proposeDraft(id, 'two changes')
+    assert.equal(row.operations.length, 2)
+
+    // Accepting the first change applies only it; the row stays pending.
+    const first = await store.resolveOp(row.id, 0, 'accepted')
+    assert.ok(first)
+    assert.equal(first.status, 'pending')
+    assert.equal(first.operations[0].resolution, 'accepted')
+    assert.equal(first.operations[1].resolution, 'pending')
+    // termOfferings renders the draft during a suggest session; read the
+    // published part directly to see what the accept actually published.
+    let published = store.scheduleById(id).terms.F.offerings
+    assert.equal(published.find((o) => o.number === '101').days, 'TR', 'accepted move applied')
+    assert.ok(!published.some((o) => o.number === '161'), 'unresolved add NOT applied')
+
+    // Rejecting the second change finalizes the row as approved (one applied).
+    const second = await store.resolveOp(row.id, 1, 'rejected')
+    assert.ok(second)
+    assert.equal(second.status, 'approved')
+    assert.equal(second.operations[1].resolution, 'rejected')
+    const trail = JSON.parse(localStorage.getItem('major-vis.schedule.suggestions'))
+    assert.equal(trail.length, 1)
+    assert.equal(trail[0].status, 'approved')
+    assert.deepEqual(
+      trail[0].operations.map((o) => o.resolution),
+      ['accepted', 'rejected'],
+    )
+
+    // The published term still lacks the rejected course.
+    published = store.scheduleById(id).terms.F.offerings
+    assert.ok(!published.some((o) => o.number === '161'))
+
+    // Resolving an already-resolved op is refused.
+    assert.equal(await store.resolveOp(row.id, 0, 'accepted'), null)
+    assert.equal(await store.resolveOp(row.id, 0, 'rejected'), null)
   })
 })

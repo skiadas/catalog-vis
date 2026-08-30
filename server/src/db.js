@@ -394,13 +394,15 @@ export function addSuggestion(db, { scheduleId, term, proposerUserId, baseVersio
 }
 
 // Replaces a pending suggestion's operations and/or note (proposer editing their
-// own proposal). Returns the updated suggestion or null if the id is unknown.
+// own proposal). An optional status change can ride along — the resolution
+// handlers use this to finalize a row's status once every op is resolved.
+// Returns the updated suggestion or null if the id is unknown.
 /**
  * @param {DB} db
  * @param {number} id
- * @param {{ operations?: unknown[]; note?: string }} changes
+ * @param {{ operations?: unknown[]; note?: string; status?: string }} changes
  */
-export function updateSuggestion(db, id, { operations, note }) {
+export function updateSuggestion(db, id, { operations, note, status }) {
   const fields = []
   const vals = []
   if (operations !== undefined) {
@@ -410,6 +412,14 @@ export function updateSuggestion(db, id, { operations, note }) {
   if (note !== undefined) {
     fields.push('note = ?')
     vals.push(note)
+  }
+  if (status !== undefined) {
+    fields.push('status = ?')
+    vals.push(status)
+    if (status !== 'pending') {
+      fields.push('resolved_at = ?')
+      vals.push(new Date().toISOString())
+    }
   }
   if (!fields.length) return getSuggestion(db, id)
   db.prepare(`UPDATE schedule_changes SET ${fields.join(', ')} WHERE id = ?`).run(...vals, id)

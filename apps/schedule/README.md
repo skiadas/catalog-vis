@@ -72,10 +72,16 @@ schedule. Suggestions are concurrent: any number of departments may hold
 live pending proposals ("suggested moves"), visible to everyone — pending
 suggestions render as dashed overlay blocks on the calendar (the "Show
 proposals" toggle, on by default), so departments see where each other plan to
-offer courses. The owner approves/rejects each suggestion one at a time; an
-approval that changes nothing is recorded as `moot`; proposers can edit
-(`PATCH`) or withdraw (soft `withdrawn`) their own pending suggestions, and the
-panel keeps the full paper trail (proposer, note, operations, status,
+offer courses. The owner reviews each pending suggestion **change by change**:
+every operation carries its own resolution marker (`pending`/`accepted`/
+`rejected`), and the panel offers an individual Approve/Reject per change — the
+row stays pending until each change is decided, then finalizes as `approved`
+(some accepted change landed), `moot` (accepted changes changed nothing), or
+`rejected` (all rejected). Once the owner has resolved any change the proposer
+is locked out of editing the rest (withdrawing is still allowed; edits then go
+to a fresh row). Proposers can edit (`PATCH`) or withdraw (soft `withdrawn`)
+their own untouched pending suggestions, and the panel keeps the full paper
+trail (proposer, note, operations with per-change markers, status,
 `resolved_at`).
 
 Without a server, the app runs entirely on `localStorage`, and the same

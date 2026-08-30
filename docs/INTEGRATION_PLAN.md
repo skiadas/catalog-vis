@@ -26,7 +26,8 @@ database persistence, login, and ownership with suggested edits.
 9. Schedules are owned by their creator but visible to all. A non-owner's edit
    becomes a "suggested edit" (a diff, e.g. "CS 220: change instructor from
    Wahl to Skiadas"), exportable, and individually approvable/rejectable by the
-   owner.
+   owner (**delivered**: per-change resolution — each diff op carries its own
+   `accept`/`reject` marker, applied one op at a time).
 
 ## Architecture direction
 

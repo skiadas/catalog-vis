@@ -738,6 +738,8 @@ export function buildEditVisual(mode, depts, instructors, colorFn) {
 //
 // Update ops that don't move the course on the calendar (instructor/section
 // changes) are omitted here — they stay visible in the suggestions panel.
+// Operations the owner already resolved (accepted or rejected) are skipped:
+// accepted ones are in the published term, rejected ones are not proposals.
 export function proposeOverlay(baseOfferings, pendingSuggestions) {
   const baseByKey = new Map()
   for (const o of baseOfferings || []) {
@@ -747,7 +749,7 @@ export function proposeOverlay(baseOfferings, pendingSuggestions) {
   const removals = []
   for (const sug of pendingSuggestions || []) {
     for (const op of sug.operations || []) {
-      if (!op) continue
+      if (!op || (op.resolution && op.resolution !== 'pending')) continue
       if (op.kind === 'add' && op.offering) {
         proposed.push({
           offering: { ...op.offering },

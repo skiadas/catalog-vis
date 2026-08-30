@@ -9,9 +9,45 @@
 import crypto from 'node:crypto'
 import express from 'express'
 import * as db from './db.js'
-import { applyOperations, diffOfferings, renderChanges } from '@major-vis/schedule-core/diff'
+import {
+  applyOperations,
+  diffOfferings,
+  opResolution,
+  resolutionStatus,
+  describeChange,
+} from '@major-vis/schedule-core/diff'
 
 const TERMS = ['F', 'W', 'S']
+
+// New operations start unresolved; the marker rides inside each op so the whole
+// suggestion persists in one JSON column with no schema change.
+function normalizeOperations(operations) {
+  return (operations || []).map((op) => ({ ...(op || {}), resolution: 'pending' }))
+}
+
+// The index of an operation a resolve request names, or null when invalid.
+function opIndex(value, operations) {
+  const index = Number(value)
+  return Number.isInteger(index) && index >= 0 && index < (operations || []).length ? index : null
+}
+
+// Applies a per-op resolution marker to a suggestion and finalizes the row's
+// status ('approved' | 'moot' | 'rejected') when every op is resolved; the row
+// stays 'pending' (live for everyone) while any op remains unresolved.
+function resolveSuggestion(database, suggestion, operations) {
+  const finalStatus = resolutionStatus(operations)
+  const updated = db.updateSuggestion(database, suggestion.id, { operations })
+  return finalStatus ? db.setSuggestionStatus(database, suggestion.id, finalStatus) : updated
+}
+
+// Renders ops with their resolution markers appended for the export trail
+// ("CS 220 A: ... [accepted]"); pending ops render bare.
+function renderOpsWithMarkers(operations) {
+  return (operations || []).map((op) => {
+    const text = describeChange(op)
+    return opResolution(op) === 'pending' ? text : `${text} [${opResolution(op)}]`
+  })
+}
 
 function parseCookies(req) {
   const header = String(req.headers.cookie || '')
@@ -175,7 +211,7 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
       term,
       proposerUserId: req.user.id,
       baseVersion,
-      operations,
+      operations: normalizeOperations(operations),
       note,
     })
     res.status(201).json({ suggestion })
@@ -196,18 +232,23 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
   })
 
   // A proposer can edit their own pending suggestion (new operations and/or
-  // note); pending only, so the trail is stable once resolved.
+  // note); pending only, so the trail is stable once resolved. Editing is also
+  // refused once the owner has resolved any operation ('in_review') — partial
+  // resolutions target ops by index, so the list must not change mid-review.
+  // A proposer can still withdraw.
   app.patch('/api/suggestions/:id', requireAuth, (req, res) => {
     const suggestion = db.getSuggestion(database, Number(req.params.id))
     if (!suggestion) return res.status(404).json({ error: 'not_found' })
     if (suggestion.proposer_user_id !== req.user.id) return res.status(403).json({ error: 'not_proposer' })
     if (suggestion.status !== 'pending') return res.status(409).json({ error: 'not_pending' })
+    if (suggestion.operations.some((op) => opResolution(op) !== 'pending'))
+      return res.status(409).json({ error: 'in_review' })
     const operations = Array.isArray(req.body && req.body.operations) ? req.body.operations : undefined
     const note = req.body && typeof req.body.note === 'string' ? req.body.note.trim() : undefined
     if (operations === undefined && note === undefined)
       return res.status(400).json({ error: 'nothing_to_update' })
     const updated = db.updateSuggestion(database, suggestion.id, {
-      ...(operations !== undefined ? { operations } : {}),
+      ...(operations !== undefined ? { operations: normalizeOperations(operations) } : {}),
       ...(note !== undefined ? { note } : {}),
     })
     res.json({ suggestion: updated })
@@ -224,12 +265,14 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     res.json({ suggestion: withdrawn })
   })
 
-  // Owner applies a pending suggestion against the current term state. There is
-  // no base-version guard: identity-based operations apply to whatever the term
-  // currently holds, so concurrent suggestions from many proposers can each be
-  // approved one at a time. If the operations end up changing nothing (e.g. the
-  // target is already gone), the suggestion is recorded as 'moot' rather than
-  // 'approved' — the trail reflects what actually happened.
+  // Owner resolves one operation of a pending suggestion against the current
+  // term state: approving applies exactly that op (unmatched ops no-op, so
+  // concurrent suggestions from many proposers each stay live), rejecting
+  // records the decision without changing the term. Each op carries its own
+  // resolution marker; the row stays 'pending' until every op is resolved, then
+  // becomes 'approved' (some accepted op changed the term), 'moot' (accepted
+  // ops changed nothing), or 'rejected' (all rejected) — the trail reflects what
+  // actually happened.
   app.post('/api/suggestions/:id/approve', requireAuth, (req, res) => {
     const suggestion = db.getSuggestion(database, Number(req.params.id))
     if (!suggestion) return res.status(404).json({ error: 'not_found' })
@@ -237,24 +280,38 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     const schedule = db.getSchedule(database, suggestion.schedule_id)
     if (!schedule || schedule.owner_user_id !== req.user.id)
       return res.status(403).json({ error: 'not_owner' })
+    const index = opIndex(req.body && req.body.index, suggestion.operations)
+    if (index == null) return res.status(400).json({ error: 'bad_index' })
+    const op = suggestion.operations[index]
+    if (opResolution(op) !== 'pending') return res.status(409).json({ error: 'already_resolved' })
     const current = db.getTerm(database, schedule.id, suggestion.term)
     if (!current) return res.status(404).json({ error: 'not_found' })
-    const applied = applyOperations(current.offerings, suggestion.operations)
-    const changed = diffOfferings(current.offerings, applied).length > 0
-    const term = changed ? db.setTermOfferings(database, schedule.id, suggestion.term, applied) : current
-    const saved = db.setSuggestionStatus(database, suggestion.id, changed ? 'approved' : 'moot')
+    const appliedOff = applyOperations(current.offerings, [op])
+    const changed = diffOfferings(current.offerings, appliedOff).length > 0
+    const term = changed ? db.setTermOfferings(database, schedule.id, suggestion.term, appliedOff) : current
+    const operations = suggestion.operations.map((o, i) =>
+      i === index ? { ...o, resolution: 'accepted', applied: changed } : o,
+    )
+    const saved = resolveSuggestion(database, suggestion, operations)
     res.json({ term, suggestion: saved })
   })
 
   app.post('/api/suggestions/:id/reject', requireAuth, (req, res) => {
     const suggestion = db.getSuggestion(database, Number(req.params.id))
     if (!suggestion) return res.status(404).json({ error: 'not_found' })
+    if (suggestion.status !== 'pending') return res.status(409).json({ error: 'not_pending' })
     const schedule = db.getSchedule(database, suggestion.schedule_id)
     if (!schedule || schedule.owner_user_id !== req.user.id)
       return res.status(403).json({ error: 'not_owner' })
-    if (suggestion.status !== 'pending') return res.status(409).json({ error: 'not_pending' })
-    db.setSuggestionStatus(database, suggestion.id, 'rejected')
-    res.json({ ok: true })
+    const index = opIndex(req.body && req.body.index, suggestion.operations)
+    if (index == null) return res.status(400).json({ error: 'bad_index' })
+    const op = suggestion.operations[index]
+    if (opResolution(op) !== 'pending') return res.status(409).json({ error: 'already_resolved' })
+    const operations = suggestion.operations.map((o, i) =>
+      i === index ? { ...o, resolution: 'rejected' } : o,
+    )
+    const saved = resolveSuggestion(database, suggestion, operations)
+    res.json({ suggestion: saved })
   })
 
   app.get('/api/schedules/:id/suggestions/export', requireAuth, (req, res) => {
@@ -268,15 +325,15 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
     const fmt = req.query.fmt === 'json' || !req.query.fmt ? 'json' : req.query.fmt === 'md' ? 'md' : 'csv'
     if (fmt === 'md') {
       const lines = visible.map((c) => {
-        const ops = renderChanges(c.operations, 'text')
-        return `- **Suggestion #${c.id}** (${c.term}, by ${c.proposer}): ${ops || '(empty)'}${c.note ? ' — ' + c.note : ''} [${c.status}]`
+        const ops = renderOpsWithMarkers(c.operations).join('; ') || '(empty)'
+        return `- **Suggestion #${c.id}** (${c.term}, by ${c.proposer}): ${ops}${c.note ? ' — ' + c.note : ''} [${c.status}]`
       })
       return res.type('text/markdown').send(lines.join('\n') || '_No suggestions._')
     }
     if (fmt === 'csv') {
       const rows = [['id', 'term', 'proposer', 'status', 'base_version', 'change']]
       for (const c of visible) {
-        const desc = renderChanges(c.operations, 'text')
+        const desc = renderOpsWithMarkers(c.operations).join('; ')
         rows.push([c.id, c.term, c.proposer, c.status, c.base_version, desc || '(empty)'])
       }
       const csv = rows.map((r) => r.map(csvCell).join(',')).join('\n')

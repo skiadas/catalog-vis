@@ -23,7 +23,7 @@ import {
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
 import { programs, allCourses } from '@major-vis/catalog-client'
-import { diffOfferings, applyOperations } from '@major-vis/schedule-core/diff'
+import { diffOfferings, applyOperations, opResolution, resolutionStatus } from '@major-vis/schedule-core/diff'
 import * as backend from './backend.js'
 
 import { ref, computed, watch } from 'vue'
@@ -342,6 +342,10 @@ export async function proposeDraft(scheduleId, note) {
   if (!draft) return null
   const s = scheduleById(scheduleId)
   if (!s) return null
+  // New operations start unresolved. The server stores them with an explicit
+  // 'pending' marker; the offline trail mirrors that shape, so both look alike
+  // everywhere (an absent marker always reads as 'pending').
+  const pendingOps = (ops) => (ops || []).map((op) => ({ ...op, resolution: 'pending' }))
   if (remote.value && typeof window !== 'undefined') {
     const current = await backend.fetchTerm(scheduleId, term)
     if (!current) return null
@@ -350,7 +354,15 @@ export async function proposeDraft(scheduleId, note) {
     if (!ops.length) return null
     const own = ownPendingSuggestion(scheduleId, term)
     // Re-proposing identical operations is a no-op (the upsert would be empty).
-    if (own && JSON.stringify(own.operations || []) === JSON.stringify(ops)) return null
+    // Server rows carry per-op resolution markers; strip them before comparing.
+    const strip = (op) => {
+      const stripped = { ...(op || {}) }
+      delete stripped.resolution
+      return stripped
+    }
+    if (own && JSON.stringify((own.operations || []).map(strip)) === JSON.stringify(ops.map(strip))) {
+      return null
+    }
     const saved = own
       ? await backend.updateSuggestion(own.id, {
           operations: ops,
@@ -368,7 +380,7 @@ export async function proposeDraft(scheduleId, note) {
     return saved
   }
   const part = s.terms[term] || { offerings: [], version: 0 }
-  const ops = diffOfferings(part.offerings || [], draft.offerings || [])
+  const ops = pendingOps(diffOfferings(part.offerings || [], draft.offerings || []))
   draft.dirty = false
   if (!ops.length) return null
   const rows = trailRows()
@@ -401,75 +413,83 @@ export async function proposeDraft(scheduleId, note) {
 
 // ---- Suggestion lifecycle -----------------------------------------------
 
-// The proposer's own pending suggestion for a (schedule, term), or null.
+// The proposer's own pending suggestion for a (schedule, term), or null. A row
+// under review (any op already resolved) is excluded: the owner decides change
+// by change, and further edits from the proposer go to a fresh row instead of
+// disturbing an in-progress review.
 function ownPendingSuggestion(scheduleId, term) {
   const list = suggestionsBySchedule.value[scheduleId] || []
+  const underReview = (s) => (s.operations || []).some((op) => opResolution(op) !== 'pending')
   if (remote.value) {
     const uid = currentUser.value && currentUser.value.id
     return (
       list.find(
-        (s) => s.status === 'pending' && s.term === term && Number(s.proposer_user_id) === Number(uid),
+        (s) =>
+          s.status === 'pending' &&
+          s.term === term &&
+          !underReview(s) &&
+          Number(s.proposer_user_id) === Number(uid),
       ) || null
     )
   }
-  return list.find((s) => s.status === 'pending' && s.term === term) || null
+  return list.find((s) => s.status === 'pending' && s.term === term && !underReview(s)) || null
 }
 
-// Approves a pending suggestion. Remote: the owner approves; the response's
-// term becomes the published state and the suggestion's status is reported
-// ('approved', or 'moot' when nothing changed). Offline: applies the ops
-// against the local store with the same status rules. Returns true when the
-// suggestion is no longer pending.
-export async function approveSuggestion(id) {
+// Resolves one operation of a suggestion: 'accepted' applies exactly that op to
+// the term (remote: the server applies it and the response term becomes the
+// published state; offline: applied here with the same semantics), 'rejected'
+// records the decision without touching the term. Each op carries its own
+// resolution marker; the row stays 'pending' until every op is resolved, then
+// finalizes to 'approved' (some accepted op changed the term), 'moot' (accepted
+// ops changed nothing), or 'rejected' (all rejected). Returns the updated
+// suggestion, or null when the op could not be resolved (not pending,
+// already resolved, bad index, ...).
+export async function resolveOp(id, index, decision) {
   const row = (suggestions.value || []).find((s) => s.id === id) || null
   const scheduleId = row ? row.schedule_id : null
   const term = row ? row.term : activeTerm.value
   if (remote.value && typeof window !== 'undefined') {
-    const result = await backend.approveSuggestion(id)
-    if (!result) return false
+    const result =
+      decision === 'accepted'
+        ? await backend.approveSuggestion(id, index)
+        : await backend.rejectSuggestion(id, index)
+    if (!result) return null
     if (result.term && result.term.term && result.term.schedule_id) {
       setLocalTerm(result.term.schedule_id, result.term.term, result.term.offerings, result.term.version)
     }
     if (scheduleId) await refreshSuggestions(scheduleId)
-    return true
+    return result.suggestion || null
   }
-  if (!row || row.status !== 'pending') return false
+  if (!row || row.status !== 'pending') return null
+  const op = (row.operations || [])[index]
+  if (!op || opResolution(op) !== 'pending') return null
   const s = scheduleById(scheduleId)
   const part = s && s.terms[term]
-  if (!part) return false
-  const applied = applyOperations(part.offerings || [], row.operations || [])
-  const changed = diffOfferings(part.offerings || [], applied).length > 0
-  row.status = changed ? 'approved' : 'moot'
-  row.resolved_at = new Date().toISOString()
-  if (changed) {
-    part.offerings = applied
-    part.version = (part.version || 0) + 1
-    schedules.value = [...schedules.value]
-    persistSchedules()
-  }
-  persistTrail(trailRows().map((r) => (r.id === id ? row : r)))
-  await refreshSuggestions(scheduleId)
-  return true
-}
-
-export async function rejectSuggestion(id) {
-  if (remote.value && typeof window !== 'undefined') {
-    const ok = await backend.rejectSuggestion(id)
-    if (ok) {
-      const row = (suggestions.value || []).find((s) => s.id === id)
-      suggestions.value = suggestions.value.map((s) => (s.id === id ? { ...s, status: 'rejected' } : s))
-      if (row && row.schedule_id) await refreshSuggestions(row.schedule_id)
+  if (!part) return null
+  let resolved
+  if (decision === 'accepted') {
+    const applied = applyOperations(part.offerings || [], [op])
+    const changed = diffOfferings(part.offerings || [], applied).length > 0
+    if (changed) {
+      part.offerings = applied
+      part.version = (part.version || 0) + 1
+      schedules.value = [...schedules.value]
+      persistSchedules()
     }
-    return ok
+    resolved = { ...op, resolution: 'accepted', applied: changed }
+  } else {
+    resolved = { ...op, resolution: 'rejected' }
   }
-  const rows = trailRows()
-  const row = rows.find((r) => r.id === id)
-  if (!row || row.status !== 'pending') return false
-  row.status = 'rejected'
-  row.resolved_at = new Date().toISOString()
-  persistTrail(rows)
-  await refreshSuggestions(row.schedule_id)
-  return true
+  const operations = (row.operations || []).map((o, i) => (i === index ? resolved : o))
+  const next = { ...row, operations }
+  const finalStatus = resolutionStatus(operations)
+  if (finalStatus) {
+    next.status = finalStatus
+    next.resolved_at = new Date().toISOString()
+  }
+  persistTrail(trailRows().map((r) => (r.id === id ? next : r)))
+  await refreshSuggestions(scheduleId)
+  return next
 }
 
 // Withdraws a pending suggestion (soft status; stays in the trail).

@@ -573,6 +573,38 @@ test('buildEditVisual keeps every course visible but honors an active filter', (
   assert.equal(inst.matches({ o: { instructor: 'Morgan' } }), false)
 })
 
+test('proposeOverlay omits operations the owner already resolved', () => {
+  const base = [{ prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '9:20-10:30' }]
+  const pending = [
+    {
+      id: 1,
+      proposer: 'physics',
+      operations: [
+        // accepted: already in the published term, not a proposal anymore
+        {
+          kind: 'update',
+          cur: { prefix: 'PHY', number: '121', section: 'A' },
+          changes: { days: 'MWF', time: '12:00-13:10' },
+          resolution: 'accepted',
+        },
+        // rejected: must not overlay or re-propose
+        { kind: 'remove', cur: { prefix: 'PHY', number: '121', section: 'A' }, resolution: 'rejected' },
+        // still pending: shows
+        {
+          kind: 'update',
+          cur: { prefix: 'PHY', number: '121', section: 'A' },
+          changes: { days: 'MWF', time: '13:30-14:40' },
+          resolution: 'pending',
+        },
+      ],
+    },
+  ]
+  const { proposed, removals } = proposeOverlay(base, pending)
+  assert.equal(proposed.length, 1)
+  assert.equal(proposed[0].offering.time, '13:30-14:40')
+  assert.deepEqual(removals, [])
+})
+
 test('proposeOverlay renders concurrent proposals independently with proposers', () => {
   const base = [
     { prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '9:20-10:30' },

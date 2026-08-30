@@ -146,7 +146,7 @@ test('non-owner cannot modify but can suggest; others see pending; owner approve
     assert.equal(sug.status, 201)
 
     // Bob (not owner) cannot approve.
-    const approveAsBob = await bob.post(`/api/suggestions/${sug.json.suggestion.id}/approve`, {})
+    const approveAsBob = await bob.post(`/api/suggestions/${sug.json.suggestion.id}/approve`, { index: 0 })
     assert.equal(approveAsBob.status, 403)
 
     // Carol (another non-owner) DOES see Bob's pending suggestion.
@@ -157,7 +157,7 @@ test('non-owner cannot modify but can suggest; others see pending; owner approve
     // Owner sees it and approves; the response names the status.
     const ownerView = await alice.get(`/api/schedules/${schedule.id}/suggestions`)
     assert.equal(ownerView.json.suggestions.length, 1)
-    const approved = await alice.post(`/api/suggestions/${sug.json.suggestion.id}/approve`, {})
+    const approved = await alice.post(`/api/suggestions/${sug.json.suggestion.id}/approve`, { index: 0 })
     assert.equal(approved.status, 200)
     assert.equal(approved.json.suggestion.status, 'approved')
     assert.equal(approved.json.term.offerings[0].instructor, 'Skiadas')
@@ -176,7 +176,7 @@ test('non-owner cannot modify but can suggest; others see pending; owner approve
       baseVersion: 2,
       operations: [{ kind: 'remove', cur: { prefix: 'CS', number: '220', section: 'A' } }],
     })
-    await alice.post(`/api/suggestions/${carolSug.json.suggestion.id}/reject`, {})
+    await alice.post(`/api/suggestions/${carolSug.json.suggestion.id}/reject`, { index: 0 })
     const carolOwn = await carol.get(`/api/schedules/${schedule.id}/suggestions`)
     assert.equal(carolOwn.json.suggestions.length, 1)
     assert.equal(carolOwn.json.suggestions[0].proposer, 'carol')
@@ -210,27 +210,31 @@ test('concurrent suggestions from many proposers approve independently, in any o
 
     // Physics proposes moving PHY 121; Math proposes moving MAT 131, both
     // against the same base version.
-    const phy = (await physics.post(`/api/schedules/${schedule.id}/suggestions`, {
-      term: 'F',
-      baseVersion: base,
-      operations: diffOfferings(
-        [{ prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '9:20-10:30' }],
-        [{ prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '12:00-13:10' }],
-      ),
-    })).json.suggestion
-    const mat = (await math.post(`/api/schedules/${schedule.id}/suggestions`, {
-      term: 'F',
-      baseVersion: base,
-      operations: diffOfferings(
-        [{ prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '10:00-11:45' }],
-        [{ prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '14:15-16:00' }],
-      ),
-    })).json.suggestion
+    const phy = (
+      await physics.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: base,
+        operations: diffOfferings(
+          [{ prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '9:20-10:30' }],
+          [{ prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '12:00-13:10' }],
+        ),
+      })
+    ).json.suggestion
+    const mat = (
+      await math.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: base,
+        operations: diffOfferings(
+          [{ prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '10:00-11:45' }],
+          [{ prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '14:15-16:00' }],
+        ),
+      })
+    ).json.suggestion
 
     // Math's proposal is still live after Physics' is approved (no invalidation).
-    const mathOk = await alice.post(`/api/suggestions/${mat.id}/approve`, {})
+    const mathOk = await alice.post(`/api/suggestions/${mat.id}/approve`, { index: 0 })
     assert.equal(mathOk.status, 200)
-    const physOk = await alice.post(`/api/suggestions/${phy.id}/approve`, {})
+    const physOk = await alice.post(`/api/suggestions/${phy.id}/approve`, { index: 0 })
     assert.equal(physOk.status, 200)
 
     const after = (await alice.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
@@ -241,11 +245,11 @@ test('concurrent suggestions from many proposers approve independently, in any o
     // The paper trail shows both, each with its proposer.
     const history = (await alice.get(`/api/schedules/${schedule.id}/suggestions`)).json.suggestions
     assert.equal(history.length, 2)
-    assert.equal(history.every((c) => c.status === 'approved'), true)
-    assert.deepEqual(
-      history.map((c) => c.proposer).sort(),
-      ['math', 'physics'],
+    assert.equal(
+      history.every((c) => c.status === 'approved'),
+      true,
     )
+    assert.deepEqual(history.map((c) => c.proposer).sort(), ['math', 'physics'])
   } finally {
     srv.close()
     database.close()
@@ -260,11 +264,13 @@ test('proposer can edit, then withdraw, their own pending suggestion; moot on no
       offerings: [{ prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' }],
     })
     const term = (await srv.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
-    const sug = (await srv.post(`/api/schedules/${schedule.id}/suggestions`, {
-      term: 'F',
-      baseVersion: term.version,
-      operations: [{ kind: 'remove', cur: { prefix: 'CS', number: '101', section: 'A' } }],
-    })).json.suggestion
+    const sug = (
+      await srv.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: term.version,
+        operations: [{ kind: 'remove', cur: { prefix: 'CS', number: '101', section: 'A' } }],
+      })
+    ).json.suggestion
 
     // Someone else cannot edit or withdraw it.
     const other = srv.newClient()
@@ -275,7 +281,14 @@ test('proposer can edit, then withdraw, their own pending suggestion; moot on no
     // The proposer replaces the operations (a stale state, but a valid one: the
     // term changed under the proposal) and updates the note.
     const edited = await srv.patch(`/api/suggestions/${sug.id}`, {
-      operations: [{ kind: 'update', cur: { prefix: 'CS', number: '101', section: 'A' }, changes: { time: '8:00-9:10' }, diff: [] }],
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'CS', number: '101', section: 'A' },
+          changes: { time: '8:00-9:10' },
+          diff: [],
+        },
+      ],
       note: 'reconsidered: just move the time',
     })
     assert.equal(edited.status, 200)
@@ -285,27 +298,104 @@ test('proposer can edit, then withdraw, their own pending suggestion; moot on no
     // The owner deletes the course directly (the term moved on), so approving
     // the suggestion changes nothing -> moot.
     await srv.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [] })
-    const approve = await srv.post(`/api/suggestions/${sug.id}/approve`, {})
+    const approve = await srv.post(`/api/suggestions/${sug.id}/approve`, { index: 0 })
     assert.equal(approve.status, 200)
     assert.equal(approve.json.suggestion.status, 'moot')
     const termAfter = (await srv.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
     assert.equal(termAfter.offerings.length, 0)
 
     // A second pending suggestion can be withdrawn (soft) and stays in the trail.
-    const second = (await srv.post(`/api/schedules/${schedule.id}/suggestions`, {
-      term: 'F',
-      baseVersion: termAfter.version,
-      operations: [{ kind: 'add', offering: { prefix: 'BIO', number: '161', section: 'A', days: 'MWF', time: '8:00-9:10' } }],
-    })).json.suggestion
+    const second = (
+      await srv.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: termAfter.version,
+        operations: [
+          {
+            kind: 'add',
+            offering: { prefix: 'BIO', number: '161', section: 'A', days: 'MWF', time: '8:00-9:10' },
+          },
+        ],
+      })
+    ).json.suggestion
     const withdrawn = await srv.del(`/api/suggestions/${second.id}`)
     assert.equal(withdrawn.status, 200)
     assert.equal(withdrawn.json.suggestion.status, 'withdrawn')
     const trail = (await srv.get(`/api/schedules/${schedule.id}/suggestions`)).json.suggestions
     assert.equal(trail.length, 2)
-    assert.deepEqual(
-      trail.map((c) => c.status).sort(),
-      ['moot', 'withdrawn'],
-    )
+    assert.deepEqual(trail.map((c) => c.status).sort(), ['moot', 'withdrawn'])
+  } finally {
+    srv.close()
+    db.close()
+  }
+})
+
+test('one suggestion, per-op resolution: partial approve stays pending, review locks edits, all-resolved finalizes', async () => {
+  const { srv, db } = await authClient()
+  try {
+    const { schedule } = (await srv.post('/api/schedules', { name: 'Partial', year: '2026-27' })).json
+    await srv.put(`/api/schedules/${schedule.id}/terms/F`, {
+      offerings: [
+        { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30', instructor: 'Wahl' },
+        { prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '10:00-11:45', instructor: 'Adams' },
+      ],
+    })
+    const term = (await srv.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
+    const sug = (
+      await srv.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: term.version,
+        operations: [
+          {
+            kind: 'update',
+            cur: { prefix: 'CS', number: '101', section: 'A' },
+            changes: { instructor: 'Novak' },
+            diff: [],
+          },
+          {
+            kind: 'update',
+            cur: { prefix: 'MAT', number: '131', section: 'A' },
+            changes: { time: '14:15-16:00' },
+            diff: [],
+          },
+        ],
+      })
+    ).json.suggestion
+    assert.ok(sug.operations.every((o) => o.resolution === 'pending'))
+
+    // Missing/out-of-range index is refused.
+    assert.equal((await srv.post(`/api/suggestions/${sug.id}/approve`, {})).status, 400)
+    assert.equal((await srv.post(`/api/suggestions/${sug.id}/approve`, { index: 2 })).status, 400)
+    assert.equal((await srv.post(`/api/suggestions/${sug.id}/reject`, { index: 99 })).status, 400)
+
+    // Approving one op changes only that part of the term; the row stays live.
+    const first = await srv.post(`/api/suggestions/${sug.id}/approve`, { index: 0 })
+    assert.equal(first.status, 200)
+    assert.equal(first.json.suggestion.status, 'pending')
+    assert.equal(first.json.suggestion.operations[0].resolution, 'accepted')
+    assert.ok(first.json.suggestion.operations[0].applied === true)
+    assert.equal(first.json.suggestion.operations[1].resolution, 'pending')
+    assert.equal(first.json.term.offerings.find((o) => o.prefix === 'CS').instructor, 'Novak')
+    assert.equal(first.json.term.offerings.find((o) => o.prefix === 'MAT').time, '10:00-11:45')
+
+    // Reviewing locks the proposer out of editing (here proposer == owner, so
+    // the only guard left is the in_review one)...
+    const edit = await srv.patch(`/api/suggestions/${sug.id}`, { note: 'shh' })
+    assert.equal(edit.status, 409)
+    assert.equal(edit.json.error, 'in_review')
+
+    // ...and re-resolving an already-resolved op is refused.
+    assert.equal((await srv.post(`/api/suggestions/${sug.id}/approve`, { index: 0 })).status, 409)
+
+    // Rejecting the remaining op finalizes the row as approved (one applied,
+    // one rejected).
+    const second = await srv.post(`/api/suggestions/${sug.id}/reject`, { index: 1 })
+    assert.equal(second.status, 200)
+    assert.equal(second.json.suggestion.status, 'approved')
+    assert.equal(second.json.suggestion.operations[1].resolution, 'rejected')
+    assert.ok(second.json.suggestion.resolved_at)
+
+    // Resolving a resolved row is refused.
+    assert.equal((await srv.post(`/api/suggestions/${sug.id}/reject`, { index: 1 })).status, 409)
   } finally {
     srv.close()
     db.close()

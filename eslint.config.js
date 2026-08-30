@@ -36,5 +36,15 @@ export default [
       },
     },
   },
+  {
+    // Store tests run the browser-facing store under node and deliberately shim
+    // `localStorage` (see apps/schedule/test/helpers.mjs).
+    files: ['apps/**/test/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        localStorage: 'readonly',
+      },
+    },
+  },
   prettier,
 ]

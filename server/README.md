@@ -80,8 +80,8 @@ POST   /api/schedules/:id/suggestions       -> { suggestion }    (auth; base_ver
 GET    /api/schedules/:id/suggestions       -> { suggestions }   (everyone sees pending; own history + owner sees all)
 PATCH  /api/suggestions/:id                 -> { suggestion }    (proposer, pending only)
 DELETE /api/suggestions/:id                 -> { suggestion }    (proposer, pending only; soft 'withdrawn')
-POST   /api/suggestions/:id/approve         -> { term, suggestion } (owner; applies ops to current state)
-POST   /api/suggestions/:id/reject          -> { ok }             (owner)
+POST   /api/suggestions/:id/approve { index } -> { term, suggestion } (owner; applies that one op)
+POST   /api/suggestions/:id/reject  { index } -> { suggestion }       (owner)
 GET    /api/schedules/:id/suggestions/export?fmt=json|md|csv
 ```
 
@@ -95,13 +95,29 @@ suggestions from many proposers stay live **concurrently**: approval applies
 the operations to whatever the term's current state is (no base-version guard),
 so approving one proposal never invalidates others. Unmatched ops no-op,
 duplicate adds dedupe, and an approval that changes nothing is recorded as
-**`moot`**. Proposers can edit (`PATCH`) or withdraw (`DELETE`, soft
-`withdrawn`) their own pending suggestions. The recorded `base_version` is
-informational only — the paper trail keeps every row with proposer, note,
-operations, and resolution status. Diff produce/apply/describe live in
-`@major-vis/schedule-core/diff` (`diffOfferings`, `applyOperations`,
-`describeChange`, `renderChanges`). `GET /api/schedules` returns full term
-payloads (offerings + versions) so the app renders directly from the list.
+**`moot`**.
+
+**Per-change resolution**: each operation carries its own `resolution` marker
+(`pending` | `accepted` | `rejected`, absent = `pending`; accepted ops also
+record `applied`, whether the op actually changed the term). The owner resolves
+the ops of a pending suggestion **one at a time** — `approve`/`reject` name an
+op by `index` (400 on a missing/out-of-range index, 409 once that op is
+resolved). The row stays `pending` until every op is resolved, then finalizes:
+**`approved`** (some accepted op changed the term), **`moot`** (accepted ops
+changed nothing), or **`rejected`** (all rejected). While any op is resolved the
+proposer is locked out of editing (`PATCH` → 409 `in_review` — ops are
+index-based, so the list must not change mid-review); **withdrawing** is still
+allowed. New proposals then go to a fresh row. `resolutionStatus` /
+`applyOperations` (which never reapplies rejected ops) in
+`@major-vis/schedule-core/diff` implement this; the md/csv export annotates
+resolved ops (`... [accepted]`). Proposers can edit (`PATCH`) or withdraw
+(`DELETE`, soft `withdrawn`) their own pending suggestions while they are
+untouched. The recorded `base_version` is informational only — the paper trail
+keeps every row with proposer, note, operations, and resolution status. Diff
+produce/apply/describe live in `@major-vis/schedule-core/diff`
+(`diffOfferings`, `applyOperations`, `describeChange`, `renderChanges`).
+`GET /api/schedules` returns full term payloads (offerings + versions) so the
+app renders directly from the list.
 
 ## Reuse
 

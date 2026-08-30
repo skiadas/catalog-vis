@@ -183,23 +183,35 @@ export async function createSuggestion(scheduleId, payload) {
   }
 }
 
-export async function approveSuggestion(id) {
+// Resolves one operation (`index`) of a pending suggestion. Approving returns
+// the server's { term, suggestion } — the term is the published state with that
+// one op applied — and rejecting returns the updated suggestion. Both are null
+// when the request failed (not pending, already resolved, bad index, ...).
+export async function approveSuggestion(id, index) {
   try {
-    const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}/approve`, { method: 'POST' })
+    const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index }),
+    })
     if (!res.ok) return null
-    const data = await res.json()
-    return (data && data.suggestion) || null
+    return await res.json()
   } catch {
     return null
   }
 }
 
-export async function rejectSuggestion(id) {
+export async function rejectSuggestion(id, index) {
   try {
-    const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}/reject`, { method: 'POST' })
-    return res.ok
+    const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index }),
+    })
+    if (!res.ok) return null
+    return await res.json()
   } catch {
-    return false
+    return null
   }
 }
 

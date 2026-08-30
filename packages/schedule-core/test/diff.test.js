@@ -1,6 +1,14 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { diffOfferings, applyOperations, describeChange, renderChanges, offeringKey } from '../diff.js'
+import {
+  diffOfferings,
+  applyOperations,
+  describeChange,
+  renderChanges,
+  offeringKey,
+  opResolution,
+  resolutionStatus,
+} from '../diff.js'
 
 const OFF = (id, extra = {}) => ({
   prefix: 'CS',
@@ -96,6 +104,61 @@ test('applyOperations dedupes duplicate adds so concurrent approvals stay clean'
   ])
   assert.equal(afterRemove.length, 1)
   assert.equal(afterRemove[0].time, '9:20-10:30')
+})
+
+test('applyOperations skips ops the owner rejected', () => {
+  const list = [OFF(1, { number: '101' }), OFF(2, { number: '202' })]
+  const rejected = {
+    kind: 'remove',
+    cur: { prefix: 'CS', number: '101', section: 'A' },
+    resolution: 'rejected',
+  }
+  // A rejected removal never lands (even if the identity is currently free).
+  assert.deepEqual(applyOperations(list, [rejected]), list)
+  // Accepted and still-pending ops apply normally (markers don't block them).
+  const accepted = {
+    kind: 'update',
+    cur: { prefix: 'CS', number: '101', section: 'A' },
+    changes: { instructor: 'X' },
+    resolution: 'accepted',
+  }
+  assert.deepEqual(applyOperations(list, [accepted, rejected]), [
+    OFF(1, { number: '101', instructor: 'X' }),
+    OFF(2, { number: '202' }),
+  ])
+  assert.deepEqual(applyOperations(list, [{ ...accepted, resolution: 'pending' }, rejected]), [
+    OFF(1, { number: '101', instructor: 'X' }),
+    OFF(2, { number: '202' }),
+  ])
+})
+
+test('opResolution defaults to pending and reads the marker', () => {
+  assert.equal(opResolution(undefined), 'pending')
+  assert.equal(opResolution({ kind: 'add' }), 'pending')
+  assert.equal(opResolution({ kind: 'add', resolution: 'pending' }), 'pending')
+  assert.equal(opResolution({ resolution: 'accepted' }), 'accepted')
+  assert.equal(opResolution({ resolution: 'rejected' }), 'rejected')
+})
+
+test('resolutionStatus derives the row status once every op is resolved', () => {
+  const update = (resolution, applied) => ({
+    kind: 'update',
+    cur: { prefix: 'CS', number: '220', section: 'A' },
+    changes: { instructor: 'X' },
+    resolution,
+    ...(applied === undefined ? {} : { applied }),
+  })
+  // Any pending op keeps the row live.
+  assert.equal(resolutionStatus([update('pending'), update('accepted', true)]), null)
+  assert.equal(resolutionStatus(undefined), 'moot')
+  assert.equal(resolutionStatus([]), 'moot')
+  // All rejected -> rejected.
+  assert.equal(resolutionStatus([update('rejected'), update('rejected')]), 'rejected')
+  // Accepted that changed the term -> approved.
+  assert.equal(resolutionStatus([update('accepted', true), update('rejected')]), 'approved')
+  // Accepted but nothing changed (already applied elsewhere) -> moot.
+  assert.equal(resolutionStatus([update('accepted', false), update('rejected')]), 'moot')
+  assert.equal(resolutionStatus([update('accepted', false)]), 'moot')
 })
 
 test('describeChange reads naturally', () => {
