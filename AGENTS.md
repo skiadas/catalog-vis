@@ -96,6 +96,11 @@ checks CI runs, all must pass _before_ you commit:
 - `npm run lint` (eslint)
 - `python3 -m black .` then `python3 -m compileall -q -x "node_modules|/\.git/" .`
 
+When a slice is committed and the work is done, run `npm run build` **once
+more** so the deployment output (`dist/`, gitignored) is fresh before handing
+back to the user — the smoke test, local `npm run serve` runs, and the
+container all consume the built bundles, not sources.
+
 **Definition of done for a change to app/store logic or UI** — passing the
 checks above proves the build stays green, not that a feature works:
 
