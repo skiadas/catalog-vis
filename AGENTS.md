@@ -76,9 +76,11 @@ repeated look once.
 **Conventions** — naming and style rules beyond tooling live in
 `docs/CONVENTIONS.md` (e.g. booleans read as predicates: `isOpen`, not `open`).
 
-**Committing and verifying** — commit often, in small logical units; finish a
-coherent slice and commit before moving on. Run the same checks CI runs, all must
-pass _before_ you commit:
+**Committing and verifying** — commit often and without being asked: finish a
+coherent slice, run the checks below, and commit before moving on. This repo
+wants autonomous small commits; do not wait for explicit permission, but do
+inspect `git status`/`git diff` so only intended files are staged. Run the same
+checks CI runs, all must pass _before_ you commit:
 - `npx prettier@3.3.3 --check "**/*.{js,html,css,scss}"`
 - `npm test` (workspaces: degree-audit, schedule-core, catalog-contract)
 - `npm run typecheck` (tsc checkJs across apps/packages/server)
