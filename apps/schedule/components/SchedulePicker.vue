@@ -145,7 +145,8 @@ import {
   selectedDepartments,
   selectedInstructors,
   activeTerm,
-  termOfferings,
+  viewOfferings,
+  publishedOfferings,
   setTermOfferings,
 } from '../src/scheduleStore.js'
 import { colorForSchedule, compareItems, parseCsv, renderCsv, TERM_LABELS } from '@major-vis/schedule-core'
@@ -210,7 +211,7 @@ export default {
     const downloadCsv = () => {
       const rows = [['Term', 'Schedule', 'Course', 'Course name', 'Instructor', 'Days', 'Time']]
       for (const s of visibleSchedules.value) {
-        const offerings = [...termOfferings(s, activeTerm.value)].sort((a, b) =>
+        const offerings = [...viewOfferings(s, activeTerm.value)].sort((a, b) =>
           compareItems({ o: a }, { o: b }),
         )
         for (const o of offerings) {
@@ -244,7 +245,7 @@ export default {
       if (!s) return
       const rows = []
       for (const t of Object.keys(s.terms || {})) {
-        for (const o of (s.terms[t]?.offerings || []).map((x) => ({ ...x, term: t }))) rows.push(o)
+        for (const o of publishedOfferings(s, t).map((x) => ({ ...x, term: t }))) rows.push(o)
       }
       const csv = renderCsv(rows)
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })

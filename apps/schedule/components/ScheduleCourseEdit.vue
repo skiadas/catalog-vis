@@ -157,6 +157,7 @@ import {
   removeCourseFromSchedule,
   activeTerm,
   editingRole,
+  publishedPart,
 } from '../src/scheduleStore.js'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 
@@ -180,7 +181,7 @@ export default {
     // Instructor dropdowns are drawn from the whole *term* the course is in.
     const courseOfferings = computed(() => {
       const s = schedule.value
-      const part = s && s.terms && s.terms[activeTerm.value]
+      const part = publishedPart(s, activeTerm.value)
       return part ? part.offerings : []
     })
 

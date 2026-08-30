@@ -27,12 +27,12 @@
             <div class="schedule-manage-main">
               <div class="schedule-manage-name">{{ s.name }}</div>
               <div class="schedule-manage-meta">
-                {{ s.year || '—' }} · {{ termOfferings(s).length }} offerings this term
-                <span v-if="TERM_KEYS.some((t) => termOfferings(s, t).length)">
+                {{ s.year || '—' }} · {{ viewOfferings(s).length }} offerings this term
+                <span v-if="TERM_KEYS.some((t) => viewOfferings(s, t).length)">
                   ·
                   {{
                     TERM_KEYS.map((t) =>
-                      termOfferings(s, t).length ? TERM_LABELS[t] + ': ' + termOfferings(s, t).length : '',
+                      viewOfferings(s, t).length ? TERM_LABELS[t] + ': ' + viewOfferings(s, t).length : '',
                     )
                       .filter(Boolean)
                       .join(', ')
@@ -243,7 +243,7 @@ import {
   generateSchedule,
   editingScheduleId,
   activeTerm,
-  termOfferings,
+  viewOfferings,
 } from '../src/scheduleStore.js'
 import { allCourses } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
@@ -347,7 +347,7 @@ export default {
       menuFor,
       colorForSchedule,
       activeTerm,
-      termOfferings,
+      viewOfferings,
       TERM_KEYS,
       TERM_LABELS,
     }

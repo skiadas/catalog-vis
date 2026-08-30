@@ -197,7 +197,7 @@ test('non-owner suggest sessions consolidate into one upserted proposal; externa
     await store.setEditingSchedule(null)
     assert.equal(await store.setEditingSchedule(schedule.id, 'suggest'), true)
 
-    const draft = store.termOfferings(store.scheduleById(schedule.id))
+    const draft = store.viewOfferings(store.scheduleById(schedule.id))
     const byCode = (code) => draft.find((o) => `${o.prefix} ${o.number}` === code)
     assert.ok(byCode('MAT 131'), 'owner addition stays in the base')
     assert.equal(byCode('BIO 161').time, '14:15-16:00', 'own pending intent replayed')
@@ -243,10 +243,33 @@ test('offline trail mirrors the lifecycle: propose, withdraw, propose again, sel
     rows = JSON.parse(localStorage.getItem('major-vis.schedule.suggestions'))
     assert.equal(rows.length, 2)
     assert.equal(rows.find((r) => r.id === row2.id).status, 'approved')
-    const term = store.termOfferings(store.scheduleById(id))
+    const term = store.publishedOfferings(store.scheduleById(id))
     const course = term.find((o) => o.number === '101')
     assert.equal(course.days, 'TR')
     assert.equal(course.time, '14:15-16:00')
+  })
+})
+
+test('publishedOfferings stays published during a suggest session; viewOfferings shows the draft', async () => {
+  await withRemote(async ({ store }) => {
+    // Make the store offline for this test (same process, remote back off).
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Local', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+    await store.setEditingSchedule(id, 'suggest')
+    store.moveOffering(id, 'CS', '101', 'A', { fromDay: 'M', toDay: 'T', group: 'TR', time: '10:00-11:45' })
+
+    const s = store.scheduleById(id)
+    const published = store.publishedOfferings(s)
+    const viewed = store.viewOfferings(s)
+    assert.equal(published.length, 1)
+    assert.equal(published[0].days, 'MWF', 'published part is untouched by draft edits')
+    assert.equal(published[0].time, '8:00-9:10')
+    assert.equal(viewed[0].days, 'TR', 'view part renders the draft during a suggest session')
+    assert.equal(viewed[0].time, '10:00-11:45')
   })
 })
 
@@ -272,8 +295,8 @@ test('offline per-op resolution: accept one change, reject the other, row finali
     assert.equal(first.status, 'pending')
     assert.equal(first.operations[0].resolution, 'accepted')
     assert.equal(first.operations[1].resolution, 'pending')
-    // termOfferings renders the draft during a suggest session; read the
-    // published part directly to see what the accept actually published.
+    // viewOfferings renders the draft during a suggest session; read the
+    // published part to see what the accept actually published.
     let published = store.scheduleById(id).terms.F.offerings
     assert.equal(published.find((o) => o.number === '101').days, 'TR', 'accepted move applied')
     assert.ok(!published.some((o) => o.number === '161'), 'unresolved add NOT applied')

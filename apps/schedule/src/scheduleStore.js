@@ -300,7 +300,7 @@ async function setupDraft(scheduleId, term) {
   if (existing && existing.dirty) return
   const s = scheduleById(scheduleId)
   if (!s) return
-  const part = s.terms[term] || { offerings: [], version: 0 }
+  const part = publishedPart(s, term) || { offerings: [], version: 0 }
   const own = ownPendingSuggestion(scheduleId, term)
   setDraft(scheduleId, term, {
     offerings: own ? applyOperations(part.offerings, own.operations) : [...part.offerings],
@@ -332,7 +332,7 @@ export function draftOperations(scheduleId, term = activeTerm.value) {
   const d = getDraft(scheduleId, term)
   const s = scheduleById(scheduleId)
   if (!d || !s) return []
-  const base = (s.terms[term] || { offerings: [] }).offerings || []
+  const base = publishedOfferings(s, term)
   return diffOfferings(base, d.offerings || [])
 }
 
@@ -384,7 +384,7 @@ export async function proposeDraft(scheduleId, note) {
     if (saved) await refreshSuggestions(scheduleId)
     return saved
   }
-  const part = s.terms[term] || { offerings: [], version: 0 }
+  const part = publishedPart(s, term) || { offerings: [], version: 0 }
   const ops = pendingOps(diffOfferings(part.offerings || [], draft.offerings || []))
   draft.dirty = false
   if (!ops.length) return null
@@ -469,7 +469,7 @@ export async function resolveOp(id, index, decision) {
   const op = (row.operations || [])[index]
   if (!op || opResolution(op) !== 'pending') return null
   const s = scheduleById(scheduleId)
-  const part = s && s.terms[term]
+  const part = publishedPart(s, term)
   if (!part) return null
   let resolved
   if (decision === 'accepted') {
@@ -582,28 +582,45 @@ function scheduleId() {
 function syncTerm(id, term = activeTerm.value) {
   if (!remote.value || typeof window === 'undefined') return
   const s = scheduleById(id)
-  const part = s && s.terms[term]
+  const part = publishedPart(s, term)
   if (!part) return
   if (isOwner(s)) backend.replaceTerm(id, term, part.offerings)
 }
 
-// The term part of a schedule, defaulting to the empty part. `term` defaults to
-// the active term; explicit (year, term) lookups are used by the year picker.
+// The schedule's stored term part — never the suggest-session draft. This is
+// the source of truth for diffs, applies, syncs, and anything asserting what is
+// actually on the schedule; views that should render the proposer's working
+// state during a suggest session use `viewPart` instead. Returns null when the
+// schedule has no such part.
+export function publishedPart(schedule, term = activeTerm.value) {
+  if (!schedule) return null
+  return (schedule.terms || {})[term] || null
+}
+
+// Offerings of the published term part (never the draft).
+export function publishedOfferings(schedule, term = activeTerm.value) {
+  const part = publishedPart(schedule, term)
+  return part ? part.offerings : []
+}
+
+// The term part to render, defaulting to the empty part. `term` defaults to the
+// active term; explicit (year, term) lookups are used by the year picker.
 // During a suggest session the draft stands in for the published term part, so
-// every view renders the proposer's working state.
-export function termPart(schedule, term = activeTerm.value) {
+// every view renders the proposer's working state. Read the stored truth via
+// `publishedPart` whenever the question is "what is on the schedule", not
+// "what should I draw".
+export function viewPart(schedule, term = activeTerm.value) {
   if (!schedule) return null
   if (isSuggestSessionFor(schedule.id)) {
     const draft = getDraft(schedule.id, term)
     if (draft) return { offerings: draft.offerings, version: draft.version }
   }
-  const part = (schedule.terms || {})[term]
-  return part || { offerings: [], version: 0 }
+  return publishedPart(schedule, term) || { offerings: [], version: 0 }
 }
 
-// Offerings of a schedule's term part (identity shape: prefix/number/section).
-export function termOfferings(schedule, term = activeTerm.value) {
-  const part = termPart(schedule, term)
+// Offerings of the view part (the draft during a suggest session).
+export function viewOfferings(schedule, term = activeTerm.value) {
+  const part = viewPart(schedule, term)
   return part ? part.offerings : []
 }
 
@@ -881,7 +898,7 @@ export const scheduleOfferings = computed(() => {
   const out = []
   for (const s of schedules.value) {
     if (!sel.has(s.id)) continue
-    for (const o of termOfferings(s, activeTerm.value)) out.push({ ...o, $sid: s.id })
+    for (const o of viewOfferings(s, activeTerm.value)) out.push({ ...o, $sid: s.id })
   }
   return out
 })
