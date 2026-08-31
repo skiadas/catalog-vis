@@ -15,6 +15,12 @@ An **offering** is the primitive record, in the shape `parseCsv` produces:
 ```
 
 `days` is a subset of `MTWRF`; `time` is a `"HH:MM-HH:MM"` 24h band.
+Time-band *logic* compares minute values, never band strings: any spelling of
+the same minutes (`08:00-09:10`, whitespace, `08:00:00` seconds) is treated
+identically, and bands are stored/exported in the canonical `8:00-9:10` form
+(`parseCsv` and the app's editor normalize on write via `normalizeBand`).
+Unparseable or reversed bands (`end <= start`) are invalid: they pass through
+unchanged, render off-pattern, and are never silently blanked.
 
 **Lab sections** are flagged offerings of their parent course: `lab: true`
 (with `number` already normalized to the parent, e.g. `'166'`) plus a

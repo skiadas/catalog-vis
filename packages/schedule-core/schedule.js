@@ -111,9 +111,11 @@ export function termSlotOptions(termKey, day) {
 }
 
 // Whether an offering's meeting pattern is a standard one for the term: all its
-// day letters sit in one day group and its `time` is one of that group's
-// assignable bands. Anything else (custom times, mixed day groups, blank
-// days/time) is off-pattern and rendered with the distinct off-pattern cue.
+// day letters sit in one day group and its `time` band is one of that group's
+// assignable bands (compared by minute values — a band's spelling like
+// `08:00-09:10` never matters). Anything else (custom times, mixed day groups,
+// blank days/time, unparseable or reversed bands) is off-pattern and rendered
+// with the distinct off-pattern cue.
 export function isStandardPattern(termKey, days, time) {
   if (!days || !time) return false
   const letters = String(days)
@@ -123,7 +125,35 @@ export function isStandardPattern(termKey, days, time) {
   const config = termConfig(termKey)
   const group = config.dayGroups.find((g) => letters.every((d) => g.label.includes(d)))
   if (!group) return false
-  return termSlotOptions(termKey, group.label[0]).some((s) => s.time === time)
+  const band = toBandMinutes(time)
+  if (!band) return false
+  return termSlotOptions(termKey, group.label[0]).some((s) => s.start === band.start && s.end === band.end)
+}
+
+// Parse a time band into minute values — the single parse for every
+// time-band decision (standard-pattern test, slot keys, canonical strings), so
+// no logic ever re-compares band spellings. Tolerates leading zeros,
+// surrounding whitespace, and trailing seconds (`08:00:00`). Returns null for
+// blank, unparseable, or reversed bands (end <= start) — callers treat those
+// as off-pattern.
+function toBandMinutes(time) {
+  const s = String(time ?? '')
+  const [a, b] = s.split('-')
+  if (!a || !b) return null
+  const start = toMinutes(a.trim())
+  const end = toMinutes(b.trim())
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null
+  return { start, end }
+}
+
+// The canonical string form of a band (`8:00-9:10`), used when a band string
+// is stored or exported. Valid bands are reformatted; invalid or reversed
+// bands pass through unchanged — they stay visible data (rendered off-pattern,
+// never silently blanked into "No meeting time").
+export function normalizeBand(time) {
+  const m = toBandMinutes(time)
+  if (!m) return time
+  return `${minutesToHHMM(m.start)}-${minutesToHHMM(m.end)}`
 }
 
 // Bands may combine consecutive base slots (e.g. 8:00-10:15 + 10:15-12:30 ->
@@ -159,7 +189,8 @@ export function formatTime(time) {
 }
 
 export function slotKey(day, time) {
-  return `${day}|${time}`
+  const band = toBandMinutes(time)
+  return band ? `${day}|${minutesToHHMM(band.start)}-${minutesToHHMM(band.end)}` : `${day}|${time ?? ''}`
 }
 
 // Chronological time strings for a given day (e.g. 'M' -> the MWF block times).
@@ -248,6 +279,10 @@ export function parseCsv(text) {
       days = ''
       time = ''
     }
+    // Store the band in the canonical string form (`8:00-9:10`); anything the
+    // registrar sends in another spelling (`08:00-09:10`) normalizes here, and
+    // invalid/reversed bands pass through for off-pattern rendering.
+    time = normalizeBand(time)
     let number = rec['course_number']
     const out = {
       prefix: rec['dept_prefix'],

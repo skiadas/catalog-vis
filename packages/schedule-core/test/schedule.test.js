@@ -41,6 +41,7 @@ import {
   termConfig,
   termSlotOptions,
   isStandardPattern,
+  normalizeBand,
   calendarDayRange,
   clipBand,
 } from '../schedule.js'
@@ -911,6 +912,60 @@ test('isStandardPattern flags term bands and rejects off-pattern times', () => {
   // spring bands (incl. consecutive pairs) count; a fall band does not
   assert.equal(isStandardPattern('S', 'MTWRF', '8:00-12:30'), true)
   assert.equal(isStandardPattern('S', 'MTWRF', '8:00-9:10'), false)
+})
+
+test('isStandardPattern ignores band spelling — the comparison is by minutes', () => {
+  // leading zeros, whitespace and seconds never change the band's meaning
+  assert.equal(isStandardPattern('F', 'MWF', '08:00-09:10'), true)
+  assert.equal(isStandardPattern('F', 'MWF', ' 8:00 - 9:10 '), true)
+  assert.equal(isStandardPattern('F', 'TR', '08:00:00-09:45:00'), true)
+  // reversed bands are invalid — always off-pattern
+  assert.equal(isStandardPattern('F', 'MWF', '09:10-08:00'), false)
+})
+
+test('normalizeBand canonicalizes valid bands and passes invalid ones through', () => {
+  assert.equal(normalizeBand('08:00-09:10'), '8:00-9:10')
+  assert.equal(normalizeBand(' 8:00 - 9:10 '), '8:00-9:10')
+  assert.equal(normalizeBand('08:00:00-09:10:00'), '8:00-9:10')
+  // reversed/garbage bands stay visible (never silently blanked)
+  assert.equal(normalizeBand('09:10-08:00'), '09:10-08:00')
+  assert.equal(normalizeBand('garbage'), 'garbage')
+  assert.equal(normalizeBand(''), '')
+})
+
+test('parseCsv regularizes any band spelling to the canonical form', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times',
+      'CS,101,A,Vosmeier,MWF,08:00-09:10',
+      'BIO,161,A,Patterson,TR," 10:00 - 11:45 "',
+      'MAT,131,A,Aydogan,MWF,12:00:00-13:10:00',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.time),
+    ['8:00-9:10', '10:00-11:45', '12:00-13:10'],
+  )
+  // exports come back canonical too
+  assert.ok(renderCsv(rows).includes('CS,101,A,Vosmeier,MWF,8:00-9:10'))
+})
+
+test('buildIndex buckets a band under one slot key regardless of spelling', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times',
+      'CS,101,A,Vosmeier,MWF,8:00-9:10',
+      'CS,201,B,Morgan,MWF,08:00-09:10',
+    ].join('\n'),
+  )
+  const index = buildIndex(rows)
+  const slotBuckets = Object.keys(index.bySlot).filter((k) => k.startsWith('M|8:00-9:10'))
+  assert.deepEqual(slotBuckets, ['M|8:00-9:10'], 'one bucket, not two')
+  assert.equal(index.bySlot[slotBuckets[0]].length, 2)
+  // one grid block holds both
+  const blocks = daySlotBlocks('M', index).filter((b) => b.time === '8:00-9:10')
+  assert.equal(blocks.length, 1)
+  assert.equal(blocks[0].items.length, 2)
 })
 
 test('unscheduled offerings are excluded from calendar and conflicts', () => {

@@ -184,7 +184,13 @@
 </template>
 
 <script>
-import { WEEKDAYS, compareInstructors, termConfig, termSlotOptions } from '@major-vis/schedule-core'
+import {
+  WEEKDAYS,
+  compareInstructors,
+  termConfig,
+  termSlotOptions,
+  normalizeBand,
+} from '@major-vis/schedule-core'
 import {
   scheduleById,
   updateOffering,
@@ -283,13 +289,13 @@ export default {
         timeMode.value === 'none'
           ? ''
           : timeMode.value === 'custom'
-            ? `${snapToFive(customStart.value)}-${snapToFive(customEnd.value)}`
+            ? normalizeBand(`${snapToFive(customStart.value)}-${snapToFive(customEnd.value)}`)
             : timeSel.value
       return (
         instructorSel.value !== o.instructor ||
         (sectionSel.value.trim() || o.section) !== o.section ||
         days !== (o.days || '') ||
-        time !== (o.time || '')
+        time !== normalizeBand(o.time || '')
       )
     })
 
@@ -450,7 +456,7 @@ export default {
         time = ''
       } else if (timeMode.value === 'custom') {
         days = WEEKDAYS.filter((d) => daysSel.value.includes(d)).join('')
-        time = `${snapToFive(customStart.value)}-${snapToFive(customEnd.value)}`
+        time = normalizeBand(`${snapToFive(customStart.value)}-${snapToFive(customEnd.value)}`)
       } else {
         days = WEEKDAYS.filter((d) => daysSel.value.includes(d)).join('')
         time = timeSel.value
