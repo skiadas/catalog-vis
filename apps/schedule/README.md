@@ -28,12 +28,15 @@ Spring), each a separate `offerings` collection; the app edits one term at a tim
 (`activeTerm`). Older single-term records are migrated on load into every term
 part.
 
-An **offering** record: `{ prefix, number, section, instructor, days, time }`
-(`days` ⊆ `MTWRF`, `time` = `"HH:MM-HH:MM"`). Blank `days`/`time` mark an
-**unscheduled** offering (independent studies) — present in the schedule but
-excluded from the calendar/conflicts. This is the same shape `parseCsv`/
-`makeSchedule` produce, so it maps directly to registrar-style data feeds.
-Domain logic lives in `@major-vis/schedule-core`.
+An **offering** record:
+`{ prefix, number, section, instructor, secondaryInstructors, days, time }`
+(`days` ⊆ `MTWRF`, `time` = `"HH:MM-HH:MM"`). `instructor` is the single
+**lead** instructor (0-or-1); `secondaryInstructors` is an array of 0-or-more
+**other** instructors (e.g. the registrar's comma-separated `secondary_instr`
+column). Blank `days`/`time` mark an **unscheduled** offering (independent
+studies) — present in the schedule but excluded from the calendar/conflicts.
+This is the same shape `parseCsv`/`makeSchedule` produce, so it maps directly
+to registrar-style data feeds. Domain logic lives in `@major-vis/schedule-core`.
 
 **Lab sections** are flagged offerings of a parent lecture: `lab: true`
 (with `number` already the parent's, e.g. `'166'`) and a 1-based `labSeq`
@@ -74,14 +77,16 @@ reachable via their slot/course pages.
 
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format
-(`dept_prefix,course_number,course_section,instructor,days,times` plus
-optional `term`) produced by "Download registrar CSV". An import **always
+(`dept_prefix,course_number,course_section,instructor,secondary_instr,days,times`
+plus optional `term`) produced by "Download registrar CSV". An import **always
 creates a new schedule** (name prefilled from the filename, year optional;
 never touches existing schedules) and routes rows into its F/W/S parts by the
 `term` column (rows without one land in the active term part). Blank or
-literal `NULL` `days`/`times` cells mark unscheduled offerings; a trailing `L` on
+literal `NULL` `days`/`times` cells mark unscheduled offerings; a `NULL` in the
+`instructor` or `secondary_instr` columns reads as no instructor. A trailing `L` on
 the course number with a digit in the section cell (`166L` + `A2`) becomes
-a lab section of its parent. Lab rows whose lecture
+a lab section of its parent. The optional `secondary_instr` column holds the
+secondary instructors as a comma-separated, quoted list (`"Xu, Ray"`). Lab rows whose lecture
 section isn't in the file are kept and reported in an import warning list.
 `parseCsv`/`renderCsv` in `@major-vis/schedule-core` implement the format
 (quoted-field aware).
@@ -104,12 +109,12 @@ suggestion session by replaying their own pending ops onto the freshest
 published state.
 
 **Labs**: the course editor's "Add lab section" (lecture rows only) creates a
-lab that mirrors the lecture's section letter, copies its instructor, and
-starts unscheduled in the "No meeting times" strip, ready to drag onto a
-slot. Confirmation appears in the editor; if nothing else was being edited
-the editor closes itself and drops the user back onto the grid. Removing a
-lecture removes its labs; renaming a lecture's letter renames its labs' to
-match.
+lab that mirrors the lecture's section letter, copies its instructors (lead
+plus secondary), and starts unscheduled in the "No meeting times" strip,
+ready to drag onto a slot. Confirmation appears in the editor; if nothing
+else was being edited the editor closes itself and drops the user back onto
+the grid. Removing a lecture removes its labs; renaming a lecture's letter
+renames its labs' to match.
 
 ## Suggested changes (remote, and mirrored offline)
 

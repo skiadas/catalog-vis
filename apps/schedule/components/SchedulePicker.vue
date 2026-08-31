@@ -188,12 +188,23 @@ export default {
     }
     // Downloads one row per course offering across all selected (visible)
     // schedules' active term in the canonical registrar format (dept_prefix,
-    // course_number, course_section, instructor, days, times, term), so the file
-    // round-trips through Upload registrar CSV. Offerings are ordered
-    // alphabetically by prefix, then number, then section. With a single visible
-    // schedule the file is named after that schedule.
+    // course_number, course_section, instructor, secondary_instr, days, times,
+    // term), so the file round-trips through Upload registrar CSV. Offerings
+    // are ordered alphabetically by prefix, then number, then section. With a
+    // single visible schedule the file is named after that schedule.
     const downloadSummaryCsv = () => {
-      const rows = [['dept_prefix', 'course_number', 'course_section', 'instructor', 'days', 'times', 'term']]
+      const rows = [
+        [
+          'dept_prefix',
+          'course_number',
+          'course_section',
+          'instructor',
+          'secondary_instr',
+          'days',
+          'times',
+          'term',
+        ],
+      ]
       for (const s of visibleSchedules.value) {
         const offerings = [...viewOfferings(s, activeTerm.value)].sort((a, b) =>
           compareItems({ o: a }, { o: b }),
@@ -204,6 +215,7 @@ export default {
             o.number,
             o.section,
             o.instructor || '',
+            (o.secondaryInstructors || []).join(', '),
             o.days || '',
             o.time || '',
             activeTerm.value,

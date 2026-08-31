@@ -67,13 +67,17 @@ dependency.
 {
   id: string,          // NEW: stable identity, app-assigned on import/creation
   prefix: 'CS', number: '220', section: 'A', instructor: 'Wahl',
+  secondaryInstructors: ['Xu', 'Ray'],          // 0-or-more other instructors
   days: 'MWF' | 'MTWRF' | '',   // '' = unscheduled (independent study, etc.)
   time: '9:20-10:30' | '',      // '' = unscheduled; otherwise any HH:MM-HH:MM band
 }
 ```
 
-- Registrar-shaped fields (`prefix/number/section/instructor/days/time`) are
-  unchanged; `id` is additive (registrar feeds omit it, we assign on import).
+- The registrar-shaped fields (`prefix/number/section/instructor/days/time`)
+  are unchanged; `id` is additive (registrar feeds omit it, we assign on
+  import). `instructor` is the single lead; `secondaryInstructors` carries the
+  others, sourced from the registrar's comma-separated `secondary_instr`
+  column (parsed into an array on import).
 - Empty `days`/`time` ⇒ unscheduled: present in the schedule/CSV, absent from
   the calendar grid and conflict detection.
 
@@ -159,10 +163,12 @@ GET    /api/schedules/:id/changes/export?fmt=json|md|csv
 
 ### CSV contract (one round-trip format)
 
-Columns: `dept_prefix, course_number, course_section, instructor, days,
-times` plus an optional `term` column (`F|W|S`). Blank `days`/`times` ⇒
-unscheduled.
-`parseCsv` gains quoted-field + optional-column handling; new `renderCsv`
+Columns: `dept_prefix, course_number, course_section, instructor,
+secondary_instr, days, times` plus an optional `term` column (`F|W|S`). The
+optional `secondary_instr` column is the registrar's comma-separated list of
+other instructors (`"Xu, Ray"`, quoted because of the commas). Blank
+`days`/`times` ⇒ unscheduled.
+`parseCsv` holds quoted-field + optional-column handling; `renderCsv`
 matches it. Rows with a `term` value land in that term part; rows without one
 land in the actively-open part. This doubles as the registrar-feed format.
 

@@ -977,7 +977,7 @@ export function addCourseToSchedule(id, code) {
   if (!part) return null
   const [prefix, number] = code.split(' ')
   const section = nextSectionLetter(part.offerings || [], prefix, number)
-  const offering = { prefix, number, section, instructor: '', ...DEFAULT_SLOT }
+  const offering = { prefix, number, section, instructor: '', secondaryInstructors: [], ...DEFAULT_SLOT }
   part.offerings = addOfferingToSchedule(part.offerings || [], offering)
   if (draft) {
     part.dirty = true
@@ -993,12 +993,13 @@ export function addCourseToSchedule(id, code) {
 
 // Adds a lab section for an existing lecture offering (`cur` — prefix/number/
 // section of a non-lab row). The lab mirrors the lecture's section letter,
-// copies the lecture's instructor as it stands right now, and starts
-// unscheduled (no meeting time) so it lands in the "No meeting times" strip
-// and is dragged onto a slot. `labSeq` is the next free one for that lecture,
-// so a second lab on the same letter stays a distinct row. Returns the new
-// offering (or null when the lecture or schedule can't be found, or `cur` is
-// itself a lab). In a suggest session the lab lands in the draft.
+// copies the lecture's instructors (lead + secondary) as they stand right now,
+// and starts unscheduled (no meeting time) so it lands in the "No meeting
+// times" strip and is dragged onto a slot. `labSeq` is the next free one for
+// that lecture, so a second lab on the same letter stays a distinct row.
+// Returns the new offering (or null when the lecture or schedule can't be
+// found, or `cur` is itself a lab). In a suggest session the lab lands in the
+// draft.
 export function addLabSection(id, cur) {
   const s = scheduleById(id)
   if (!s || cur.lab) return null
@@ -1014,6 +1015,7 @@ export function addLabSection(id, cur) {
     number: parent.number,
     section: parent.section,
     instructor: parent.instructor || '',
+    secondaryInstructors: parent.secondaryInstructors || [],
     lab: true,
     labSeq: nextLabSeq(offerings, parent.prefix, parent.number, parent.section),
     days: '',

@@ -157,6 +157,15 @@ body {
 .detail-header .faculty {
   color: var(--text-muted);
 }
+.faculty-link {
+  cursor: pointer;
+  color: var(--primary);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.faculty-link:hover {
+  text-decoration: underline;
+}
 .section-title {
   font-size: var(--font-xl);
   font-weight: var(--weight-semibold);

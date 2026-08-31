@@ -20,7 +20,10 @@ import {
   daySlotBlocks,
   blockStyle,
   briefInstructor,
+  instructorsOf,
+  instructorChip,
   colorForDept,
+  colorForInstructor,
   colorForSchedule,
   buildFilter,
   buildVisual,
@@ -440,6 +443,7 @@ test('parseCsv maps columns and trims', () => {
     number: '101',
     section: 'A',
     instructor: 'Vosmeier',
+    secondaryInstructors: [],
     days: 'MWF',
     time: '9:20-10:30',
   })
@@ -460,6 +464,7 @@ test('parseCsv accepts a `time` column synonym and blank times as unscheduled', 
     number: '220',
     section: 'A',
     instructor: 'Wahl',
+    secondaryInstructors: [],
     days: '',
     time: '',
   })
@@ -498,8 +503,58 @@ test('renderCsv writes term only when present on an offering', () => {
       term: 'S',
     },
   ])
-  assert.ok(csv.startsWith('dept_prefix,course_number,course_section,instructor,days,times,term'))
+  assert.ok(
+    csv.startsWith('dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,term'),
+  )
   assert.ok(csv.includes(',S'))
+})
+
+test('parseCsv reads the secondary_instr column into a names array', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times',
+      'BIO,161,A,Patterson,Xu,MWF,8:00-9:10',
+      'CS,101,A,Vosmeier,"Nguyen, Wu",TR,10:00-11:45',
+      'MAT,120,A,Doe,,MWF,9:20-10:30',
+    ].join('\n'),
+  )
+  assert.equal(rows.length, 3)
+  assert.deepEqual(rows[0].secondaryInstructors, ['Xu'])
+  // A quoted comma+space cell splits back into separate secondary instructors.
+  assert.deepEqual(rows[1].secondaryInstructors, ['Nguyen', 'Wu'])
+  assert.deepEqual(rows[2].secondaryInstructors, [])
+})
+
+test('parseCsv secondary_instr dedupes and tolerates whitespace around commas', () => {
+  const [row] = parseCsv(
+    'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times\n' +
+      'BIO,161,A,Patterson,"Xu, Xu , Barker",MWF,8:00-9:10\n',
+  )
+  assert.deepEqual(row.secondaryInstructors, ['Xu', 'Barker'])
+})
+
+test('parseCsv treats literal NULL in the instructor columns as no instructor', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times',
+      'CS,220,A,NULL,,MWF,9:20-10:30',
+      'BIO,161,A,Patterson,NULL,MWF,8:00-9:10',
+      'MAT,120,A,Smith,"Xu, NULL",TR,10:00-11:45',
+    ].join('\n'),
+  )
+  assert.equal(rows[0].instructor, '', 'NULL lead collapses to empty')
+  assert.deepEqual(rows[1].secondaryInstructors, [], 'NULL secondary cell collapses to empty')
+  assert.deepEqual(rows[2].secondaryInstructors, ['Xu'], 'NULL token inside a list is dropped')
+})
+
+test('renderCsv writes secondary_instr quoted and round-trips it', () => {
+  const rows = parseCsv(
+    'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times\n' +
+      'BIO,161,A,Patterson,"Xu, Ray",MWF,8:00-9:10\n',
+  )
+  const csv = renderCsv(rows)
+  assert.ok(csv.includes('"Xu, Ray"'))
+  assert.deepEqual(parseCsv(csv), rows)
 })
 
 test('parseCsv treats literal NULL and blank meeting cells as unscheduled', () => {
@@ -529,6 +584,7 @@ test('parseCsv lab rows normalize the trailing L off the number and read the seq
     number: '166',
     section: 'A',
     instructor: 'Patterson',
+    secondaryInstructors: [],
     days: 'TR',
     time: '10:00-11:45',
     lab: true,
@@ -622,12 +678,21 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
   assert.ok(lines[3].startsWith('BIO,166L,A2'))
   // the round-trip is stable
   assert.deepEqual(parseCsv(csv), [
-    { prefix: 'BIO', number: '166', section: 'A', instructor: 'Patterson', days: 'MWF', time: '9:20-10:30' },
+    {
+      prefix: 'BIO',
+      number: '166',
+      section: 'A',
+      instructor: 'Patterson',
+      secondaryInstructors: [],
+      days: 'MWF',
+      time: '9:20-10:30',
+    },
     {
       prefix: 'BIO',
       number: '166',
       section: 'A',
       instructor: 'Doe',
+      secondaryInstructors: [],
       days: 'TR',
       time: '10:00-11:45',
       lab: true,
@@ -638,6 +703,7 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       number: '166',
       section: 'A',
       instructor: 'Doe',
+      secondaryInstructors: [],
       days: 'W',
       time: '13:20-14:30',
       lab: true,
@@ -777,8 +843,113 @@ test('buildFilter department mode', () => {
 test('buildFilter instructor mode', () => {
   const filter = buildFilter('instructor', [], ['Vosmeier'])
   assert.equal(filter.active, true)
-  assert.equal(filter.matches({ o: { instructor: 'Vosmeier' } }), true)
-  assert.equal(filter.matches({ o: { instructor: 'Morgan' } }), false)
+  assert.equal(filter.matches({ o: { instructor: 'Vosmeier' }, instructors: ['Vosmeier'] }), true)
+  assert.equal(filter.matches({ o: { instructor: 'Morgan' }, instructors: ['Morgan'] }), false)
+})
+
+test('instructorsOf normalizes lead + secondary into a distinct list', () => {
+  assert.deepEqual(instructorsOf({ instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'] }), [
+    'Patterson',
+    'Xu',
+    'Ray',
+  ])
+  // A person listed as both lead and secondary appears once; an absent
+  // secondaryInstructors (older records) reads as empty.
+  assert.deepEqual(instructorsOf({ instructor: 'Xu', secondaryInstructors: ['Xu', 'Ray'] }), ['Xu', 'Ray'])
+  assert.deepEqual(instructorsOf({ instructor: 'Wahl' }), ['Wahl'])
+  assert.deepEqual(instructorsOf({ instructor: '', secondaryInstructors: [] }), [])
+  // Literal NULLs (case-insensitive) that reach a stored record are treated
+  // as no instructor, so a stale "NULL" never shows in filters/views.
+  assert.deepEqual(instructorsOf({ instructor: 'NULL', secondaryInstructors: ['null', 'Xu'] }), ['Xu'])
+  assert.deepEqual(instructorsOf({ instructor: 'Xu', secondaryInstructors: ['NULL'] }), ['Xu'])
+})
+
+test('instructorChip shows one brief name plus a marker when others exist', () => {
+  assert.deepEqual(instructorChip({ instructor: 'M. Vosmeier' }), { label: 'Vosmeier M', hasOthers: false })
+  assert.deepEqual(instructorChip({ instructor: 'Wahl', secondaryInstructors: ['Xu'] }), {
+    label: 'Wahl*',
+    hasOthers: true,
+  })
+  assert.deepEqual(instructorChip({ instructor: '', secondaryInstructors: [] }), {
+    label: '',
+    hasOthers: false,
+  })
+})
+
+test('buildIndex groups an offering under every instructor (lead and secondary)', () => {
+  const index = buildIndex([
+    {
+      prefix: 'BIO',
+      number: '161',
+      section: 'A',
+      instructor: 'Patterson',
+      secondaryInstructors: ['Xu'],
+      days: 'MWF',
+      time: '8:00-9:10',
+    },
+  ])
+  assert.ok(index.byInstructor.Patterson)
+  assert.ok(index.byInstructor.Xu)
+  assert.equal(index.byInstructor.Patterson[0], index.byInstructor.Xu[0])
+  assert.deepEqual(index.byInstructor.Patterson[0].instructors, ['Patterson', 'Xu'])
+  // No empty-string bucket for an offering without any instructor.
+  assert.equal(index.byInstructor[''], undefined)
+})
+
+test('instructorConflicts flags double-bookings for secondary instructors too', () => {
+  const index = buildIndex([
+    {
+      prefix: 'BIO',
+      number: '161',
+      section: 'A',
+      instructor: 'Patterson',
+      secondaryInstructors: ['Xu'],
+      days: 'MWF',
+      time: '8:00-9:10',
+    },
+    {
+      prefix: 'CS',
+      number: '120',
+      section: 'A',
+      instructor: 'Wahl',
+      secondaryInstructors: ['Xu'],
+      days: 'MWF',
+      time: '9:20-10:30',
+    },
+  ])
+  assert.deepEqual(instructorConflicts(index), [])
+  const clash = buildIndex([
+    {
+      prefix: 'BIO',
+      number: '161',
+      section: 'A',
+      instructor: 'Patterson',
+      secondaryInstructors: ['Xu'],
+      days: 'MWF',
+      time: '8:00-9:10',
+    },
+    {
+      prefix: 'CS',
+      number: '120',
+      section: 'A',
+      instructor: 'Wahl',
+      secondaryInstructors: ['Xu'],
+      days: 'MWF',
+      time: '8:00-9:10',
+    },
+  ])
+  const conflicts = instructorConflicts(clash)
+  assert.equal(conflicts.length, 1)
+  assert.equal(conflicts[0].instructor, 'Xu')
+  assert.equal(conflicts[0].a.o.section, 'A')
+  assert.equal(conflicts[0].b.o.section, 'A')
+})
+
+test('instructor filter matches via a secondary instructor and colors by the selection', () => {
+  const filter = buildFilter('instructor', [], ['Xu'])
+  const item = { o: { instructor: 'Patterson' }, instructors: ['Patterson', 'Xu'] }
+  assert.equal(filter.matches(item), true)
+  assert.equal(filter.color(item), colorForInstructor('Xu'))
 })
 
 test('colorForSchedule returns a stable hex color per schedule', () => {
@@ -979,7 +1150,7 @@ test('parseCsv regularizes any band spelling to the canonical form', () => {
     ['8:00-9:10', '10:00-11:45', '12:00-13:10'],
   )
   // exports come back canonical too
-  assert.ok(renderCsv(rows).includes('CS,101,A,Vosmeier,MWF,8:00-9:10'))
+  assert.ok(renderCsv(rows).includes('CS,101,A,Vosmeier,,MWF,8:00-9:10'))
 })
 
 test('buildIndex buckets a band under one slot key regardless of spelling', () => {
@@ -1033,8 +1204,8 @@ test('buildEditVisual keeps every course visible but honors an active filter', (
 
   // Active instructor filter behaves the same.
   const inst = buildEditVisual('instructor', [], ['Vosmeier'], () => '#x')
-  assert.equal(inst.matches({ o: { instructor: 'Vosmeier' } }), true)
-  assert.equal(inst.matches({ o: { instructor: 'Morgan' } }), false)
+  assert.equal(inst.matches({ o: { instructor: 'Vosmeier' }, instructors: ['Vosmeier'] }), true)
+  assert.equal(inst.matches({ o: { instructor: 'Morgan' }, instructors: ['Morgan'] }), false)
 })
 
 test('proposeOverlay renders concurrent proposals independently with proposers', () => {

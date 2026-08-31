@@ -32,7 +32,14 @@ export function offeringKey(o) {
 }
 
 // The editable fields considered when diffing two offerings.
-export const EDITABLE_FIELDS = ['instructor', 'section', 'days', 'time']
+export const EDITABLE_FIELDS = ['instructor', 'secondaryInstructors', 'section', 'days', 'time']
+
+// Canonical comparison form of a field value: arrays (secondaryInstructors)
+// compare element-wise, everything else trims the string.
+function canonical(v) {
+  if (Array.isArray(v)) return v.map((n) => String(n || '').trim()).join('|')
+  return normalize(v)
+}
 
 // Build the operation list that turns `before` into `after`. Returns
 // add/remove/update ops; update ops carry `changes` (new values, for applying)
@@ -55,8 +62,8 @@ export function diffOfferings(before, after) {
     const changes = {}
     const diff = []
     for (const field of EDITABLE_FIELDS) {
-      const from = normalize(b[field])
-      const to = normalize(a[field])
+      const from = canonical(b[field])
+      const to = canonical(a[field])
       if (from !== to) {
         changes[field] = a[field]
         diff.push({ field, from: b[field] ?? '', to: a[field] ?? '' })
@@ -140,6 +147,7 @@ export function suggestionStatus(entries) {
 
 // Human-readable single-op description, e.g.
 //   "CS 220: change instructor from Wahl to Skiadas"
+//   "CS 220: other instructors from Xu to Xu, Ray"
 //   "add CS 101 A"
 //   "remove BIO 161 A"
 export function describeChange(op) {
@@ -154,17 +162,30 @@ export function describeChange(op) {
     let parts
     if (op.diff && op.diff.length) {
       parts = op.diff.map((d) => {
-        if (d.from === '') return `${d.field} set to ${d.to}`
-        if (d.to === '') return `${d.field} cleared`
-        return `${d.field} from ${d.from} to ${d.to}`
+        const label = FIELD_LABEL[d.field] || d.field
+        const from = fmtValue(d.from)
+        const to = fmtValue(d.to)
+        if (from === '') return `${label} set to ${to}`
+        if (to === '') return `${label} cleared`
+        return `${label} from ${from} to ${to}`
       })
     } else {
       // No per-field diff detail (e.g. a hand-written op): describe the changes.
-      parts = Object.entries(op.changes || {}).map(([field, to]) => `${field} set to ${to}`)
+      parts = Object.entries(op.changes || {}).map(
+        ([field, to]) => `${FIELD_LABEL[field] || field} set to ${fmtValue(to)}`,
+      )
     }
     return `${fmtCode(op.cur)}: ${parts.join(', ') || 'no changes'}`
   }
   return JSON.stringify(op)
+}
+
+// Readable field names for the diff detail (arrays join as a comma list).
+const FIELD_LABEL = { secondaryInstructors: 'other instructors' }
+
+function fmtValue(v) {
+  if (Array.isArray(v)) return v.map((n) => String(n ?? '')).join(', ')
+  return String(v ?? '')
 }
 
 function fmtCode(o) {

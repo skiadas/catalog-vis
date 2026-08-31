@@ -66,7 +66,7 @@ data through `@major-vis/catalog-client` (browser) or fetch the JSON directly.
 | `majors.json.catalog` (course index by code) | ✓ | ✓ | ✓ | ✓ (as the universe) | |
 | `requirements_parsed.json` (program → structured requirement nodes) | ✓ (render) | ✓ (tracks + audit) | | ✓ (evaluate) | |
 | `core_requirements.json` (CCR/ACE areas) | | ✓ (core track) | | ✓ | |
-| Course offering records (`prefix/number/section/instructor/days/time`) | | | ✓ (store + index) | | ✓ (domain) |
+| Course offering records (`prefix/number/section/instructor/secondaryInstructors/days/time`) | | | ✓ (store + index) | | ✓ (domain) |
 
 ## Join keys
 

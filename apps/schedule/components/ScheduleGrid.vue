@@ -57,7 +57,7 @@
               >
                 <span class="filter-offering-main"
                   >{{ it.code }}{{ it.o.section
-                  }}<span class="do-inst">{{ briefInstructor(it.o.instructor) }}</span></span
+                  }}<span class="do-inst">{{ instructorChip(it.o).label }}</span></span
                 >
                 <button
                   v-if="isEditable(it)"
@@ -108,6 +108,7 @@ import {
   buildEditVisual,
   proposeOverlay,
   briefInstructor,
+  instructorChip,
   termSlotOptions,
   termDayGroup,
   toMinutes,
@@ -294,6 +295,8 @@ export default {
       }
       const rem = removalFor(it)
       if (rem) return `${it.code}${it.o.section}: removal proposed by ${rem.proposer}`
+      // Team-taught courses list the full roster in the tooltip.
+      if ((it.instructors || []).length > 1) return it.instructors.join(', ')
       return ''
     }
 
@@ -337,7 +340,7 @@ export default {
       toggleOpen,
       rowColor,
       filter,
-      briefInstructor,
+      instructorChip,
       goScheduleSlot,
       goScheduleDay,
       goScheduleCourse,

@@ -153,6 +153,30 @@ test('describeChange reads naturally', () => {
     'CS 220 A: instructor from Wahl to Skiadas',
   )
   assert.equal(
+    describeChange({
+      kind: 'update',
+      cur: { prefix: 'CS', number: '101', section: 'A' },
+      diff: [{ field: 'secondaryInstructors', from: ['Xu'], to: ['Xu', 'Ray'] }],
+    }),
+    'CS 101 A: other instructors from Xu to Xu, Ray',
+  )
+  assert.equal(
+    describeChange({
+      kind: 'update',
+      cur: { prefix: 'CS', number: '101', section: 'A' },
+      diff: [{ field: 'secondaryInstructors', from: [], to: ['Xu'] }],
+    }),
+    'CS 101 A: other instructors set to Xu',
+  )
+  assert.equal(
+    describeChange({
+      kind: 'update',
+      cur: { prefix: 'CS', number: '101', section: 'A' },
+      diff: [{ field: 'secondaryInstructors', from: ['Xu', 'Ray'], to: [] }],
+    }),
+    'CS 101 A: other instructors cleared',
+  )
+  assert.equal(
     describeChange({ kind: 'add', offering: { prefix: 'BIO', number: '161', section: 'A' } }),
     'add BIO 161 A',
   )
@@ -168,6 +192,31 @@ test('describeChange reads naturally', () => {
     }),
     'CS 101 A: time set to 8:00-9:10',
   )
+})
+
+test('diffOfferings diffs secondaryInstructors by list (not by string) and applies it', () => {
+  const before = [OFF(1, { instructor: 'Wahl', secondaryInstructors: ['Xu'] })]
+  const after = [OFF(1, { instructor: 'Wahl', secondaryInstructors: ['Xu', 'Ray'] })]
+  const ops = diffOfferings(before, after)
+  assert.equal(ops.length, 1)
+  assert.deepEqual(ops[0].changes, { secondaryInstructors: ['Xu', 'Ray'] })
+  assert.deepEqual(ops[0].diff, [{ field: 'secondaryInstructors', from: ['Xu'], to: ['Xu', 'Ray'] }])
+  const applied = applyOperations(before, ops)
+  assert.deepEqual(applied[0].secondaryInstructors, ['Xu', 'Ray'])
+})
+
+test('diffOfferings leaves secondaryInstructors alone when unchanged in content', () => {
+  const ops = diffOfferings(
+    [OFF(1, { instructor: 'Wahl', secondaryInstructors: ['Xu', 'Ray'] })],
+    [OFF(1, { instructor: 'Wahl', secondaryInstructors: ['Xu', 'Ray'] })],
+  )
+  assert.equal(ops.length, 0)
+  // Comparison normalizes whitespace per name, element-wise.
+  const sameList = diffOfferings(
+    [OFF(1, { instructor: 'Wahl', secondaryInstructors: ['Xu', 'Ray'] })],
+    [OFF(1, { instructor: 'Wahl', secondaryInstructors: [' Xu ', 'Ray'] })],
+  )
+  assert.equal(sameList.length, 0)
 })
 
 test('renderChanges formats as text, md, csv', () => {

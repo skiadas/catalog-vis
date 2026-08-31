@@ -480,6 +480,33 @@ test('updateOffering never leaves a half-set meeting time', async () => {
   })
 })
 
+test('updateOffering persists a secondaryInstructors change', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Local', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+    assert.ok(
+      store.updateOffering(
+        id,
+        { prefix: 'CS', number: '101', section: 'A' },
+        { instructor: 'Wahl', secondaryInstructors: ['Xu', 'Ray'] },
+      ),
+    )
+    let viewed = store.viewOfferings(store.scheduleById(id))
+    assert.deepEqual(viewed[0].secondaryInstructors, ['Xu', 'Ray'])
+
+    // Clearing the list is a valid change too (0-or-more other instructors).
+    assert.ok(
+      store.updateOffering(id, { prefix: 'CS', number: '101', section: 'A' }, { secondaryInstructors: [] }),
+    )
+    viewed = store.viewOfferings(store.scheduleById(id))
+    assert.deepEqual(viewed[0].secondaryInstructors, [])
+  })
+})
+
 test('addLabSection creates an unscheduled lab that mirrors the lecture and copies its instructor', async () => {
   await withRemote(async ({ store }) => {
     store.setRemote(false)
@@ -489,7 +516,11 @@ test('addLabSection creates an unscheduled lab that mirrors the lecture and copi
     const id = await store.addSchedule('Local', '2026-27', [])
     store.addCourseToSchedule(id, 'BIO 166')
     assert.ok(
-      store.updateOffering(id, { prefix: 'BIO', number: '166', section: 'A' }, { instructor: 'Patterson' }),
+      store.updateOffering(
+        id,
+        { prefix: 'BIO', number: '166', section: 'A' },
+        { instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'] },
+      ),
     )
 
     const lab = store.addLabSection(id, { prefix: 'BIO', number: '166', section: 'A' })
@@ -497,6 +528,7 @@ test('addLabSection creates an unscheduled lab that mirrors the lecture and copi
     assert.equal(lab.lab, true)
     assert.equal(lab.section, 'A', 'mirrors the lecture letter')
     assert.equal(lab.instructor, 'Patterson', 'copies the lecture instructor as it stands')
+    assert.deepEqual(lab.secondaryInstructors, ['Xu', 'Ray'], 'copies the secondary instructors too')
     assert.equal(lab.days, '')
     assert.equal(lab.time, '', 'starts unscheduled')
     assert.equal(lab.labSeq, 1)
@@ -555,8 +587,26 @@ test('importCsvRows seeds term parts grouped by the term column on a local sched
     resetStore(store)
     const id = await store.addSchedule('Imported', '', [])
     const written = store.importCsvRows(id, [
-      { prefix: 'CS', number: '220', section: 'A', instructor: 'Wahl', days: 'MWF', time: '9:20-10:30', term: 'F' },
-      { prefix: 'BIO', number: '166', section: 'A', instructor: 'Patterson', days: 'TR', time: '10:00-11:45', term: 'S', lab: true, labSeq: 1 },
+      {
+        prefix: 'CS',
+        number: '220',
+        section: 'A',
+        instructor: 'Wahl',
+        days: 'MWF',
+        time: '9:20-10:30',
+        term: 'F',
+      },
+      {
+        prefix: 'BIO',
+        number: '166',
+        section: 'A',
+        instructor: 'Patterson',
+        days: 'TR',
+        time: '10:00-11:45',
+        term: 'S',
+        lab: true,
+        labSeq: 1,
+      },
       { prefix: 'MAT', number: '131', section: 'A', instructor: 'Aydogan', days: 'MWF', time: '12:00-13:10' },
     ])
     assert.deepEqual(written, { F: 2, S: 1 })
@@ -593,7 +643,15 @@ test('importCsvRows is blocked for a remote non-owner and applied for the owner'
     await store.signIn('alice')
 
     const rows = [
-      { prefix: 'CS', number: '220', section: 'A', instructor: 'Wahl', days: 'MWF', time: '9:20-10:30', term: 'F' },
+      {
+        prefix: 'CS',
+        number: '220',
+        section: 'A',
+        instructor: 'Wahl',
+        days: 'MWF',
+        time: '9:20-10:30',
+        term: 'F',
+      },
     ]
     assert.deepEqual(store.importCsvRows(created.id, rows), {}, 'non-owner replace is blocked')
     await flush()

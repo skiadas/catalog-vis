@@ -32,8 +32,9 @@
         <div class="help-section">
           <h4>Course conflicts</h4>
           <p>
-            Pick a course from the dropdown. It lists every scheduled section (days, time, instructor) and
-            flags other courses whose times overlap, so you can see what would collide in a student schedule.
+            Pick a course from the dropdown. It lists every scheduled section (days, time, and its instructors
+            — the lead plus any others) and flags other courses whose times overlap, so you can see what would
+            collide in a student schedule.
           </p>
         </div>
 

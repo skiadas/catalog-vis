@@ -604,6 +604,52 @@ test('suggestions export as md and csv', async () => {
   }
 })
 
+test('suggestion ops carrying secondaryInstructors apply and describe', async () => {
+  const { srv, db } = await authClient()
+  try {
+    const { schedule } = (await srv.post('/api/schedules', { name: 'Team', year: '2026-27' })).json
+    await srv.put(`/api/schedules/${schedule.id}/terms/F`, {
+      offerings: [
+        { prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '9:20-10:30', instructor: 'Wahl' },
+      ],
+    })
+    const term = (await srv.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
+    const course = {
+      prefix: 'CS',
+      number: '220',
+      section: 'A',
+      days: 'MWF',
+      time: '9:20-10:30',
+      instructor: 'Wahl',
+      secondaryInstructors: [],
+    }
+    const sug = (
+      await srv.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: term.version,
+        operations: diffOfferings([course], [{ ...course, secondaryInstructors: ['Xu', 'Ray'] }]),
+        note: 'add team teachers',
+      })
+    ).json.suggestion
+
+    // The proposed op flows through storage and reads naturally as "other
+    // instructors".
+    const md = await srv.get(`/api/schedules/${schedule.id}/suggestions/export?fmt=md`)
+    assert.equal(md.status, 200)
+    assert.match(md.text, /other instructors set to Xu, Ray/)
+
+    // Approving writes the array into the published term.
+    const approved = await srv.post(`/api/suggestions/${sug.id}/approve`, {
+      opId: sug.operations[0].id,
+    })
+    assert.equal(approved.status, 200)
+    assert.deepEqual(approved.json.term.offerings[0].secondaryInstructors, ['Xu', 'Ray'])
+  } finally {
+    srv.close()
+    db.close()
+  }
+})
+
 test('rename and mark official by owner', async () => {
   const { srv, db } = await authClient()
   try {

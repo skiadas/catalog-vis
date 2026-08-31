@@ -2,8 +2,10 @@
 // or a schedule containing exclusively one department's courses.
 //
 // Offerings are produced in the same shape parseCsv returns
-// ({prefix, number, section, instructor, days, time}) so a generated schedule can
-// be stored in the schedule collection alongside CSV-parsed ones.
+// ({prefix, number, section, instructor, secondaryInstructors, days, time}) so
+// a generated schedule can be stored in the schedule collection alongside
+// CSV-parsed ones. Generation assigns a single lead instructor and no
+// secondary instructors.
 
 import { WEEKDAYS, termConfig, termSlotOptions } from './schedule.js'
 
@@ -173,6 +175,7 @@ export function makeSchedule(mode, prefix, facultyByPrefix, eligible, seed, term
         number: o.number,
         section: o.section,
         instructor: instructorOf[`${o.prefix} ${o.number}`],
+        secondaryInstructors: [],
         days: labelFor(sk),
         time,
       }

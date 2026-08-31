@@ -3,7 +3,7 @@
     class="slot-pill"
     :class="{ 'filter-colored': filterActive, editable, proposed, removed }"
     :style="filterActive ? { backgroundColor: color } : {}"
-    :title="proposed || removed || courseName"
+    :title="pillTitle"
     :draggable="draggable"
     @dragstart="onDragStart"
   >
@@ -13,7 +13,7 @@
     </span>
     <span class="slot-pill-name">{{ courseName }}</span>
     <span class="slot-pill-inst" @click="goScheduleInstructor(item.o.instructor)">
-      {{ item.o.instructor }}
+      {{ item.o.instructor }}<span v-if="hasOthers" class="slot-pill-multi">*</span>
     </span>
     <button
       v-if="editable"
@@ -42,7 +42,7 @@
 <script>
 import { goScheduleCourse, goScheduleInstructor } from '../router.js'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
-import { buildDragPayload } from '@major-vis/schedule-core'
+import { buildDragPayload, instructorsOf } from '@major-vis/schedule-core'
 
 import { computed } from 'vue'
 
@@ -61,6 +61,10 @@ export default {
   emits: ['edit'],
   setup(props, { emit }) {
     const courseName = computed(() => catalogCourseName(props.item.code))
+    const hasOthers = computed(() => instructorsOf(props.item.o).length > 1)
+    const pillTitle = computed(
+      () => props.proposed || props.removed || courseName.value || instructorsOf(props.item.o).join(', '),
+    )
     const onDragStart = (e) => {
       e.dataTransfer.setData('text/plain', buildDragPayload(props.item, props.dragDay))
       e.dataTransfer.effectAllowed = 'move'
@@ -70,6 +74,8 @@ export default {
       goScheduleCourse,
       goScheduleInstructor,
       courseName,
+      hasOthers,
+      pillTitle,
       onDragStart,
       onEdit,
     }

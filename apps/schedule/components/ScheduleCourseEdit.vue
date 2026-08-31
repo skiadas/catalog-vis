@@ -46,6 +46,32 @@
         </div>
 
         <div class="field">
+          <label for="course-edit-secondary">Other instructors</label>
+          <input
+            id="course-edit-secondary"
+            class="search-input"
+            type="text"
+            v-model="secondaryText"
+            placeholder="e.g. Smith, Jones"
+          />
+          <p class="field-hint">
+            Comma-separated (like the registrar's <code>secondary_instr</code> column); leave blank for none.
+          </p>
+          <div v-if="quickAddOptions.length" class="quick-add-wrap">
+            <span class="field-hint quick-add-hint">Add from schedule:</span>
+            <button
+              v-for="n in quickAddOptions"
+              :key="n"
+              type="button"
+              class="filter-btn quick-add-btn"
+              @click="quickAdd(n)"
+            >
+              {{ n }}
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
           <label>Meeting time</label>
           <div class="seg" role="group" aria-label="Meeting time">
             <button class="seg-btn" :class="{ active: timeMode === 'slot' }" @click="timeMode = 'slot'">
@@ -187,6 +213,7 @@
 import {
   WEEKDAYS,
   compareInstructors,
+  instructorsOf,
   termConfig,
   termSlotOptions,
   normalizeBand,
@@ -231,13 +258,14 @@ export default {
     const deptInstructors = computed(() => {
       const set = new Set()
       for (const x of courseOfferings.value) {
-        if (x.prefix === o.prefix && x.instructor) set.add(x.instructor)
+        if (x.prefix !== o.prefix) continue
+        for (const n of instructorsOf(x)) set.add(n)
       }
       return Array.from(set).sort(compareInstructors)
     })
     const allInstructors = computed(() => {
       const set = new Set()
-      for (const x of courseOfferings.value) if (x.instructor) set.add(x.instructor)
+      for (const x of courseOfferings.value) for (const n of instructorsOf(x)) set.add(n)
       return Array.from(set).sort(compareInstructors)
     })
 
@@ -246,6 +274,34 @@ export default {
 
     const instructorSel = ref(o.instructor || '')
     const sectionSel = ref(o.section || '')
+
+    // --- Other instructors ------------------------------------------------
+    // A free-text list mirroring the registrar's `secondary_instr` column
+    // (comma-separated, whitespace tolerated), parsed on save. The quick-add
+    // chips draw from the same pools as the lead dropdown, minus the lead
+    // instructor and names already added.
+    const listKey = (names) =>
+      [...new Set((names || []).map((n) => String(n || '').trim()).filter(Boolean))].join(',')
+    const secondaryText = ref((o.secondaryInstructors || []).join(', '))
+    const secondaryNames = computed(() => [
+      ...new Set(
+        secondaryText.value
+          .split(/,\s*/)
+          .map((n) => n.trim())
+          .filter(Boolean),
+      ),
+    ])
+    const quickAddOptions = computed(() => {
+      const lead = instructorSel.value
+      const current = secondaryNames.value
+      const pool = [...deptInstructors.value, ...allInstructors.value]
+      return [...new Set(pool)].filter((n) => n !== lead && !current.includes(n))
+    })
+    const quickAdd = (name) => {
+      const cur = secondaryNames.value
+      if (cur.includes(name)) return
+      secondaryText.value = [...cur, name].join(', ')
+    }
 
     // --- Lab sections ----------------------------------------------------
     // A lab row mirrors its lecture's section letter. The editor opens for
@@ -293,6 +349,7 @@ export default {
             : timeSel.value
       return (
         instructorSel.value !== o.instructor ||
+        listKey(secondaryNames.value) !== listKey(o.secondaryInstructors) ||
         (sectionSel.value.trim() || o.section) !== o.section ||
         days !== (o.days || '') ||
         time !== normalizeBand(o.time || '')
@@ -466,6 +523,7 @@ export default {
         { prefix: o.prefix, number: o.number, section: o.section, lab: o.lab, labSeq: o.labSeq },
         {
           instructor: instructorSel.value,
+          secondaryInstructors: [...secondaryNames.value],
           section: sectionSel.value.trim() || o.section,
           days,
           time,
@@ -490,6 +548,10 @@ export default {
       showAll,
       instructorOptions,
       instructorSel,
+      secondaryText,
+      secondaryNames,
+      quickAddOptions,
+      quickAdd,
       sectionSel,
       isLab,
       labAdded,

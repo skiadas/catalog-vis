@@ -11,8 +11,15 @@ Two entry points: `.` (domain model) and `./generate` (schedule generation).
 An **offering** is the primitive record, in the shape `parseCsv` produces:
 
 ```js
-{ prefix: 'BIO', number: '161', section: 'A', instructor: 'Patterson', days: 'MWF', time: '8:00-9:10' }
+{ prefix: 'BIO', number: '161', section: 'A', instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'], days: 'MWF', time: '8:00-9:10' }
 ```
+
+`instructor` is the single **lead** instructor (0-or-1, mirroring the
+registrar `instructor` column); `secondaryInstructors` is the 0-or-more
+**other** instructors from the `secondary_instr` column (comma-separated in
+the source, stored as an array). Records written before the multi-instructor
+model simply lack the key — `instructorsOf(o)` (below) reads it as empty, so
+old schedules stay valid.
 
 `days` is a subset of `MTWRF`; `time` is a `"HH:MM-HH:MM"` 24h band.
 Time-band *logic* compares minute values, never band strings: any spelling of
@@ -36,16 +43,24 @@ renumbered deterministically.
 ### Parsing + index
 
 - `parseCsv(text)` → `offering[]` (columns `dept_prefix`,
-  `course_number`, `course_section`, `instructor`, `days`, `times`; blank or
-  literal `NULL` meeting cells mark an unscheduled offering; `166L` +
-  section-cell lab digits with deterministic labSeq for colliding rows)
-- `renderCsv(offerings)` → round-trip CSV (lab numbers written back as
-  `166L`, sequences as section digits `A1`/`A2`)
+  `course_number`, `course_section`, `instructor`, `secondary_instr`, `days`,
+  `times`; blank or literal `NULL` cells — meeting *and* instructor columns —
+  mark "no value" (a `NULL` lead reads as no instructor, a `NULL`
+  `secondary_instr` as no others, `NULL` tokens inside a list are dropped);
+  the optional `secondary_instr` column is a commma-separated (quoted) list parsed
+  into `secondaryInstructors`; `166L` + section-cell lab digits with
+  deterministic labSeq for colliding rows)
+- `renderCsv(offerings)` → round-trip CSV (`secondary_instr` written back
+  after `instructor`, properly quoted; lab numbers written back as `166L`,
+  sequences as section digits `A1`/`A2`)
 - `buildIndex(offerings)` → `{ byCourse, byDay, bySlot, byInstructor,
 unscheduled }`; each list is sorted (`compareItems`) and items carry
-  `{ o, code, sid, sectionLabel, start, end, days, lab }` where `sid` is
-  `o.$sid`, `start`/`end` are minutes, `sectionLabel` is `Section A` or
-  `Lab A2` (the registrar's letter + sequence), and `lab` flags lab items.
+  `{ o, code, sid, sectionLabel, start, end, days, lab, instructors }` where
+  `sid` is `o.$sid`, `start`/`end` are minutes, `sectionLabel` is `Section A` or
+  `Lab A2` (the registrar's letter + sequence), `lab` flags lab items, and
+  `instructors` is the offering's distinct instructor list (lead + secondary,
+  `instructorsOf(o)`). Every instructor is indexed under `byInstructor`, so
+  filters and the per-instructor view cover team-taught courses too.
   Labs group under the parent course's `code`, so they share its catalog
   name and never conflict with their own lecture (same-code skip in
   `conflictsForCourse`); a lab still conflicts with any _other_ course.
@@ -105,8 +120,10 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
 
 ### Display + filters
 
-- `briefInstructor(name)`, `colorForDept(prefix)`, `colorForInstructor(name)`,
-  `colorForSchedule(sid)` (deterministic palettes)
+- `briefInstructor(name)`, `instructorChip(o)` (the grid's one-name label —
+  brief lead plus a `*` when others are attached), `instructorsOf(o)` (the
+  distinct lead + secondary list), `colorForDept(prefix)`,
+  `colorForInstructor(name)`, `colorForSchedule(sid)` (deterministic palettes)
 - `instructorSortKey(name)`, `compareInstructors`, `instructorsInSchedule(index)`,
   `departmentsInSchedule(index)`
 - `buildFilter(mode, depts, instructors)` → `{ active, matches(item), color(item) }`

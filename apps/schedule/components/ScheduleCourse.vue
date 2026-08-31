@@ -15,7 +15,13 @@
           <div>
             <strong>Section {{ s.o.section }}</strong> · {{ s.o.days }} {{ formatTime(s.o.time) }}
           </div>
-          <div class="faculty">Instructor: {{ s.o.instructor }}</div>
+          <div class="faculty">
+            Instructor:
+            <template v-for="(n, i) in s.instructors" :key="n"
+              ><span v-if="i" class="sep">, </span
+              ><span class="faculty-link" @click="goScheduleInstructor(n)">{{ n }}</span></template
+            ><span v-if="!s.instructors.length">—</span>
+          </div>
         </div>
       </div>
 
@@ -64,7 +70,7 @@ import { useRoute } from 'vue-router'
 import { schedule, scheduleOfferings } from '../src/scheduleStore.js'
 import { courseByCode, courseName } from '@major-vis/catalog-client'
 import { conflictsForCourse, formatTime } from '@major-vis/schedule-core'
-import { goScheduleCourse, goScheduleSlot } from '../router.js'
+import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../router.js'
 
 import { computed } from 'vue'
 
@@ -92,6 +98,7 @@ export default {
       formatTime,
       goScheduleCourse,
       goScheduleSlot,
+      goScheduleInstructor,
     }
   },
 }

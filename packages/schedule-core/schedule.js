@@ -240,25 +240,56 @@ function csvFields(line) {
   return fields.map((f) => f.trim())
 }
 
-// Normalize a meeting-cell value: blank/whitespace or a literal NULL (case-
+// Normalize a raw CSV cell: blank/whitespace or a literal NULL (case-
 // insensitive) means "no value" — the registrar feed writes NULL where a course
-// has no assigned time slot.
-function meetingValue(v) {
+// has no assigned time slot or instructor.
+function cellValue(v) {
   const s = String(v ?? '').trim()
   return !s || /^null$/i.test(s) ? '' : s
 }
 
+// Split a comma-separated instructor cell into distinct names: whitespace
+// tolerated around commas, trimmed, empties dropped, duplicates removed. A
+// blank/NULL cell (or NULL token inside a list) is "no instructor". The
+// registrar's `secondary_instr` column uses `, ` between names.
+function instructorList(cell) {
+  const src = cellValue(cell)
+  if (!src) return []
+  const names = src
+    .split(/,\s*/)
+    .map((n) => n.trim())
+    .filter((n) => n && !/^null$/i.test(n))
+  return [...new Set(names)]
+}
+
+// The distinct instructors on an offering: the lead (`instructor`) followed by
+// the secondary instructors, with empties, literal NULLs, and duplicates
+// dropped (a person may appear as both lead and secondary of the same
+// offering). Records written before the multi-instructor model carry no
+// `secondaryInstructors`.
+export function instructorsOf(o) {
+  if (!o) return []
+  const out = instructorList(o.instructor)
+  for (const n of o.secondaryInstructors || []) {
+    const name = String(n || '').trim()
+    if (name && !/^null$/i.test(name) && !out.includes(name)) out.push(name)
+  }
+  return out
+}
+
 // Parse a schedule CSV into offering records. The header is the round-trip /
-// registrar form `dept_prefix,course_number,course_section,instructor,days,
-// times` (optionally an extra `term` column, `F|W|S`) or use alternate synonyms
-// for the time column (`time`). Blank/NULL `days`/`times` mark an unscheduled
-// offering.
+// registrar form `dept_prefix,course_number,course_section,instructor,
+// secondary_instr,days,times` (optionally an extra `term` column, `F|W|S`) or
+// use alternate synonyms for the time column (`time`). The optional
+// `secondary_instr` column is a comma-separated list (quoted by the registrar)
+// of additional instructors; it becomes the `secondaryInstructors` array.
+// Blank/NULL `days`/`times` mark an unscheduled offering.
 // A trailing `L` on the course number marks a lab section of that course
 // (`166L` is a lab of 166); the lab's sequence is part of the section cell
 // (`A2` = section A, lab 2). A lab row with a plain-letter section gets
 // labSeq 1; colliding rows (identical `A1` rows serving one lecture) are
 // renumbered 1..n in first-seen order so every record stays distinct.
-/** @returns {Array<{ prefix: string; number: string; section: string; instructor: string; days: string; time: string; term?: string; lab?: boolean; labSeq?: number }>} */
+/** @returns {Array<{ prefix: string; number: string; section: string; instructor: string; secondaryInstructors: string[]; days: string; time: string; term?: string; lab?: boolean; labSeq?: number }>} */
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/)
   const header = csvFields(lines[0])
@@ -271,8 +302,8 @@ export function parseCsv(text) {
     header.forEach((h, idx) => {
       rec[h] = (cells[idx] || '').trim()
     })
-    let time = meetingValue(rec['times'] != null && rec['times'] !== '' ? rec['times'] : rec['time'] || '')
-    let days = meetingValue(rec['days'])
+    let time = cellValue(rec['times'] != null && rec['times'] !== '' ? rec['times'] : rec['time'] || '')
+    let days = cellValue(rec['days'])
     // The contract only defines scheduled (both set) and unscheduled (both
     // blank) offerings — a row missing either side is unscheduled.
     if (!days || !time) {
@@ -288,7 +319,8 @@ export function parseCsv(text) {
       prefix: rec['dept_prefix'],
       number,
       section: rec['course_section'],
-      instructor: rec['instructor'],
+      instructor: cellValue(rec['instructor']),
+      secondaryInstructors: instructorList(rec['secondary_instr']),
       days,
       time,
     }
@@ -348,11 +380,19 @@ export function offeringSectionLabel(o) {
 // Serialize offerings back to the importable CSV form (an exact round-trip of
 // `parseCsv`). `rows` are offering records; an optional `term` per row is written
 // when the caller provides it. Header is `dept_prefix,course_number,
-// course_section,instructor,days,times` plus `term` when any non-empty term is
-// present.
+// course_section,instructor,secondary_instr,days,times` plus `term` when any
+// non-empty term is present.
 export function renderCsv(offerings) {
   const includesTerm = offerings.some((o) => o.term != null && o.term !== '')
-  const header = ['dept_prefix', 'course_number', 'course_section', 'instructor', 'days', 'times']
+  const header = [
+    'dept_prefix',
+    'course_number',
+    'course_section',
+    'instructor',
+    'secondary_instr',
+    'days',
+    'times',
+  ]
   if (includesTerm) header.push('term')
   const quote = (v) => {
     const s = String(v ?? '')
@@ -361,7 +401,15 @@ export function renderCsv(offerings) {
   const lines = [header.join(',')]
   for (const o of offerings) {
     const isTime = o.time != null && o.time !== '' ? o.time : o.times || ''
-    const rec = [o.prefix, courseNumberLabel(o), offeringSectionLabel(o), o.instructor, o.days, isTime]
+    const rec = [
+      o.prefix,
+      courseNumberLabel(o),
+      offeringSectionLabel(o),
+      o.instructor,
+      (o.secondaryInstructors || []).join(', '),
+      o.days,
+      isTime,
+    ]
     if (includesTerm) rec.push(o.term || '')
     lines.push(rec.map(quote).join(','))
   }
@@ -586,7 +634,8 @@ export function dragPayloadFrom(e) {
 // meeting time (blank `days` or `time`) are "unscheduled" (e.g. independent
 // studies): they still group by course and instructor but appear only in the
 // `unscheduled` list, never on the calendar or in conflict detection. The rest
-// are indexed by course / day / slot / instructor.
+// are indexed by course / day / slot / instructor (every instructor — the lead
+// plus any secondary — so filters and the per-instructor view cover all).
 export function buildIndex(offerings) {
   const byCourse = {}
   const byDay = { M: [], T: [], W: [], R: [], F: [] }
@@ -604,7 +653,7 @@ export function buildIndex(offerings) {
     // Lab sections label with their registrar section (letter + sequence:
     // `Lab A2`); lectures label with the plain section letter.
     const sectionLabel = o.lab ? `Lab ${offeringSectionLabel(o)}` : `Section ${o.section}`
-    return { o, code, sid: o.$sid, sectionLabel, start, end, days, lab: o.lab }
+    return { o, code, sid: o.$sid, sectionLabel, start, end, days, lab: o.lab, instructors: instructorsOf(o) }
   }
 
   for (const o of offerings) {
@@ -614,8 +663,10 @@ export function buildIndex(offerings) {
     if (!byCourse[item.code]) byCourse[item.code] = []
     byCourse[item.code].push(item)
 
-    if (!byInstructor[o.instructor]) byInstructor[o.instructor] = []
-    byInstructor[o.instructor].push(item)
+    for (const name of item.instructors) {
+      if (!byInstructor[name]) byInstructor[name] = []
+      byInstructor[name].push(item)
+    }
 
     if (!scheduled) {
       unscheduled.push(item)
@@ -797,6 +848,18 @@ export function briefInstructor(name) {
   return m ? `${m[2]} ${m[1]}` : (name || '').trim()
 }
 
+// The one-name label for a course chip on the busy grid: the lead instructor's
+// brief name, with a `*` appended when other instructors are also attached so a
+// team-taught course doesn't crowd the view. The full roster is available via
+// `instructorsOf(o)` for tooltips.
+export function instructorChip(o) {
+  const names = instructorsOf(o)
+  if (!names.length) return { label: '', hasOthers: false }
+  const label = briefInstructor(names[0])
+  const hasOthers = names.length > 1
+  return { label: hasOthers ? `${label}*` : label, hasOthers }
+}
+
 // Distinct colors assigned deterministically per department.
 const DEPT_PALETTE = [
   '#1b4965',
@@ -906,8 +969,14 @@ export function buildFilter(mode, depts, instructors) {
   if (mode === 'instructor') {
     return {
       active: instructors.length > 0,
-      matches: (it) => instructors.includes(it.o.instructor),
-      color: (it) => colorForInstructor(it.o.instructor),
+      // An item counts when any of its instructors (lead or secondary) is
+      // selected; it colors by the first selected one it matches, so a
+      // team-taught block takes the color of the person you filtered on.
+      matches: (it) => (it.instructors || []).some((n) => instructors.includes(n)),
+      color: (it) => {
+        const hit = (it.instructors || []).find((n) => instructors.includes(n))
+        return colorForInstructor(hit || it.o.instructor || (it.instructors || [])[0] || '')
+      },
     }
   }
   return {
