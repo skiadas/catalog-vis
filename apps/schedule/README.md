@@ -62,6 +62,13 @@ meeting times" strip** under the grid (draggable onto slots in edit mode, so
 you can give an independent study a time). The strip and the rail keep
 off-pattern courses visible without letting them compete with normal ones.
 
+Clicking a grid block **opens its course list in the same footprint** (click
+again to close; only one block open at a time), with a "View slot" link to
+the slot page. Rails layer deterministically: normal bars on top of custom
+rails (a rail stays clickable in the gaps between bars and past the ruled
+hours); the rare rail that exactly overlaps a standard band sits on top of
+it; an opened block rises above everything.
+
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format
 (`dept_prefix,course_number,course_section,instructor,days,times` plus

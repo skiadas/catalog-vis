@@ -274,6 +274,38 @@ test('import registrar CSV creates a new schedule and routes rows by term', asyn
 
   // The new schedule is auto-selected as a header pill.
   await page.locator('.schedule-pill', { hasText: 'import' }).first().waitFor({ timeout: 10000 })
+
+  // --- Opened blocks: a click reveals the course list in the same footprint ---
+  // Standard count block (Fall: CS 220 at 9:20-10:30) opens in place — no
+  // navigation — and its rows carry real schedule colors (never white-on-white).
+  // (Selection is by the block's stable title: an opened block's text no longer
+  // contains the word "course", so text-based locators would drift to a sibling.)
+  const bar = page.locator('.cal-block[title="CS 220"]').first()
+  await bar.waitFor({ timeout: 10000 })
+  await expect(bar).toHaveCSS('z-index', '1')
+  await bar.click()
+  await expect(page).toHaveURL(/#\/$/)
+  const barRow = bar.locator('.filter-offering').first()
+  await expect(barRow).toBeVisible()
+  await expect(barRow).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  // Click again: the list closes back to the count view.
+  await bar.click()
+  await expect(barRow).not.toBeVisible()
+
+  // Off-pattern rail (Fall: MAT 131 at 14:20-16:05) layers below the bars and
+  // opens the same way.
+  const rail = page.locator('.cal-block.off-pattern').first()
+  await rail.waitFor({ timeout: 10000 })
+  await expect(rail).toHaveCSS('z-index', '0')
+  await rail.click()
+  await expect(page).toHaveURL(/#\/$/)
+  const railRow = rail.locator('.filter-offering').first()
+  await expect(railRow).toBeVisible()
+  await expect(railRow).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  // "View slot" still reaches the slot page from an opened rail.
+  await rail.locator('.cal-block-view').click()
+  await expect(page).toHaveURL(/#\/slot\//)
+
   assertClean(errors)
 })
 

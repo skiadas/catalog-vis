@@ -438,6 +438,7 @@
   border: 1px solid var(--primary-35);
   overflow: hidden;
   text-align: center;
+  z-index: 1;
   transition:
     background 0.15s,
     box-shadow 0.15s;
@@ -545,14 +546,22 @@
 }
 /* Off-pattern courses: a band whose time isn't a standard slot of its day
    group renders as a half-width rail (dashed, tinted) so normal classes keep
-   the full column and the exception reads as the exception. Clipped edges get
-   a corner notch to show the class continues beyond the ruled hours. */
+   the full column and the exception reads as the exception. Rails layer BELOW
+   normal bars (z 0 vs 1): normal bars keep full width and stay clickable, and
+   a rail is clickable in the gaps between bars and past the ruled hours. The
+   rare squeezed rail that exactly overlaps its standard sibling sits above it
+   (`subsumed`) so it stays interactive. Clipped edges get a corner notch to
+   show the class continues beyond the ruled hours. */
 .cal-block.off-pattern {
   left: auto;
   right: 4px;
   width: 50%;
   border: 1.5px dashed var(--primary-35);
   background: var(--accent-12);
+  z-index: 0;
+}
+.cal-block.off-pattern.subsumed {
+  z-index: 2;
 }
 .cal-block.off-pattern:hover {
   background: var(--accent-12);
@@ -581,18 +590,20 @@
   opacity: 0.9;
   white-space: nowrap;
 }
-/* Expanded block variant: same white card as the filtered view, so clicking a
-   block brings its course list to the forefront in place. */
-.cal-block.expanded {
+/* Opened block variant: same white card as the filtered view — clicking a
+   block reveals its course list in the same footprint. Rises above every
+   other block so an opened (possibly rail) list is always readable. */
+.cal-block.open {
   background: var(--overlay-strong);
   border-color: var(--gray-300);
   justify-content: flex-start;
   padding-top: 6px;
+  z-index: 3;
 }
-.cal-block.expanded:hover {
+.cal-block.open:hover {
   box-shadow: var(--shadow-pop);
 }
-/* The expanded block's "View slot" link: still reaches the slot page. */
+/* The opened block's "View slot" link: still reaches the slot page. */
 .cal-block-view {
   @include text-caption;
   font-size: var(--font-2xs);

@@ -743,9 +743,16 @@ export function formatHour(min) {
   return `${h12}${min < 720 ? 'a' : 'p'}`
 }
 
-// Group a single weekday's offerings into unique slots (day,time).
-// Returns [{ time, start, end, items }] sorted by start time.
-export function daySlotBlocks(day, index) {
+// Group a single weekday's offerings into blocks. Courses at a band form a
+// full-width block; off-pattern courses (custom times, or exact bands of
+// another day group) sharing the same band are split into their own
+// half-rail block, so a band never mixes patterns — each block's count,
+// custom flag, and title stay coherent. `sameSpan` marks a rail that exactly
+// overlaps its standard sibling (the rare squeezed case, rendered above it).
+// Blocks sort by start time with longer spans first, so a contained rail
+// paints above the spanning one that touches it.
+// Returns [{ time, start, end, items, offPattern, sameSpan }].
+export function daySlotBlocks(day, index, termKey = 'F') {
   if (!index || !index.byDay[day]) return []
   const byTime = {}
   for (const item of index.byDay[day]) {
@@ -755,7 +762,21 @@ export function daySlotBlocks(day, index) {
     }
     byTime[key].items.push(item)
   }
-  return Object.values(byTime).sort((a, b) => a.start - b.start)
+  const out = []
+  for (const b of Object.values(byTime)) {
+    const std = b.items.filter((it) => isStandardPattern(termKey, it.o.days, it.o.time))
+    const off = b.items.filter((it) => !isStandardPattern(termKey, it.o.days, it.o.time))
+    if (!off.length) {
+      out.push({ ...b, items: std, offPattern: false, sameSpan: false })
+    } else if (!std.length) {
+      out.push({ ...b, items: off, offPattern: true, sameSpan: false })
+    } else {
+      // Mixed band: full-width standard block plus the off-pattern half-rail.
+      out.push({ ...b, items: std, offPattern: false, sameSpan: false })
+      out.push({ ...b, items: off, offPattern: true, sameSpan: true })
+    }
+  }
+  return out.sort((a, b) => a.start - b.start || b.end - a.end)
 }
 
 // Inline style for an absolutely-positioned block on the calendar.

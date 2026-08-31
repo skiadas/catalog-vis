@@ -18,7 +18,8 @@
           class="cal-block"
           :class="{
             filtered: b.active,
-            expanded: isExpanded(b.key),
+            open: isOpen(b.key),
+            subsumed: b.subsumed,
             over: dragOver === dayGroup(day) + '|' + b.slot.time,
             'off-pattern': b.offPattern,
             'clipped-top': b.clippedTop,
@@ -26,8 +27,8 @@
           }"
           :title="b.title"
           :style="b.style"
-          :aria-expanded="isExpanded(b.key) ? true : undefined"
-          @click="toggleExpand(b.key)"
+          :aria-expanded="isOpen(b.key) ? true : undefined"
+          @click="toggleOpen(b.key)"
           @dragover="
             zoneOver($event, {
               key: dayGroup(day) + '|' + b.slot.time,
@@ -39,7 +40,7 @@
           @dragleave="zoneLeave"
           @drop="zoneDrop($event, { day, days: dayGroup(day), time: b.slot.time })"
         >
-          <template v-if="filter.active || isExpanded(b.key)">
+          <template v-if="filter.active || isOpen(b.key)">
             <span v-if="b.offPattern" class="cal-block-tag">custom</span>
             <div class="cal-block-time">{{ formatTime(b.slot.time) }}</div>
             <div class="cal-block-depts">
@@ -48,7 +49,7 @@
                 :key="it.code + it.o.section + it.sid"
                 class="filter-offering"
                 :class="{ draggable: isEditable(it), proposed: proposalFor(it), removed: removalFor(it) }"
-                :style="{ backgroundColor: filter.color(it) }"
+                :style="{ backgroundColor: rowColor(it) }"
                 :draggable="isEditable(it)"
                 @click.stop="goScheduleCourse(it.code)"
                 @dragstart="onDragStart($event, it, day)"
@@ -110,7 +111,6 @@ import {
   termSlotOptions,
   termDayGroup,
   toMinutes,
-  isStandardPattern,
   calendarDayRange,
   clipBand,
   colorForSchedule,
@@ -208,18 +208,23 @@ export default {
       return visual
     })
 
-    // Clicking a grid block brings its course list to the forefront in place
-    // (one block at a time) instead of navigating away; the expanded block's
+    // Opening a grid block brings its course list to the forefront in place
+    // (one block at a time) instead of navigating away; an opened block's
     // "View slot" link still reaches the slot page.
+    const openKey = ref(null)
     const blockKey = (day, slot) => `${day}|${slot.time}`
-    const expandedKey = ref(null)
-    const isExpanded = (key) => expandedKey.value === key
-    const toggleExpand = (key) => {
-      expandedKey.value = expandedKey.value === key ? null : key
+    const isOpen = (key) => openKey.value === key
+    const toggleOpen = (key) => {
+      openKey.value = openKey.value === key ? null : key
     }
 
+    // Row chip color for an opened block's list: the active filter's color when
+    // one is on, otherwise the schedule color (so summary-view rows are never
+    // white-on-white — an inactive visual's `color()` is an empty string).
+    const rowColor = (it) => (filter.value.active ? filter.value.color(it) : colorForSchedule(it.sid))
+
     const dayBlocks = (day) => {
-      const blocks = daySlotBlocks(day, shownIndex.value)
+      const blocks = daySlotBlocks(day, shownIndex.value, activeTerm.value)
       if (!filter.value.active) return blocks
       const out = []
       for (const b of blocks) {
@@ -257,9 +262,12 @@ export default {
             top: clip.start - dayRange.value.start + 'px',
             height: clip.end - clip.start + 'px',
           },
-          // A block whose time isn't a standard band of its day group renders
-          // as a half-width rail so normal courses keep the full column.
-          offPattern: !isStandardPattern(activeTerm.value, slot.items[0].o.days, slot.items[0].o.time),
+          // Off-pattern blocks (from the band split) render as half-width rails
+          // so normal courses keep the full column.
+          offPattern: slot.offPattern,
+          // A squeezed rail exactly overlapping its standard sibling sits above
+          // it (the rare case); everything else layers rails below the bars.
+          subsumed: slot.sameSpan,
           clippedTop: clip.clippedTop,
           clippedBottom: clip.clippedBottom,
           title: slotTitle(slot),
@@ -312,8 +320,9 @@ export default {
       shownIndex,
       dayRange,
       blocksInDay,
-      isExpanded,
-      toggleExpand,
+      isOpen,
+      toggleOpen,
+      rowColor,
       filter,
       briefInstructor,
       goScheduleSlot,
