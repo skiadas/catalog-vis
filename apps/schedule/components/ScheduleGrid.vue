@@ -18,6 +18,7 @@
           class="cal-block"
           :class="{
             filtered: b.active,
+            expanded: isExpanded(b.key),
             over: dragOver === dayGroup(day) + '|' + b.slot.time,
             'off-pattern': b.offPattern,
             'clipped-top': b.clippedTop,
@@ -25,7 +26,8 @@
           }"
           :title="b.title"
           :style="b.style"
-          @click="goScheduleSlot(day, b.slot.time)"
+          :aria-expanded="isExpanded(b.key) ? true : undefined"
+          @click="toggleExpand(b.key)"
           @dragover="
             zoneOver($event, {
               key: dayGroup(day) + '|' + b.slot.time,
@@ -37,7 +39,7 @@
           @dragleave="zoneLeave"
           @drop="zoneDrop($event, { day, days: dayGroup(day), time: b.slot.time })"
         >
-          <template v-if="filter.active">
+          <template v-if="filter.active || isExpanded(b.key)">
             <span v-if="b.offPattern" class="cal-block-tag">custom</span>
             <div class="cal-block-time">{{ formatTime(b.slot.time) }}</div>
             <div class="cal-block-depts">
@@ -79,6 +81,7 @@
                 </button>
               </span>
             </div>
+            <button class="cal-block-view" @click.stop="goScheduleSlot(day, b.slot.time)">View slot</button>
           </template>
           <template v-else>
             <div class="cal-block-count">
@@ -129,7 +132,7 @@ import { useScheduleDrag } from '../scheduleDrag.js'
 import WeeklyCalendar from './WeeklyCalendar.vue'
 import NoMeetingStrip from './NoMeetingStrip.vue'
 
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 // The day-group a weekday column belongs to, per the active term (e.g. MWF days
 // are M/W/F, TR days T/R; Spring is a single MTWRF group).
@@ -205,6 +208,16 @@ export default {
       return visual
     })
 
+    // Clicking a grid block brings its course list to the forefront in place
+    // (one block at a time) instead of navigating away; the expanded block's
+    // "View slot" link still reaches the slot page.
+    const blockKey = (day, slot) => `${day}|${slot.time}`
+    const expandedKey = ref(null)
+    const isExpanded = (key) => expandedKey.value === key
+    const toggleExpand = (key) => {
+      expandedKey.value = expandedKey.value === key ? null : key
+    }
+
     const dayBlocks = (day) => {
       const blocks = daySlotBlocks(day, shownIndex.value)
       if (!filter.value.active) return blocks
@@ -238,7 +251,7 @@ export default {
         .map((slot) => ({ slot, clip: clipBand(slot, dayRange.value) }))
         .filter((x) => x.clip)
         .map(({ slot, clip }) => ({
-          key: slot.time,
+          key: blockKey(day, slot),
           slot,
           style: {
             top: clip.start - dayRange.value.start + 'px',
@@ -299,6 +312,8 @@ export default {
       shownIndex,
       dayRange,
       blocksInDay,
+      isExpanded,
+      toggleExpand,
       filter,
       briefInstructor,
       goScheduleSlot,

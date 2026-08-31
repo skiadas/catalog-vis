@@ -580,6 +580,33 @@
   letter-spacing: 0.05em;
   opacity: 0.9;
   white-space: nowrap;
+}
+/* Expanded block variant: same white card as the filtered view, so clicking a
+   block brings its course list to the forefront in place. */
+.cal-block.expanded {
+  background: var(--overlay-strong);
+  border-color: var(--gray-300);
+  justify-content: flex-start;
+  padding-top: 6px;
+}
+.cal-block.expanded:hover {
+  box-shadow: var(--shadow-pop);
+}
+/* The expanded block's "View slot" link: still reaches the slot page. */
+.cal-block-view {
+  @include text-caption;
+  font-size: var(--font-2xs);
+  align-self: flex-end;
+  padding: 2px 4px;
+  color: var(--primary);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cal-block-view:hover {
+  background: var(--primary-12);
 } /* Filtered block variant: white card with per-department offerings */
 
 .cal-block.filtered {

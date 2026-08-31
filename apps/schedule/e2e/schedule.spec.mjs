@@ -276,3 +276,39 @@ test('import registrar CSV creates a new schedule and routes rows by term', asyn
   await page.locator('.schedule-pill', { hasText: 'import' }).first().waitFor({ timeout: 10000 })
   assertClean(errors)
 })
+
+// Grid blocks expand in place on click (no navigation away); the expanded
+// block shows its course list, click-again collapses, and the "View slot"
+// link still reaches the slot page.
+test('grid block click expands the course list in place; View slot navigates', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+
+  // A generated schedule (All departments) fills the grid with blocks.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'All departments' }).click()
+  await page.getByRole('button', { name: 'Generate' }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+
+  const block = page.locator('.cal-block:not(.off-pattern)').first()
+  await block.waitFor({ timeout: 10000 })
+  await block.click()
+  // Still on the grid — the click expanded, it did not navigate away.
+  await expect(page).toHaveURL(/#\/$/)
+  const rows = block.locator('.filter-offering')
+  await expect(rows.first()).toBeVisible()
+
+  // Clicking the block again collapses the list back to the count view.
+  await block.click()
+  await expect(rows.first()).not.toBeVisible()
+
+  // The expanded block's "View slot" link still reaches the slot page.
+  await block.click()
+  await block.locator('.cal-block-view').click()
+  await expect(page).toHaveURL(/#\/slot\//)
+
+  assertClean(errors)
+})
