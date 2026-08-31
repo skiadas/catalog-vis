@@ -111,32 +111,7 @@
           >
             Download registrar CSV
           </button>
-          <button
-            class="csv-menu-item"
-            title="Header: dept_prefix, course_number, course_section, instructor, days, times[, term]"
-            @click="pickFile(selectedScheduleIds[0]), closeCsv()"
-          >
-            Upload registrar CSV
-          </button>
         </div>
-      </div>
-
-      <input
-        ref="fileInput"
-        type="file"
-        accept=".csv,text/csv"
-        class="schedule-upload-input"
-        @change="onFileChange"
-      />
-      <span v-if="importError" class="schedule-upload-error">{{ importError }}</span>
-      <div v-if="importWarning.length" class="schedule-upload-warning" role="status">
-        <strong
-          >Imported {{ importWarning.length }} lab row(s) with no matching lecture section in the file</strong
-        >
-        (kept as unscheduled labs):
-        <span v-for="l in importWarning" :key="l.key" class="schedule-upload-warning-item">{{
-          l.label
-        }}</span>
       </div>
     </div>
   </div>
@@ -160,9 +135,8 @@ import {
   activeTerm,
   viewOfferings,
   publishedOfferings,
-  setTermOfferings,
 } from '../src/scheduleStore.js'
-import { colorForSchedule, compareItems, parseCsv, renderCsv } from '@major-vis/schedule-core'
+import { colorForSchedule, compareItems, renderCsv } from '@major-vis/schedule-core'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
@@ -178,10 +152,6 @@ export default {
     const visibleSchedules = computed(() =>
       schedules.value.filter((s) => selectedScheduleIds.value.includes(s.id)),
     )
-    const fileInput = ref(null)
-    const importFor = ref(null)
-    const importError = ref('')
-    const importWarning = ref([])
     const menuFor = ref(null)
 
     // CSV action menu: a single "CSV ▾" button in the picker's right cluster.
@@ -276,68 +246,6 @@ export default {
     }
     const manage = () => emit('manage')
 
-    // CSV upload: parses the file and loads it into a schedule's active term.
-    // Rows carrying a `term` column land in that term part; blank-day/time rows
-    // become unscheduled offerings. Replaces the schedule's current term
-    // offerings (a full replace, like a registrar feed).
-    const pickFile = (id) => {
-      importFor.value = id
-      importError.value = ''
-      importWarning.value = []
-      fileInput.value && fileInput.value.click()
-    }
-    const onFileChange = (e) => {
-      const file = e.target.files && e.target.files[0]
-      e.target.value = ''
-      if (!file) return
-      const reader = new FileReader()
-      const targetSched = schedules.value.find((s) => s.id === importFor.value)
-      reader.onload = () => {
-        try {
-          const rows = parseCsv(String(reader.result || ''))
-          if (!rows.length) {
-            importError.value = 'No course rows found in that file.'
-            return
-          }
-          // Labs should always pair with a lecture section in the same feed;
-          // rows that don't (a lab whose lecture was filtered out or never
-          // shipped) are kept — a lab without its lecture is meaningless, but
-          // dropping data silently is worse. They're flagged for the importer.
-          importWarning.value = rows
-            .filter(
-              (r) =>
-                r.lab &&
-                !rows.some(
-                  (x) => !x.lab && x.prefix === r.prefix && x.number === r.number && x.section === r.section,
-                ),
-            )
-            .map((r) => ({
-              key: `${r.prefix}|${r.number}|${r.section}|${r.labSeq || 1}`,
-              label: `${r.prefix} ${r.number}L ${r.section}${r.labSeq > 1 ? ' \u00b7 ' + r.labSeq : ''}`,
-            }))
-          // Group rows by term (default the active term), then load each.
-          const byTerm = {}
-          for (const r of rows) {
-            const t =
-              r.term && ['F', 'W', 'S'].includes(r.term.toUpperCase())
-                ? r.term.toUpperCase()
-                : activeTerm.value
-            if (!byTerm[t]) byTerm[t] = []
-            const offering = { ...r }
-            delete offering.term
-            byTerm[t].push(offering)
-          }
-          for (const t of Object.keys(byTerm)) {
-            if (targetSched) setTermOfferings(targetSched.id, t, byTerm[t])
-          }
-          emit('manage')
-        } catch (err) {
-          importError.value = 'Could not read that CSV: ' + err.message
-        }
-      }
-      reader.readAsText(file)
-    }
-
     return {
       props,
       visibleSchedules,
@@ -348,11 +256,6 @@ export default {
       setColorSchedules,
       downloadSummaryCsv,
       downloadRegistrarCsv,
-      pickFile,
-      onFileChange,
-      fileInput,
-      importError,
-      importWarning,
       toggleSchedule,
       colorForSchedule,
       edit,

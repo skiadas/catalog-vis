@@ -241,3 +241,38 @@ test('offline boot: a fresh visitor works locally with no authenticated calls', 
   await page.getByText('Sample schedule').first().waitFor({ timeout: 5000 })
   assertClean(errors)
 })
+
+// Import registrar CSV: the create modal offers "Import CSV…", the file is
+// parsed into a summary (never imported directly), and Import always creates
+// a NEW schedule named after the file — rows route into its F/W/S parts by
+// the term column. Existing schedules are never touched.
+test('import registrar CSV creates a new schedule and routes rows by term', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', 'apps/schedule/e2e/import.csv')
+
+  // The summary names the file, pre-fills the schedule name from it, and shows
+  // the term parts the rows would fill — with no import happening yet.
+  await expect(page.locator('#schedule-create-name')).toHaveValue('import')
+  await expect(page.getByText(/Imported 7 course row\(s\)/)).toBeVisible()
+  await expect(page.getByText(/into Fall \+ Winter \+ Spring/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+
+  // The manage list shows the per-term counts the import routed (F: 2, W: 2,
+  // S: 3 = lectures + lab + unscheduled row).
+  const row = page.locator('.schedule-manage-row', { hasText: 'import' })
+  await row.waitFor({ timeout: 10000 })
+  await expect(row).toContainText('Fall: 2, Winter: 2, Spring: 3')
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+
+  // The new schedule is auto-selected as a header pill.
+  await page.locator('.schedule-pill', { hasText: 'import' }).first().waitFor({ timeout: 10000 })
+  assertClean(errors)
+})

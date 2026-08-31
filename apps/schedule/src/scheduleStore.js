@@ -768,6 +768,29 @@ export function setTermOfferings(id, term, offerings) {
   return true
 }
 
+// Imports parsed CSV rows into a schedule's term parts, grouped by each row's
+// `term` column (F|W|S; rows without one default to the active term part).
+// Each touched part is replaced wholesale via `setTermOfferings`, so a
+// suggest session or a remote non-owner write still follows its rules. Returns
+// a map of term -> rows written (empty when the schedule is missing or every
+// part was blocked), e.g. `{ F: 3, S: 1 }`.
+export function importCsvRows(scheduleId, rows) {
+  if (!scheduleById(scheduleId)) return {}
+  const byTerm = {}
+  for (const r of rows || []) {
+    const t = r.term && TERM_KEYS.includes(r.term.toUpperCase()) ? r.term.toUpperCase() : activeTerm.value
+    if (!byTerm[t]) byTerm[t] = []
+    const offering = { ...r }
+    delete offering.term
+    byTerm[t].push(offering)
+  }
+  const written = {}
+  for (const t of Object.keys(byTerm)) {
+    if (setTermOfferings(scheduleId, t, byTerm[t])) written[t] = byTerm[t].length
+  }
+  return written
+}
+
 // Removes a schedule and deselects it if it was visible.
 export function deleteSchedule(id) {
   schedules.value = schedules.value.filter((s) => s.id !== id)

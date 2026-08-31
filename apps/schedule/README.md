@@ -62,14 +62,16 @@ meeting times" strip** under the grid (draggable onto slots in edit mode, so
 you can give an independent study a time). The strip and the rail keep
 off-pattern courses visible without letting them compete with normal ones.
 
-**CSV**: use the schedule app's "Upload registrar CSV" to load a file into a
-schedule's active term (or its `term` column parts); the file is the same
-round-trip / registrar format (`dept_prefix,course_number,course_section,
-instructor,days,times` plus optional `term`) produced by "Download registrar
-CSV". Blank or literal `NULL` `days`/`times` cells mark unscheduled offerings;
-`166L`/`166L2` course numbers become lab sections of their parent. Lab rows
-whose lecture section isn't in the file are kept and reported in an import
-warning list.
+**CSV**: import a file via "Your schedules" → **New schedule** → **Import
+CSV…** — the file is the same round-trip / registrar format
+(`dept_prefix,course_number,course_section,instructor,days,times` plus
+optional `term`) produced by "Download registrar CSV". An import **always
+creates a new schedule** (name prefilled from the filename, year optional;
+never touches existing schedules) and routes rows into its F/W/S parts by the
+`term` column (rows without one land in the active term part). Blank or
+literal `NULL` `days`/`times` cells mark unscheduled offerings; `166L`/`166L2`
+course numbers become lab sections of their parent. Lab rows whose lecture
+section isn't in the file are kept and reported in an import warning list.
 `parseCsv`/`renderCsv` in `@major-vis/schedule-core` implement the format
 (quoted-field aware).
 

@@ -179,6 +179,7 @@
             placeholder="Auto-named if blank"
             v-model="newName"
           />
+          <span v-if="csvName" class="schedule-import-hint">from {{ csvName }}</span>
         </div>
         <div class="field">
           <label for="schedule-create-year">Year (optional)</label>
@@ -190,7 +191,22 @@
             v-model="newYear"
           />
         </div>
-        <div class="field">
+        <div v-if="csvRows" class="schedule-import-summary" role="status">
+          <p class="schedule-import-line">
+            <strong>Imported {{ csvRows.length }} course row(s)</strong> into {{ csvParts.join(' + ') }}.
+            <button class="schedule-import-remove" @click="clearCsv()" aria-label="Remove file">×</button>
+          </p>
+          <p v-if="importWarning.length" class="schedule-upload-warning">
+            <strong
+              >{{ importWarning.length }} lab row(s) with no matching lecture section in the file</strong
+            >
+            (kept as unscheduled labs):
+            <span v-for="l in importWarning" :key="l.key" class="schedule-upload-warning-item">{{
+              l.label
+            }}</span>
+          </p>
+        </div>
+        <div v-else class="field">
           <label>Type</label>
           <div class="schedule-type-options">
             <button class="filter-btn" :class="{ active: newKind === 'empty' }" @click="newKind = 'empty'">
@@ -212,21 +228,29 @@
             </div>
           </div>
         </div>
-        <div class="field" v-if="newKind === 'dept'">
+        <div class="field" v-if="newKind === 'dept' && !csvRows">
           <label for="schedule-create-dept">Department</label>
           <select id="schedule-create-dept" class="search-input" v-model="newDept">
             <option v-for="d in deptOptions" :key="d" :value="d">{{ d }}</option>
           </select>
         </div>
-        <p v-if="createError" class="schedule-create-error">{{ createError }}</p>
+        <p v-if="csvError" class="schedule-create-error">{{ csvError }}</p>
         <div class="controls">
+          <button class="filter-btn" :disabled="creating" @click="pickCsvFile()">Import CSV…</button>
           <button class="filter-btn primary" :disabled="creating" @click="doCreate">
-            {{ creating ? 'Creating…' : 'Generate' }}
+            {{ creating ? 'Creating…' : csvRows ? 'Import' : 'Generate' }}
           </button>
         </div>
       </div>
     </div>
   </div>
+  <input
+    ref="csvInput"
+    type="file"
+    accept=".csv,text/csv"
+    class="schedule-upload-input"
+    @change="onCsvChange"
+  />
 </template>
 
 <script>
@@ -241,12 +265,14 @@ import {
   deleteSchedule,
   duplicateSchedule,
   generateSchedule,
+  addSchedule,
+  importCsvRows,
   editingScheduleId,
   activeTerm,
   viewOfferings,
 } from '../src/scheduleStore.js'
 import { allCourses } from '@major-vis/catalog-client'
-import { colorForSchedule, TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
+import { colorForSchedule, TERM_KEYS, TERM_LABELS, parseCsv } from '@major-vis/schedule-core'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
 import { ref, computed } from 'vue'
@@ -272,6 +298,10 @@ export default {
     const newName = ref('')
     const newYear = ref('')
     const newDept = ref('')
+    const csvInput = ref(null)
+    const csvRows = ref(null)
+    const csvName = ref('')
+    const csvError = ref('')
     const deptOptions = computed(() => {
       const set = new Set()
       for (const code of Object.keys(allCourses.value)) set.add(code.split(' ')[0])
@@ -280,7 +310,63 @@ export default {
     const openCreate = () => {
       showCreate.value = true
       createError.value = ''
+      csvError.value = ''
       if (!newDept.value && deptOptions.value.length) newDept.value = deptOptions.value[0]
+    }
+    // Parsed CSV rows, the filename they came from, and the term parts they
+    // would fill (rows without a `term` column land in the active term part).
+    const csvParts = computed(() => {
+      const seen = []
+      for (const r of csvRows.value || []) {
+        const t = r.term && TERM_KEYS.includes(r.term.toUpperCase()) ? r.term.toUpperCase() : activeTerm.value
+        if (!seen.includes(t)) seen.push(t)
+      }
+      return seen.map((t) => TERM_LABELS[t])
+    })
+    // Lab rows without a matching lecture in the same file are kept (dropping
+    // data silently is worse) but flagged for the importer.
+    const importWarning = computed(() => {
+      const rows = csvRows.value || []
+      return rows
+        .filter(
+          (r) =>
+            r.lab &&
+            !rows.some(
+              (x) => !x.lab && x.prefix === r.prefix && x.number === r.number && x.section === r.section,
+            ),
+        )
+        .map((r) => ({
+          key: `${r.prefix}|${r.number}|${r.section}|${r.labSeq || 1}`,
+          label: `${r.prefix} ${r.number}L ${r.section}${r.labSeq > 1 ? ' \u00b7 ' + r.labSeq : ''}`,
+        }))
+    })
+    const pickCsvFile = () => {
+      csvInput.value && csvInput.value.click()
+    }
+    const clearCsv = () => {
+      csvRows.value = null
+      csvName.value = ''
+      csvError.value = ''
+    }
+    // Reads a CSV file into parsed rows (never imports directly): the summary
+    // shows what would be created, and the confirm button becomes "Import".
+    const onCsvChange = (e) => {
+      const file = e.target.files && e.target.files[0]
+      e.target.value = ''
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = () => {
+        const rows = parseCsv(String(reader.result || ''))
+        if (!rows.length) {
+          csvError.value = 'No course rows found in that file.'
+          return
+        }
+        csvRows.value = rows
+        csvName.value = file.name
+        csvError.value = ''
+        newName.value = file.name.replace(/\.csv$/i, '').replace(/[. ]+$/g, '') || newName.value
+      }
+      reader.readAsText(file)
     }
     // The creator stays open until the schedule exists server-side (no
     // optimistic ghosts): the button shows progress and the modal keeps the
@@ -291,17 +377,30 @@ export default {
       if (creating.value) return
       creating.value = true
       createError.value = ''
-      const mode = newKind.value === 'dept' ? 'dept' : newKind.value === 'empty' ? 'empty' : 'random'
-      const dept = mode === 'dept' ? newDept.value || deptOptions.value[0] : undefined
-      const id = await generateSchedule({ mode, dept, name: newName.value, year: newYear.value })
-      creating.value = false
-      if (id == null) {
-        createError.value = 'Could not create the schedule — the server did not confirm. Try again?'
-        return
+      csvError.value = ''
+      if (csvRows.value) {
+        const id = await addSchedule(newName.value, newYear.value)
+        if (id == null) {
+          createError.value = 'Could not create the schedule — the server did not confirm. Try again?'
+          creating.value = false
+          return
+        }
+        importCsvRows(id, csvRows.value)
+      } else {
+        const mode = newKind.value === 'dept' ? 'dept' : newKind.value === 'empty' ? 'empty' : 'random'
+        const dept = mode === 'dept' ? newDept.value || deptOptions.value[0] : undefined
+        const id = await generateSchedule({ mode, dept, name: newName.value, year: newYear.value })
+        if (id == null) {
+          createError.value = 'Could not create the schedule — the server did not confirm. Try again?'
+          creating.value = false
+          return
+        }
       }
+      creating.value = false
       newName.value = ''
       newYear.value = ''
       newKind.value = 'empty'
+      clearCsv()
       showCreate.value = false
     }
 
@@ -337,6 +436,15 @@ export default {
       deptOptions,
       openCreate,
       doCreate,
+      pickCsvFile,
+      onCsvChange,
+      clearCsv,
+      csvInput,
+      csvRows,
+      csvName,
+      csvParts,
+      importWarning,
+      csvError,
       removeSchedule,
       duplicateAndEdit,
       schedules,

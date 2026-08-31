@@ -546,3 +546,81 @@ test('moveOffering drags a lab row without disturbing the lecture at the same le
     assert.equal(lecture.time, '8:00-9:10', 'lecture untouched')
   })
 })
+
+test('importCsvRows seeds term parts grouped by the term column on a local schedule', async () => {
+  const store = await import('../src/scheduleStore.js')
+  const { setApiBase } = await import('../src/backend.js')
+  setApiBase(`http://127.0.0.1:${await freePort()}/api`)
+  try {
+    resetStore(store)
+    const id = await store.addSchedule('Imported', '', [])
+    const written = store.importCsvRows(id, [
+      { prefix: 'CS', number: '220', section: 'A', instructor: 'Wahl', days: 'MWF', time: '9:20-10:30', term: 'F' },
+      { prefix: 'BIO', number: '166', section: 'A', instructor: 'Patterson', days: 'TR', time: '10:00-11:45', term: 'S', lab: true, labSeq: 1 },
+      { prefix: 'MAT', number: '131', section: 'A', instructor: 'Aydogan', days: 'MWF', time: '12:00-13:10' },
+    ])
+    assert.deepEqual(written, { F: 2, S: 1 })
+    const s = store.scheduleById(id)
+    assert.deepEqual(
+      s.terms.F.offerings.map((o) => `${o.prefix} ${o.number}`),
+      ['CS 220', 'MAT 131'],
+      'no-term rows default to the active term part',
+    )
+    assert.equal(s.terms.W.offerings.length, 0)
+    assert.equal(s.terms.S.offerings[0].lab, true)
+    assert.equal(s.terms.S.offerings[0].term, undefined, 'term key never leaks into the offering')
+  } finally {
+    resetStore(store)
+  }
+})
+
+test('importCsvRows on a missing schedule is a no-op', async () => {
+  const store = await import('../src/scheduleStore.js')
+  const { setApiBase } = await import('../src/backend.js')
+  setApiBase(`http://127.0.0.1:${await freePort()}/api`)
+  try {
+    resetStore(store)
+    assert.deepEqual(store.importCsvRows('nope', []), {})
+  } finally {
+    resetStore(store)
+  }
+})
+
+test('importCsvRows is blocked for a remote non-owner and applied for the owner', async () => {
+  await withRemote(async ({ srv, store }) => {
+    await srv.post('/api/auth/login', { username: 'registrar' })
+    const created = (await srv.post('/api/schedules', { name: 'Shared', year: '2026-27' })).json.schedule
+    await store.signIn('alice')
+
+    const rows = [
+      { prefix: 'CS', number: '220', section: 'A', instructor: 'Wahl', days: 'MWF', time: '9:20-10:30', term: 'F' },
+    ]
+    assert.deepEqual(store.importCsvRows(created.id, rows), {}, 'non-owner replace is blocked')
+    await flush()
+    assert.equal(store.scheduleById(created.id).terms.F.offerings.length, 0)
+
+    await store.signIn('registrar')
+    assert.deepEqual(store.importCsvRows(created.id, rows), { F: 1 })
+    await flush()
+    const term = (await srv.get(`/api/schedules/${created.id}/terms/F`)).json.term
+    assert.equal(term.offerings.length, 1)
+    assert.equal(term.offerings[0].prefix, 'CS')
+  })
+})
+
+test('importCsvRows rerunning replaces the touched parts (registrar re-feed)', async () => {
+  await withRemote(async ({ srv, store }) => {
+    await srv.post('/api/auth/login', { username: 'registrar' })
+    const created = (await srv.post('/api/schedules', { name: 'Shared' })).json.schedule
+    await store.signIn('registrar')
+
+    const first = { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '8:00-9:10', term: 'F' }
+    const second = { prefix: 'CS', number: '220', section: 'B', days: 'TR', time: '10:00-11:45', term: 'F' }
+    store.importCsvRows(created.id, [first])
+    store.importCsvRows(created.id, [second])
+    await flush()
+    const term = (await srv.get(`/api/schedules/${created.id}/terms/F`)).json.term
+    assert.equal(term.offerings.length, 1, 're-feed replaces the part, it does not append')
+    assert.equal(term.offerings[0].number, '220')
+  })
+})
