@@ -8,7 +8,8 @@
     @dragstart="onDragStart"
   >
     <span class="slot-pill-code" @click="goScheduleCourse(item.code)">
-      {{ item.code }}<span class="sep">{{ item.o.section }}</span>
+      {{ item.code }}<span class="sep">{{ item.o.section }}</span
+      ><span v-if="item.lab" class="lab-chip">LAB</span>
     </span>
     <span class="slot-pill-name">{{ courseName }}</span>
     <span class="slot-pill-inst" @click="goScheduleInstructor(item.o.instructor)">

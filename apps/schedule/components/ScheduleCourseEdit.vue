@@ -2,7 +2,7 @@
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="course-edit-title">
       <div class="modal-head">
-        <h3 id="course-edit-title">Edit {{ offering.code }}</h3>
+        <h3 id="course-edit-title">Edit {{ offering.code }}<span v-if="isLab" class="lab-chip">LAB</span></h3>
         <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
@@ -127,6 +127,33 @@
           </p>
         </div>
 
+        <div v-if="!isLab" class="add-lab-row">
+          <button v-if="!labAdded" class="filter-btn add-lab-btn" @click="addLab">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"
+              />
+              <path d="M8.5 2h7" />
+              <path d="M7 16h10" />
+            </svg>
+            Add lab section
+          </button>
+          <p v-else class="add-lab-confirm" role="status">
+            Lab added — <strong>{{ labLabel }}</strong
+            >. It's in the <strong>No meeting times</strong> strip; drag it onto a slot to schedule it.
+          </p>
+        </div>
+
         <div class="controls">
           <button class="filter-btn remove-course-btn" @click="removeCourse">
             <svg
@@ -162,6 +189,7 @@ import {
   scheduleById,
   updateOffering,
   removeCourseFromSchedule,
+  addLabSection,
   activeTerm,
   editingRole,
   publishedPart,
@@ -212,6 +240,59 @@ export default {
 
     const instructorSel = ref(o.instructor || '')
     const sectionSel = ref(o.section || '')
+
+    // --- Lab sections ----------------------------------------------------
+    // A lab row mirrors its lecture's section letter. The editor opens for
+    // labs too (to fix instructor/time); only non-lab rows get the "Add lab
+    // section" action, since a lab without its lecture is meaningless.
+    const isLab = computed(() => Boolean(o.lab))
+    const labAdded = ref(null)
+    const closeTimer = ref(null)
+
+    // Creates the lab (unscheduled, mirroring the lecture's section letter
+    // and copying its current instructor). Confirmation lives in the editor:
+    // the button flips to a success note, and — when the user hadn't started
+    // editing anything else — the editor closes itself after a beat, since
+    // creating the lab was almost certainly the only reason they came here.
+    const addLab = () => {
+      if (labAdded.value || isLab.value) return
+      const created = addLabSection(props.scheduleId, {
+        prefix: o.prefix,
+        number: o.number,
+        section: o.section,
+      })
+      if (!created) return
+      labAdded.value = created
+      if (!hasPendingChanges.value) {
+        closeTimer.value = setTimeout(() => emit('close'), 1200)
+      }
+    }
+
+    const labLabel = computed(() => {
+      const created = labAdded.value
+      if (!created) return ''
+      const seq = created.labSeq > 1 ? ' \u00b7 ' + created.labSeq : ''
+      return `${props.offering.code}L ${created.section}${seq}`
+    })
+
+    // Whether any form field differs from the offering's current values (the
+    // "pending changes" that keep the editor open after adding a lab). Matches
+    // exactly what `save()` would write.
+    const hasPendingChanges = computed(() => {
+      const days = timeMode.value === 'none' ? '' : WEEKDAYS.filter((d) => daysSel.value.includes(d)).join('')
+      const time =
+        timeMode.value === 'none'
+          ? ''
+          : timeMode.value === 'custom'
+            ? `${snapToFive(customStart.value)}-${snapToFive(customEnd.value)}`
+            : timeSel.value
+      return (
+        instructorSel.value !== o.instructor ||
+        (sectionSel.value.trim() || o.section) !== o.section ||
+        days !== (o.days || '') ||
+        time !== (o.time || '')
+      )
+    })
 
     // --- Time mode -----------------------------------------------------
     // 'slot' (a term band), 'custom' (arbitrary start/end), or 'none'
@@ -346,6 +427,7 @@ export default {
       { immediate: true, flush: 'post' },
     )
     onBeforeUnmount(() => {
+      if (closeTimer.value) clearTimeout(closeTimer.value)
       if (startPicker.value) startPicker.value.destroy()
       if (endPicker.value) endPicker.value.destroy()
     })
@@ -376,7 +458,7 @@ export default {
       }
       updateOffering(
         props.scheduleId,
-        { prefix: o.prefix, number: o.number, section: o.section },
+        { prefix: o.prefix, number: o.number, section: o.section, lab: o.lab, labSeq: o.labSeq },
         {
           instructor: instructorSel.value,
           section: sectionSel.value.trim() || o.section,
@@ -392,6 +474,8 @@ export default {
         prefix: o.prefix,
         number: o.number,
         section: o.section,
+        lab: o.lab,
+        labSeq: o.labSeq,
       })
       emit('close')
     }
@@ -402,6 +486,11 @@ export default {
       instructorOptions,
       instructorSel,
       sectionSel,
+      isLab,
+      labAdded,
+      labLabel,
+      addLab,
+      hasPendingChanges,
       timeMode,
       timeSel,
       slotsForGroup,

@@ -160,6 +160,73 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   assertClean(errors)
 })
 
+test('lab sections: add lab from the editor (auto-close), strip lab chip, schedule it, cascade remove', async ({
+  page,
+}) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+  await createSchedule(page, 'Labs schedule')
+
+  // Edit mode, then add a course — its editor opens pre-slotted.
+  await page.locator('.schedule-pill-edit').first().click()
+  const menu = page.locator('.mode-menu')
+  await menu.waitFor({ state: 'visible', timeout: 5000 })
+  await menu.getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: '＋ Add course' }).click()
+  const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
+  await addm.waitFor({ state: 'visible', timeout: 5000 })
+  // ANTH 160 is in the catalog but never in the seeded sample schedule, so
+  // every ANTH 160 block on the grid is this test's course.
+  await addm.getByPlaceholder('Search code or name…').fill('ANTH 160')
+  await addm.locator('.schedule-add-option', { hasText: 'ANTH 160' }).first().click()
+
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+
+  // "Add lab section": the button flips to an in-editor confirmation and —
+  // with no other edits pending — the editor closes itself.
+  await em.getByRole('button', { name: 'Add lab section' }).click()
+  await em.getByText(/Lab added — ANTH 160L A/).first().waitFor({ timeout: 5000 })
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+
+  // The lab is unscheduled: it sits in the strip, marked with a LAB chip.
+  const strip = page.locator('.no-meeting-strip')
+  const labPill = strip.locator('.slot-pill:has(.lab-chip)')
+  await labPill.first().waitFor({ timeout: 5000 })
+  await expect(labPill.first()).toContainText('ANTH 160')
+
+  // Reopen the lab from the strip: the editor marks it as a lab and offers no
+  // "Add lab section" (a lab cannot spawn labs).
+  await labPill.first().locator('.slot-pill-edit').click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(em.locator('.lab-chip')).toHaveText('LAB')
+  await expect(em.getByRole('button', { name: 'Add lab section' })).toHaveCount(0)
+
+  // Give it a meeting time and save: it leaves the strip for the grid. The
+  // unscheduled lab opens in "No meeting time" mode, so switch to Time slot
+  // first to reveal the day-group bands.
+  await em.getByRole('button', { name: 'Time slot' }).click()
+  await em.getByRole('button', { name: 'TR', exact: true }).click()
+  await em.locator('.slot-time-btn', { hasText: '10:00-11:45' }).click()
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(strip.locator('.slot-pill')).toHaveCount(0)
+  await page.locator('.cal-block').filter({ hasText: 'ANTH 160' }).first().waitFor({ timeout: 5000 })
+
+  // Remove the lecture from its block: its lab is removed with it (no
+  // orphan labs are left behind). Grid offerings render as `.filter-offering`.
+  const lectureBlock = page.locator('.cal-block').filter({ hasText: 'ANTH 160' }).first()
+  await lectureBlock.locator('.filter-offering', { hasText: 'ANTH 160' }).locator('.filter-offering-edit').first().click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await em.getByRole('button', { name: 'Remove course' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(page.locator('.cal-block').filter({ hasText: 'ANTH 160' })).toHaveCount(0)
+
+  assertClean(errors)
+})
+
 test('offline boot: a fresh visitor works locally with no authenticated calls', async ({ page }) => {
   // This test's fresh context has no session cookie and empty localStorage:
   // the prompt must appear, choosing offline shows the persistent badge and

@@ -35,6 +35,16 @@ excluded from the calendar/conflicts. This is the same shape `parseCsv`/
 `makeSchedule` produce, so it maps directly to registrar-style data feeds.
 Domain logic lives in `@major-vis/schedule-core`.
 
+**Lab sections** are flagged offerings of a parent lecture: `lab: true`
+(with `number` already the parent's, e.g. `'166'`) and a 1-based `labSeq`
+when a lecture has several labs on the same section letter (two `166L,A`
+rows at different times serve lecture 166-A). A lab's identity is its full
+tuple, never the mirrored lecture section. Imported `166L`/`166L2` course
+numbers normalize on parsing and are written back by `renderCsv`; a lab
+with no matching lecture section in its CSV feed is kept but flagged by the
+import warning list. Labs group under the parent course (same name,
+drill-down, and conflict treatment).
+
 Term slot sets are provided by `@major-vis/schedule-core`'s `TERM_CONFIGS`:
 Fall/Winter share a standard MWF/TR set; Spring has a single MTWRF group of four
 slots, and a course may occupy up to two consecutive slots. Custom start/end
@@ -55,8 +65,12 @@ off-pattern courses visible without letting them compete with normal ones.
 **CSV**: use the schedule app's "Upload CSV" to load a file into a schedule's
 active term (or its `term` column parts); the file is the same round-trip /
 registrar format (`dept-prefix,course-number,section,instructor,days,times`
-plus optional `term`) produced by "Download year CSV". `parseCsv`/`renderCsv`
-in `@major-vis/schedule-core` implement the format (quoted-field aware).
+plus optional `term`) produced by "Download year CSV". Blank or literal
+`NULL` `days`/`times` cells mark unscheduled offerings; `166L`/`166L2`
+course numbers become lab sections of their parent. Lab rows whose lecture
+section isn't in the file are kept and reported in an import warning list.
+`parseCsv`/`renderCsv` in `@major-vis/schedule-core` implement the format
+(quoted-field aware).
 
 On load the app seeds a deterministic "Sample schedule" (`seedSampleSchedule`,
 seed 42) into the Fall part unless schedules already exist.
@@ -74,6 +88,14 @@ their existing pending one), so a department's edits always consolidate into
 one coherent proposal — never redundant intermediate moves — and re-enter a
 suggestion session by replaying their own pending ops onto the freshest
 published state.
+
+**Labs**: the course editor's "Add lab section" (lecture rows only) creates a
+lab that mirrors the lecture's section letter, copies its instructor, and
+starts unscheduled in the "No meeting times" strip, ready to drag onto a
+slot. Confirmation appears in the editor; if nothing else was being edited
+the editor closes itself and drops the user back onto the grid. Removing a
+lecture removes its labs; renaming a lecture's letter renames its labs' to
+match.
 
 ## Suggested changes (remote, and mirrored offline)
 

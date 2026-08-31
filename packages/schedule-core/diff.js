@@ -14,12 +14,20 @@
 // entries (or passes bare ops through) for the stateless core functions, and
 // `suggestionStatus` derives the row-level status from entry resolutions.
 
-import { addOfferingToSchedule, removeOfferingFromSchedule, updateOfferingInSchedule } from './schedule.js'
+import {
+  addOfferingToSchedule,
+  offeringKey as tupleKey,
+  removeOfferingFromSchedule,
+  updateOfferingInSchedule,
+  courseNumberLabel,
+} from './schedule.js'
 
-// Tuple key identifying an offering by id (preferred) or prefix/number/section.
+// Tuple key identifying an offering by id (preferred) or prefix/number/section
+// (plus the lab marker, so a lab section never matches the lecture section it
+// mirrors).
 export function offeringKey(o) {
   if (o.id != null && o.id !== '') return `id:${o.id}`
-  return `${o.prefix || ''} ${o.number || ''} ${o.section || ''}`
+  return tupleKey(o)
 }
 
 // The editable fields considered when diffing two offerings.
@@ -66,8 +74,9 @@ export function diffOfferings(before, after) {
 }
 
 // Identity object used by update/remove ops (what the apply side matches on).
+// Carries the lab marker so ops target the exact row.
 function keyOf(o) {
-  return { prefix: o.prefix, number: o.number, section: o.section }
+  return { prefix: o.prefix, number: o.number, section: o.section, lab: o.lab, labSeq: o.labSeq }
 }
 
 function normalize(v) {
@@ -159,7 +168,7 @@ export function describeChange(op) {
 
 function fmtCode(o) {
   if (!o) return ''
-  const s = `${o.prefix || ''} ${o.number || ''}`.trim()
+  const s = `${o.prefix || ''} ${courseNumberLabel(o)}`.trim()
   return o.section ? `${s} ${o.section}` : s
 }
 

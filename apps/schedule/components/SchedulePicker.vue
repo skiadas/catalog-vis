@@ -125,6 +125,15 @@
         @change="onFileChange"
       />
       <span v-if="importError" class="schedule-upload-error">{{ importError }}</span>
+      <div v-if="importWarning.length" class="schedule-upload-warning" role="status">
+        <strong
+          >Imported {{ importWarning.length }} lab row(s) with no matching lecture section in the file</strong
+        >
+        (kept as unscheduled labs):
+        <span v-for="l in importWarning" :key="l.key" class="schedule-upload-warning-item">{{
+          l.label
+        }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -169,6 +178,7 @@ export default {
     const fileInput = ref(null)
     const importFor = ref(null)
     const importError = ref('')
+    const importWarning = ref([])
     const menuFor = ref(null)
 
     // CSV action menu: a single "CSV ▾" button in the picker's right cluster.
@@ -270,6 +280,7 @@ export default {
     const pickFile = (id) => {
       importFor.value = id
       importError.value = ''
+      importWarning.value = []
       fileInput.value && fileInput.value.click()
     }
     const onFileChange = (e) => {
@@ -285,6 +296,22 @@ export default {
             importError.value = 'No course rows found in that file.'
             return
           }
+          // Labs should always pair with a lecture section in the same feed;
+          // rows that don't (a lab whose lecture was filtered out or never
+          // shipped) are kept — a lab without its lecture is meaningless, but
+          // dropping data silently is worse. They're flagged for the importer.
+          importWarning.value = rows
+            .filter(
+              (r) =>
+                r.lab &&
+                !rows.some(
+                  (x) => !x.lab && x.prefix === r.prefix && x.number === r.number && x.section === r.section,
+                ),
+            )
+            .map((r) => ({
+              key: `${r.prefix}|${r.number}|${r.section}|${r.labSeq || 1}`,
+              label: `${r.prefix} ${r.number}L ${r.section}${r.labSeq > 1 ? ' \u00b7 ' + r.labSeq : ''}`,
+            }))
           // Group rows by term (default the active term), then load each.
           const byTerm = {}
           for (const r of rows) {
@@ -322,6 +349,7 @@ export default {
       onFileChange,
       fileInput,
       importError,
+      importWarning,
       toggleSchedule,
       colorForSchedule,
       edit,

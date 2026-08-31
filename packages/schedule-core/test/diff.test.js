@@ -20,9 +20,14 @@ const OFF = (id, extra = {}) => ({
   ...extra,
 })
 
-test('offeringKey prefers id and falls back to prefix/number/section', () => {
+test('offeringKey prefers id and falls back to the identity tuple', () => {
   assert.equal(offeringKey({ id: 'x', prefix: 'CS', number: '220', section: 'A' }), 'id:x')
-  assert.equal(offeringKey({ prefix: 'CS', number: '220', section: 'A' }), 'CS 220 A')
+  assert.equal(offeringKey({ prefix: 'CS', number: '220', section: 'A' }), 'CS|220|A')
+  // a lab and the lecture it mirrors are distinct identities
+  assert.notEqual(
+    offeringKey({ prefix: 'CS', number: '220', section: 'A', lab: true, labSeq: 1 }),
+    offeringKey({ prefix: 'CS', number: '220', section: 'A' }),
+  )
 })
 
 test('diffOfferings: add, update (with per-field diff), remove', () => {
@@ -44,7 +49,7 @@ test('diffOfferings: add, update (with per-field diff), remove', () => {
   assert.deepEqual(upd.changes, { instructor: 'Skiadas' })
   assert.deepEqual(upd.diff, [{ field: 'instructor', from: 'Wahl', to: 'Skiadas' }])
   assert.deepEqual(add.offering.number, '330')
-  assert.deepEqual(rem.cur, { prefix: 'CS', number: '101', section: 'A' })
+  assert.deepEqual(rem.cur, { prefix: 'CS', number: '101', section: 'A', lab: undefined, labSeq: undefined })
 })
 
 test('diffOfferings returns empty when unchanged', () => {
@@ -176,4 +181,99 @@ test('renderChanges formats as text, md, csv', () => {
   assert.equal(renderChanges(ops, 'text'), 'CS 220 A: instructor from Wahl to Skiadas')
   assert.equal(renderChanges(ops, 'md'), '- CS 220 A: instructor from Wahl to Skiadas')
   assert.equal(renderChanges(ops, 'csv'), 'change\nCS 220 A: instructor from Wahl to Skiadas')
+})
+
+// ---------------------------------------------------------------------------
+// Lab sections in diffs
+// ---------------------------------------------------------------------------
+
+const BIO_LAB = (extra = {}) => ({
+  prefix: 'BIO',
+  number: '166',
+  section: 'A',
+  instructor: 'Patterson',
+  days: 'MWF',
+  time: '9:20-10:30',
+  ...extra,
+})
+
+test('diffOfferings targets a lab row (not the lecture it mirrors) for updates', () => {
+  const before = [
+    BIO_LAB(),
+    BIO_LAB({ lab: true, labSeq: 1, instructor: 'Doe', days: 'TR', time: '10:00-11:45' }),
+  ]
+  const after = [
+    BIO_LAB(),
+    BIO_LAB({ lab: true, labSeq: 1, instructor: 'Eiriksson', days: 'TR', time: '10:00-11:45' }),
+  ]
+  const ops = diffOfferings(before, after)
+  assert.equal(ops.length, 1)
+  assert.equal(ops[0].kind, 'update')
+  assert.equal(ops[0].cur.lab, true)
+  assert.equal(ops[0].cur.labSeq, 1)
+  assert.deepEqual(ops[0].changes, { instructor: 'Eiriksson' })
+  // applying lands on the lab only
+  const applied = applyOperations(before, ops)
+  assert.equal(applied[1].instructor, 'Eiriksson')
+  assert.equal(applied[0].instructor, 'Patterson')
+})
+
+test('diffOfferings produces separate ops for a lecture and its lab at the same section letter', () => {
+  const before = [
+    BIO_LAB({ lab: true, labSeq: 1, instructor: 'Doe', days: 'TR', time: '10:00-11:45' }),
+    BIO_LAB(),
+  ]
+  const after = [
+    BIO_LAB({ lab: true, labSeq: 1, instructor: 'Doe', days: 'TR', time: '14:15-16:00' }),
+    BIO_LAB({ instructor: 'Morgan' }),
+  ]
+  const ops = diffOfferings(before, after).filter((o) => o.kind === 'update')
+  assert.equal(ops.length, 2)
+  const byLab = ops.filter((o) => o.cur.lab)
+  const byLecture = ops.filter((o) => !o.cur.lab)
+  assert.equal(byLab.length, 1)
+  assert.equal(byLecture.length, 1)
+  assert.deepEqual(byLab[0].changes, { time: '14:15-16:00' })
+  assert.deepEqual(byLecture[0].changes, { instructor: 'Morgan' })
+})
+
+test('applyOperations removing a lecture cascades its labs away', () => {
+  const list = [
+    BIO_LAB(),
+    BIO_LAB({ lab: true, labSeq: 1, instructor: 'Doe', days: 'TR', time: '10:00-11:45' }),
+  ]
+  const out = applyOperations(list, [{ kind: 'remove', cur: { prefix: 'BIO', number: '166', section: 'A' } }])
+  assert.deepEqual(out, [])
+})
+
+test('applyOperations removes one lab without touching the lecture or sibling labs', () => {
+  const list = [
+    BIO_LAB(),
+    BIO_LAB({ lab: true, labSeq: 1, instructor: 'Doe', days: 'TR', time: '10:00-11:45' }),
+    BIO_LAB({ lab: true, labSeq: 2, instructor: 'Doe', days: 'W', time: '13:20-14:30' }),
+  ]
+  const out = applyOperations(list, [
+    { kind: 'remove', cur: { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 1 } },
+  ])
+  assert.equal(out.length, 2)
+  assert.equal(out.filter((o) => o.lab).length, 1)
+  assert.equal(out.find((o) => o.lab).labSeq, 2)
+})
+
+test('describeChange prints lab numbers registrar-style', () => {
+  assert.equal(
+    describeChange({
+      kind: 'update',
+      cur: { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 2 },
+      diff: [{ field: 'instructor', from: 'Doe', to: 'Eiriksson' }],
+    }),
+    'BIO 166L2 A: instructor from Doe to Eiriksson',
+  )
+  assert.equal(
+    describeChange({
+      kind: 'add',
+      offering: { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 1 },
+    }),
+    'add BIO 166L A',
+  )
 })

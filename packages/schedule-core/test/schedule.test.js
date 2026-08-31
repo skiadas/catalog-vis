@@ -238,6 +238,161 @@ test('removeOfferingFromSchedule returns the same array when nothing matches', (
   )
 })
 
+// ---------------------------------------------------------------------------
+// Lab sections: identity, cascades, grouping
+// ---------------------------------------------------------------------------
+
+const LAB_TERM = [
+  { prefix: 'BIO', number: '166', section: 'A', instructor: 'Patterson', days: 'MWF', time: '9:20-10:30' },
+  { prefix: 'BIO', number: '166', section: 'B', instructor: 'Patterson', days: 'MWF', time: '12:00-13:10' },
+  {
+    prefix: 'BIO',
+    number: '166',
+    section: 'A',
+    instructor: 'Doe',
+    days: 'TR',
+    time: '10:00-11:45',
+    lab: true,
+    labSeq: 1,
+  },
+  {
+    prefix: 'BIO',
+    number: '166',
+    section: 'A',
+    instructor: 'Doe',
+    days: 'W',
+    time: '13:20-14:30',
+    lab: true,
+    labSeq: 2,
+  },
+]
+
+test('updateOfferingInSchedule targets a lab row, never the lecture it mirrors', () => {
+  const updated = updateOfferingInSchedule(
+    LAB_TERM,
+    { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 2 },
+    { instructor: 'Eiriksson', days: 'TR', time: '14:15-16:00' },
+  )
+  const lecture = updated.find((o) => !o.lab && o.section === 'A')
+  assert.equal(lecture.instructor, 'Patterson')
+  const lab2 = updated.find((o) => o.lab && o.labSeq === 2)
+  assert.equal(lab2.instructor, 'Eiriksson')
+  assert.equal(lab2.time, '14:15-16:00')
+  const lab1 = updated.find((o) => o.lab && o.labSeq === 1)
+  assert.equal(lab1.time, '10:00-11:45')
+})
+
+test('updateOfferingInSchedule cascades a lecture section-letter rename to its labs', () => {
+  const updated = updateOfferingInSchedule(
+    LAB_TERM,
+    { prefix: 'BIO', number: '166', section: 'A' },
+    { section: 'C' },
+  )
+  const lecture = updated.find((o) => !o.lab && o.section === 'C')
+  assert.equal(lecture.section, 'C')
+  const labs = updated.filter((o) => o.lab && o.section === 'C')
+  assert.equal(labs.length, 2)
+  // the section B lecture and its (absent) labs are untouched
+  assert.ok(updated.some((o) => !o.lab && o.section === 'B'))
+})
+
+test('updateOfferingInSchedule renames labs onto free sequences when the target letter already has labs', () => {
+  const offerings = [
+    ...LAB_TERM.slice(0, 2),
+    {
+      prefix: 'BIO',
+      number: '166',
+      section: 'B',
+      instructor: 'Doe',
+      days: 'TR',
+      time: '10:00-11:45',
+      lab: true,
+      labSeq: 1,
+    },
+    {
+      prefix: 'BIO',
+      number: '166',
+      section: 'A',
+      instructor: 'Doe',
+      days: 'W',
+      time: '13:20-14:30',
+      lab: true,
+      labSeq: 1,
+    },
+  ]
+  const updated = updateOfferingInSchedule(
+    offerings,
+    { prefix: 'BIO', number: '166', section: 'A' },
+    { section: 'B' },
+  )
+  const labSeqs = updated.filter((o) => o.lab && o.section === 'B').map((o) => o.labSeq)
+  // B's own lab keeps 1; A's lab lands on 2 — distinct identities
+  assert.deepEqual(labSeqs.sort(), [1, 2])
+})
+
+test('removeOfferingFromSchedule removes a lecture and its labs together', () => {
+  const next = removeOfferingFromSchedule(LAB_TERM, { prefix: 'BIO', number: '166', section: 'A' })
+  const sections = next.map((o) => o.section)
+  assert.deepEqual(sections, ['B'])
+})
+
+test('removeOfferingFromSchedule removes a single lab without touching its lecture', () => {
+  const next = removeOfferingFromSchedule(LAB_TERM, {
+    prefix: 'BIO',
+    number: '166',
+    section: 'A',
+    lab: true,
+    labSeq: 1,
+  })
+  assert.equal(next.length, 3)
+  assert.equal(next.filter((o) => o.lab).length, 1)
+  assert.equal(
+    next.some((o) => !o.lab),
+    true,
+  )
+})
+
+test('moveOfferingSmart moves a lab, not the lecture with the same section letter', () => {
+  const next = moveOfferingSmart(
+    LAB_TERM,
+    { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 1 },
+    { fromDay: 'T', toDay: 'R', group: 'TR', time: '14:15-16:00' },
+  )
+  const lab1 = next.find((o) => o.lab && o.labSeq === 1)
+  assert.equal(lab1.time, '14:15-16:00')
+  const lecture = next.find((o) => !o.lab && o.section === 'A')
+  assert.equal(lecture.time, '9:20-10:30')
+})
+
+test('nextSectionLetter ignores lab rows when choosing a lecture letter', () => {
+  assert.equal(nextSectionLetter(LAB_TERM, 'BIO', '166'), 'C')
+})
+
+test('buildIndex groups labs under the parent course with lab labels', () => {
+  const index = buildIndex(LAB_TERM)
+  const items = index.byCourse['BIO 166']
+  assert.equal(items.length, 4)
+  const labs = items.filter((it) => it.lab)
+  assert.equal(labs.length, 2)
+  assert.deepEqual(
+    labs.map((it) => it.sectionLabel),
+    ['Lab A', 'Lab A \u00b7 2'],
+  )
+  const lecture = items.find((it) => !it.lab && it.o.section === 'A')
+  assert.equal(lecture.sectionLabel, 'Section A')
+})
+
+test('a lecture and its own labs never conflict; another course does', () => {
+  const index = buildIndex(LAB_TERM)
+  assert.deepEqual(conflictsForCourse('BIO 166', index), [])
+  // a second course overlapping lab 2's Wednesday slot flags BIO 166
+  const other = buildIndex([
+    ...LAB_TERM,
+    { prefix: 'CS', number: '101', section: 'A', instructor: 'Vosmeier', days: 'W', time: '13:20-14:30' },
+  ])
+  assert.deepEqual(conflictsForCourse('BIO 166', other), ['CS 101'])
+})
+
 test('toMinutes', () => {
   assert.equal(toMinutes('8:00'), 480)
   assert.equal(toMinutes('16:00'), 960)
@@ -344,6 +499,134 @@ test('renderCsv writes term only when present on an offering', () => {
   ])
   assert.ok(csv.startsWith('dept-prefix,course-number,section,instructor,days,times,term'))
   assert.ok(csv.includes(',S'))
+})
+
+test('parseCsv treats literal NULL and blank meeting cells as unscheduled', () => {
+  const rows = parseCsv(
+    [
+      'dept-prefix,course-number,section,instructor,days,times',
+      'CS,220,A,Wahl,NULL,NULL',
+      'BIO,161,A,Patterson,MWF,NULL',
+      'MAT,120,A,Doe,,""',
+      'PHY,121,A,Smith,,',
+    ].join('\n'),
+  )
+  assert.equal(rows.length, 4)
+  for (const r of rows) {
+    assert.equal(r.days, '')
+    assert.equal(r.time, '')
+  }
+})
+
+test('parseCsv lab rows normalize the trailing L off the number', () => {
+  const rows = parseCsv(
+    'dept-prefix,course-number,section,instructor,days,times\nBIO,166L,A,Patterson,TR,10:00-11:45\n',
+  )
+  assert.equal(rows.length, 1)
+  assert.deepEqual(rows[0], {
+    prefix: 'BIO',
+    number: '166',
+    section: 'A',
+    instructor: 'Patterson',
+    days: 'TR',
+    time: '10:00-11:45',
+    lab: true,
+    labSeq: 1,
+  })
+})
+
+test('parseCsv numbers duplicate lab rows deterministically (first-seen order)', () => {
+  const rows = parseCsv(
+    [
+      'dept-prefix,course-number,section,instructor,days,times',
+      'BIO,166,A,Patterson,MWF,9:20-10:30',
+      'BIO,166L,A,Doe,TR,10:00-11:45',
+      'BIO,166L,A,Doe,W,13:20-14:30',
+    ].join('\n'),
+  )
+  const labs = rows.filter((r) => r.lab)
+  assert.deepEqual(
+    labs.map((l) => l.labSeq),
+    [1, 2],
+  )
+  assert.deepEqual(
+    labs.map((l) => l.section),
+    ['A', 'A'],
+  )
+})
+
+test('parseCsv honors an explicit sequence digit on a lab number', () => {
+  const rows = parseCsv(
+    'dept-prefix,course-number,section,instructor,days,times\nBIO,166L2,A,Doe,TR,10:00-11:45\n',
+  )
+  assert.equal(rows[0].lab, true)
+  assert.equal(rows[0].labSeq, 2)
+  // mixed explicit + implicit rows stay distinct and stable
+  const mixed = parseCsv(
+    [
+      'dept-prefix,course-number,section,instructor,days,times',
+      'BIO,166L2,A,Doe,TR,10:00-11:45',
+      'BIO,166L,A,Doe,W,13:20-14:30',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    mixed.filter((r) => r.lab).map((l) => l.labSeq),
+    [2, 1],
+  )
+})
+
+test('renderCsv writes lab numbers back in the registrar shape', () => {
+  const csv = renderCsv([
+    { prefix: 'BIO', number: '166', section: 'A', instructor: 'Patterson', days: 'MWF', time: '9:20-10:30' },
+    {
+      prefix: 'BIO',
+      number: '166',
+      section: 'A',
+      instructor: 'Doe',
+      days: 'TR',
+      time: '10:00-11:45',
+      lab: true,
+      labSeq: 1,
+    },
+    {
+      prefix: 'BIO',
+      number: '166',
+      section: 'A',
+      instructor: 'Doe',
+      days: 'W',
+      time: '13:20-14:30',
+      lab: true,
+      labSeq: 2,
+    },
+  ])
+  const lines = csv.split('\n')
+  assert.ok(lines[1].startsWith('BIO,166,A'))
+  assert.ok(lines[2].startsWith('BIO,166L,A'))
+  assert.ok(lines[3].startsWith('BIO,166L2,A'))
+  // the round-trip is stable
+  assert.deepEqual(parseCsv(csv), [
+    { prefix: 'BIO', number: '166', section: 'A', instructor: 'Patterson', days: 'MWF', time: '9:20-10:30' },
+    {
+      prefix: 'BIO',
+      number: '166',
+      section: 'A',
+      instructor: 'Doe',
+      days: 'TR',
+      time: '10:00-11:45',
+      lab: true,
+      labSeq: 1,
+    },
+    {
+      prefix: 'BIO',
+      number: '166',
+      section: 'A',
+      instructor: 'Doe',
+      days: 'W',
+      time: '13:20-14:30',
+      lab: true,
+      labSeq: 2,
+    },
+  ])
 })
 
 test('buildIndex groups by course, day, slot, instructor', () => {
@@ -707,7 +990,13 @@ test('proposeOverlay renders concurrent proposals independently with proposers',
   const phy = proposed.find((p) => p.offering.prefix === 'PHY')
   assert.equal(phy.kind, 'move')
   assert.equal(phy.offering.time, '12:00-13:10')
-  assert.deepEqual(phy.from, { prefix: 'PHY', number: '121', section: 'A' })
+  assert.deepEqual(phy.from, {
+    prefix: 'PHY',
+    number: '121',
+    section: 'A',
+    lab: undefined,
+    labSeq: undefined,
+  })
   assert.equal(phy.proposer, 'physics')
   assert.equal(phy.suggestionId, 7)
   const added = proposed.find((p) => p.kind === 'add')

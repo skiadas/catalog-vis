@@ -479,3 +479,70 @@ test('updateOffering never leaves a half-set meeting time', async () => {
     assert.equal(viewed[0].time, '8:00-9:10')
   })
 })
+
+test('addLabSection creates an unscheduled lab that mirrors the lecture and copies its instructor', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Local', '2026-27', [])
+    store.addCourseToSchedule(id, 'BIO 166')
+    assert.ok(
+      store.updateOffering(id, { prefix: 'BIO', number: '166', section: 'A' }, { instructor: 'Patterson' }),
+    )
+
+    const lab = store.addLabSection(id, { prefix: 'BIO', number: '166', section: 'A' })
+    assert.ok(lab)
+    assert.equal(lab.lab, true)
+    assert.equal(lab.section, 'A', 'mirrors the lecture letter')
+    assert.equal(lab.instructor, 'Patterson', 'copies the lecture instructor as it stands')
+    assert.equal(lab.days, '')
+    assert.equal(lab.time, '', 'starts unscheduled')
+    assert.equal(lab.labSeq, 1)
+
+    // A second lab for the same lecture gets the next sequence number, and
+    // they remain distinct rows at the same section letter.
+    const lab2 = store.addLabSection(id, { prefix: 'BIO', number: '166', section: 'A' })
+    assert.equal(lab2.labSeq, 2)
+    const rows = store.scheduleById(id).terms.F.offerings
+    assert.equal(rows.length, 3)
+    assert.equal(rows.filter((o) => o.lab).length, 2)
+
+    // A lab cannot spawn a lab; unknown lectures return null (no orphan labs).
+    assert.equal(
+      store.addLabSection(id, { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 1 }),
+      null,
+    )
+    assert.equal(store.addLabSection(id, { prefix: 'MAT', number: '131', section: 'A' }), null)
+  })
+})
+
+test('moveOffering drags a lab row without disturbing the lecture at the same letter', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Local', '2026-27', [])
+    store.addCourseToSchedule(id, 'BIO 166')
+    store.addLabSection(id, { prefix: 'BIO', number: '166', section: 'A' })
+
+    assert.ok(
+      store.moveOffering(
+        id,
+        'BIO',
+        '166',
+        'A',
+        { fromDay: 'T', toDay: 'R', group: 'TR', time: '10:00-11:45' },
+        true,
+        1,
+      ),
+    )
+    const rows = store.scheduleById(id).terms.F.offerings
+    const lab = rows.find((o) => o.lab)
+    const lecture = rows.find((o) => !o.lab)
+    assert.equal(lab.time, '10:00-11:45')
+    assert.equal(lecture.time, '8:00-9:10', 'lecture untouched')
+  })
+})

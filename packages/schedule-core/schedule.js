@@ -209,11 +209,24 @@ function csvFields(line) {
   return fields.map((f) => f.trim())
 }
 
+// Normalize a meeting-cell value: blank/whitespace or a literal NULL (case-
+// insensitive) means "no value" — the registrar feed writes NULL where a course
+// has no assigned time slot.
+function meetingValue(v) {
+  const s = String(v ?? '').trim()
+  return !s || /^null$/i.test(s) ? '' : s
+}
+
 // Parse a schedule CSV into offering records. The header may be the round-trip /
 // registrar form `dept-prefix,course-number,section,instructor,days,times`
 // (optionally an extra `term` column, `F|W|S`) or use alternate synonyms for the
-// time column (`time`). Blank `days`/`times` mark an unscheduled offering.
-/** @returns {Array<{ prefix: string; number: string; section: string; instructor: string; days: string; time: string; term?: string }>} */
+// time column (`time`). Blank/NULL `days`/`times` mark an unscheduled offering.
+// A trailing `L` on the course number marks a lab section of that course
+// (`166L` is a lab of 166); an optional trailing digit (`166L2`) is the
+// exporter's explicit lab sequence. Lab rows that still share a lecture
+// section are numbered 1..n in first-seen order (registrar feeds may ship
+// identical `166L,A` rows for two labs serving one lecture).
+/** @returns {Array<{ prefix: string; number: string; section: string; instructor: string; days: string; time: string; term?: string; lab?: boolean; labSeq?: number }>} */
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/)
   const header = csvFields(lines[0])
@@ -226,19 +239,53 @@ export function parseCsv(text) {
     header.forEach((h, idx) => {
       rec[h] = (cells[idx] || '').trim()
     })
-    const time = rec['times'] != null && rec['times'] !== '' ? rec['times'] : rec['time'] || ''
+    let time = meetingValue(rec['times'] != null && rec['times'] !== '' ? rec['times'] : rec['time'] || '')
+    let days = meetingValue(rec['days'])
+    // The contract only defines scheduled (both set) and unscheduled (both
+    // blank) offerings — a row missing either side is unscheduled.
+    if (!days || !time) {
+      days = ''
+      time = ''
+    }
+    let number = rec['course-number']
     const out = {
       prefix: rec['dept-prefix'],
-      number: rec['course-number'],
+      number,
       section: rec['section'],
       instructor: rec['instructor'],
-      days: rec['days'],
+      days,
       time,
+    }
+    // `166L` / `166l` / `166L2` -> number `166`, lab, explicit labSeq when given.
+    const labMatch = number && /^(\d+)[Ll](\d*)$/.exec(number)
+    if (labMatch) {
+      out.number = labMatch[1]
+      out.lab = true
+      if (labMatch[2]) out.labSeq = Number(labMatch[2])
     }
     if (rec['term'] != null && rec['term'] !== '') out.term = rec['term']
     rows.push(out)
   }
+  // Deterministic labSeq for lab rows without an explicit sequence digit:
+  // 1-based occurrence in first-seen order per lecture section, so duplicate
+  // registrar rows stay distinct records.
+  const labCounts = new Map()
+  for (const r of rows) {
+    if (!r.lab || r.labSeq != null) continue
+    const key = `${r.prefix}|${r.number}|${r.section}`
+    const n = (labCounts.get(key) || 0) + 1
+    labCounts.set(key, n)
+    r.labSeq = n
+  }
   return rows
+}
+
+// The course-number cell for a record: lab sections re-append the L (and the
+// sequence digit when >1) so exports stay in the registrar shape (`166L`,
+// `166L2`); lectures write the plain number.
+export function courseNumberLabel(o) {
+  if (!o || !o.lab) return o && o.number ? o.number : ''
+  return `${o.number}L${o.labSeq && o.labSeq > 1 ? o.labSeq : ''}`
 }
 
 // Serialize offerings back to the importable CSV form (an exact round-trip of
@@ -256,7 +303,7 @@ export function renderCsv(offerings) {
   const lines = [header.join(',')]
   for (const o of offerings) {
     const isTime = o.time != null && o.time !== '' ? o.time : o.times || ''
-    const rec = [o.prefix, o.number, o.section, o.instructor, o.days, isTime]
+    const rec = [o.prefix, courseNumberLabel(o), o.section, o.instructor, o.days, isTime]
     if (includesTerm) rec.push(o.term || '')
     lines.push(rec.map(quote).join(','))
   }
@@ -271,6 +318,15 @@ export function compareItems(a, b) {
   const nb = Number(b.o.number)
   if (na !== nb) return na - nb
   return a.o.section < b.o.section ? -1 : a.o.section > b.o.section ? 1 : 0
+}
+
+// The stable identity key of an offering record: prefix/number/section plus
+// the lab marker (and labSeq), so a lab section A is never confused with the
+// lecture section A it mirrors. Every identity match (update/remove/move/
+// diff/overlay) uses this.
+export function offeringKey(o) {
+  if (!o) return ''
+  return `${o.prefix || ''}|${o.number || ''}|${o.section || ''}${o.lab ? '|L' : ''}${o.lab ? o.labSeq || '' : ''}`
 }
 
 // Order two course-code strings (e.g. "COM 251") by prefix, then number.
@@ -321,12 +377,12 @@ export function rescheduleDays(days, fromDay, toGroup, toDay, termKey) {
 // (`fromDay`/`toDay`/`toGroup`) instead of taking a raw day string.
 export function moveOfferingSmart(
   offerings,
-  { prefix, number, section },
+  { prefix, number, section, lab = false, labSeq = 0 },
   { fromDay, toDay, group, time },
   termKey,
 ) {
   const idx = (offerings || []).findIndex(
-    (o) => o.prefix === prefix && o.number === number && o.section === section,
+    (o) => offeringKey(o) === offeringKey({ prefix, number, section, lab, labSeq }),
   )
   if (idx < 0) return offerings
   const days = rescheduleDays((offerings[idx] || {}).days, fromDay, group, toDay, termKey)
@@ -335,24 +391,61 @@ export function moveOfferingSmart(
   return next
 }
 
+// The next free labSeq for a lecture's labs (max existing + 1), so a second
+// lab for the same lecture section never collides with the first.
+export function nextLabSeq(offerings, prefix, number, section) {
+  let max = 0
+  for (const o of offerings || []) {
+    if (o.lab && o.prefix === prefix && o.number === number && o.section === section) {
+      max = Math.max(max, o.labSeq || 0)
+    }
+  }
+  return max + 1
+}
+
 // Rewrites fields (instructor / section / days / time) on the offering matching
 // `cur` (its current identity, since `section` may itself be edited). Returns a
 // new array, or the same array when nothing matches. A half-set meeting time
 // (`days` without `time` or vice versa) is normalized to the no-meeting-time
 // shape (both blank), since the contract only defines scheduled (both set) and
-// unscheduled (both blank) offerings.
+// unscheduled (both blank) offerings. Renaming a lecture's section letter also
+// renames its labs' letters (lab letters mirror the lecture's), re-deriving
+// labSeq so the renamed labs never collide with labs already on the target
+// letter.
 export function updateOfferingInSchedule(offerings, cur, changes) {
-  const idx = (offerings || []).findIndex(
-    (o) => o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section,
-  )
-  if (idx < 0) return offerings
-  const next = offerings.slice()
+  const list = offerings || []
+  const idx = list.findIndex((o) => offeringKey(o) === offeringKey(cur))
+  if (idx < 0) return list
+  const next = list.slice()
   const merged = { ...next[idx], ...changes }
   if (!merged.days || !merged.time) {
     merged.days = ''
     merged.time = ''
   }
   next[idx] = merged
+  if (!cur.lab && changes.section && changes.section !== cur.section) {
+    // Rename the lecture's labs to the new letter. labSeq is re-derived
+    // (after the target letter's existing labs) so renamed labs never
+    // collide with labs already on the new letter.
+    const moved = []
+    for (let i = 0; i < next.length; i++) {
+      const o = next[i]
+      if (o.lab && o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section)
+        moved.push(i)
+    }
+    if (moved.length) {
+      let seq = 0
+      for (const o of next) {
+        if (o.lab && o.prefix === cur.prefix && o.number === cur.number && o.section === changes.section) {
+          seq = Math.max(seq, o.labSeq || 0)
+        }
+      }
+      for (const i of moved) {
+        seq++
+        next[i] = { ...next[i], section: changes.section, labSeq: seq }
+      }
+    }
+  }
   return next
 }
 
@@ -363,10 +456,12 @@ export const DEFAULT_SLOT = {
 }
 
 // The first unused section letter for a course, so a hand-added section never
-// collides with an existing one of the same course.
+// collides with an existing one of the same course. Lab sections are ignored —
+// their letters mirror the lecture's, so they never consume a lecture letter.
 export function nextSectionLetter(offerings, prefix, number) {
   const used = new Set()
   for (const o of offerings || []) {
+    if (o.lab) continue
     if (o.prefix === prefix && o.number === number) used.add(o.section)
   }
   for (let i = 0; i < 26; i++) {
@@ -381,25 +476,42 @@ export function addOfferingToSchedule(offerings, offering) {
   return [...(offerings || []), offering]
 }
 
-// Removes the offering matching `prefix`/`number`/`section` from a schedule's
-// `offerings` array. Returns a new array, or the same array when nothing matches.
-export function removeOfferingFromSchedule(offerings, { prefix, number, section }) {
+// Removes the offering matching `cur` (its full identity — prefix/number/
+// section and the lab marker) from a schedule's `offerings` array. Removing a
+// lecture section also removes its labs: a lab without its lecture is
+// meaningless. Returns a new array, or the same array when nothing matches.
+export function removeOfferingFromSchedule(offerings, cur) {
   const list = offerings || []
-  const next = list.filter((o) => !(o.prefix === prefix && o.number === number && o.section === section))
+  const next = list.filter((o) => {
+    if (offeringKey(o) === offeringKey(cur)) return false
+    if (
+      !cur.lab &&
+      o.lab &&
+      o.prefix === cur.prefix &&
+      o.number === cur.number &&
+      o.section === cur.section
+    ) {
+      return false
+    }
+    return true
+  })
   return next.length === list.length ? list : next
 }
 
 // The drag-and-drop payload contract for moving an offering between slots
-// (edit mode). A serialized `{ sid, prefix, number, section, fromDay }` — the
-// offering's identity plus the day column the drag started from, so a same-group
-// drop can swap that specific day (see `rescheduleDays`). Shared by the schedule
-// grid/day views and the planner timeline (which only parses).
+// (edit mode). A serialized `{ sid, prefix, number, section, lab, labSeq,
+// fromDay }` — the offering's identity plus the day column the drag started
+// from, so a same-group drop can swap that specific day (see
+// `rescheduleDays`). Shared by the schedule grid/day views and the planner
+// timeline (which only parses).
 export function buildDragPayload(it, fromDay) {
   return JSON.stringify({
     sid: it.sid,
     prefix: it.o.prefix,
     number: it.o.number,
     section: it.o.section,
+    lab: it.o.lab || false,
+    labSeq: it.o.labSeq || 0,
     fromDay: fromDay || '',
   })
 }
@@ -431,7 +543,12 @@ export function buildIndex(offerings) {
     const [startStr, endStr] = t.split('-')
     const start = t ? toMinutes(startStr) : null
     const end = t ? toMinutes(endStr) : null
-    return { o, code, sid: o.$sid, sectionLabel: `Section ${o.section}`, start, end, days }
+    // Lab sections label with their mirrored letter (and sequence when a
+    // lecture has more than one lab on the same letter).
+    const sectionLabel = o.lab
+      ? `Lab ${o.section}${o.labSeq && o.labSeq > 1 ? ' \u00b7 ' + o.labSeq : ''}`
+      : `Section ${o.section}`
+    return { o, code, sid: o.$sid, sectionLabel, start, end, days, lab: o.lab }
   }
 
   for (const o of offerings) {
@@ -774,7 +891,7 @@ export function buildEditVisual(mode, depts, instructors, colorFn) {
 export function proposeOverlay(baseOfferings, pendingSuggestions) {
   const baseByKey = new Map()
   for (const o of baseOfferings || []) {
-    baseByKey.set(`${o.prefix} ${o.number} ${o.section}`, o)
+    baseByKey.set(offeringKey(o), o)
   }
   const proposed = []
   const removals = []
@@ -797,7 +914,13 @@ export function proposeOverlay(baseOfferings, pendingSuggestions) {
         proposed.push({
           offering: next,
           kind: 'move',
-          from: { prefix: cur.prefix, number: cur.number, section: cur.section },
+          from: {
+            prefix: cur.prefix,
+            number: cur.number,
+            section: cur.section,
+            lab: cur.lab,
+            labSeq: cur.labSeq,
+          },
           suggestionId: sug.id,
           proposer: sug.proposer,
         })
@@ -810,5 +933,5 @@ export function proposeOverlay(baseOfferings, pendingSuggestions) {
 }
 
 function offeringKeyOf(o) {
-  return `${o.prefix} ${o.number} ${o.section}`
+  return offeringKey(o)
 }

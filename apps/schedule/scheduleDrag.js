@@ -31,12 +31,20 @@ export function useScheduleDrag(editingId, moveOffering) {
     dragOver.value = null
     const p = dragPayloadFrom(e)
     if (!p || p.sid !== editingId.value) return
-    moveOffering(p.sid, p.prefix, p.number, p.section, {
-      fromDay: p.fromDay,
-      toDay: z.day,
-      group: z.days,
-      time: z.time,
-    })
+    moveOffering(
+      p.sid,
+      p.prefix,
+      p.number,
+      p.section,
+      {
+        fromDay: p.fromDay,
+        toDay: z.day,
+        group: z.days,
+        time: z.time,
+      },
+      p.lab,
+      p.labSeq,
+    )
   }
   return { dragOver, isEditable, onDragStart, zoneOver, zoneLeave, zoneDrop }
 }

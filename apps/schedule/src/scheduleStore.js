@@ -17,6 +17,7 @@ import {
   updateOfferingInSchedule,
   DEFAULT_SLOT,
   nextSectionLetter,
+  nextLabSeq,
   addOfferingToSchedule,
   removeOfferingFromSchedule,
   TERM_KEYS,
@@ -878,14 +879,20 @@ export function setEditingSchedule(id, role = 'edit') {
 
 // Reschedules a single offering of `scheduleId`'s active term into a standard
 // slot. The `move` context is `{ fromDay, toDay, group, time }` (see
-// `rescheduleDays`). No-op if the offering can't be found. In a suggest session
-// the change lands in the draft instead of the published term.
-export function moveOffering(id, prefix, number, section, move) {
+// `rescheduleDays`). `lab`/`labSeq` disambiguate a lab row from the lecture
+// section it mirrors. No-op if the offering can't be found. In a suggest
+// session the change lands in the draft instead of the published term.
+export function moveOffering(id, prefix, number, section, move, lab = false, labSeq = 0) {
   const s = scheduleById(id)
   if (!s) return false
   const { part, draft } = mutablePart(id)
   if (!part) return false
-  const next = moveOfferingSmart(part.offerings || [], { prefix, number, section }, move, activeTerm.value)
+  const next = moveOfferingSmart(
+    part.offerings || [],
+    { prefix, number, section, lab, labSeq },
+    move,
+    activeTerm.value,
+  )
   if (next === part.offerings) return false
   part.offerings = next
   if (draft) {
@@ -947,6 +954,47 @@ export function addCourseToSchedule(id, code) {
   syncTerm(id)
   persistSchedules()
   return { o: offering, code, sid: id }
+}
+
+// Adds a lab section for an existing lecture offering (`cur` — prefix/number/
+// section of a non-lab row). The lab mirrors the lecture's section letter,
+// copies the lecture's instructor as it stands right now, and starts
+// unscheduled (no meeting time) so it lands in the "No meeting times" strip
+// and is dragged onto a slot. `labSeq` is the next free one for that lecture,
+// so a second lab on the same letter stays a distinct row. Returns the new
+// offering (or null when the lecture or schedule can't be found, or `cur` is
+// itself a lab). In a suggest session the lab lands in the draft.
+export function addLabSection(id, cur) {
+  const s = scheduleById(id)
+  if (!s || cur.lab) return null
+  const { part, draft } = mutablePart(id)
+  if (!part) return null
+  const offerings = part.offerings || []
+  const parent = offerings.find(
+    (o) => !o.lab && o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section,
+  )
+  if (!parent) return null
+  const lab = {
+    prefix: parent.prefix,
+    number: parent.number,
+    section: parent.section,
+    instructor: parent.instructor || '',
+    lab: true,
+    labSeq: nextLabSeq(offerings, parent.prefix, parent.number, parent.section),
+    days: '',
+    time: '',
+  }
+  part.offerings = addOfferingToSchedule(offerings, lab)
+  if (draft) {
+    part.dirty = true
+    touchDraft()
+    return lab
+  }
+  part.version = (part.version || 0) + 1
+  schedules.value = [...schedules.value]
+  syncTerm(id)
+  persistSchedules()
+  return lab
 }
 
 // Removes the offering matching `cur` (prefix/number/section) from the
