@@ -114,10 +114,7 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   await saveBtn.click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
   await page.getByText('No meeting times').first().waitFor({ timeout: 5000 })
-  await page
-    .locator('.no-meeting-pattern', { hasText: 'No meeting time' })
-    .first()
-    .waitFor({ timeout: 5000 })
+  await page.locator('.no-meeting-pattern', { hasText: 'No meeting time' }).first().waitFor({ timeout: 5000 })
 
   // Reopen from the strip; a custom time past 16:00 needs a day picked first
   // (Save stays disabled without one) and renders as a clipped off-pattern
@@ -188,7 +185,10 @@ test('lab sections: add lab from the editor (auto-close), strip lab chip, schedu
   // "Add lab section": the button flips to an in-editor confirmation and —
   // with no other edits pending — the editor closes itself.
   await em.getByRole('button', { name: 'Add lab section' }).click()
-  await em.getByText(/Lab added — ANTH 160L A1/).first().waitFor({ timeout: 5000 })
+  await em
+    .getByText(/Lab added — ANTH 160L A1/)
+    .first()
+    .waitFor({ timeout: 5000 })
   await em.waitFor({ state: 'detached', timeout: 5000 })
 
   // The lab is unscheduled: it sits in the strip, marked with a LAB chip.
@@ -218,7 +218,11 @@ test('lab sections: add lab from the editor (auto-close), strip lab chip, schedu
   // Remove the lecture from its block: its lab is removed with it (no
   // orphan labs are left behind). Grid offerings render as `.filter-offering`.
   const lectureBlock = page.locator('.cal-block').filter({ hasText: 'ANTH 160' }).first()
-  await lectureBlock.locator('.filter-offering', { hasText: 'ANTH 160' }).locator('.filter-offering-edit').first().click()
+  await lectureBlock
+    .locator('.filter-offering', { hasText: 'ANTH 160' })
+    .locator('.filter-offering-edit')
+    .first()
+    .click()
   await em.waitFor({ state: 'visible', timeout: 5000 })
   await em.getByRole('button', { name: 'Remove course' }).click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
@@ -302,6 +306,30 @@ test('import registrar CSV creates a new schedule and routes rows by term', asyn
   const railRow = rail.locator('.filter-offering').first()
   await expect(railRow).toBeVisible()
   await expect(railRow).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+
+  // The opened card's background holds while the mouse is on it (the rail's
+  // hover tint must not repaint over the open list). The card fades in over
+  // the 150ms background transition, so settle before capturing.
+  const bgOf = (loc) =>
+    loc.evaluate((el) => el.ownerDocument.defaultView.getComputedStyle(el).backgroundColor)
+  await page.waitForTimeout(300)
+  const hoveredBg = await bgOf(rail)
+  await page.mouse.move(5, 5)
+  await page.waitForTimeout(300)
+  expect(await bgOf(rail)).toBe(hoveredBg)
+
+  // --- Block-type view mode: All · Normal · Custom ---
+  const modeGroup = page.getByRole('group', { name: 'Show blocks' })
+  await modeGroup.getByRole('button', { name: 'Custom' }).click()
+  await expect(page.locator('.cal-block[title="CS 220"]')).toHaveCount(0)
+  await expect(page.locator('.cal-block.off-pattern[title="MAT 131"]').first()).toBeVisible()
+  await modeGroup.getByRole('button', { name: 'Normal' }).click()
+  await expect(page.locator('.cal-block[title="CS 220"]').first()).toBeVisible()
+  await expect(page.locator('.cal-block.off-pattern[title="MAT 131"]')).toHaveCount(0)
+  await modeGroup.getByRole('button', { name: 'All' }).click()
+  await expect(page.locator('.cal-block[title="CS 220"]').first()).toBeVisible()
+  await expect(page.locator('.cal-block.off-pattern[title="MAT 131"]').first()).toBeVisible()
+
   // "View slot" still reaches the slot page from an opened rail.
   await rail.locator('.cal-block-view').click()
   await expect(page).toHaveURL(/#\/slot\//)

@@ -592,8 +592,11 @@
 }
 /* Opened block variant: same white card as the filtered view — clicking a
    block reveals its course list in the same footprint. Rises above every
-   other block so an opened (possibly rail) list is always readable. */
-.cal-block.open {
+   other block so an opened (possibly rail) list is always readable. The
+   hover state keeps the card too: `.off-pattern:hover` would otherwise
+   repaint the rail's tint over the list while the mouse is on it. */
+.cal-block.open,
+.cal-block.open:hover {
   background: var(--overlay-strong);
   border-color: var(--gray-300);
   justify-content: flex-start;

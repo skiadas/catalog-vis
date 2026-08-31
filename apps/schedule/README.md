@@ -67,7 +67,10 @@ again to close; only one block open at a time), with a "View slot" link to
 the slot page. Rails layer deterministically: normal bars on top of custom
 rails (a rail stays clickable in the gaps between bars and past the ruled
 hours); the rare rail that exactly overlaps a standard band sits on top of
-it; an opened block rises above everything.
+it; an opened block rises above everything. A toolbar **All · Normal ·
+Custom** toggle (persisted locally) restricts the grid to all blocks, only
+standard-slot bars, or only off-slot custom rails — hidden blocks stay
+reachable via their slot/course pages.
 
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format

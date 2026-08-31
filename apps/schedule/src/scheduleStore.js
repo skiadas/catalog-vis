@@ -69,6 +69,10 @@ export const offlineMode = computed(() => serverDetected.value && !remote.value)
 // Persisted locally.
 export const colorSchedules = ref(false)
 
+// Which grid blocks to show: 'all' (standard bars + custom rails), 'normal'
+// (bars only), or 'custom' (rails only). Persisted locally.
+export const blockMode = ref('all')
+
 // The schedule currently being edited, or null. In edit mode the schedule's
 // active-term courses can be dragged onto the grid's standard time slots to be
 // rescheduled. Editing pairs with `editingRole`: 'edit' writes the term part
@@ -106,6 +110,7 @@ export function closeCourseEdit() {
 const LS_SCHEDULES = 'major-vis.schedules'
 const LS_SELECTED = 'major-vis.schedule.selected'
 const LS_COLOR = 'major-vis.schedule.color'
+const LS_MODE = 'major-vis.schedule.blockMode'
 const LS_TERM = 'major-vis.schedule.term'
 const LS_PENDING = 'major-vis.schedule.pending'
 const LS_TRAIL = 'major-vis.schedule.suggestions'
@@ -114,6 +119,13 @@ const LS_OFFLINE = 'major-vis.schedule.offline'
 export function setColorSchedules(v) {
   colorSchedules.value = !!v
   if (typeof window !== 'undefined') localStorage.setItem(LS_COLOR, colorSchedules.value ? '1' : '0')
+}
+
+// Show/hide grid blocks by type ('all' | 'normal' | 'custom'). Persisted.
+export function setBlockMode(mode) {
+  if (!['all', 'normal', 'custom'].includes(mode)) return
+  blockMode.value = mode
+  if (typeof window !== 'undefined') localStorage.setItem(LS_MODE, mode)
 }
 
 // Show/hide the pending-suggestions overlay on the calendar views.
@@ -1144,6 +1156,8 @@ function seedSchedules(seedList) {
     if (t && TERM_KEYS.includes(t)) activeTerm.value = t
     const p = localStorage.getItem(LS_PENDING)
     if (p !== null) showPendingSuggestions.value = p === '1'
+    const m = localStorage.getItem(LS_MODE)
+    if (m && ['all', 'normal', 'custom'].includes(m)) blockMode.value = m
   }
   if (!remote.value) refreshAllSuggestions()
 }
@@ -1180,6 +1194,8 @@ function restoreAux() {
   if (t && TERM_KEYS.includes(t)) activeTerm.value = t
   const p = localStorage.getItem(LS_PENDING)
   if (p !== null) showPendingSuggestions.value = p === '1'
+  const m = localStorage.getItem(LS_MODE)
+  if (m && ['all', 'normal', 'custom'].includes(m)) blockMode.value = m
 }
 
 // Bootstraps the collection with the deterministic "Fall sample schedule"

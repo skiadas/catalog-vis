@@ -34,6 +34,34 @@
       </div>
 
       <div class="schedule-toolbar-right">
+        <div class="filter-mode" v-if="view === 'grid'">
+          <div class="seg" role="group" aria-label="Show blocks">
+            <button
+              class="seg-btn"
+              :class="{ active: blockMode === 'all' }"
+              title="Show standard-slot bars and custom rails"
+              @click="setBlockMode('all')"
+            >
+              All
+            </button>
+            <button
+              class="seg-btn"
+              :class="{ active: blockMode === 'normal' }"
+              title="Show standard-slot blocks only"
+              @click="setBlockMode('normal')"
+            >
+              Normal
+            </button>
+            <button
+              class="seg-btn"
+              :class="{ active: blockMode === 'custom' }"
+              title="Show off-slot custom blocks only"
+              @click="setBlockMode('custom')"
+            >
+              Custom
+            </button>
+          </div>
+        </div>
         <div class="filter-mode" v-if="showFilter">
           <div class="seg" role="group" aria-label="Filter by">
             <button
@@ -205,6 +233,8 @@ import {
   showPendingSuggestions,
   setShowPendingSuggestions,
   pendingSuggestionsForTerm,
+  blockMode,
+  setBlockMode,
   courseEditTarget,
   closeCourseEdit,
 } from '../src/scheduleStore.js'
@@ -365,6 +395,8 @@ export default {
       showPendingSuggestions,
       setShowPendingSuggestions,
       pendingSuggestionsForTerm,
+      blockMode,
+      setBlockMode,
       TERM_KEYS,
       TERM_LABELS,
       courseEditTarget,

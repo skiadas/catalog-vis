@@ -115,7 +115,13 @@ import {
   clipBand,
   colorForSchedule,
 } from '@major-vis/schedule-core'
-import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
+import {
+  selectedDepartments,
+  selectedInstructors,
+  filterMode,
+  activeTerm,
+  blockMode,
+} from '../src/scheduleStore.js'
 import {
   schedule,
   scheduleOfferings,
@@ -225,9 +231,13 @@ export default {
 
     const dayBlocks = (day) => {
       const blocks = daySlotBlocks(day, shownIndex.value, activeTerm.value)
-      if (!filter.value.active) return blocks
+      // Block-type view mode: 'all' shows bars + rails, 'normal' bars only,
+      // 'custom' rails only.
+      const mode = blockMode.value
+      const visible = mode === 'all' ? blocks : blocks.filter((b) => (mode === 'custom') === b.offPattern)
+      if (!filter.value.active) return visible
       const out = []
-      for (const b of blocks) {
+      for (const b of visible) {
         const items = b.items.filter((it) => filter.value.matches(it))
         if (items.length) out.push({ ...b, items })
       }
@@ -299,6 +309,9 @@ export default {
     // block itself; the rest become empty drop zones.
     const standardTimes = (day) => termSlotOptions(activeTerm.value, day).map((s) => s.time)
     const dropZones = (day) => {
+      // In "custom" mode the standard bands are hidden, so their drop zones
+      // are hidden too.
+      if (blockMode.value === 'custom') return []
       const occupied = new Set(dayBlocks(day).map((b) => b.time))
       return standardTimes(day)
         .filter((time) => !occupied.has(time))
