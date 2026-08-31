@@ -96,6 +96,15 @@ Playwright E2E suite runs as its own main-only workflow
 (`.github/workflows/e2e.yml`); pushes to `main` and `v*` tags build the
 container and publish it to GHCR (`.github/workflows/publish.yml`).
 
+On top of the container, `.github/workflows/pages.yml` publishes the built
+apps to **GitHub Pages** (repo Settings → Pages must use the "GitHub Actions"
+source): the same bundles served from the repo-root layout, with the committed
+`config.json` keeping it **schedule-only**. This is the offline/static variant
+of the deployment — the app runs fully serverless (localStorage persistence,
+sample schedule seeded on first boot; no login, ownership, or suggested-edit
+approval, which need the backend). The relative seams (`../../`) resolve
+identically in both layouts, so no app code differs between the two.
+
 The deployment is a **single container** (`Dockerfile`): a build stage
 installs the toolchain and builds the apps (`npm ci && npm run build`), a
 deps stage installs only production dependencies (`npm ci --omit=dev` —
