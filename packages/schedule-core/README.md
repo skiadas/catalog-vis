@@ -27,10 +27,10 @@ writes it back so exports stay in the registrar shape.
 
 ### Parsing + index
 
-- `parseCsv(text)` → `offering[]` (columns `dept-prefix`,
-  `course-number`, `section`, `instructor`, `days`, `times`; blank or literal
-  `NULL` meeting cells mark an unscheduled offering; `166L`/`166L2` lab
-  normalization with deterministic labSeq for duplicate rows)
+- `parseCsv(text)` → `offering[]` (columns `dept_prefix`,
+  `course_number`, `course_section`, `instructor`, `days`, `times`; blank or
+  literal `NULL` meeting cells mark an unscheduled offering; `166L`/`166L2`
+  lab normalization with deterministic labSeq for duplicate rows)
 - `renderCsv(offerings)` → round-trip CSV (lab numbers written back as
   `166L`/`166L2`)
 - `buildIndex(offerings)` → `{ byCourse, byDay, bySlot, byInstructor,

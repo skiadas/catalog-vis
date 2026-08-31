@@ -159,8 +159,9 @@ GET    /api/schedules/:id/changes/export?fmt=json|md|csv
 
 ### CSV contract (one round-trip format)
 
-Columns: `dept-prefix, course-number, section, instructor, days, times`
-plus an optional `term` column (`F|W|S`). Blank `days`/`times` ⇒ unscheduled.
+Columns: `dept_prefix, course_number, course_section, instructor, days,
+times` plus an optional `term` column (`F|W|S`). Blank `days`/`times` ⇒
+unscheduled.
 `parseCsv` gains quoted-field + optional-column handling; new `renderCsv`
 matches it. Rows with a `term` value land in that term part; rows without one
 land in the actively-open part. This doubles as the registrar-feed format.

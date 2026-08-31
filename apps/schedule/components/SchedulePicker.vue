@@ -100,19 +100,23 @@
           <button
             class="csv-menu-item"
             :disabled="!visibleSchedules.length"
-            @click="downloadCsv(), closeCsv()"
+            @click="downloadSummaryCsv(), closeCsv()"
           >
-            Download CSV
+            Download summary CSV
           </button>
           <button
             v-if="selectedScheduleIds.length === 1"
             class="csv-menu-item"
-            @click="downloadTermCsv(selectedScheduleIds[0]), closeCsv()"
+            @click="downloadRegistrarCsv(selectedScheduleIds[0]), closeCsv()"
           >
-            Download year CSV
+            Download registrar CSV
           </button>
-          <button class="csv-menu-item" @click="pickFile(selectedScheduleIds[0]), closeCsv()">
-            Upload CSV
+          <button
+            class="csv-menu-item"
+            title="Header: dept_prefix, course_number, course_section, instructor, days, times[, term]"
+            @click="pickFile(selectedScheduleIds[0]), closeCsv()"
+          >
+            Upload registrar CSV
           </button>
         </div>
       </div>
@@ -158,8 +162,7 @@ import {
   publishedOfferings,
   setTermOfferings,
 } from '../src/scheduleStore.js'
-import { colorForSchedule, compareItems, parseCsv, renderCsv, TERM_LABELS } from '@major-vis/schedule-core'
-import { courseName } from '@major-vis/catalog-client'
+import { colorForSchedule, compareItems, parseCsv, renderCsv } from '@major-vis/schedule-core'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
@@ -214,26 +217,26 @@ export default {
       return safe ? `${safe}.csv` : 'schedules.csv'
     }
     // Downloads one row per course offering across all selected (visible)
-    // schedules' active term: term, schedule name, course code+section, course
-    // name, instructor, days, and time. Offerings are ordered alphabetically by
-    // prefix, then number, then section. With a single visible schedule the file
-    // is named after that schedule.
-    const downloadCsv = () => {
-      const rows = [['Term', 'Schedule', 'Course', 'Course name', 'Instructor', 'Days', 'Time']]
+    // schedules' active term in the canonical registrar format (dept_prefix,
+    // course_number, course_section, instructor, days, times, term), so the file
+    // round-trips through Upload registrar CSV. Offerings are ordered
+    // alphabetically by prefix, then number, then section. With a single visible
+    // schedule the file is named after that schedule.
+    const downloadSummaryCsv = () => {
+      const rows = [['dept_prefix', 'course_number', 'course_section', 'instructor', 'days', 'times', 'term']]
       for (const s of visibleSchedules.value) {
         const offerings = [...viewOfferings(s, activeTerm.value)].sort((a, b) =>
           compareItems({ o: a }, { o: b }),
         )
         for (const o of offerings) {
-          const code = `${o.prefix} ${o.number}`
           rows.push([
-            TERM_LABELS[activeTerm.value],
-            s.name,
-            `${o.prefix} ${o.number} ${o.section}`,
-            courseName(code),
+            o.prefix,
+            o.number,
+            o.section,
             o.instructor || '',
             o.days || '',
             o.time || '',
+            activeTerm.value,
           ])
         }
       }
@@ -248,9 +251,9 @@ export default {
       URL.revokeObjectURL(url)
     }
 
-    // The active term includes the term column; a term-aware round-trip of a full
-    // schedule. Only used when the user asks for a whole schedule.
-    const downloadTermCsv = (id) => {
+    // A term-aware round-trip of a full schedule in the canonical registrar
+    // format. Only used when the user asks for a whole schedule.
+    const downloadRegistrarCsv = (id) => {
       const s = schedules.value.find((x) => x.id === id)
       if (!s) return
       const rows = []
@@ -262,7 +265,7 @@ export default {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = csvFileName(s.name + ' full term')
+      a.download = csvFileName(s.name + ' registrar')
       a.click()
       URL.revokeObjectURL(url)
     }
@@ -343,8 +346,8 @@ export default {
       filterActive,
       colorSchedules,
       setColorSchedules,
-      downloadCsv,
-      downloadTermCsv,
+      downloadSummaryCsv,
+      downloadRegistrarCsv,
       pickFile,
       onFileChange,
       fileInput,

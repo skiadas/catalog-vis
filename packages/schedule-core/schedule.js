@@ -217,10 +217,11 @@ function meetingValue(v) {
   return !s || /^null$/i.test(s) ? '' : s
 }
 
-// Parse a schedule CSV into offering records. The header may be the round-trip /
-// registrar form `dept-prefix,course-number,section,instructor,days,times`
-// (optionally an extra `term` column, `F|W|S`) or use alternate synonyms for the
-// time column (`time`). Blank/NULL `days`/`times` mark an unscheduled offering.
+// Parse a schedule CSV into offering records. The header is the round-trip /
+// registrar form `dept_prefix,course_number,course_section,instructor,days,
+// times` (optionally an extra `term` column, `F|W|S`) or use alternate synonyms
+// for the time column (`time`). Blank/NULL `days`/`times` mark an unscheduled
+// offering.
 // A trailing `L` on the course number marks a lab section of that course
 // (`166L` is a lab of 166); an optional trailing digit (`166L2`) is the
 // exporter's explicit lab sequence. Lab rows that still share a lecture
@@ -247,11 +248,11 @@ export function parseCsv(text) {
       days = ''
       time = ''
     }
-    let number = rec['course-number']
+    let number = rec['course_number']
     const out = {
-      prefix: rec['dept-prefix'],
+      prefix: rec['dept_prefix'],
       number,
-      section: rec['section'],
+      section: rec['course_section'],
       instructor: rec['instructor'],
       days,
       time,
@@ -280,9 +281,9 @@ export function parseCsv(text) {
   return rows
 }
 
-// The course-number cell for a record: lab sections re-append the L (and the
-// sequence digit when >1) so exports stay in the registrar shape (`166L`,
-// `166L2`); lectures write the plain number.
+// The course-number record field for a record: lab sections re-append the L
+// (and the sequence digit when >1) so exports stay in the registrar shape
+// (`166L`, `166L2`); lectures write the plain number.
 export function courseNumberLabel(o) {
   if (!o || !o.lab) return o && o.number ? o.number : ''
   return `${o.number}L${o.labSeq && o.labSeq > 1 ? o.labSeq : ''}`
@@ -290,11 +291,12 @@ export function courseNumberLabel(o) {
 
 // Serialize offerings back to the importable CSV form (an exact round-trip of
 // `parseCsv`). `rows` are offering records; an optional `term` per row is written
-// when the caller provides it. Header is `dept-prefix,course-number,section,
-// instructor,days,times` plus `term` when any non-empty term is present.
+// when the caller provides it. Header is `dept_prefix,course_number,
+// course_section,instructor,days,times` plus `term` when any non-empty term is
+// present.
 export function renderCsv(offerings) {
   const includesTerm = offerings.some((o) => o.term != null && o.term !== '')
-  const header = ['dept-prefix', 'course-number', 'section', 'instructor', 'days', 'times']
+  const header = ['dept_prefix', 'course_number', 'course_section', 'instructor', 'days', 'times']
   if (includesTerm) header.push('term')
   const quote = (v) => {
     const s = String(v ?? '')

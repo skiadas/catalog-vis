@@ -46,7 +46,7 @@ import {
 } from '../schedule.js'
 
 const CSV = [
-  'dept-prefix,course-number,section,instructor,days,times',
+  'dept_prefix,course_number,course_section,instructor,days,times',
   'CS,101,A,Vosmeier,MWF,9:20-10:30',
   'BIO,161,A,Patterson,MWF,9:20-10:30',
   'CS,201,A,Vosmeier,TR,8:00-9:45',
@@ -446,13 +446,13 @@ test('parseCsv maps columns and trims', () => {
 
 test('parseCsv skips blank lines', () => {
   const rows = parseCsv(
-    'dept-prefix,course-number,section,instructor,days,times\n\nCS,101,A,Vosmeier,MWF,9:20-10:30\n\n',
+    'dept_prefix,course_number,course_section,instructor,days,times\n\nCS,101,A,Vosmeier,MWF,9:20-10:30\n\n',
   )
   assert.equal(rows.length, 1)
 })
 
 test('parseCsv accepts a `time` column synonym and blank times as unscheduled', () => {
-  const rows = parseCsv('dept-prefix,course-number,section,instructor,days,time\nCS,220,A,Wahl,,\n')
+  const rows = parseCsv('dept_prefix,course_number,course_section,instructor,days,time\nCS,220,A,Wahl,,\n')
   assert.equal(rows.length, 1)
   assert.deepEqual(rows[0], {
     prefix: 'CS',
@@ -466,7 +466,7 @@ test('parseCsv accepts a `time` column synonym and blank times as unscheduled', 
 
 test('parseCsv handles quoted fields with commas and quotes', () => {
   const rows = parseCsv(
-    'dept-prefix,course-number,section,instructor,days,times\nCS,101,A,"O\'Brien, Jr.","M,W",9:20-10:30\n',
+    'dept_prefix,course_number,course_section,instructor,days,times\nCS,101,A,"O\'Brien, Jr.","M,W",9:20-10:30\n',
   )
   assert.equal(rows[0].instructor, "O'Brien, Jr.")
   assert.equal(rows[0].days, 'M,W')
@@ -474,7 +474,7 @@ test('parseCsv handles quoted fields with commas and quotes', () => {
 
 test('parseCsv includes term only when the source has a term column', () => {
   const rows = parseCsv(
-    'dept-prefix,course-number,section,instructor,days,times,term\nCS,101,A,Vosmeier,MWF,9:20-10:30,S\n',
+    'dept_prefix,course_number,course_section,instructor,days,times,term\nCS,101,A,Vosmeier,MWF,9:20-10:30,S\n',
   )
   assert.equal(rows[0].term, 'S')
 })
@@ -497,14 +497,14 @@ test('renderCsv writes term only when present on an offering', () => {
       term: 'S',
     },
   ])
-  assert.ok(csv.startsWith('dept-prefix,course-number,section,instructor,days,times,term'))
+  assert.ok(csv.startsWith('dept_prefix,course_number,course_section,instructor,days,times,term'))
   assert.ok(csv.includes(',S'))
 })
 
 test('parseCsv treats literal NULL and blank meeting cells as unscheduled', () => {
   const rows = parseCsv(
     [
-      'dept-prefix,course-number,section,instructor,days,times',
+      'dept_prefix,course_number,course_section,instructor,days,times',
       'CS,220,A,Wahl,NULL,NULL',
       'BIO,161,A,Patterson,MWF,NULL',
       'MAT,120,A,Doe,,""',
@@ -520,7 +520,7 @@ test('parseCsv treats literal NULL and blank meeting cells as unscheduled', () =
 
 test('parseCsv lab rows normalize the trailing L off the number', () => {
   const rows = parseCsv(
-    'dept-prefix,course-number,section,instructor,days,times\nBIO,166L,A,Patterson,TR,10:00-11:45\n',
+    'dept_prefix,course_number,course_section,instructor,days,times\nBIO,166L,A,Patterson,TR,10:00-11:45\n',
   )
   assert.equal(rows.length, 1)
   assert.deepEqual(rows[0], {
@@ -538,7 +538,7 @@ test('parseCsv lab rows normalize the trailing L off the number', () => {
 test('parseCsv numbers duplicate lab rows deterministically (first-seen order)', () => {
   const rows = parseCsv(
     [
-      'dept-prefix,course-number,section,instructor,days,times',
+      'dept_prefix,course_number,course_section,instructor,days,times',
       'BIO,166,A,Patterson,MWF,9:20-10:30',
       'BIO,166L,A,Doe,TR,10:00-11:45',
       'BIO,166L,A,Doe,W,13:20-14:30',
@@ -557,14 +557,14 @@ test('parseCsv numbers duplicate lab rows deterministically (first-seen order)',
 
 test('parseCsv honors an explicit sequence digit on a lab number', () => {
   const rows = parseCsv(
-    'dept-prefix,course-number,section,instructor,days,times\nBIO,166L2,A,Doe,TR,10:00-11:45\n',
+    'dept_prefix,course_number,course_section,instructor,days,times\nBIO,166L2,A,Doe,TR,10:00-11:45\n',
   )
   assert.equal(rows[0].lab, true)
   assert.equal(rows[0].labSeq, 2)
   // mixed explicit + implicit rows stay distinct and stable
   const mixed = parseCsv(
     [
-      'dept-prefix,course-number,section,instructor,days,times',
+      'dept_prefix,course_number,course_section,instructor,days,times',
       'BIO,166L2,A,Doe,TR,10:00-11:45',
       'BIO,166L,A,Doe,W,13:20-14:30',
     ].join('\n'),
