@@ -223,10 +223,10 @@ function meetingValue(v) {
 // for the time column (`time`). Blank/NULL `days`/`times` mark an unscheduled
 // offering.
 // A trailing `L` on the course number marks a lab section of that course
-// (`166L` is a lab of 166); an optional trailing digit (`166L2`) is the
-// exporter's explicit lab sequence. Lab rows that still share a lecture
-// section are numbered 1..n in first-seen order (registrar feeds may ship
-// identical `166L,A` rows for two labs serving one lecture).
+// (`166L` is a lab of 166); the lab's sequence is part of the section cell
+// (`A2` = section A, lab 2). A lab row with a plain-letter section gets
+// labSeq 1; colliding rows (identical `A1` rows serving one lecture) are
+// renumbered 1..n in first-seen order so every record stays distinct.
 /** @returns {Array<{ prefix: string; number: string; section: string; instructor: string; days: string; time: string; term?: string; lab?: boolean; labSeq?: number }>} */
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/)
@@ -257,36 +257,57 @@ export function parseCsv(text) {
       days,
       time,
     }
-    // `166L` / `166l` / `166L2` -> number `166`, lab, explicit labSeq when given.
-    const labMatch = number && /^(\d+)[Ll](\d*)$/.exec(number)
+    // `166L` / `166l` -> number `166`, lab. The L is the only lab marker in
+    // the course number (the sequence lives in the section cell); anything
+    // else — including the legacy `166L2` shape — passes through verbatim.
+    const labMatch = number && /^(\d+)[Ll]$/.exec(number)
     if (labMatch) {
       out.number = labMatch[1]
       out.lab = true
-      if (labMatch[2]) out.labSeq = Number(labMatch[2])
+    }
+    // The lab's sequence is part of the section cell (`A2` -> section A, lab
+    // 2). Lectures keep their section verbatim — digits in a section never
+    // make a non-lab row a lab.
+    if (out.lab && out.section) {
+      const secMatch = /^([A-Za-z])(\d+)$/.exec(out.section)
+      if (secMatch) {
+        out.section = secMatch[1]
+        out.labSeq = Number(secMatch[2])
+      }
     }
     if (rec['term'] != null && rec['term'] !== '') out.term = rec['term']
     rows.push(out)
   }
-  // Deterministic labSeq for lab rows without an explicit sequence digit:
-  // 1-based occurrence in first-seen order per lecture section, so duplicate
-  // registrar rows stay distinct records.
+  // Deterministic labSeq: plain-letter lab sections default to 1, and
+  // colliding rows (two identical `A1` rows for one lecture) are renumbered
+  // in first-seen order so every lab record stays distinct.
   const labCounts = new Map()
   for (const r of rows) {
-    if (!r.lab || r.labSeq != null) continue
+    if (!r.lab) continue
     const key = `${r.prefix}|${r.number}|${r.section}`
-    const n = (labCounts.get(key) || 0) + 1
-    labCounts.set(key, n)
+    const used = labCounts.get(key) || new Set()
+    let n = r.labSeq != null ? r.labSeq : 1
+    while (used.has(n)) n++
+    used.add(n)
+    labCounts.set(key, used)
     r.labSeq = n
   }
   return rows
 }
 
-// The course-number record field for a record: lab sections re-append the L
-// (and the sequence digit when >1) so exports stay in the registrar shape
-// (`166L`, `166L2`); lectures write the plain number.
+// The course-number cell for a record: labs always re-append the L (`166L`);
+// lectures write the plain number. The lab's sequence is written into the
+// section cell by `offeringSectionLabel`.
 export function courseNumberLabel(o) {
   if (!o || !o.lab) return o && o.number ? o.number : ''
-  return `${o.number}L${o.labSeq && o.labSeq > 1 ? o.labSeq : ''}`
+  return `${o.number}L`
+}
+
+// The section cell for a record: labs carry their sequence in the section
+// (`A2` = section A, lab 2), lectures write the plain section letter.
+export function offeringSectionLabel(o) {
+  if (!o) return ''
+  return o.lab && o.labSeq ? `${o.section}${o.labSeq}` : o.section || ''
 }
 
 // Serialize offerings back to the importable CSV form (an exact round-trip of
@@ -305,7 +326,7 @@ export function renderCsv(offerings) {
   const lines = [header.join(',')]
   for (const o of offerings) {
     const isTime = o.time != null && o.time !== '' ? o.time : o.times || ''
-    const rec = [o.prefix, courseNumberLabel(o), o.section, o.instructor, o.days, isTime]
+    const rec = [o.prefix, courseNumberLabel(o), offeringSectionLabel(o), o.instructor, o.days, isTime]
     if (includesTerm) rec.push(o.term || '')
     lines.push(rec.map(quote).join(','))
   }
@@ -545,11 +566,9 @@ export function buildIndex(offerings) {
     const [startStr, endStr] = t.split('-')
     const start = t ? toMinutes(startStr) : null
     const end = t ? toMinutes(endStr) : null
-    // Lab sections label with their mirrored letter (and sequence when a
-    // lecture has more than one lab on the same letter).
-    const sectionLabel = o.lab
-      ? `Lab ${o.section}${o.labSeq && o.labSeq > 1 ? ' \u00b7 ' + o.labSeq : ''}`
-      : `Section ${o.section}`
+    // Lab sections label with their registrar section (letter + sequence:
+    // `Lab A2`); lectures label with the plain section letter.
+    const sectionLabel = o.lab ? `Lab ${offeringSectionLabel(o)}` : `Section ${o.section}`
     return { o, code, sid: o.$sid, sectionLabel, start, end, days, lab: o.lab }
   }
 

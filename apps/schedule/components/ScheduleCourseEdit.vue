@@ -271,8 +271,7 @@ export default {
     const labLabel = computed(() => {
       const created = labAdded.value
       if (!created) return ''
-      const seq = created.labSeq > 1 ? ' \u00b7 ' + created.labSeq : ''
-      return `${props.offering.code}L ${created.section}${seq}`
+      return `${props.offering.code}L ${created.section}${created.labSeq}`
     })
 
     // Whether any form field differs from the offering's current values (the

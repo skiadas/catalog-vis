@@ -267,13 +267,13 @@ test('describeChange prints lab numbers registrar-style', () => {
       cur: { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 2 },
       diff: [{ field: 'instructor', from: 'Doe', to: 'Eiriksson' }],
     }),
-    'BIO 166L2 A: instructor from Doe to Eiriksson',
+    'BIO 166L A2: instructor from Doe to Eiriksson',
   )
   assert.equal(
     describeChange({
       kind: 'add',
       offering: { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 1 },
     }),
-    'add BIO 166L A',
+    'add BIO 166L A1',
   )
 })

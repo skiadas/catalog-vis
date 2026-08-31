@@ -20,6 +20,7 @@ import {
   removeOfferingFromSchedule,
   updateOfferingInSchedule,
   courseNumberLabel,
+  offeringSectionLabel,
 } from './schedule.js'
 
 // Tuple key identifying an offering by id (preferred) or prefix/number/section
@@ -169,7 +170,7 @@ export function describeChange(op) {
 function fmtCode(o) {
   if (!o) return ''
   const s = `${o.prefix || ''} ${courseNumberLabel(o)}`.trim()
-  return o.section ? `${s} ${o.section}` : s
+  return offeringSectionLabel(o) ? `${s} ${offeringSectionLabel(o)}` : s
 }
 
 // Render a list of operations as plain lines, markdown bullets, or CSV.

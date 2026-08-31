@@ -188,7 +188,7 @@ test('lab sections: add lab from the editor (auto-close), strip lab chip, schedu
   // "Add lab section": the button flips to an in-editor confirmation and —
   // with no other edits pending — the editor closes itself.
   await em.getByRole('button', { name: 'Add lab section' }).click()
-  await em.getByText(/Lab added — ANTH 160L A/).first().waitFor({ timeout: 5000 })
+  await em.getByText(/Lab added — ANTH 160L A1/).first().waitFor({ timeout: 5000 })
   await em.waitFor({ state: 'detached', timeout: 5000 })
 
   // The lab is unscheduled: it sits in the strip, marked with a LAB chip.

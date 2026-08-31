@@ -376,7 +376,7 @@ test('buildIndex groups labs under the parent course with lab labels', () => {
   assert.equal(labs.length, 2)
   assert.deepEqual(
     labs.map((it) => it.sectionLabel),
-    ['Lab A', 'Lab A \u00b7 2'],
+    ['Lab A1', 'Lab A2'],
   )
   const lecture = items.find((it) => !it.lab && it.o.section === 'A')
   assert.equal(lecture.sectionLabel, 'Section A')
@@ -518,9 +518,9 @@ test('parseCsv treats literal NULL and blank meeting cells as unscheduled', () =
   }
 })
 
-test('parseCsv lab rows normalize the trailing L off the number', () => {
+test('parseCsv lab rows normalize the trailing L off the number and read the sequence from the section cell', () => {
   const rows = parseCsv(
-    'dept_prefix,course_number,course_section,instructor,days,times\nBIO,166L,A,Patterson,TR,10:00-11:45\n',
+    'dept_prefix,course_number,course_section,instructor,days,times\nBIO,166L,A1,Patterson,TR,10:00-11:45\n',
   )
   assert.equal(rows.length, 1)
   assert.deepEqual(rows[0], {
@@ -535,13 +535,40 @@ test('parseCsv lab rows normalize the trailing L off the number', () => {
   })
 })
 
-test('parseCsv numbers duplicate lab rows deterministically (first-seen order)', () => {
+test('parseCsv reads lab section digits (multi-digit included, letters case-insensitive)', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times',
+      'BIO,166L,A2,Doe,TR,10:00-11:45',
+      'CHE,120l,b10,Morgan,MWF,8:00-9:10',
+    ].join('\n'),
+  )
+  const labs = rows.filter((r) => r.lab)
+  assert.deepEqual(
+    labs.map((l) => [l.number, l.section, l.labSeq]),
+    [
+      ['166', 'A', 2],
+      ['120', 'b', 10],
+    ],
+  )
+})
+
+test('parseCsv lectures keep their section verbatim — digits never make a lecture a lab', () => {
+  const rows = parseCsv(
+    'dept_prefix,course_number,course_section,instructor,days,times\nBIO,166,A2,Patterson,TR,10:00-11:45\n',
+  )
+  assert.equal(rows[0].lab, undefined)
+  assert.equal(rows[0].number, '166')
+  assert.equal(rows[0].section, 'A2')
+})
+
+test('parseCsv renumbers colliding lab rows deterministically (first-seen order)', () => {
   const rows = parseCsv(
     [
       'dept_prefix,course_number,course_section,instructor,days,times',
       'BIO,166,A,Patterson,MWF,9:20-10:30',
-      'BIO,166L,A,Doe,TR,10:00-11:45',
-      'BIO,166L,A,Doe,W,13:20-14:30',
+      'BIO,166L,A1,Doe,TR,10:00-11:45',
+      'BIO,166L,A1,Doe,W,13:20-14:30',
     ].join('\n'),
   )
   const labs = rows.filter((r) => r.lab)
@@ -555,27 +582,16 @@ test('parseCsv numbers duplicate lab rows deterministically (first-seen order)',
   )
 })
 
-test('parseCsv honors an explicit sequence digit on a lab number', () => {
+test('parseCsv does not treat the legacy 166L2 number shape as a lab', () => {
   const rows = parseCsv(
     'dept_prefix,course_number,course_section,instructor,days,times\nBIO,166L2,A,Doe,TR,10:00-11:45\n',
   )
-  assert.equal(rows[0].lab, true)
-  assert.equal(rows[0].labSeq, 2)
-  // mixed explicit + implicit rows stay distinct and stable
-  const mixed = parseCsv(
-    [
-      'dept_prefix,course_number,course_section,instructor,days,times',
-      'BIO,166L2,A,Doe,TR,10:00-11:45',
-      'BIO,166L,A,Doe,W,13:20-14:30',
-    ].join('\n'),
-  )
-  assert.deepEqual(
-    mixed.filter((r) => r.lab).map((l) => l.labSeq),
-    [2, 1],
-  )
+  assert.equal(rows[0].lab, undefined)
+  assert.equal(rows[0].number, '166L2')
+  assert.equal(rows[0].section, 'A')
 })
 
-test('renderCsv writes lab numbers back in the registrar shape', () => {
+test('renderCsv writes lab numbers and sections back in the registrar shape', () => {
   const csv = renderCsv([
     { prefix: 'BIO', number: '166', section: 'A', instructor: 'Patterson', days: 'MWF', time: '9:20-10:30' },
     {
@@ -601,8 +617,8 @@ test('renderCsv writes lab numbers back in the registrar shape', () => {
   ])
   const lines = csv.split('\n')
   assert.ok(lines[1].startsWith('BIO,166,A'))
-  assert.ok(lines[2].startsWith('BIO,166L,A'))
-  assert.ok(lines[3].startsWith('BIO,166L2,A'))
+  assert.ok(lines[2].startsWith('BIO,166L,A1'))
+  assert.ok(lines[3].startsWith('BIO,166L,A2'))
   // the round-trip is stable
   assert.deepEqual(parseCsv(csv), [
     { prefix: 'BIO', number: '166', section: 'A', instructor: 'Patterson', days: 'MWF', time: '9:20-10:30' },

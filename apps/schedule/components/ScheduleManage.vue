@@ -337,7 +337,7 @@ export default {
         )
         .map((r) => ({
           key: `${r.prefix}|${r.number}|${r.section}|${r.labSeq || 1}`,
-          label: `${r.prefix} ${r.number}L ${r.section}${r.labSeq > 1 ? ' \u00b7 ' + r.labSeq : ''}`,
+          label: `${r.prefix} ${r.number}L ${r.section}${r.labSeq || 1}`,
         }))
     })
     const pickCsvFile = () => {

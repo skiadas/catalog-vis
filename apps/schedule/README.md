@@ -37,9 +37,9 @@ Domain logic lives in `@major-vis/schedule-core`.
 
 **Lab sections** are flagged offerings of a parent lecture: `lab: true`
 (with `number` already the parent's, e.g. `'166'`) and a 1-based `labSeq`
-when a lecture has several labs on the same section letter (two `166L,A`
-rows at different times serve lecture 166-A). A lab's identity is its full
-tuple, never the mirrored lecture section. Imported `166L`/`166L2` course
+carried in the **section cell** (the registrar writes `166L,A2` — the L
+marks the lab, the digit is its sequence). A lab's identity is its full
+tuple, never the mirrored lecture section. Imported `166L` + digit-section
 numbers normalize on parsing and are written back by `renderCsv`; a lab
 with no matching lecture section in its CSV feed is kept but flagged by the
 import warning list. Labs group under the parent course (same name,
@@ -69,8 +69,9 @@ optional `term`) produced by "Download registrar CSV". An import **always
 creates a new schedule** (name prefilled from the filename, year optional;
 never touches existing schedules) and routes rows into its F/W/S parts by the
 `term` column (rows without one land in the active term part). Blank or
-literal `NULL` `days`/`times` cells mark unscheduled offerings; `166L`/`166L2`
-course numbers become lab sections of their parent. Lab rows whose lecture
+literal `NULL` `days`/`times` cells mark unscheduled offerings; a trailing `L` on
+the course number with a digit in the section cell (`166L` + `A2`) becomes
+a lab section of its parent. Lab rows whose lecture
 section isn't in the file are kept and reported in an import warning list.
 `parseCsv`/`renderCsv` in `@major-vis/schedule-core` implement the format
 (quoted-field aware).

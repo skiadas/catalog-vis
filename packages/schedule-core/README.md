@@ -18,26 +18,28 @@ An **offering** is the primitive record, in the shape `parseCsv` produces:
 
 **Lab sections** are flagged offerings of their parent course: `lab: true`
 (with `number` already normalized to the parent, e.g. `'166'`) plus a
-1-based `labSeq` when a lecture has several labs on the same section letter
-(two `166L,A` rows at different times serve one lecture section). A lab's
-identity is its full tuple — `prefix/number/section` plus the lab marker —
-so it is never confused with the lecture section it mirrors. A trailing `L`
-on a parsed course number (`166L`, `166L2`) becomes `lab`/`labSeq`; `renderCsv`
-writes it back so exports stay in the registrar shape.
+1-based `labSeq`. The registrar carries the sequence in the **section cell**
+(`A2` = section A, lab 2), so a parsed `166L,A2` row becomes
+`{ number: '166', section: 'A', lab: true, labSeq: 2 }`; `renderCsv` and
+`sections`-style labels write it back as `A2`. A lab's identity is its full
+tuple — `prefix/number/section` plus the lab marker — so it is never confused
+with the lecture section it mirrors. A trailing `L` on the course number marks
+the lab; colliding rows (two identical `A1` rows serving one lecture) are
+renumbered deterministically.
 
 ### Parsing + index
 
 - `parseCsv(text)` → `offering[]` (columns `dept_prefix`,
   `course_number`, `course_section`, `instructor`, `days`, `times`; blank or
-  literal `NULL` meeting cells mark an unscheduled offering; `166L`/`166L2`
-  lab normalization with deterministic labSeq for duplicate rows)
+  literal `NULL` meeting cells mark an unscheduled offering; `166L` +
+  section-cell lab digits with deterministic labSeq for colliding rows)
 - `renderCsv(offerings)` → round-trip CSV (lab numbers written back as
-  `166L`/`166L2`)
+  `166L`, sequences as section digits `A1`/`A2`)
 - `buildIndex(offerings)` → `{ byCourse, byDay, bySlot, byInstructor,
 unscheduled }`; each list is sorted (`compareItems`) and items carry
   `{ o, code, sid, sectionLabel, start, end, days, lab }` where `sid` is
   `o.$sid`, `start`/`end` are minutes, `sectionLabel` is `Section A` or
-  `Lab A` (` · 2` when a lab has a `labSeq`), and `lab` flags lab items.
+  `Lab A2` (the registrar's letter + sequence), and `lab` flags lab items.
   Labs group under the parent course's `code`, so they share its catalog
   name and never conflict with their own lecture (same-code skip in
   `conflictsForCourse`); a lab still conflicts with any _other_ course.
@@ -74,8 +76,10 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
   (lab rows are ignored — their letters mirror the lecture's)
 - `offerKey(o)` → the stable identity tuple (`prefix|number|section|L|seq`),
   the one key every identity match uses; `courseNumberLabel(o)` → the
-  registrar-shaped number (`166L`/`166L2`); `nextLabSeq(offerings, prefix,
-number, section)` → the next free lab sequence for a lecture
+  registrar-shaped number (`166L` for labs, plain for lectures);
+  `offeringSectionLabel(o)` → the registrar-shaped section (`A2` for labs,
+  plain for lectures); `nextLabSeq(offerings, prefix, number, section)` →
+  the next free lab sequence for a lecture
 
 ### Conflicts
 
