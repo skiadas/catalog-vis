@@ -311,19 +311,22 @@ test('import registrar CSV creates a new schedule and routes rows by term', asyn
   await page.setInputFiles('.schedule-upload-input', 'apps/schedule/e2e/import.csv')
 
   // The summary names the file, pre-fills the schedule name from it, and shows
-  // the term parts the rows would fill — with no import happening yet.
+  // the term parts the rows would fill — with no import happening yet. The
+  // file carries a split-meeting pair (MUS 001 A on MW and R at two custom
+  // times), which exercises the per-row content ids end-to-end.
   await expect(page.locator('#schedule-create-name')).toHaveValue('import')
-  await expect(page.getByText(/Imported 7 course row\(s\)/)).toBeVisible()
+  await expect(page.getByText(/Imported 9 course row\(s\)/)).toBeVisible()
   await expect(page.getByText(/into Fall \+ Winter \+ Spring/)).toBeVisible()
 
   await page.getByRole('button', { name: 'Import', exact: true }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
 
-  // The manage list shows the per-term counts the import routed (F: 2, W: 2,
-  // S: 3 = lectures + lab + unscheduled row).
+  // The manage list shows the per-term counts the import routed (F: 4 = the
+  // two original rows + the split-meeting pair, W: 2, S: 3 = lectures + lab +
+  // unscheduled row).
   const row = page.locator('.schedule-manage-row', { hasText: 'import' })
   await row.waitFor({ timeout: 10000 })
-  await expect(row).toContainText('Fall: 2, Winter: 2, Spring: 3')
+  await expect(row).toContainText('Fall: 4, Winter: 2, Spring: 3')
   await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
 
   // The new schedule is auto-selected as a header pill.

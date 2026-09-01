@@ -887,3 +887,60 @@ test('history: a no-op save records nothing and does not bump the version', asyn
     assert.equal(store.canUndo.value, false)
   })
 })
+
+test('split-section rows edit, move, and undo independently with single-change history', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    // MUS 001 A meets on MW and on R at different custom times: two rows that
+    // share the section tuple, exactly like the registrar's split meetings.
+    const id = await store.addSchedule('Split', '2026-27', [])
+    store.importCsvRows(id, [
+      { prefix: 'MUS', number: '001', section: 'A', instructor: 'Smith', days: 'MW', time: '16:00-16:50', term: 'F' },
+      { prefix: 'MUS', number: '001', section: 'A', instructor: 'Smith', days: 'R', time: '16:10-17:00', term: 'F' },
+    ])
+    const rows = () => store.viewOfferings(store.scheduleById(id))
+    assert.equal(rows().length, 2)
+    assert.ok(rows()[0].id && rows()[1].id, 'import fills content ids')
+    assert.notEqual(rows()[0].id, rows()[1].id, 'split rows get distinct ids')
+
+    await store.setEditingSchedule(id, 'edit')
+
+    // Editing the R meeting changes only it; history records exactly one change.
+    assert.ok(
+      store.updateOffering(id, { prefix: 'MUS', number: '001', section: 'A', id: rows()[1].id }, { instructor: 'Wahl' }),
+    )
+    assert.equal(rows()[0].instructor, 'Smith', 'MW sibling untouched')
+    assert.equal(rows()[1].instructor, 'Wahl')
+    assert.equal(store.historyEntries.value.length, 1)
+    assert.equal(store.historyEntries.value[0].lines.length, 1, 'no phantom sibling changes')
+    assert.match(store.historyEntries.value[0].label, /MUS 001 A: instructor/)
+
+    // Dragging the R meeting moves only it (the id rides in the drag payload).
+    assert.ok(
+      store.moveOffering(
+        id,
+        'MUS',
+        '001',
+        'A',
+        { fromDay: 'R', toDay: 'T', group: 'TR', time: '14:15-16:00' },
+        false,
+        0,
+        rows()[1].id,
+      ),
+    )
+    assert.equal(rows()[0].days, 'MW')
+    assert.equal(rows()[1].days, 'T', 'only the dragged row moved')
+    assert.equal(store.historyEntries.value[0].lines.length, 1, 'move is one op on one row')
+
+    // Undo reverts just the move, then just the instructor edit.
+    assert.ok(store.undo())
+    assert.equal(rows()[1].days, 'R')
+    assert.ok(store.undo())
+    assert.equal(rows()[1].instructor, 'Smith')
+    assert.equal(rows()[0].instructor, 'Smith')
+    assert.equal(store.canUndo.value, false, 'back to the session start')
+  })
+})

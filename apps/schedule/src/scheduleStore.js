@@ -22,6 +22,8 @@ import {
   removeOfferingFromSchedule,
   TERM_KEYS,
   TERM_LABELS,
+  offeringIdFor,
+  assignOfferingIds,
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
 import { programs, allCourses } from '@major-vis/catalog-client'
@@ -841,9 +843,8 @@ function setLocalTerm(scheduleId, term, offerings, version) {
   const s = scheduleById(scheduleId)
   if (!s) return
   if (!s.terms[term]) s.terms[term] = { offerings: [], version: 0 }
-  s.terms[term].offerings = [...(offerings || [])]
-  s.terms[term].version = version
-  schedules.value = [...schedules.value]
+  s.terms[term].offerings = assignOfferingIds([...(offerings || [])])
+  s.terms[term].version = version != null ? version : (s.terms[term].version || 0) + 1
 }
 
 export function scheduleById(id) {
@@ -920,7 +921,7 @@ export async function addSchedule(name, year, offerings) {
     return srv.id
   }
   const schedule = { id: scheduleId(), name, year, terms: emptyTerms() }
-  if (offerings) schedule.terms[activeTerm.value].offerings = [...offerings]
+  if (offerings) schedule.terms[activeTerm.value].offerings = assignOfferingIds([...offerings])
   schedules.value = [...schedules.value, schedule]
   selectedScheduleIds.value = [...selectedScheduleIds.value, schedule.id]
   persistSchedules()
@@ -941,10 +942,11 @@ function emptyTerms() {
 export function setTermOfferings(id, term, offerings) {
   const s = scheduleById(id)
   if (!s) return false
+  const rows = assignOfferingIds([...(offerings || [])])
   if (isSuggestSessionFor(id)) {
     const { part } = mutablePart(id, term)
     const before = part.offerings
-    part.offerings = [...(offerings || [])]
+    part.offerings = rows
     recordHistory(part, before, id, term)
     part.dirty = true
     touchDraft()
@@ -953,7 +955,7 @@ export function setTermOfferings(id, term, offerings) {
   if (remote.value && !isOwner(s)) return false
   if (!s.terms[term]) s.terms[term] = { offerings: [], version: 0 }
   const before = s.terms[term].offerings
-  s.terms[term].offerings = [...(offerings || [])]
+  s.terms[term].offerings = rows
   recordHistory(s.terms[term], before, id, term)
   s.terms[term].version = (s.terms[term].version || 0) + 1
   schedules.value = [...schedules.value]
@@ -1097,16 +1099,18 @@ export function setEditingSchedule(id, role = 'edit') {
 // Reschedules a single offering of `scheduleId`'s active term into a standard
 // slot. The `move` context is `{ fromDay, toDay, group, time }` (see
 // `rescheduleDays`). `lab`/`labSeq` disambiguate a lab row from the lecture
-// section it mirrors. No-op if the offering can't be found. In a suggest
-// session the change lands in the draft instead of the published term.
-export function moveOffering(id, prefix, number, section, move, lab = false, labSeq = 0) {
+// section it mirrors; `offeringId` (from the drag payload) targets the exact
+// row when a sibling shares the section tuple (split meetings). No-op if the
+// offering can't be found. In a suggest session the change lands in the draft
+// instead of the published term.
+export function moveOffering(id, prefix, number, section, move, lab = false, labSeq = 0, offeringId = '') {
   const s = scheduleById(id)
   if (!s) return false
   const { part, draft } = mutablePart(id)
   if (!part) return false
   const next = moveOfferingSmart(
     part.offerings || [],
-    { prefix, number, section, lab, labSeq },
+    { prefix, number, section, lab, labSeq, id: offeringId || undefined },
     move,
     activeTerm.value,
   )
@@ -1166,7 +1170,16 @@ export function addCourseToSchedule(id, code) {
   if (!part) return null
   const [prefix, number] = code.split(' ')
   const section = nextSectionLetter(part.offerings || [], prefix, number)
-  const offering = { prefix, number, section, instructor: '', secondaryInstructors: [], ...DEFAULT_SLOT }
+  const offering = {
+    prefix,
+    number,
+    section,
+    instructor: '',
+    secondaryInstructors: [],
+    ...DEFAULT_SLOT,
+    id: '',
+  }
+  offering.id = offeringIdFor(offering)
   const before = part.offerings
   part.offerings = addOfferingToSchedule(part.offerings || [], offering)
   recordHistory(part, before, id)
@@ -1197,8 +1210,14 @@ export function addLabSection(id, cur) {
   const { part, draft } = mutablePart(id)
   if (!part) return null
   const offerings = part.offerings || []
+  // Match the lecture by its content `id` when given (split-meeting rows),
+  // else by the section tuple as before.
   const parent = offerings.find(
-    (o) => !o.lab && o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section,
+    (o) =>
+      !o.lab &&
+      (cur.id != null && cur.id !== ''
+        ? o.id === cur.id
+        : o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section),
   )
   if (!parent) return null
   const lab = {
@@ -1211,7 +1230,9 @@ export function addLabSection(id, cur) {
     labSeq: nextLabSeq(offerings, parent.prefix, parent.number, parent.section),
     days: '',
     time: '',
+    id: '',
   }
+  lab.id = offeringIdFor(lab)
   const before = offerings
   part.offerings = addOfferingToSchedule(offerings, lab)
   recordHistory(part, before, id)
@@ -1286,11 +1307,14 @@ function persistSelectedSchedules() {
 }
 // Normalizes a stored schedule: older {id,name,offerings} records (single-term)
 // become a schedule with that offering list in every part for backward
-// compatibility; new records already carry `terms`.
+// compatibility; new records already carry `terms`. Offers missing a content
+// `id` (records written before the id era) get deterministic ids on load, so
+// split-meeting rows are distinguishable in diffs/history right away.
 function normalizeStored(raw) {
   if (Array.isArray(raw.offerings)) {
     const terms = {}
-    for (const t of TERM_KEYS) terms[t] = { offerings: raw.offerings.map((o) => ({ ...o })), version: 0 }
+    for (const t of TERM_KEYS)
+      terms[t] = { offerings: assignOfferingIds(raw.offerings.map((o) => ({ ...o }))), version: 0 }
     return { id: raw.id, name: raw.name, year: raw.year || '', terms }
   }
   if (raw.terms) {
@@ -1298,7 +1322,10 @@ function normalizeStored(raw) {
     for (const t of TERM_KEYS)
       terms[t] =
         raw.terms[t] && Array.isArray(raw.terms[t].offerings)
-          ? { offerings: raw.terms[t].offerings.map((o) => ({ ...o })), version: raw.terms[t].version || 0 }
+          ? {
+              offerings: assignOfferingIds(raw.terms[t].offerings.map((o) => ({ ...o }))),
+              version: raw.terms[t].version || 0,
+            }
           : { offerings: [], version: 0 }
     return { id: raw.id, name: raw.name, year: raw.year || '', terms }
   }

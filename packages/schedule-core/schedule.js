@@ -289,7 +289,7 @@ export function instructorsOf(o) {
 // (`A2` = section A, lab 2). A lab row with a plain-letter section gets
 // labSeq 1; colliding rows (identical `A1` rows serving one lecture) are
 // renumbered 1..n in first-seen order so every record stays distinct.
-/** @returns {Array<{ prefix: string; number: string; section: string; instructor: string; secondaryInstructors: string[]; days: string; time: string; term?: string; lab?: boolean; labSeq?: number }>} */
+/** @returns {Array<{ id?: string; prefix: string; number: string; section: string; instructor: string; secondaryInstructors: string[]; days: string; time: string; term?: string; lab?: boolean; labSeq?: number }>} */
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/)
   const header = csvFields(lines[0])
@@ -359,6 +359,11 @@ export function parseCsv(text) {
     labCounts.set(key, used)
     r.labSeq = n
   }
+  // Stable per-row identity: rows sharing a section tuple (split meetings,
+  // e.g. MW and R each at their own band) get distinct content ids, so the
+  // diff/move/edit machinery never confuses them. Re-parsing the same file
+  // yields the same ids.
+  assignOfferingIds(rows)
   return rows
 }
 
@@ -429,10 +434,73 @@ export function compareItems(a, b) {
 // The stable identity key of an offering record: prefix/number/section plus
 // the lab marker (and labSeq), so a lab section A is never confused with the
 // lecture section A it mirrors. Every identity match (update/remove/move/
-// diff/overlay) uses this.
+// diff/overlay) uses this — except rows carrying a content-derived `id`,
+// which match on the id first (see `matchOffering`), so two rows sharing the
+// same section tuple (split meetings: MW and R each at their own time) stay
+// distinguishable.
 export function offeringKey(o) {
   if (!o) return ''
   return `${o.prefix || ''}|${o.number || ''}|${o.section || ''}${o.lab ? '|L' : ''}${o.lab ? o.labSeq || '' : ''}`
+}
+
+// Deterministic content hash — the stable `id` producers assign at import or
+// creation (the `id`-preferred key in the diff machinery). Two rows with the
+// same section tuple but different day/time bands hash differently, so split
+// meetings stay distinct identities; `assignOfferingIds` suffixes identical
+// duplicates so even two exactly-equal rows differ.
+export function offeringIdFor(o) {
+  const s = [
+    o.prefix || '',
+    o.number || '',
+    o.section || '',
+    o.lab ? 'L' : '',
+    o.lab ? o.labSeq || '' : '',
+    o.days || '',
+    o.time || '',
+  ].join('|')
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return 'o' + (h >>> 0).toString(36)
+}
+
+// Fills `id` on rows that don't carry one (legacy data loaded from storage or
+// a feed), deterministically from the row's content. Rows that hash the same
+// (two identical rows for one section) get a first-seen `-1`/`-2` suffix so
+// every row stays a distinct identity; existing ids are never rewritten, so
+// editing a row keeps its id across sessions and re-syncs. Mutates `rows` and
+// returns it.
+export function assignOfferingIds(rows) {
+  if (!Array.isArray(rows)) return rows
+  const missing = rows.filter((r) => !r || r.id == null || r.id === '')
+  if (!missing.length) return rows
+  const counts = new Map()
+  for (const r of missing) {
+    const base = offeringIdFor(r)
+    counts.set(base, (counts.get(base) || 0) + 1)
+  }
+  const seen = new Map()
+  for (const r of missing) {
+    const base = offeringIdFor(r)
+    if (counts.get(base) > 1) {
+      const n = (seen.get(base) || 0) + 1
+      seen.set(base, n)
+      r.id = `${base}-${n}`
+    } else {
+      r.id = base
+    }
+  }
+  return rows
+}
+
+// Whether `o` is the exact row `cur` targets: by content id when present
+// (split-meeting rows, distinct ids), else by the section tuple. Legacy callers
+// that pass tuple-only `cur` keep matching — the fallback.
+export function matchOffering(o, cur) {
+  if (cur && cur.id != null && cur.id !== '') return Boolean(o) && o.id === cur.id
+  return offeringKey(o) === offeringKey(cur)
 }
 
 // Order two course-code strings (e.g. "COM 251") by prefix, then number.
@@ -480,16 +548,17 @@ export function rescheduleDays(days, fromDay, toGroup, toDay, termKey) {
 }
 
 // Reschedules an offering and recomputes `days` from the drag context
-// (`fromDay`/`toDay`/`toGroup`) instead of taking a raw day string.
+// (`fromDay`/`toDay`/`toGroup`) instead of taking a raw day string. `cur` may
+// carry an `id` (from the drag payload) so a row sharing its section tuple
+// with a sibling (split meetings) is the one that moves.
 export function moveOfferingSmart(
   offerings,
-  { prefix, number, section, lab = false, labSeq = 0 },
+  { prefix, number, section, lab = false, labSeq = 0, id = '' },
   { fromDay, toDay, group, time },
   termKey,
 ) {
-  const idx = (offerings || []).findIndex(
-    (o) => offeringKey(o) === offeringKey({ prefix, number, section, lab, labSeq }),
-  )
+  const cur = { prefix, number, section, lab, labSeq, id }
+  const idx = (offerings || []).findIndex((o) => matchOffering(o, cur))
   if (idx < 0) return offerings
   const days = rescheduleDays((offerings[idx] || {}).days, fromDay, group, toDay, termKey)
   const next = offerings.slice()
@@ -520,7 +589,7 @@ export function nextLabSeq(offerings, prefix, number, section) {
 // letter.
 export function updateOfferingInSchedule(offerings, cur, changes) {
   const list = offerings || []
-  const idx = list.findIndex((o) => offeringKey(o) === offeringKey(cur))
+  const idx = list.findIndex((o) => matchOffering(o, cur))
   if (idx < 0) return list
   const next = list.slice()
   const merged = { ...next[idx], ...changes }
@@ -582,14 +651,16 @@ export function addOfferingToSchedule(offerings, offering) {
   return [...(offerings || []), offering]
 }
 
-// Removes the offering matching `cur` (its full identity — prefix/number/
-// section and the lab marker) from a schedule's `offerings` array. Removing a
-// lecture section also removes its labs: a lab without its lecture is
-// meaningless. Returns a new array, or the same array when nothing matches.
+// Removes the offering matching `cur` (its full identity — the content `id`
+// when present, else prefix/number/section and the lab marker) from a
+// schedule's `offerings` array. Removing a lecture section also removes its
+// labs: a lab without its lecture is meaningless. A split-meeting row (two
+// rows sharing a section) removes only that row. Returns a new array, or the
+// same array when nothing matches.
 export function removeOfferingFromSchedule(offerings, cur) {
   const list = offerings || []
   const next = list.filter((o) => {
-    if (offeringKey(o) === offeringKey(cur)) return false
+    if (matchOffering(o, cur)) return false
     if (
       !cur.lab &&
       o.lab &&
@@ -605,14 +676,16 @@ export function removeOfferingFromSchedule(offerings, cur) {
 }
 
 // The drag-and-drop payload contract for moving an offering between slots
-// (edit mode). A serialized `{ sid, prefix, number, section, lab, labSeq,
-// fromDay }` — the offering's identity plus the day column the drag started
+// (edit mode). A serialized `{ sid, id, prefix, number, section, lab, labSeq,
+// fromDay }` — the offering's identity (its content `id` so a split-meeting
+// row moves itself, not its sibling) plus the day column the drag started
 // from, so a same-group drop can swap that specific day (see
 // `rescheduleDays`). Shared by the schedule grid/day views and the planner
 // timeline (which only parses).
 export function buildDragPayload(it, fromDay) {
   return JSON.stringify({
     sid: it.sid,
+    id: it.o.id || '',
     prefix: it.o.prefix,
     number: it.o.number,
     section: it.o.section,

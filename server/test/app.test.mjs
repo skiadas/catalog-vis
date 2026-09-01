@@ -558,9 +558,12 @@ test('schedules list carries full term payloads', async () => {
     })
     const list = (await srv.get('/api/schedules')).json.schedules
     assert.equal(list.length, 1)
-    assert.deepEqual(list[0].terms.F.offerings, [
+    const offering = list[0].terms.F.offerings[0]
+    assert.deepEqual(
+      { prefix: offering.prefix, number: offering.number, section: offering.section, days: offering.days, time: offering.time },
       { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' },
-    ])
+    )
+    assert.ok(offering.id, 'the server fills the content id for split-meeting rows')
     assert.equal(list[0].terms.F.version, 1)
     assert.deepEqual(list[0].terms.W.offerings, [])
   } finally {

@@ -1,6 +1,8 @@
 dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,term
 CS,220,A,Wahl,,MWF,9:20-10:30,F
 MAT,131,A,Aydogan,,MWF,14:20-16:05,F
+MUS,001,A,Smith,,MW,16:00-16:50,F
+MUS,001,A,Smith,,R,16:10-17:00,F
 BIO,161,A,Patterson,"Xu, Ray",MWF,8:00-9:10,W
 CS,101,A,Vosmeier,"Nguyen, Wu",TR,10:00-11:45,W
 BIO,166,A,Patterson,,TR,13:20-14:30,S

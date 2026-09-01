@@ -44,6 +44,7 @@ export function useScheduleDrag(editingId, moveOffering) {
       },
       p.lab,
       p.labSeq,
+      p.id,
     )
   }
   return { dragOver, isEditable, onDragStart, zoneOver, zoneLeave, zoneDrop }

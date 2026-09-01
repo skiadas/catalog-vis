@@ -11,7 +11,7 @@ Two entry points: `.` (domain model) and `./generate` (schedule generation).
 An **offering** is the primitive record, in the shape `parseCsv` produces:
 
 ```js
-{ prefix: 'BIO', number: '161', section: 'A', instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'], days: 'MWF', time: '8:00-9:10' }
+{ id: 'ok16mz2', prefix: 'BIO', number: '161', section: 'A', instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'], days: 'MWF', time: '8:00-9:10' }
 ```
 
 `instructor` is the single **lead** instructor (0-or-1, mirroring the
@@ -20,6 +20,16 @@ registrar `instructor` column); `secondaryInstructors` is the 0-or-more
 the source, stored as an array). Records written before the multi-instructor
 model simply lack the key — `instructorsOf(o)` (below) reads it as empty, so
 old schedules stay valid.
+
+**`id`** is a deterministic content hash producers assign at import/creation
+(and fill on legacy records during load): two rows that share a section tuple
+but meet at different bands — a *split meeting*, e.g. MUS 001 A on MW
+16:00-16:50 AND R 16:10-17:00 — are distinct offerings with distinct ids, and
+identical duplicate rows get a first-seen `-1`/`-2` suffix. Every identity
+match (`matchOffering`, update/remove/move/diff/apply/drag) prefers the id, so
+editing or dragging one meeting leaves its sibling untouched; the tuple key
+remains the fallback for legacy rows without ids. Ids are never serialized to
+CSV; re-parsing the same file yields the same ids.
 
 `days` is a subset of `MTWRF`; `time` is a `"HH:MM-HH:MM"` 24h band.
 Time-band *logic* compares minute values, never band strings: any spelling of
@@ -132,7 +142,9 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
 
 ### Drag payload (shared with the planner timeline)
 
-- `buildDragPayload(it, fromDay)` → serialized `{ sid, prefix, number, section, lab, labSeq, fromDay }`
+- `buildDragPayload(it, fromDay)` → serialized
+  `{ sid, id, prefix, number, section, lab, labSeq, fromDay }` (the content
+  `id` rides along so a split-meeting row drags only itself)
 - `dragPayloadFrom(e)` → parsed payload (or `null`) from a `dataTransfer`
 
 ## Contract — `./generate` (generate.js)

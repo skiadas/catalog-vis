@@ -219,6 +219,35 @@ test('diffOfferings leaves secondaryInstructors alone when unchanged in content'
   assert.equal(sameList.length, 0)
 })
 
+test('split-meeting rows diff cleanly and apply to the exact row', () => {
+  // MUS 001 A meets MW 16:00-16:50 and R 16:10-17:00: two rows sharing the
+  // section tuple. Before content ids, every diff invented "days from R to MW"
+  // updates for these — the phantom entries seen in history.
+  const rows = [
+    { prefix: 'MUS', number: '001', section: 'A', id: 'mus-mw', days: 'MW', time: '16:00-16:50' },
+    { prefix: 'MUS', number: '001', section: 'A', id: 'mus-r', days: 'R', time: '16:10-17:00' },
+  ]
+  assert.equal(
+    diffOfferings(
+      rows,
+      rows.map((r) => ({ ...r })),
+    ).length,
+    0,
+    'unchanged state diffs empty',
+  )
+
+  const moved = [rows[0], { ...rows[1], days: 'T', time: '14:15-16:00' }]
+  const ops = diffOfferings(rows, moved)
+  assert.equal(ops.length, 1, 'moving one meeting is exactly one op')
+  assert.equal(ops[0].kind, 'update')
+  assert.equal(ops[0].cur.id, 'mus-r', 'the op targets the moved row by id')
+  assert.match(describeChange(ops[0]), /^MUS 001 A: days from R to T/)
+
+  const applied = applyOperations(rows, ops)
+  assert.equal(applied[0].days, 'MW', 'sibling row untouched by apply')
+  assert.equal(applied[1].days, 'T')
+})
+
 test('renderChanges formats as text, md, csv', () => {
   const ops = [
     {

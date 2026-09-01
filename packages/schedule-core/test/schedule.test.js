@@ -8,6 +8,8 @@ import {
   formatTime,
   parseCsv,
   renderCsv,
+  offeringIdFor,
+  assignOfferingIds,
   buildIndex,
   conflictsBetween,
   conflictsForCourse,
@@ -446,6 +448,7 @@ test('parseCsv maps columns and trims', () => {
     secondaryInstructors: [],
     days: 'MWF',
     time: '9:20-10:30',
+    id: offeringIdFor({ prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' }),
   })
 })
 
@@ -467,6 +470,7 @@ test('parseCsv accepts a `time` column synonym and blank times as unscheduled', 
     secondaryInstructors: [],
     days: '',
     time: '',
+    id: offeringIdFor({ prefix: 'CS', number: '220', section: 'A', days: '', time: '' }),
   })
 })
 
@@ -589,6 +593,15 @@ test('parseCsv lab rows normalize the trailing L off the number and read the seq
     time: '10:00-11:45',
     lab: true,
     labSeq: 1,
+    id: offeringIdFor({
+      prefix: 'BIO',
+      number: '166',
+      section: 'A',
+      lab: true,
+      labSeq: 1,
+      days: 'TR',
+      time: '10:00-11:45',
+    }),
   })
 })
 
@@ -686,6 +699,7 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       secondaryInstructors: [],
       days: 'MWF',
       time: '9:20-10:30',
+      id: offeringIdFor({ prefix: 'BIO', number: '166', section: 'A', days: 'MWF', time: '9:20-10:30' }),
     },
     {
       prefix: 'BIO',
@@ -697,6 +711,15 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       time: '10:00-11:45',
       lab: true,
       labSeq: 1,
+      id: offeringIdFor({
+        prefix: 'BIO',
+        number: '166',
+        section: 'A',
+        lab: true,
+        labSeq: 1,
+        days: 'TR',
+        time: '10:00-11:45',
+      }),
     },
     {
       prefix: 'BIO',
@@ -708,6 +731,15 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       time: '13:20-14:30',
       lab: true,
       labSeq: 2,
+      id: offeringIdFor({
+        prefix: 'BIO',
+        number: '166',
+        section: 'A',
+        lab: true,
+        labSeq: 2,
+        days: 'W',
+        time: '13:20-14:30',
+      }),
     },
   ])
 })
@@ -955,6 +987,74 @@ test('instructor filter matches via a secondary instructor and colors by the sel
 test('colorForSchedule returns a stable hex color per schedule', () => {
   assert.match(colorForSchedule('cs'), /^#[0-9a-f]{6}$/i)
   assert.equal(colorForSchedule('cs'), colorForSchedule('cs'))
+})
+
+test('split-meeting rows (same section, different bands) move/update/remove by id only', () => {
+  // MUS 001 A meets on MW at one custom time AND on R at another: two rows
+  // sharing the section tuple. Every edit targets the row whose id is given.
+  const rows = [
+    { prefix: 'MUS', number: '001', section: 'A', id: 'mus-mw', days: 'MW', time: '16:00-16:50' },
+    { prefix: 'MUS', number: '001', section: 'A', id: 'mus-r', days: 'R', time: '16:10-17:00' },
+  ]
+  // Update: the R row changes, the MW sibling stays.
+  const updated = updateOfferingInSchedule(
+    rows,
+    { prefix: 'MUS', number: '001', section: 'A', id: 'mus-r' },
+    { instructor: 'Wahl' },
+  )
+  assert.equal(updated[0].instructor, undefined)
+  assert.equal(updated[1].instructor, 'Wahl')
+  // Move: dragging the MW row moves only it.
+  const moved = moveOfferingSmart(
+    rows,
+    { prefix: 'MUS', number: '001', section: 'A', id: 'mus-mw' },
+    { fromDay: 'M', toDay: 'T', group: 'TR', time: '10:00-11:45' },
+    'F',
+  )
+  assert.equal(moved[0].days, 'TR')
+  assert.equal(moved[1].days, 'R', 'sibling row untouched')
+  // Remove: the R row alone; the tuple-only fallback still works for unique
+  // sections (e.g. legacy rows never given an id).
+  const removed = removeOfferingFromSchedule(rows, {
+    prefix: 'MUS',
+    number: '001',
+    section: 'A',
+    id: 'mus-r',
+  })
+  assert.deepEqual(
+    removed.map((o) => o.id),
+    ['mus-mw'],
+  )
+  assert.deepEqual(removeOfferingFromSchedule([rows[0]], { prefix: 'MUS', number: '001', section: 'A' }), [])
+})
+
+test('parseCsv assigns distinct ids to split-meeting and duplicate rows, deterministically', () => {
+  const csv = [
+    'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times',
+    'MUS,001,A,Smith,,MW,16:00-16:50',
+    'MUS,001,A,Smith,,R,16:10-17:00',
+    'MUS,001,A,Smith,,MW,16:00-16:50',
+    'CS,101,A,Wahl,,MWF,9:20-10:30',
+  ].join('\n')
+  const rows = parseCsv(csv)
+  assert.equal(new Set(rows.map((r) => r.id)).size, 4, 'split meetings and exact dupes each get a unique id')
+  assert.notEqual(rows[0].id, rows[1].id, 'split-meeting rows differ')
+  assert.notEqual(rows[0].id, rows[2].id, 'identical duplicate rows differ')
+  // Deterministic: re-parsing the same file yields the same ids.
+  assert.deepEqual(
+    parseCsv(csv).map((r) => r.id),
+    rows.map((r) => r.id),
+  )
+})
+
+test('assignOfferingIds fills only missing ids and never rewrites existing ones', () => {
+  const rows = [
+    { prefix: 'MUS', number: '001', section: 'A', days: 'MW', time: '16:00-16:50' },
+    { prefix: 'MUS', number: '001', section: 'A', id: 'keep-me', days: 'R', time: '16:10-17:00' },
+  ]
+  assignOfferingIds(rows)
+  assert.equal(rows[1].id, 'keep-me')
+  assert.ok(rows[0].id && rows[0].id !== 'keep-me')
 })
 
 test('buildIndex tags each item with its schedule id', () => {

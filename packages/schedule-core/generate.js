@@ -7,7 +7,7 @@
 // CSV-parsed ones. Generation assigns a single lead instructor and no
 // secondary instructors.
 
-import { WEEKDAYS, termConfig, termSlotOptions } from './schedule.js'
+import { WEEKDAYS, termConfig, termSlotOptions, offeringIdFor } from './schedule.js'
 
 // Small deterministic PRNG (mulberry32) so generation is reproducible per seed.
 export function mulberry32(seed) {
@@ -178,6 +178,13 @@ export function makeSchedule(mode, prefix, facultyByPrefix, eligible, seed, term
         secondaryInstructors: [],
         days: labelFor(sk),
         time,
+        id: offeringIdFor({
+          prefix: o.prefix,
+          number: o.number,
+          section: o.section,
+          days: labelFor(sk),
+          time,
+        }),
       }
     })
 }

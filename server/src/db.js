@@ -13,6 +13,7 @@ import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { Umzug } from 'umzug'
 import { suggestionStatus } from '@major-vis/schedule-core/diff'
+import { assignOfferingIds } from '@major-vis/schedule-core'
 
 /** @typedef {import('node:sqlite').DatabaseSync} DB */
 
@@ -424,7 +425,11 @@ export function deleteSchedule(db, id) {
  */
 export function setTermOfferings(db, scheduleId, term, offerings) {
   return transaction(db, (d) => {
-    const payload = JSON.stringify(offerings || [])
+    // Fill missing content ids (legacy/registrar-feed rows) so a suggestion's
+    // update ops always target the exact meeting row — split-meeting rows
+    // (two rows sharing a section) would otherwise be indistinguishable.
+    const rows = assignOfferingIds([...(offerings || [])])
+    const payload = JSON.stringify(rows)
     const existing = /** @type {{ version: number } | undefined} */ (
       d.prepare('SELECT version FROM schedule_terms WHERE schedule_id = ? AND term = ?').get(scheduleId, term)
     )
@@ -436,7 +441,7 @@ export function setTermOfferings(db, scheduleId, term, offerings) {
     d.prepare(`UPDATE schedules SET version = version + 1, updated_at = datetime('now') WHERE id = ?`).run(
       scheduleId,
     )
-    return { schedule_id: scheduleId, term, version, offerings: offerings || [] }
+    return { schedule_id: scheduleId, term, version, offerings: rows }
   })
 }
 

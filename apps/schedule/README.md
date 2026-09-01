@@ -29,14 +29,19 @@ Spring), each a separate `offerings` collection; the app edits one term at a tim
 part.
 
 An **offering** record:
-`{ prefix, number, section, instructor, secondaryInstructors, days, time }`
+`{ id, prefix, number, section, instructor, secondaryInstructors, days, time }`
 (`days` ⊆ `MTWRF`, `time` = `"HH:MM-HH:MM"`). `instructor` is the single
 **lead** instructor (0-or-1); `secondaryInstructors` is an array of 0-or-more
 **other** instructors (e.g. the registrar's comma-separated `secondary_instr`
 column). Blank `days`/`time` mark an **unscheduled** offering (independent
 studies) — present in the schedule but excluded from the calendar/conflicts.
 This is the same shape `parseCsv`/`makeSchedule` produce, so it maps directly
-to registrar-style data feeds. Domain logic lives in `@major-vis/schedule-core`.
+to registrar-style data feeds. Each row carries a stable content **`id`**, so
+a section that appears as two rows with different meeting bands (split
+meetings, e.g. MUS 001 A on MW and R at two custom times) keeps them as
+distinct, independently editable offerings — edit/drag/undo on one never
+touches its sibling, and history/suggestion diffs never invent cross-row
+changes. Domain logic lives in `@major-vis/schedule-core`.
 
 **Lab sections** are flagged offerings of a parent lecture: `lab: true`
 (with `number` already the parent's, e.g. `'166'`) and a 1-based `labSeq`

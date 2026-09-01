@@ -322,6 +322,7 @@ export default {
         prefix: o.prefix,
         number: o.number,
         section: o.section,
+        id: o.id,
       })
       if (!created) return
       labAdded.value = created
@@ -520,7 +521,7 @@ export default {
       }
       updateOffering(
         props.scheduleId,
-        { prefix: o.prefix, number: o.number, section: o.section, lab: o.lab, labSeq: o.labSeq },
+        { prefix: o.prefix, number: o.number, section: o.section, lab: o.lab, labSeq: o.labSeq, id: o.id },
         {
           instructor: instructorSel.value,
           secondaryInstructors: [...secondaryNames.value],
@@ -539,6 +540,7 @@ export default {
         section: o.section,
         lab: o.lab,
         labSeq: o.labSeq,
+        id: o.id,
       })
       emit('close')
     }
