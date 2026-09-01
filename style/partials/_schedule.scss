@@ -451,7 +451,11 @@
   background: var(--accent);
   box-shadow: var(--shadow-pop);
 } /* Drop zones that accept a dragged course in edit mode. Sits above (behind) no
-   block bands, so it never overlaps a rendered course block. */
+   block bands, so it never overlaps a rendered course block. They stay inert
+   (plain cursor, no highlight) until a course is actually being dragged, when
+   the tinted highlight marks them as drop targets. (The browser owns the
+   cursor itself during a drag — dropEffect decides its look — so no cursor
+   rule can apply here.) */
 
 .cal-dropzone {
   position: absolute;
@@ -461,13 +465,13 @@
   border-radius: var(--radius-sm);
   border: 1px dashed transparent;
   background: transparent;
-  cursor: copy;
+  cursor: default;
   transition:
     background 0.15s,
     border-color 0.15s;
 }
-.cal-dropzone:hover,
-.cal-dropzone.over {
+.drag-in-progress .cal-dropzone:hover,
+.drag-in-progress .cal-dropzone.over {
   background: var(--accent-12);
   border-color: var(--primary);
 }

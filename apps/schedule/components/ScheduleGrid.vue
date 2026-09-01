@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :class="{ 'drag-in-progress': dragging }">
     <WeeklyCalendar :on-day-click="goScheduleDay" :striped="filter.active" :range="dayRange">
       <template #daycol="{ day }">
         <div
@@ -302,7 +302,7 @@ export default {
 
     // A course belonging to the schedule being edited is draggable.
     const editingId = editingScheduleId
-    const { dragOver, isEditable, onDragStart, zoneOver, zoneLeave, zoneDrop } = useScheduleDrag(
+    const { dragOver, dragging, isEditable, onDragStart, zoneOver, zoneLeave, zoneDrop } = useScheduleDrag(
       editingScheduleId,
       moveOffering,
     )
@@ -348,6 +348,7 @@ export default {
       isEditable,
       editingId,
       dragOver,
+      dragging,
       dayGroup,
       onDragStart,
       zoneOver,
