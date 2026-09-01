@@ -116,6 +116,21 @@ else was being edited the editor closes itself and drops the user back onto
 the grid. Removing a lecture removes its labs; renaming a lecture's letter
 renames its labs' to match.
 
+**Undo & history**: every edit made in a session (add, remove, lab, move,
+field changes, and bulk replaces) is recorded in a per-session undo buffer.
+The edit bar's **History** button opens a transcript — newest first, each row
+reading like a suggestion change ("add CS 220 A", "CS 101 A: instructor set
+to Wahl") — with **Undo to here** per row, plus **Undo** / **Redo** /
+**Undo all** in the footer. **Ctrl/Cmd+Z** (with Shift for redo) works while
+the session is active, except when a text field has focus (that stays
+browser-native text undo). The buffer is in-memory and session-scoped: it
+clears on **Done**, on switching schedules, or on reload — the edits
+themselves stay applied and persisted, only the ability to unwind them is
+lost. Suggestion review actions (approve/reject/withdraw) are not undoable.
+While a session is active the schedule manager also disables new-schedule
+actions (New schedule / Generate / Import CSV / Duplicate), so an edit in
+progress is never disturbed by a concurrent create.
+
 ## Suggested changes (remote, and mirrored offline)
 
 When the app is served by the backend (`server/`), `initScheduleCollection`

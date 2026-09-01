@@ -131,6 +131,13 @@
         >Click a course's edit icon to change its settings, or drag it onto a time slot to move it.</span
       >
       <button
+        class="filter-btn schedule-history-btn"
+        :class="{ active: showHistory }"
+        @click="showHistory = true"
+      >
+        History{{ historyEntries.length ? ` (${historyEntries.length})` : '' }}
+      </button>
+      <button
         v-if="editingRole === 'suggest'"
         class="filter-btn schedule-suggestions-btn"
         :class="{ active: showSuggestions }"
@@ -201,6 +208,7 @@
     :schedule-id="suggestionsScheduleId"
     @close="showSuggestions = false"
   />
+  <ScheduleHistory :is-open="showHistory" @close="showHistory = false" />
 </template>
 
 <script>
@@ -237,6 +245,11 @@ import {
   setBlockMode,
   courseEditTarget,
   closeCourseEdit,
+  historyEntries,
+  canUndo,
+  canRedo,
+  undo,
+  redo,
 } from '../src/scheduleStore.js'
 import { TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
 import ScheduleGrid from './ScheduleGrid.vue'
@@ -250,8 +263,9 @@ import ScheduleFilters from './ScheduleFilters.vue'
 import ScheduleManage from './ScheduleManage.vue'
 import ScheduleAddCourse from './ScheduleAddCourse.vue'
 import SuggestedChanges from './SuggestedChanges.vue'
+import ScheduleHistory from './ScheduleHistory.vue'
 
-import { computed, ref } from 'vue'
+import { computed, ref, onBeforeUnmount } from 'vue'
 
 export default {
   name: 'ScheduleApp',
@@ -267,6 +281,7 @@ export default {
     ScheduleManage,
     ScheduleAddCourse,
     SuggestedChanges,
+    ScheduleHistory,
   },
   setup() {
     const route = useRoute()
@@ -321,6 +336,7 @@ export default {
     const showSchedules = ref(false)
     const showAddCourse = ref(false)
     const showSuggestions = ref(false)
+    const showHistory = ref(false)
 
     // The schedule the suggestions panel acts on: the one being edited, else the
     // first selected schedule.
@@ -359,6 +375,22 @@ export default {
       }
     }
 
+    // Global undo/redo while a session is active (Ctrl/Cmd+Z, +Shift for redo).
+    // An editable field that has focus keeps the shortcut — that's browser
+    // native text undo, not a session undo.
+    const onGlobalKeydown = (e) => {
+      const t = e.target
+      if (!t) return
+      const tag = t.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable) return
+      if (e.defaultPrevented) return
+      if (!(e.metaKey || e.ctrlKey) || String(e.key).toLowerCase() !== 'z') return
+      if (e.shiftKey) redo()
+      else undo()
+    }
+    document.addEventListener('keydown', onGlobalKeydown)
+    onBeforeUnmount(() => document.removeEventListener('keydown', onGlobalKeydown))
+
     return {
       view,
       sortedCourses,
@@ -381,6 +413,7 @@ export default {
       showSchedules,
       showAddCourse,
       showSuggestions,
+      showHistory,
       suggestionsScheduleId,
       editingId,
       editingRole,
@@ -401,6 +434,9 @@ export default {
       TERM_LABELS,
       courseEditTarget,
       closeCourseEdit,
+      historyEntries,
+      canUndo,
+      canRedo,
       goScheduleGrid,
       goScheduleCourse,
       goScheduleInstructor,

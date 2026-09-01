@@ -1389,6 +1389,46 @@
   white-space: pre-wrap;
 }
 
+/* Session history panel (per-session undo/redo transcript) */
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.history-row {
+  @include flex-row;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.history-row.undone {
+  opacity: 0.55;
+}
+.history-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13.5px;
+  color: var(--text);
+}
+.history-undone {
+  @include text-caption;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.history-undo-btn {
+  font-size: var(--font-xs);
+  padding: 2px var(--space-2);
+  white-space: nowrap;
+}
+.history-controls {
+  margin-top: var(--space-3);
+}
+
 /* Remote sign-in (compact cluster in the top-nav corner) */
 
 .schedule-auth-cluster {

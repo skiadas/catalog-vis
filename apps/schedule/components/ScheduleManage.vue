@@ -112,7 +112,8 @@
             <button
               class="schedule-manage-icon"
               :aria-label="'Duplicate ' + s.name"
-              :title="'Duplicate ' + s.name"
+              :title="editing ? 'Finish editing before duplicating' : 'Duplicate ' + s.name"
+              :disabled="editing"
               @click="duplicateAndEdit(s.id)"
             >
               <svg
@@ -158,7 +159,14 @@
         <div v-if="filteredSchedules.length === 0" class="schedule-manage-empty">
           No schedules match "{{ manageQuery }}".
         </div>
-        <button class="filter-btn primary" @click="openCreate">＋ New schedule</button>
+        <button
+          class="filter-btn primary"
+          :disabled="editing"
+          :title="editing ? 'Finish editing before creating a new schedule' : ''"
+          @click="openCreate"
+        >
+          ＋ New schedule
+        </button>
       </div>
     </div>
   </div>
@@ -236,8 +244,15 @@
         </div>
         <p v-if="csvError" class="schedule-create-error">{{ csvError }}</p>
         <div class="controls">
-          <button class="filter-btn" :disabled="creating" @click="pickCsvFile()">Import CSV…</button>
-          <button class="filter-btn primary" :disabled="creating" @click="doCreate">
+          <button
+            class="filter-btn"
+            :disabled="creating || editing"
+            :title="editing ? 'Finish editing before importing' : ''"
+            @click="pickCsvFile()"
+          >
+            Import CSV…
+          </button>
+          <button class="filter-btn primary" :disabled="creating || editing" @click="doCreate">
             {{ creating ? 'Creating…' : csvRows ? 'Import' : 'Generate' }}
           </button>
         </div>
@@ -287,6 +302,9 @@ export default {
   setup(props, { emit }) {
     const manageQuery = ref('')
     const menuFor = ref(null)
+    // New-schedule / duplicate / import actions stay off while a session is
+    // active, so an edit in progress is never disturbed by a concurrent create.
+    const editing = computed(() => Boolean(editingScheduleId.value))
     const filteredSchedules = computed(() => {
       const q = manageQuery.value.trim().toLowerCase()
       if (!q) return schedules.value
@@ -308,6 +326,7 @@ export default {
       return Array.from(set).sort()
     })
     const openCreate = () => {
+      if (editing.value) return
       showCreate.value = true
       createError.value = ''
       csvError.value = ''
@@ -426,6 +445,7 @@ export default {
       close,
       manageQuery,
       filteredSchedules,
+      editing,
       showCreate,
       creating,
       createError,

@@ -21,10 +21,17 @@ import {
   addOfferingToSchedule,
   removeOfferingFromSchedule,
   TERM_KEYS,
+  TERM_LABELS,
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
 import { programs, allCourses } from '@major-vis/catalog-client'
-import { diffOfferings, applyOperations, pureOps, suggestionStatus } from '@major-vis/schedule-core/diff'
+import {
+  diffOfferings,
+  applyOperations,
+  pureOps,
+  suggestionStatus,
+  describeChange,
+} from '@major-vis/schedule-core/diff'
 import * as backend from './backend.js'
 
 import { ref, computed, watch } from 'vue'
@@ -350,6 +357,172 @@ export const editingDraft = computed(() => {
   if (editingRole.value !== 'suggest' || !editingScheduleId.value) return null
   return getDraft(editingScheduleId.value, activeTerm.value)
 })
+
+// ---- Undo / redo history (per active edit session) ----------------------
+
+// The undo/redo stacks of an active editing session, keyed by
+// `${scheduleId}|${term}` (mirroring drafts, so switching the term within a
+// session keeps each term's buffer). Every mutating edit records an entry that
+// snapshots the term's offerings array BEFORE (`before`) and AFTER (`after`)
+// the change plus a human-readable label derived from the diff between them
+// (reusing the suggestion-change description machinery). The stacks reset
+// whenever the session changes (see the watcher below); they are in-memory
+// only, so a reload clears the buffer (applied edits stay persisted — only the
+// ability to unwind them is lost).
+const historyStacks = ref({})
+let historySeq = 0
+
+function historyKey(scheduleId, term) {
+  return `${scheduleId}|${term}`
+}
+
+function clearAllHistory() {
+  historyStacks.value = {}
+  historySeq = 0
+}
+
+// Reset the undo buffer whenever the editing session changes — entering or
+// leaving a session, switching the schedule under edit, or a sign-out/state
+// load that clears the refs. Per-term buffers survive switching the active
+// term within a session, exactly like drafts do. Synced so the buffer is empty
+// the moment a new session starts (before any edit could be recorded).
+watch([editingScheduleId, editingRole], () => clearAllHistory(), { flush: 'sync' })
+
+function ensureHistory(scheduleId, term) {
+  const k = historyKey(scheduleId, term)
+  if (!historyStacks.value[k]) {
+    historyStacks.value = { ...historyStacks.value, [k]: { entries: [], redo: [] } }
+  }
+  return historyStacks.value[k]
+}
+
+function historyLabel(before, after, term) {
+  const ops = diffOfferings(before, after)
+  if (!ops.length) return 'no change'
+  if (ops.length === 1) return describeChange(ops[0])
+  if (ops.length <= 3) return ops.map(describeChange).join(' · ')
+  return `Replaced ${TERM_LABELS[term] || term} offerings (${before.length} → ${after.length})`
+}
+
+// Records one mutation of a term part. Callers invoke it AFTER assigning
+// `part.offerings` and pass the array that was there before the assignment, so
+// the entry captures the exact transition. A new edit clears the redo stack.
+function recordHistory(part, before, scheduleId, term = activeTerm.value) {
+  if (!scheduleId) return
+  const stack = ensureHistory(scheduleId, term)
+  stack.entries.push({
+    seq: ++historySeq,
+    before,
+    after: part.offerings,
+    label: historyLabel(before, part.offerings, term),
+  })
+  stack.redo = []
+  historyStacks.value = { ...historyStacks.value }
+}
+
+// Restores `offerings` onto the session's term part through the same finalize
+// path the mutators use: a suggest session writes the draft (dirty + touched);
+// an edit session bumps the version and mirrors/persists, so undo of a remote
+// term stays consistent with the server.
+function finalizeHistoryWrite(part, draft, scheduleId, term) {
+  if (draft) {
+    part.dirty = true
+    touchDraft()
+    return
+  }
+  part.version = (part.version || 0) + 1
+  schedules.value = [...schedules.value]
+  syncTerm(scheduleId, term)
+  persistSchedules()
+}
+
+// The active session's history stack (or null when none is set up).
+function activeHistoryStack() {
+  const id = editingScheduleId.value
+  if (!id) return null
+  return historyStacks.value[historyKey(id, activeTerm.value)] || null
+}
+
+// Whether the active session has anything to undo / redo.
+export const canUndo = computed(() => Boolean(activeHistoryStack() && activeHistoryStack().entries.length))
+export const canRedo = computed(() => Boolean(activeHistoryStack() && activeHistoryStack().redo.length))
+
+// The session's transcript, newest first, for the history panel. Entries
+// currently on the redo stack render as the session's most recent steps (their
+// edits were undone but are replayable).
+export const historyEntries = computed(() => {
+  const stack = activeHistoryStack()
+  if (!stack) return []
+  const undone = new Set(stack.redo.map((e) => e.seq))
+  const order = {}
+  stack.entries.forEach((e, i) => {
+    order[e.seq] = i
+  })
+  return [...stack.entries, ...stack.redo]
+    .sort((a, b) => b.seq - a.seq)
+    .map((e) => ({
+      key: e.seq,
+      label: e.label,
+      undone: undone.has(e.seq),
+      // The undo-stack index (0 = session start) for still-undoable entries;
+      // -1 for entries already undone (they're redoable, not undoable-here).
+      stackIndex: order[e.seq] != null ? order[e.seq] : -1,
+    }))
+})
+
+// Undoes the active session's most recent edit. Returns the undone entry's
+// label (for a toast/aria) or null when there is nothing to undo or no session.
+export function undo() {
+  return applyHistoryStep('undo')
+}
+
+// Re-applies the most recently undone edit. Returns the entry's label or null.
+export function redo() {
+  return applyHistoryStep('redo')
+}
+
+function applyHistoryStep(mode) {
+  const stack = activeHistoryStack()
+  if (!stack) return null
+  const source = mode === 'undo' ? stack.entries : stack.redo
+  const target = mode === 'undo' ? stack.redo : stack.entries
+  const entry = source.pop()
+  if (!entry) return null
+  const { part, draft } = mutablePart(editingScheduleId.value)
+  if (!part) return null
+  part.offerings = mode === 'undo' ? entry.before : entry.after
+  target.push(entry)
+  historyStacks.value = { ...historyStacks.value }
+  finalizeHistoryWrite(part, draft, editingScheduleId.value, activeTerm.value)
+  return entry.label
+}
+
+// Reverts the session back to the state before entry `index` (0 = the start of
+// the session), unwinding every later edit too. Returns the target entry's
+// label or null when the index is out of range or no session is active.
+export function undoThrough(index) {
+  const stack = activeHistoryStack()
+  if (!stack || index < 0 || index >= stack.entries.length) return null
+  const target = stack.entries[index]
+  const replayed = stack.entries.slice(index)
+  const { part, draft } = mutablePart(editingScheduleId.value)
+  if (!part) return null
+  part.offerings = target.before
+  stack.entries = stack.entries.slice(0, index)
+  // Redo replays from this entry forward: pushed in reverse so the oldest
+  // remaining edit comes off the redo stack first.
+  for (const e of replayed.slice().reverse()) stack.redo.push(e)
+  historyStacks.value = { ...historyStacks.value }
+  finalizeHistoryWrite(part, draft, editingScheduleId.value, activeTerm.value)
+  return target.label
+}
+
+// Unwinds every edit of the active session back to its start.
+export function undoAll() {
+  const stack = activeHistoryStack()
+  if (!stack || !stack.entries.length) return null
+  return undoThrough(0)
+}
 
 // Sets up (or keeps) the draft of a suggest session for `scheduleId`'s term:
 // the base is the published term, with the proposer's own pending operations
@@ -765,14 +938,18 @@ export function setTermOfferings(id, term, offerings) {
   if (!s) return false
   if (isSuggestSessionFor(id)) {
     const { part } = mutablePart(id, term)
+    const before = part.offerings
     part.offerings = [...(offerings || [])]
+    recordHistory(part, before, id, term)
     part.dirty = true
     touchDraft()
     return true
   }
   if (remote.value && !isOwner(s)) return false
   if (!s.terms[term]) s.terms[term] = { offerings: [], version: 0 }
+  const before = s.terms[term].offerings
   s.terms[term].offerings = [...(offerings || [])]
+  recordHistory(s.terms[term], before, id, term)
   s.terms[term].version = (s.terms[term].version || 0) + 1
   schedules.value = [...schedules.value]
   syncTerm(id, term)
@@ -929,7 +1106,9 @@ export function moveOffering(id, prefix, number, section, move, lab = false, lab
     activeTerm.value,
   )
   if (next === part.offerings) return false
+  const before = part.offerings
   part.offerings = next
+  recordHistory(part, before, id)
   if (draft) {
     part.dirty = true
     touchDraft()
@@ -953,7 +1132,12 @@ export function updateOffering(id, cur, changes) {
   if (!part) return false
   const next = updateOfferingInSchedule(part.offerings || [], cur, changes)
   if (next === part.offerings) return false
+  // A save that rewrites nothing (the editor's "Save changes" on an untouched
+  // course) must not bump the version or park a "no change" entry in history.
+  if (diffOfferings(part.offerings || [], next).length === 0) return false
+  const before = part.offerings
   part.offerings = next
+  recordHistory(part, before, id)
   if (draft) {
     part.dirty = true
     touchDraft()
@@ -978,7 +1162,9 @@ export function addCourseToSchedule(id, code) {
   const [prefix, number] = code.split(' ')
   const section = nextSectionLetter(part.offerings || [], prefix, number)
   const offering = { prefix, number, section, instructor: '', secondaryInstructors: [], ...DEFAULT_SLOT }
+  const before = part.offerings
   part.offerings = addOfferingToSchedule(part.offerings || [], offering)
+  recordHistory(part, before, id)
   if (draft) {
     part.dirty = true
     touchDraft()
@@ -1021,7 +1207,9 @@ export function addLabSection(id, cur) {
     days: '',
     time: '',
   }
+  const before = offerings
   part.offerings = addOfferingToSchedule(offerings, lab)
+  recordHistory(part, before, id)
   if (draft) {
     part.dirty = true
     touchDraft()
@@ -1044,7 +1232,9 @@ export function removeCourseFromSchedule(id, cur) {
   if (!part) return false
   const next = removeOfferingFromSchedule(part.offerings || [], cur)
   if (next === part.offerings) return false
+  const before = part.offerings
   part.offerings = next
+  recordHistory(part, before, id)
   if (draft) {
     part.dirty = true
     touchDraft()

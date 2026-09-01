@@ -682,3 +682,187 @@ test('importCsvRows rerunning replaces the touched parts (registrar re-feed)', a
     assert.equal(term.offerings[0].number, '220')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Undo / redo history (per active edit session)
+// ---------------------------------------------------------------------------
+
+test('history: edit-session edits undo step-by-step back to the session start, then redo replays', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Hist', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+    const start = store.viewOfferings(store.scheduleById(id))
+
+    await store.setEditingSchedule(id, 'edit')
+    assert.equal(store.canUndo.value, false, 'a fresh session has nothing to undo')
+
+    store.addCourseToSchedule(id, 'MAT 131')
+    store.updateOffering(id, { prefix: 'CS', number: '101', section: 'A' }, { instructor: 'Wahl' })
+    store.moveOffering(id, 'CS', '101', 'A', { fromDay: 'M', toDay: 'T', group: 'TR', time: '10:00-11:45' })
+    store.removeCourseFromSchedule(id, { prefix: 'MAT', number: '131', section: 'A' })
+
+    assert.equal(store.canUndo.value, true)
+    // Transcript is newest-first and reads like the suggestions panel.
+    assert.match(store.historyEntries.value[0].label, /remove MAT 131 A/)
+    assert.equal(store.historyEntries.value.length, 4)
+
+    // Undo unwinds remove -> move -> instructor -> add, exactly back to start.
+    const states = []
+    for (let i = 0; i < 4; i++) {
+      assert.ok(store.undo())
+      states.push(store.viewOfferings(store.scheduleById(id)).map((o) => o.number))
+    }
+    assert.deepEqual(states, [['101', '131'], ['101', '131'], ['101', '131'], ['101']])
+    assert.deepEqual(store.viewOfferings(store.scheduleById(id)), start, 'session start restored')
+    assert.equal(store.canUndo.value, false)
+    assert.equal(store.canRedo.value, true)
+    assert.ok(store.historyEntries.value.every((e) => e.undone))
+
+    // Redo replays forward from the oldest undone edit.
+    const redoStates = []
+    for (let i = 0; i < 4; i++) {
+      assert.ok(store.redo())
+      redoStates.push(store.viewOfferings(store.scheduleById(id)).map((o) => `${o.number}${o.instructor || ''}`))
+    }
+    assert.deepEqual(redoStates[3], ['101Wahl'], 'redo lands back on the edited state')
+    assert.equal(store.canRedo.value, false)
+
+    // A fresh edit clears the redo stack.
+    store.updateOffering(id, { prefix: 'CS', number: '101', section: 'A' }, { instructor: 'Skiadas' })
+    assert.equal(store.canRedo.value, false)
+  })
+})
+
+test('history: undoAll returns to the session start in one step and replay is redoable', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('HistAll', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+    const start = store.viewOfferings(store.scheduleById(id))
+
+    await store.setEditingSchedule(id, 'edit')
+    store.addCourseToSchedule(id, 'MAT 131')
+    store.updateOffering(id, { prefix: 'CS', number: '101', section: 'A' }, { instructor: 'Wahl' })
+
+    assert.ok(store.undoAll())
+    assert.deepEqual(store.viewOfferings(store.scheduleById(id)), start)
+    assert.equal(store.canUndo.value, false)
+    assert.equal(store.canRedo.value, true)
+    assert.ok(store.redo(), 'replay of the whole session works after undoAll')
+  })
+})
+
+test('history: undoThrough(i) reverts everything after and including entry i', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('HistThru', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+    await store.setEditingSchedule(id, 'edit')
+
+    store.addCourseToSchedule(id, 'MAT 131') // index 0 in the undo stack
+    store.updateOffering(id, { prefix: 'CS', number: '101', section: 'A' }, { instructor: 'Wahl' }) // 1
+    store.removeCourseFromSchedule(id, { prefix: 'MAT', number: '131', section: 'A' }) // 2
+
+    // Undo to before the instructor change: keeps the MAT add, drops the
+    // instructor edit and the remove.
+    assert.ok(store.undoThrough(1))
+    const rows = store.viewOfferings(store.scheduleById(id)).map((o) => `${o.number}${o.instructor || ''}`)
+    assert.deepEqual(rows, ['101', '131'])
+    assert.equal(store.canUndo.value, true, 'older entries stay undoable')
+    assert.equal(store.undoThrough(9), null, 'out-of-range undo is refused')
+    assert.ok(store.undoAll())
+    assert.deepEqual(store.viewOfferings(store.scheduleById(id)).map((o) => o.number), ['101'])
+  })
+})
+
+test('history: suggest-session edits undo through the draft so nothing is proposed', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('SuggHist', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+    assert.equal(store.publishedOfferings(store.scheduleById(id)).length, 1)
+
+    await store.setEditingSchedule(id, 'suggest')
+    store.addCourseToSchedule(id, 'MAT 131')
+    assert.equal(store.viewOfferings(store.scheduleById(id)).length, 2, 'draft stands in for the term')
+    assert.equal(store.draftOperations(id).length, 1)
+    assert.equal(store.publishedOfferings(store.scheduleById(id)).length, 1, 'published term untouched')
+
+    let undone = null
+    undone = store.undo()
+    assert.ok(undone, 'draft edits undo')
+    assert.equal(store.canUndo.value, false, 'nothing left to undo in the draft')
+    assert.equal(store.viewOfferings(store.scheduleById(id)).length, 1, 'draft back to the published base')
+    assert.equal(store.draftOperations(id).length, 0, 'nothing left to propose after undo')
+  })
+})
+
+test('history: no session means undo/redo are no-ops and bulk replaces are undoable in a session', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('BulkHist', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+    const start = store.viewOfferings(store.scheduleById(id))
+
+    assert.equal(store.undo(), null, 'nothing to undo without a session')
+    assert.equal(store.redo(), null, 'nothing to redo without a session')
+    assert.equal(store.canUndo.value, false)
+
+    await store.setEditingSchedule(id, 'edit')
+    store.setTermOfferings(id, 'F', [
+      { prefix: 'CS', number: '220', section: 'A', instructor: 'Wahl', days: 'MWF', time: '9:20-10:30' },
+      { prefix: 'BIO', number: '161', section: 'A', instructor: 'Patterson', days: 'MWF', time: '8:00-9:10' },
+    ])
+    assert.equal(store.viewOfferings(store.scheduleById(id)).length, 2)
+    assert.equal(store.historyEntries.value.length, 1)
+    assert.match(store.historyEntries.value[0].label, /CS 220/)
+    assert.ok(store.undo())
+    assert.deepEqual(store.viewOfferings(store.scheduleById(id)), start, 'bulk replace undoes to the prior part')
+  })
+})
+
+test('history: a no-op save records nothing and does not bump the version', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('NoopHist', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+    await store.setEditingSchedule(id, 'edit')
+    const part = store.scheduleById(id).terms.F
+    const version = part.version
+    const rows = part.offerings
+
+    // Re-saving an untouched course (the editor's no-change "Save changes")
+    // is a no-op: no write, no version bump, no history entry.
+    assert.equal(
+      store.updateOffering(
+        id,
+        { prefix: 'CS', number: '101', section: 'A' },
+        { instructor: '', secondaryInstructors: [], section: 'A', days: 'MWF', time: '8:00-9:10' },
+      ),
+      false,
+    )
+    assert.equal(store.scheduleById(id).terms.F.version, version, 'no version bump')
+    assert.equal(store.scheduleById(id).terms.F.offerings, rows, 'offerings array untouched')
+    assert.equal(store.historyEntries.value.length, 0, 'no "no change" entry in history')
+    assert.equal(store.canUndo.value, false)
+  })
+})

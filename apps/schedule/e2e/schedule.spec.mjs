@@ -157,6 +157,56 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   assertClean(errors)
 })
 
+test('history panel lists session edits; Undo to here reverts and Redo replays', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+  await createSchedule(page, 'History schedule')
+
+  // Enter edit mode.
+  await page.locator('.schedule-pill-edit').first().click()
+  const menu = page.locator('.mode-menu')
+  await menu.waitFor({ state: 'visible', timeout: 5000 })
+  await menu.getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+
+  // A fresh session's History panel is empty.
+  await page.getByRole('button', { name: /History/ }).click()
+  const h = page.locator('.modal[aria-labelledby="history-title"]')
+  await h.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(h.getByText('No changes yet this session.')).toBeVisible()
+  await h.getByRole('button', { name: 'Close' }).click()
+  await h.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Add a course: its editor opens pre-slotted. Saving with no field changes
+// writes nothing, so the add is the session's single history entry.
+await page.getByRole('button', { name: '＋ Add course' }).click()
+  const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
+  await addm.waitFor({ state: 'visible', timeout: 5000 })
+  await addm.getByPlaceholder('Search code or name…').fill('BIO')
+  await addm.locator('.schedule-add-option').first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+
+  await page.getByRole('button', { name: /History/ }).click()
+  await h.waitFor({ state: 'visible', timeout: 5000 })
+  const row = h.locator('.history-row').first()
+  await expect(row).toHaveText(/add/)
+  await expect(h.locator('.history-row')).toHaveCount(1)
+
+  // Undo to here reverts the change (the row flips to "undone"); Redo replays.
+  await row.getByRole('button', { name: 'Undo to here' }).click()
+  await expect(row).toHaveClass(/undone/)
+  await h.getByRole('button', { name: 'Redo' }).click()
+  await expect(row).not.toHaveClass(/undone/)
+
+  await h.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Done' }).click()
+  assertClean(errors)
+})
+
 test('lab sections: add lab from the editor (auto-close), strip lab chip, schedule it, cascade remove', async ({
   page,
 }) => {
