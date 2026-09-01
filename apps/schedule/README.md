@@ -120,8 +120,10 @@ renames its labs' to match.
 field changes, and bulk replaces) is recorded in a per-session undo buffer.
 The edit bar's **History** button opens a transcript — newest first, each row
 reading like a suggestion change ("add CS 220 A", "CS 101 A: instructor set
-to Wahl") — with **Undo to here** per row, plus **Undo** / **Redo** /
-**Undo all** in the footer. **Ctrl/Cmd+Z** (with Shift for redo) works while
+to Wahl"); a bulk replace's row lists every change (a "Show all N changes"
+toggle expands the full list) instead of hiding them behind a count. Each
+row offers **Undo to here**, and the footer has **Undo** / **Redo** /
+**Undo all**. **Ctrl/Cmd+Z** (with Shift for redo) works while
 the session is active, except when a text field has focus (that stays
 browser-native text undo). The buffer is in-memory and session-scoped: it
 clears on **Done**, on switching schedules, or on reload — the edits

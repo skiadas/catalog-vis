@@ -396,25 +396,29 @@ function ensureHistory(scheduleId, term) {
   return historyStacks.value[k]
 }
 
-function historyLabel(before, after, term) {
-  const ops = diffOfferings(before, after)
-  if (!ops.length) return 'no change'
+function historyLabel(ops, term) {
   if (ops.length === 1) return describeChange(ops[0])
   if (ops.length <= 3) return ops.map(describeChange).join(' · ')
-  return `Replaced ${TERM_LABELS[term] || term} offerings (${before.length} → ${after.length})`
+  return `Replaced ${TERM_LABELS[term] || term} offerings (${ops.length} changes)`
 }
 
 // Records one mutation of a term part. Callers invoke it AFTER assigning
 // `part.offerings` and pass the array that was there before the assignment, so
-// the entry captures the exact transition. A new edit clears the redo stack.
+// the entry captures the exact transition. The entry carries the precise
+// before/after diff (every operation, rendered as readable lines), which the
+// history panel shows in full. A new edit clears the redo stack; a write that
+// rewrites nothing records no entry at all.
 function recordHistory(part, before, scheduleId, term = activeTerm.value) {
   if (!scheduleId) return
+  const ops = diffOfferings(before, part.offerings)
+  if (!ops.length) return
   const stack = ensureHistory(scheduleId, term)
   stack.entries.push({
     seq: ++historySeq,
     before,
     after: part.offerings,
-    label: historyLabel(before, part.offerings, term),
+    label: historyLabel(ops, term),
+    lines: ops.map(describeChange),
   })
   stack.redo = []
   historyStacks.value = { ...historyStacks.value }
@@ -463,6 +467,7 @@ export const historyEntries = computed(() => {
     .map((e) => ({
       key: e.seq,
       label: e.label,
+      lines: e.lines || [],
       undone: undone.has(e.seq),
       // The undo-stack index (0 = session start) for still-undoable entries;
       // -1 for entries already undone (they're redoable, not undoable-here).

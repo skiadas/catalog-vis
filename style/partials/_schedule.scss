@@ -1399,7 +1399,7 @@
 }
 .history-row {
   @include flex-row;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
@@ -1409,11 +1409,46 @@
 .history-row.undone {
   opacity: 0.55;
 }
-.history-label {
+.history-main {
   flex: 1 1 auto;
   min-width: 0;
+}
+.history-label {
+  display: block;
   font-size: 13.5px;
   color: var(--text);
+}
+.history-detail-wrap {
+  margin-top: 4px;
+}
+.history-detail {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 2px solid var(--border);
+  padding-left: var(--space-2);
+}
+.history-detail li {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-detail.expanded {
+  max-height: 220px;
+  overflow-y: auto;
+}
+.history-detail.expanded li {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.history-expand {
+  margin-top: 4px;
+  font-size: var(--font-xs);
+  padding: 2px var(--space-2);
 }
 .history-undone {
   @include text-caption;
@@ -1424,6 +1459,7 @@
   font-size: var(--font-xs);
   padding: 2px var(--space-2);
   white-space: nowrap;
+  margin-top: 2px;
 }
 .history-controls {
   margin-top: var(--space-3);

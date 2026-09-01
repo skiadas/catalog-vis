@@ -15,10 +15,24 @@
         <div v-if="!entries.length" class="schedule-manage-empty">No changes yet this session.</div>
         <div v-else class="history-list">
           <div v-for="e in entries" :key="e.key" class="history-row" :class="{ undone: e.undone }">
-            <span class="history-label">{{ e.label }}</span>
-            <span v-if="e.undone" class="history-undone">(undone)</span>
+            <div class="history-main">
+              <span class="history-label">{{ e.label }}</span>
+              <span v-if="e.undone" class="history-undone">(undone)</span>
+              <div v-if="e.lines.length > 3" class="history-detail-wrap">
+                <ul class="history-detail" :class="{ expanded: isExpanded(e.key) }">
+                  <li v-for="(l, i) in shownLines(e)" :key="i">{{ l }}</li>
+                </ul>
+                <button
+                  class="filter-btn history-expand"
+                  @click="toggleExpanded(e.key)"
+                  :aria-expanded="isExpanded(e.key)"
+                >
+                  {{ isExpanded(e.key) ? 'Show less' : 'Show all ' + e.lines.length + ' changes' }}
+                </button>
+              </div>
+            </div>
             <button
-              v-else
+              v-if="!e.undone"
               class="filter-btn history-undo-btn"
               @click="undoThrough(e.stackIndex)"
               :title="'Rewind to before this change' + shortcutHint"
@@ -44,7 +58,8 @@
 <script>
 // "What happened in this session" panel with per-change undo. Mirror of the
 // suggested-changes modal in structure; state all comes from the schedule
-// store's per-session history stacks.
+// store's per-session history stacks. Entries with many changes show the
+// first few ops plus a "Show all" toggle — the full list is always there.
 import {
   historyEntries,
   canUndo,
@@ -58,9 +73,11 @@ import {
 } from '../src/scheduleStore.js'
 import { TERM_LABELS } from '@major-vis/schedule-core'
 
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+// Lines shown before the "Show all" toggle kicks in.
+const PREVIEW_LINES = 8
 
 export default {
   name: 'ScheduleHistory',
@@ -75,10 +92,24 @@ export default {
       return s ? `${s.name} · ${TERM_LABELS[activeTerm.value] || activeTerm.value}` : ''
     })
     const shortcutHint = isMac ? ' (⌘Z)' : ' (Ctrl+Z)'
+    // Which entries show their full change list (keys are undo-stack seq ids,
+    // stable across recomputes, so the toggle survives history churn).
+    const expandedKeys = ref(new Set())
+    const isExpanded = (key) => expandedKeys.value.has(key)
+    const toggleExpanded = (key) => {
+      const next = new Set(expandedKeys.value)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      expandedKeys.value = next
+    }
+    const shownLines = (e) => (isExpanded(e.key) ? e.lines : e.lines.slice(0, PREVIEW_LINES))
     return {
       entries,
       nameLabel,
       shortcutHint,
+      isExpanded,
+      toggleExpanded,
+      shownLines,
       canUndo,
       canRedo,
       undo,

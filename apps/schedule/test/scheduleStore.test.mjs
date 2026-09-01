@@ -832,8 +832,29 @@ test('history: no session means undo/redo are no-ops and bulk replaces are undoa
     assert.equal(store.viewOfferings(store.scheduleById(id)).length, 2)
     assert.equal(store.historyEntries.value.length, 1)
     assert.match(store.historyEntries.value[0].label, /CS 220/)
+    // A bulk replace is a history entry too — with the exact changes listed.
+    assert.equal(store.historyEntries.value[0].lines.length, 3)
+    assert.match(store.historyEntries.value[0].lines[0], /add CS 220/)
     assert.ok(store.undo())
     assert.deepEqual(store.viewOfferings(store.scheduleById(id)), start, 'bulk replace undoes to the prior part')
+
+    // A larger replace (>4 changes) summarizes the header but still carries
+    // every op line, newest-first in the transcript.
+    store.setTermOfferings(id, 'F', [
+      { prefix: 'CS', number: '220', section: 'A', instructor: 'Wahl', days: 'MWF', time: '9:20-10:30' },
+      { prefix: 'BIO', number: '161', section: 'A', instructor: 'Patterson', days: 'MWF', time: '8:00-9:10' },
+      { prefix: 'BIO', number: '101', section: 'A', instructor: 'Doe', days: 'TR', time: '10:00-11:45' },
+      { prefix: 'MAT', number: '120', section: 'A', instructor: 'Xu', days: 'MWF', time: '8:00-9:10' },
+      { prefix: 'ENG', number: '111', section: 'A', instructor: 'Ray', days: 'TR', time: '13:20-14:30' },
+      { prefix: 'CHE', number: '120', section: 'A', instructor: 'Wu', days: 'MWF', time: '12:00-13:10' },
+    ])
+    assert.equal(store.historyEntries.value.length, 1, 'the new edit replaced the redo entry')
+    assert.match(store.historyEntries.value[0].label, /^Replaced Fall offerings \(7 changes\)$/)
+    assert.equal(store.historyEntries.value[0].lines.length, 7)
+    assert.match(store.historyEntries.value[0].lines[0], /add CS 220/)
+    assert.match(store.historyEntries.value[0].lines[6], /remove CS 101/)
+    assert.ok(store.undo())
+    assert.deepEqual(store.viewOfferings(store.scheduleById(id)), start, 'large bulk replace undoes too')
   })
 })
 
