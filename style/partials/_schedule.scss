@@ -45,7 +45,7 @@
 }
 .do-inst {
   font-weight: var(--weight-medium);
-  font-size: var(--font-2xs);
+  font-size: var(--font-xs);
   opacity: 0.9;
   min-width: 0;
   white-space: nowrap;
@@ -130,7 +130,7 @@
   cursor: grabbing;
 }
 .slot-pill-edit {
-  @include icon-btn(22px);
+  @include icon-btn(24px);
   margin: -2px -4px -2px 0;
   background: var(--overlay-strong);
   color: var(--primary);
@@ -190,8 +190,8 @@
   color: var(--primary);
 }
 .filter-mode .filter-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--primary);
+  border-color: var(--primary);
   color: white;
 }
 
@@ -220,8 +220,8 @@
   border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
 }
 .seg .seg-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--primary);
+  border-color: var(--primary);
   color: white;
 }
 .seg .seg-btn:not(.active):hover {
@@ -451,8 +451,17 @@
     box-shadow 0.15s;
 }
 .cal-block:hover {
-  background: var(--accent);
+  background: var(--primary-80);
+  color: white;
   box-shadow: var(--shadow-pop);
+}
+/* The card/rail hover variants keep their light surfaces and dark text: the
+   open list, a filtered white card, and an off-pattern rail all stay readable
+   instead of repainting to the dark hover. */
+.cal-block.open:hover,
+.cal-block.filtered:hover,
+.cal-block.off-pattern:hover {
+  color: var(--primary);
 } /* Drop zones that accept a dragged course in edit mode. Sits above (behind) no
    block bands, so it never overlaps a rendered course block. They stay inert
    (plain cursor, no highlight) until a course is actually being dragged, when
@@ -666,7 +675,7 @@
   // depts area scrolls. Keep it full size so scroll engages at the right point.
   flex-shrink: 0;
   line-height: 1.15;
-  font-size: var(--font-2xs);
+  font-size: var(--font-xs);
   font-weight: var(--weight-semibold);
   color: var(--text-inverse);
   border-radius: 3px;
@@ -689,8 +698,8 @@
 }
 .filter-offering-edit {
   flex: 0 0 auto;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -809,9 +818,10 @@
 }
 .schedule-edit-name:hover,
 .schedule-edit-name:focus {
-  border-color: var(--border);
-  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: var(--ring);
   outline: none;
+  background: var(--surface);
 } /* Course-edit modal: time-slot picker with per-group day toggles */
 
 .slot-time-groups {
@@ -833,7 +843,7 @@
 }
 .day-chip {
   width: 26px;
-  height: 24px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -874,7 +884,7 @@
 }
 .slot-time-btn {
   padding: 5px 8px;
-  font-size: var(--font-2xs);
+  font-size: var(--font-xs);
   border-radius: var(--radius);
   white-space: nowrap;
   letter-spacing: 0.01em;
@@ -922,18 +932,20 @@
   white-space: nowrap;
 }
 .schedule-pill-hide {
-  @include icon-btn(16px);
+  @include icon-btn(20px);
   font-size: var(--font-xs);
   line-height: var(--leading-none);
   color: var(--text-inverse);
   background: var(--overlay-hover);
+  margin: 0 1px;
 }
 .schedule-pill-edit {
-  @include icon-btn(16px);
+  @include icon-btn(20px);
   font-size: var(--font-xs);
   line-height: var(--leading-none);
   color: var(--text-inverse);
   background: var(--overlay-hover);
+  margin: 0 1px;
 }
 .schedule-pill-edit:hover {
   background: var(--overlay-subtle);
@@ -1216,10 +1228,12 @@
   background: var(--surface);
 }
 .suggested-row.approved {
-  opacity: 0.55;
+  background: var(--success-bg);
+  border-color: color-mix(in srgb, var(--success) 45%, transparent);
 }
 .suggested-row.rejected {
-  opacity: 0.45;
+  background: var(--danger-bg);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
 }
 .suggested-main {
   flex: 1 1 auto;
@@ -1367,7 +1381,7 @@
 }
 .filter-offering.removed {
   text-decoration: line-through;
-  opacity: 0.72;
+  opacity: 0.85;
   filter: saturate(0.5);
 }
 .slot-pill.proposed {
@@ -1376,7 +1390,7 @@
 }
 .slot-pill.removed {
   text-decoration: line-through;
-  opacity: 0.65;
+  opacity: 0.85;
   filter: saturate(0.5);
 }
 
@@ -1414,7 +1428,8 @@
   background: var(--surface);
 }
 .history-row.undone {
-  opacity: 0.55;
+  background: var(--gray-50);
+  border-color: var(--gray-200);
 }
 .history-main {
   flex: 1 1 auto;

@@ -858,6 +858,73 @@ test('colorForDept returns a hex color', () => {
   assert.match(colorForDept('CS'), /^#[0-9a-f]{6}$/i)
 })
 
+// WCAG contrast ratio of a hex color against white (assumes text on an
+// opaque chip). The palettes are rendered with white text as small as 10px,
+// so AA normal-text (4.5:1) is the bar.
+function luminance(hex) {
+  const ch = hex
+    .slice(1)
+    .match(/../g)
+    .map((p) => parseInt(p, 16) / 255)
+    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
+}
+function contrastVsWhite(hex) {
+  return (1.05 / (luminance(hex) + 0.05)).toFixed(2)
+}
+
+test('every department palette color clears WCAG AA against white text', () => {
+  const prefixes = [
+    'AA',
+    'BB',
+    'CC',
+    'DD',
+    'EE',
+    'FF',
+    'GG',
+    'HH',
+    'II',
+    'JJ',
+    'KK',
+    'LL',
+    'MM',
+    'NN',
+    'OO',
+    'PP',
+    'QQ',
+    'RR',
+    'SS',
+    'TT',
+  ]
+  const failures = []
+  for (const p of prefixes) {
+    const hex = colorForDept(p)
+    const ratio = Number(contrastVsWhite(hex))
+    if (ratio < 4.5) failures.push(`${p}: ${hex} = ${ratio}:1`)
+  }
+  assert.deepEqual(failures, [], 'palette entries under 4.5:1 against white')
+})
+
+test('every schedule palette color clears WCAG AA against white text', () => {
+  const failures = []
+  for (let i = 1; i <= 8; i++) {
+    const hex = colorForSchedule(`sch-${i}`)
+    const ratio = Number(contrastVsWhite(hex))
+    if (ratio < 4.5) failures.push(`sch-${i}: ${hex} = ${ratio}:1`)
+  }
+  assert.deepEqual(failures, [], 'schedule palette entries under 4.5:1 against white')
+})
+
+test('instructor palette colors clear WCAG AA against white text', () => {
+  const failures = []
+  for (let i = 1; i <= 20; i++) {
+    const hex = colorForInstructor(`Instructor ${i}`)
+    const ratio = Number(contrastVsWhite(hex))
+    if (ratio < 4.5) failures.push(`Instructor ${i}: ${hex} = ${ratio}:1`)
+  }
+  assert.deepEqual(failures, [], 'instructor palette entries under 4.5:1 against white')
+})
+
 test('instructorsInSchedule / departmentsInSchedule are sorted distinct', () => {
   const index = buildIndex(parseCsv(CSV))
   assert.deepEqual(instructorsInSchedule(index), ['Morgan', 'Patterson', 'Vosmeier'])

@@ -933,28 +933,30 @@ export function instructorChip(o) {
   return { label: hasOthers ? `${label}*` : label, hasOthers }
 }
 
-// Distinct colors assigned deterministically per department.
+// Distinct colors assigned deterministically per department. Every entry keeps
+// a WCAG AA contrast ratio >= 4.5:1 against white so the 10-12px white text
+// rendered on them (calendar rows, filter chips, pills) stays readable.
 const DEPT_PALETTE = [
   '#1b4965',
-  '#e67e22',
+  '#bf360c',
   '#7b2d8b',
   '#00695c',
   '#c62828',
-  '#0288d1',
+  '#01579b',
   '#8e24aa',
   '#2e7d32',
-  '#fb8c00',
+  '#b45309',
   '#5d4037',
   '#d81b60',
   '#3949ab',
-  '#00897b',
+  '#004d40',
   '#6a1b9a',
-  '#ef6c00',
-  '#7cb342',
+  '#9a3412',
+  '#33691e',
   '#4527a0',
   '#ad1457',
   '#1565c0',
-  '#558b2f',
+  '#1b5e20',
 ]
 const DEPT_COLORS = new Map()
 let paletteCursor = 0
@@ -984,9 +986,9 @@ const SCHEDULE_PALETTE = [
   '#d81b60',
   '#1565c0',
   '#2e7d32',
-  '#ef6c00',
+  '#9a3412',
   '#7b1d8b',
-  '#00897b',
+  '#004d40',
   '#3949ab',
   '#c62828',
 ]

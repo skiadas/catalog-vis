@@ -23,6 +23,17 @@
 // family should always track the rest of the UI.
 button {
   font-family: inherit;
+}
+// Respect users who prefer less motion: collapse the app's short transitions.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
 } // ==== Base: typography ====
 // Bare-element type decisions. Component-specific sizes use the --font-* tokens.
 
