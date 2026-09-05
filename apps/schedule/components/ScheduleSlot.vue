@@ -2,11 +2,13 @@
   <div>
     <button class="back-btn" @click="goScheduleDay(day)">← {{ WEEKDAY_NAMES[day] }}</button>
     <div class="detail-header nav-header">
-      <button class="nav-arrow nav-day" title="Previous day" @click="prevDay">⇤</button>
-      <button class="nav-arrow" title="Previous slot" @click="prevSlot">←</button>
+      <button class="nav-arrow nav-day" title="Previous day" aria-label="Previous day" @click="prevDay">
+        ⇤
+      </button>
+      <button class="nav-arrow" title="Previous slot" aria-label="Previous slot" @click="prevSlot">←</button>
       <h2>{{ WEEKDAY_NAMES[day] }} · {{ formatTime(time) }}</h2>
-      <button class="nav-arrow" title="Next slot" @click="nextSlot">→</button>
-      <button class="nav-arrow nav-day" title="Next day" @click="nextDay">⇥</button>
+      <button class="nav-arrow" title="Next slot" aria-label="Next slot" @click="nextSlot">→</button>
+      <button class="nav-arrow nav-day" title="Next day" aria-label="Next day" @click="nextDay">⇥</button>
     </div>
 
     <div class="section-title">Offerings ({{ items.length }})</div>

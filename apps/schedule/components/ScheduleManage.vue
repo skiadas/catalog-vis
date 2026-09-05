@@ -20,6 +20,7 @@
           class="search-input schedule-manage-search"
           type="search"
           placeholder="Search schedules…"
+          aria-label="Search schedules"
           v-model="manageQuery"
         />
         <div class="schedule-manage-list">
@@ -223,7 +224,12 @@
         <div v-else class="field">
           <label>Type</label>
           <div class="schedule-type-options">
-            <button class="filter-btn" :class="{ active: newKind === 'empty' }" @click="newKind = 'empty'">
+            <button
+              class="filter-btn"
+              :class="{ active: newKind === 'empty' }"
+              :aria-pressed="newKind === 'empty'"
+              @click="newKind = 'empty'"
+            >
               Empty
             </button>
             <span class="schedule-type-divider"></span>
@@ -232,11 +238,17 @@
               <button
                 class="filter-btn"
                 :class="{ active: newKind === 'random' }"
+                :aria-pressed="newKind === 'random'"
                 @click="newKind = 'random'"
               >
                 All departments
               </button>
-              <button class="filter-btn" :class="{ active: newKind === 'dept' }" @click="newKind = 'dept'">
+              <button
+                class="filter-btn"
+                :class="{ active: newKind === 'dept' }"
+                :aria-pressed="newKind === 'dept'"
+                @click="newKind = 'dept'"
+              >
                 Single department
               </button>
             </div>

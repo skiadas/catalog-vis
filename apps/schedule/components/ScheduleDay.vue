@@ -1,9 +1,9 @@
 <template>
   <div>
     <div class="detail-header nav-header">
-      <button class="nav-arrow" @click="prevDay">←</button>
+      <button class="nav-arrow" aria-label="Previous day" @click="prevDay">←</button>
       <h2>{{ WEEKDAY_NAMES[day] }}</h2>
-      <button class="nav-arrow" @click="nextDay">→</button>
+      <button class="nav-arrow" aria-label="Next day" @click="nextDay">→</button>
     </div>
     <p class="results-count" v-if="!hasAny">No classes scheduled this day.</p>
 
@@ -16,12 +16,12 @@
       @dragleave="zoneLeave"
       @drop="zoneDrop($event, t)"
     >
-      <div class="day-slot-head" @click="goScheduleSlot(day, t.time)">
+      <button type="button" class="day-slot-head" @click="goScheduleSlot(day, t.time)">
         <span class="day-slot-time">{{ formatTime(t.time) }}</span>
         <span class="day-slot-count"
           >{{ itemsFor(t.time).length }} offering{{ itemsFor(t.time).length !== 1 ? 's' : '' }}</span
         >
-      </div>
+      </button>
       <div class="day-slot-items" v-if="itemsFor(t.time).length">
         <CoursePill
           v-for="it in itemsFor(t.time)"

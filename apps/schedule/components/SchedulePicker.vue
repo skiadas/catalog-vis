@@ -11,7 +11,9 @@
         :class="{ 'menu-open': menuFor === s.id }"
         :style="{ backgroundColor: colorForSchedule(s.id) }"
         :title="'Hide ' + s.name"
+        tabindex="0"
         @click="toggleSchedule(s.id)"
+        @keydown="onKeyActivate($event, () => toggleSchedule(s.id))"
       >
         <span class="schedule-pill-label">{{ s.name }}</span>
         <span class="mode-menu-wrap">
@@ -73,6 +75,7 @@
         class="filter-btn schedule-color-toggle"
         :class="{ active: scheduleColorApplicable && colorSchedules }"
         :disabled="!scheduleColorApplicable"
+        :aria-pressed="scheduleColorApplicable && colorSchedules"
         :title="
           scheduleColorApplicable
             ? selectedScheduleIds.length > 1
@@ -138,6 +141,7 @@ import {
   publishedOfferings,
 } from '../src/scheduleStore.js'
 import { colorForSchedule, compareItems, renderCsv } from '@major-vis/schedule-core'
+import { onKeyActivate } from '../src/keyboardNav.js'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
@@ -267,6 +271,7 @@ export default {
       filterActive,
       colorSchedules,
       setColorSchedules,
+      onKeyActivate,
       downloadSummaryCsv,
       downloadRegistrarCsv,
       toggleSchedule,

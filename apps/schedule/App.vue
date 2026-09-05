@@ -6,7 +6,14 @@
     </div>
     <span class="top-nav-title">Schedule Visualization</span>
     <div class="top-nav-right">
-      <button class="schedule-help-toggle" title="How to use this page" @click="toggleHelp">?</button>
+      <button
+        class="schedule-help-toggle"
+        title="How to use this page"
+        aria-label="How to use this page"
+        @click="toggleHelp"
+      >
+        ?
+      </button>
       <div v-if="offlineMode" class="schedule-auth-cluster">
         <span class="schedule-offline-badge">ⓘ Offline — testing only · work stays in this browser</span>
         <button class="filter-btn" @click="openAuthPrompt()">Go online</button>

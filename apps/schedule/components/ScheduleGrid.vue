@@ -27,8 +27,9 @@
           }"
           :title="b.title"
           :style="b.style"
-          :aria-expanded="isOpen(b.key) ? true : undefined"
+          tabindex="0"
           @click="toggleOpen(b.key)"
+          @keydown="onKeyActivate($event, () => toggleOpen(b.key))"
           @dragover="
             zoneOver($event, {
               key: dayGroup(day) + '|' + b.slot.time,
@@ -51,7 +52,9 @@
                 :class="{ draggable: isEditable(it), proposed: proposalFor(it), removed: removalFor(it) }"
                 :style="{ backgroundColor: rowColor(it) }"
                 :draggable="isEditable(it)"
+                tabindex="0"
                 @click.stop="goScheduleCourse(it.code)"
+                @keydown="onKeyActivate($event, () => goScheduleCourse(it.code))"
                 @dragstart="onDragStart($event, it, day)"
                 :title="itemTitle(it) || (isEditable(it) ? 'Drag to move' : '')"
               >
@@ -136,6 +139,7 @@ import {
 } from '../src/scheduleStore.js'
 import { goScheduleSlot, goScheduleDay, goScheduleCourse } from '../router.js'
 import { useScheduleDrag } from '../scheduleDrag.js'
+import { onKeyActivate } from '../src/keyboardNav.js'
 import WeeklyCalendar from './WeeklyCalendar.vue'
 import NoMeetingStrip from './NoMeetingStrip.vue'
 
@@ -336,6 +340,7 @@ export default {
       shownIndex,
       dayRange,
       blocksInDay,
+      onKeyActivate,
       isOpen,
       toggleOpen,
       rowColor,

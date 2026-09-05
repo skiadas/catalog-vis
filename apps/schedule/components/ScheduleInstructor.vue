@@ -34,15 +34,16 @@
         <div class="section-title">Weekly timetable</div>
         <WeeklyCalendar>
           <template #daycol="{ day }">
-            <div
+            <button
               v-for="b in dayItems(day)"
               :key="b.key"
+              type="button"
               class="cal-block teach"
               :style="b.style"
               @click="goScheduleCourse(b.it.code)"
             >
               <div class="cal-block-count">{{ b.it.code }}{{ b.it.o.section }}</div>
-            </div>
+            </button>
           </template>
         </WeeklyCalendar>
       </div>

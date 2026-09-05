@@ -18,6 +18,11 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+// Buttons don't inherit font by default; the app sets sizes per class but the
+// family should always track the rest of the UI.
+button {
+  font-family: inherit;
 } // ==== Base: typography ====
 // Bare-element type decisions. Component-specific sizes use the --font-* tokens.
 
@@ -158,6 +163,7 @@ body {
   color: var(--text-muted);
 }
 .faculty-link {
+  @include button-reset;
   cursor: pointer;
   color: var(--primary);
   text-decoration: underline dotted;
@@ -198,6 +204,7 @@ body {
   cursor: pointer;
   transition: background var(--duration-fast);
   border: 1px solid transparent;
+  text-align: center;
 }
 .course-chip:hover {
   background: var(--primary);
@@ -240,10 +247,12 @@ body {
   background: var(--primary-light);
 }
 .course-code-cell {
+  @include button-reset;
   font-weight: var(--weight-semibold);
   color: var(--primary);
   cursor: pointer;
   white-space: nowrap;
+  text-align: left;
 }
 .course-code-cell:hover {
   text-decoration: underline;

@@ -3,9 +3,15 @@
     <div class="calendar" :style="calStyle">
       <div class="cal-row cal-header">
         <div class="cal-time-head"></div>
-        <div class="cal-dayhead" v-for="d in WEEKDAYS" :key="d" @click="onDayClick && onDayClick(d)">
+        <button
+          type="button"
+          class="cal-dayhead"
+          v-for="d in WEEKDAYS"
+          :key="d"
+          @click="onDayClick && onDayClick(d)"
+        >
           {{ d }}<span class="day-name">{{ WEEKDAY_NAMES[d] }}</span>
-        </div>
+        </button>
       </div>
 
       <div class="cal-row cal-body">

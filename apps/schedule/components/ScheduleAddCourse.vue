@@ -23,6 +23,7 @@
           class="search-input schedule-add-search"
           type="search"
           placeholder="Search code or name…"
+          aria-label="Search courses"
           v-model="addCourseQuery"
         />
         <div class="schedule-add-list">

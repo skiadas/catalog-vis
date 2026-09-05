@@ -17,16 +17,26 @@
 
         <div class="field-row">
           <div class="field">
-            <label>Instructor</label>
-            <div class="filter-group">
-              <button class="filter-btn" :class="{ active: !showAll }" @click="showAll = false">
+            <label for="course-edit-instructor">Instructor</label>
+            <div class="filter-group" role="group" aria-label="Instructor list">
+              <button
+                class="filter-btn"
+                :class="{ active: !showAll }"
+                :aria-pressed="!showAll"
+                @click="showAll = false"
+              >
                 Department
               </button>
-              <button class="filter-btn" :class="{ active: showAll }" @click="showAll = true">
+              <button
+                class="filter-btn"
+                :class="{ active: showAll }"
+                :aria-pressed="showAll"
+                @click="showAll = true"
+              >
                 All instructors
               </button>
             </div>
-            <select class="search-input" v-model="instructorSel">
+            <select id="course-edit-instructor" class="search-input" v-model="instructorSel">
               <option value="">— No instructor —</option>
               <option v-for="i in instructorOptions" :key="i" :value="i">{{ i }}</option>
             </select>
@@ -74,13 +84,28 @@
         <div class="field">
           <label>Meeting time</label>
           <div class="seg" role="group" aria-label="Meeting time">
-            <button class="seg-btn" :class="{ active: timeMode === 'slot' }" @click="timeMode = 'slot'">
+            <button
+              class="seg-btn"
+              :class="{ active: timeMode === 'slot' }"
+              :aria-pressed="timeMode === 'slot'"
+              @click="timeMode = 'slot'"
+            >
               Time slot
             </button>
-            <button class="seg-btn" :class="{ active: timeMode === 'custom' }" @click="timeMode = 'custom'">
+            <button
+              class="seg-btn"
+              :class="{ active: timeMode === 'custom' }"
+              :aria-pressed="timeMode === 'custom'"
+              @click="timeMode = 'custom'"
+            >
               Custom time
             </button>
-            <button class="seg-btn" :class="{ active: timeMode === 'none' }" @click="timeMode = 'none'">
+            <button
+              class="seg-btn"
+              :class="{ active: timeMode === 'none' }"
+              :aria-pressed="timeMode === 'none'"
+              @click="timeMode = 'none'"
+            >
               No meeting time
             </button>
           </div>
@@ -95,6 +120,7 @@
               <button
                 class="slot-time-group-name"
                 :class="{ active: timeGroupSel === g.label }"
+                :aria-pressed="timeGroupSel === g.label"
                 @click="pickGroup(g.label)"
               >
                 {{ g.label }}
@@ -107,6 +133,7 @@
                   class="day-chip"
                   :class="{ active: daysSel.includes(d), disabled: timeGroupSel !== g.label }"
                   :disabled="timeGroupSel !== g.label"
+                  :aria-pressed="daysSel.includes(d)"
                   @click="timeGroupSel === g.label && toggleDay(d)"
                 >
                   {{ d }}
@@ -132,6 +159,7 @@
                 ref="startTimeEl"
                 class="search-input"
                 type="text"
+                placeholder="e.g. 09:00"
                 :value="customStart"
                 aria-label="Start time"
                 @change="onStartTimeInput"
@@ -141,6 +169,7 @@
                 ref="endTimeEl"
                 class="search-input"
                 type="text"
+                placeholder="e.g. 10:00"
                 :value="customEnd"
                 aria-label="End time"
                 @change="onEndTimeInput"

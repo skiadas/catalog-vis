@@ -4,10 +4,18 @@
 
     <div class="schedule-toolbar">
       <div class="seg" role="group" aria-label="View">
-        <button class="seg-btn" :class="{ active: view === 'grid' }" @click="goScheduleGrid()">Grid</button>
+        <button
+          class="seg-btn"
+          :class="{ active: view === 'grid' }"
+          :aria-pressed="view === 'grid'"
+          @click="goScheduleGrid()"
+        >
+          Grid
+        </button>
         <button
           class="seg-btn"
           :class="{ active: view === 'course' }"
+          :aria-pressed="view === 'course'"
           @click="goScheduleCourse(selectedCode || sortedCourses[0])"
         >
           Course conflicts
@@ -15,6 +23,7 @@
         <button
           class="seg-btn"
           :class="{ active: view === 'instructor' }"
+          :aria-pressed="view === 'instructor'"
           @click="goScheduleInstructor(Object.keys(schedule.byInstructor)[0])"
         >
           Instructor
@@ -27,6 +36,7 @@
           :key="t"
           class="seg-btn"
           :class="{ active: activeTerm === t }"
+          :aria-pressed="activeTerm === t"
           @click="setActiveTerm(t)"
         >
           {{ TERM_LABELS[t] }}
@@ -39,6 +49,7 @@
             <button
               class="seg-btn"
               :class="{ active: blockMode === 'all' }"
+              :aria-pressed="blockMode === 'all'"
               title="Show standard-slot bars and custom rails"
               @click="setBlockMode('all')"
             >
@@ -47,6 +58,7 @@
             <button
               class="seg-btn"
               :class="{ active: blockMode === 'normal' }"
+              :aria-pressed="blockMode === 'normal'"
               title="Show standard-slot blocks only"
               @click="setBlockMode('normal')"
             >
@@ -55,6 +67,7 @@
             <button
               class="seg-btn"
               :class="{ active: blockMode === 'custom' }"
+              :aria-pressed="blockMode === 'custom'"
               title="Show off-slot custom blocks only"
               @click="setBlockMode('custom')"
             >
@@ -67,6 +80,7 @@
             <button
               class="seg-btn"
               :class="{ active: filterMode === 'dept' && filterPanelOpen }"
+              :aria-pressed="filterMode === 'dept'"
               @click="pickFilter('dept')"
             >
               Departments<span v-if="deptFilterCount" class="filter-count">({{ deptFilterCount }})</span>
@@ -74,6 +88,7 @@
             <button
               class="seg-btn"
               :class="{ active: filterMode === 'instructor' && filterPanelOpen }"
+              :aria-pressed="filterMode === 'instructor'"
               @click="pickFilter('instructor')"
             >
               Instructors<span v-if="instructorFilterCount" class="filter-count"
@@ -92,6 +107,7 @@
             v-if="pendingSuggestionsForTerm.length"
             class="filter-btn schedule-proposals-toggle"
             :class="{ active: showPendingSuggestions }"
+            :aria-pressed="showPendingSuggestions"
             @click="setShowPendingSuggestions(!showPendingSuggestions)"
           >
             Show proposals
@@ -133,6 +149,7 @@
       <button
         class="filter-btn schedule-history-btn"
         :class="{ active: showHistory }"
+        :aria-pressed="showHistory"
         @click="showHistory = true"
       >
         History{{ historyEntries.length ? ` (${historyEntries.length})` : '' }}
@@ -141,6 +158,7 @@
         v-if="editingRole === 'suggest'"
         class="filter-btn schedule-suggestions-btn"
         :class="{ active: showSuggestions }"
+        :aria-pressed="showSuggestions"
         @click="showSuggestions = true"
       >
         {{ editingDraft && editingDraft.dirty ? 'Propose changes ●' : 'Propose changes' }}
@@ -167,7 +185,9 @@
             :key="code"
             class="course-picker-option"
             :class="{ active: code === selectedCode }"
+            :aria-current="code === selectedCode ? 'true' : undefined"
             @mousedown.prevent="pickCourse(code)"
+            @click="pickCourse(code)"
           >
             <span class="planner-pick-code">{{ code }}</span>
             <span class="planner-pick-name">{{ courseName(code) }}</span>

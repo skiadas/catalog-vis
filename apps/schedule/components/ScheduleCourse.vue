@@ -19,7 +19,9 @@
             Instructor:
             <template v-for="(n, i) in s.instructors" :key="n"
               ><span v-if="i" class="sep">, </span
-              ><span class="faculty-link" @click="goScheduleInstructor(n)">{{ n }}</span></template
+              ><button type="button" class="faculty-link" @click="goScheduleInstructor(n)">
+                {{ n }}
+              </button></template
             ><span v-if="!s.instructors.length">—</span>
           </div>
         </div>
@@ -40,17 +42,19 @@
           <tbody>
             <tr v-for="c in conflicts" :key="c">
               <td>
-                <span class="course-code-cell" @click="goScheduleCourse(c)">{{ c }}</span>
+                <button type="button" class="course-code-cell" @click="goScheduleCourse(c)">{{ c }}</button>
                 <span class="conflict-course-name">{{ nameFor(c) }}</span>
               </td>
               <td>
-                <span
+                <button
                   v-for="sec in schedule.byCourse[c]"
                   :key="sec.o.days + sec.o.time"
+                  type="button"
                   class="course-chip mini"
                   @click="goScheduleSlot(sec.days[0], sec.o.time)"
-                  >{{ sec.o.days }} {{ sec.o.time }}</span
                 >
+                  {{ sec.o.days }} {{ sec.o.time }}
+                </button>
               </td>
             </tr>
           </tbody>

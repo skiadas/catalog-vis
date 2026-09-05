@@ -305,8 +305,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
   padding: var(--space-3) var(--space-4);
   background: var(--primary-light);
+  border: none;
   cursor: pointer;
   transition: background var(--duration-fast);
 }
@@ -378,6 +380,7 @@
   color: var(--primary);
   background: var(--primary-light);
   cursor: pointer;
+  border: none;
   border-left: 1px solid var(--border);
   transition: background var(--duration-fast);
 }
