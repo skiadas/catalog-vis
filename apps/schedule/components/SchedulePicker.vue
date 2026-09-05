@@ -93,10 +93,11 @@
           :class="{ active: csvOpen }"
           title="Schedule CSV actions"
           @click="csvOpen = !csvOpen"
+          @keydown.esc="closeCsv()"
         >
           CSV <span class="schedule-csv-caret">▾</span>
         </button>
-        <div v-if="csvOpen" class="csv-menu">
+        <div v-if="csvOpen" class="csv-menu" @keydown.esc="closeCsv()">
           <button
             class="csv-menu-item"
             :disabled="!visibleSchedules.length"

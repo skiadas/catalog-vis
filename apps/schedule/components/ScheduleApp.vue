@@ -150,7 +150,7 @@
 
     <div class="course-picker" v-if="view === 'course'">
       <label for="schedule-course-search">Course:</label>
-      <div class="course-picker-wrap">
+      <div class="course-picker-wrap" ref="coursePickerEl">
         <input
           id="schedule-course-search"
           class="search-input"
@@ -158,7 +158,8 @@
           placeholder="Search code or name…"
           v-model="courseQuery"
           @focus="courseOpen = true"
-          @blur="courseOpen = false"
+          @blur="onCourseBlur"
+          @keydown.esc="courseOpen = false"
         />
         <div v-if="courseOpen" class="course-picker-dropdown">
           <button
@@ -310,9 +311,17 @@ export default {
       else selectedInstructors.value = []
     }
 
-    // Course picker — the "course conflicts" dropdown.
+    // Course picker — the "course conflicts" dropdown. It stays open while
+    // focus moves into the option list (blur only closes when focus leaves the
+    // whole picker), so keyboard users can Tab into the results.
     const courseQuery = ref('')
     const courseOpen = ref(false)
+    const coursePickerEl = ref(null)
+    const onCourseBlur = (e) => {
+      const next = e.relatedTarget
+      if (next && coursePickerEl.value && coursePickerEl.value.contains(next)) return
+      courseOpen.value = false
+    }
     const courseResults = computed(() => {
       const q = courseQuery.value.trim().toLowerCase()
       const qn = q.replace(/\s+/g, '')
@@ -404,6 +413,8 @@ export default {
       clearActiveFilters,
       courseQuery,
       courseOpen,
+      coursePickerEl,
+      onCourseBlur,
       courseResults,
       courseName,
       pickCourse,

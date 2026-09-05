@@ -1,6 +1,12 @@
 <template>
   <div v-if="props.isOpen" class="modal-overlay" @click.self="close">
-    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="schedule-add-course-title">
+    <div
+      ref="modalEl"
+      class="modal modal-wide"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="schedule-add-course-title"
+    >
       <div class="modal-head">
         <h3 id="schedule-add-course-title">Add a course to {{ editingName }}</h3>
         <button class="modal-close" @click="close" aria-label="Close">×</button>
@@ -50,6 +56,7 @@ import {
 } from '../src/scheduleStore.js'
 import { allCourses, courseName } from '@major-vis/catalog-client'
 import { compareCodes } from '@major-vis/schedule-core'
+import { useModalFocus } from '../src/modalFocus.js'
 
 import { ref, computed } from 'vue'
 
@@ -77,6 +84,8 @@ export default {
     const editingName = computed(() => (editingSchedule.value ? editingSchedule.value.name : ''))
 
     const close = () => emit('close')
+    const modalEl = ref(null)
+    useModalFocus(() => props.isOpen, modalEl, close)
     // Adds the picked catalog course to the edited schedule on its default slot,
     // then opens its course editor for further customization.
     const addCourse = (code) => {
@@ -89,6 +98,7 @@ export default {
     return {
       props,
       close,
+      modalEl,
       editingName,
       editingRole,
       addCourseQuery,

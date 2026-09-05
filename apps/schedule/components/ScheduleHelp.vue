@@ -1,6 +1,6 @@
 <template>
   <div v-if="props.isOpen" class="modal-overlay" @click.self="close">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-help-title">
+    <div ref="modalEl" class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-help-title">
       <div class="modal-head">
         <h3 id="schedule-help-title">Using the Schedule page</h3>
         <button class="modal-close" @click="close" aria-label="Close">×</button>
@@ -62,6 +62,10 @@
 <script>
 // "How to use this page" help modal. Visibility via the `isOpen` prop.
 
+import { useModalFocus } from '../src/modalFocus.js'
+
+import { ref } from 'vue'
+
 export default {
   name: 'ScheduleHelp',
   props: {
@@ -69,9 +73,13 @@ export default {
   },
   emits: ['close'],
   setup(props, { emit }) {
+    const close = () => emit('close')
+    const modalEl = ref(null)
+    useModalFocus(() => props.isOpen, modalEl, close)
     return {
       props,
-      close: () => emit('close'),
+      close,
+      modalEl,
     }
   },
 }

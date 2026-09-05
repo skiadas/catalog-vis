@@ -1,6 +1,6 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="course-edit-title">
+    <div ref="modalEl" class="modal" role="dialog" aria-modal="true" aria-labelledby="course-edit-title">
       <div class="modal-head">
         <h3 id="course-edit-title">Edit {{ offering.code }}<span v-if="isLab" class="lab-chip">LAB</span></h3>
         <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
@@ -228,6 +228,7 @@ import {
   publishedPart,
 } from '../src/scheduleStore.js'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
+import { useModalFocus } from '../src/modalFocus.js'
 import AirDatepicker from 'air-datepicker'
 import 'air-datepicker/air-datepicker.css'
 
@@ -245,6 +246,11 @@ export default {
   emits: ['close'],
   setup(props, { emit }) {
     const o = props.offering.o
+
+    // The editor only exists while it's open (the parent gates it), so its
+    // focus trap is always active for its lifetime.
+    const modalEl = ref(null)
+    useModalFocus(ref(true), modalEl, () => emit('close'))
 
     const schedule = computed(() => scheduleById(props.scheduleId))
 
@@ -548,6 +554,7 @@ export default {
     return {
       schedule,
       showAll,
+      modalEl,
       instructorOptions,
       instructorSel,
       secondaryText,

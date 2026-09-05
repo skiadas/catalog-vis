@@ -1,6 +1,6 @@
 <template>
   <div v-if="authPromptOpen" class="modal-overlay" @click.self="dismiss">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-auth-title">
+    <div ref="modalEl" class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-auth-title">
       <div class="modal-head">
         <h3 id="schedule-auth-title">{{ offlineMode ? 'Go online?' : 'Sign in or work offline' }}</h3>
         <button class="modal-close" @click="dismiss" aria-label="Close">×</button>
@@ -55,6 +55,7 @@ import {
   resumeOnline,
   closeAuthPrompt,
 } from '../src/scheduleStore.js'
+import { useModalFocus } from '../src/modalFocus.js'
 
 import { ref } from 'vue'
 
@@ -64,6 +65,7 @@ export default {
     const usernameDraft = ref('')
     const authError = ref('')
     const showForm = ref(false)
+    const modalEl = ref(null)
 
     // "Sign in": leave offline mode if needed and check for a session. With a
     // live session the dialog closes; otherwise the username form appears.
@@ -89,7 +91,9 @@ export default {
       authError.value = ''
       showForm.value = false
     }
+    useModalFocus(authPromptOpen, modalEl, dismiss)
     return {
+      modalEl,
       offlineMode,
       authPromptOpen,
       usernameDraft,

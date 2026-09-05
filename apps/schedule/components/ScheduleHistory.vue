@@ -1,6 +1,12 @@
 <template>
-  <div v-if="isOpen" class="modal-overlay" @click.self="$emit('close')" @keydown.esc="$emit('close')">
-    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="history-title">
+  <div v-if="isOpen" class="modal-overlay" @click.self="$emit('close')">
+    <div
+      ref="modalEl"
+      class="modal modal-wide"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="history-title"
+    >
       <div class="modal-head">
         <h3 id="history-title">History — {{ nameLabel }}</h3>
         <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
@@ -72,6 +78,7 @@ import {
   activeTerm,
 } from '../src/scheduleStore.js'
 import { TERM_LABELS } from '@major-vis/schedule-core'
+import { useModalFocus } from '../src/modalFocus.js'
 
 import { computed, ref } from 'vue'
 
@@ -85,7 +92,10 @@ export default {
     isOpen: { type: Boolean, default: false },
   },
   emits: ['close'],
-  setup(props) {
+  setup(props, { emit }) {
+    const modalEl = ref(null)
+    const close = () => emit('close')
+    useModalFocus(() => props.isOpen, modalEl, close)
     const entries = computed(() => (props.isOpen ? historyEntries.value : []))
     const nameLabel = computed(() => {
       const s = editingSchedule.value
@@ -105,6 +115,7 @@ export default {
     const shownLines = (e) => (isExpanded(e.key) ? e.lines : e.lines.slice(0, PREVIEW_LINES))
     return {
       entries,
+      modalEl,
       nameLabel,
       shortcutHint,
       isExpanded,

@@ -1,6 +1,12 @@
 <template>
   <div v-if="props.isOpen" class="modal-overlay" @click.self="close">
-    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="schedule-manage-title">
+    <div
+      ref="manageEl"
+      class="modal modal-wide"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="schedule-manage-title"
+    >
       <div class="modal-head">
         <h3 id="schedule-manage-title">Your schedules</h3>
         <button class="modal-close" @click="close" aria-label="Close">×</button>
@@ -172,7 +178,7 @@
   </div>
 
   <div v-if="showCreate" class="modal-overlay" @click.self="showCreate = false">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-create-title">
+    <div ref="createEl" class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-create-title">
       <div class="modal-head">
         <h3 id="schedule-create-title">New schedule</h3>
         <button class="modal-close" @click="showCreate = false" aria-label="Close">×</button>
@@ -288,6 +294,7 @@ import {
 } from '../src/scheduleStore.js'
 import { allCourses } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS, parseCsv } from '@major-vis/schedule-core'
+import { useModalFocus } from '../src/modalFocus.js'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
 import { ref, computed } from 'vue'
@@ -440,9 +447,21 @@ export default {
 
     const close = () => emit('close')
 
+    // The manage list and the create form it opens are both dialogs; gate the
+    // list's focus trap off while the create form is on top so only one trap
+    // listens at a time.
+    const manageEl = ref(null)
+    const createEl = ref(null)
+    useModalFocus(() => props.isOpen && !showCreate.value, manageEl, close)
+    useModalFocus(showCreate, createEl, () => {
+      showCreate.value = false
+    })
+
     return {
       props,
       close,
+      manageEl,
+      createEl,
       manageQuery,
       filteredSchedules,
       editing,

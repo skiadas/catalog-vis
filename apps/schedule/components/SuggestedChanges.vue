@@ -1,6 +1,12 @@
 <template>
-  <div v-if="isOpen" class="modal-overlay" @click.self="$emit('close')" @keydown.esc="$emit('close')">
-    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="suggested-title">
+  <div v-if="isOpen" class="modal-overlay" @click.self="$emit('close')">
+    <div
+      ref="modalEl"
+      class="modal modal-wide"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="suggested-title"
+    >
       <div class="modal-head">
         <h3 id="suggested-title">Suggested changes — {{ schedule && schedule.name }}</h3>
         <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
@@ -122,6 +128,7 @@ import {
 } from '../src/scheduleStore.js'
 import { TERM_LABELS } from '@major-vis/schedule-core'
 import { renderChanges, describeChange } from '@major-vis/schedule-core/diff'
+import { useModalFocus } from '../src/modalFocus.js'
 
 import { ref, computed, watch } from 'vue'
 
@@ -132,7 +139,13 @@ export default {
     scheduleId: { type: [String, Number], default: null },
   },
   emits: ['close'],
-  setup(props) {
+  setup(props, { emit }) {
+    const modalEl = ref(null)
+    useModalFocus(
+      () => props.isOpen,
+      modalEl,
+      () => emit('close'),
+    )
     const schedule = computed(() => (props.scheduleId ? scheduleById(props.scheduleId) : null))
     const owned = computed(() => isOwner(schedule.value))
     const suggesting = computed(() => isSuggestSessionFor(props.scheduleId))
@@ -228,6 +241,7 @@ export default {
 
     return {
       schedule,
+      modalEl,
       owned,
       suggesting,
       suggestions,
