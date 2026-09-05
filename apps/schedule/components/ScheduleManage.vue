@@ -222,7 +222,7 @@
           </p>
         </div>
         <div v-else class="field">
-          <label>Type</label>
+          <span class="field-label">Type</span>
           <div class="schedule-type-options">
             <button
               class="filter-btn"
@@ -260,7 +260,7 @@
             <option v-for="d in deptOptions" :key="d" :value="d">{{ d }}</option>
           </select>
         </div>
-        <p v-if="csvError" class="schedule-create-error">{{ csvError }}</p>
+        <p v-if="csvError" class="schedule-create-error" role="alert">{{ csvError }}</p>
         <div class="controls">
           <button
             class="filter-btn"
@@ -281,6 +281,7 @@
     ref="csvInput"
     type="file"
     accept=".csv,text/csv"
+    aria-label="Upload CSV file"
     class="schedule-upload-input"
     @change="onCsvChange"
   />

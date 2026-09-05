@@ -220,7 +220,7 @@
       @close="closeCourseEdit"
     />
   </div>
-  <div v-else class="loading">Loading schedule...</div>
+  <div v-else class="loading" role="status">Loading schedule...</div>
 
   <ScheduleManage :is-open="showSchedules" @close="showSchedules = false" @edit="enterEdit" />
   <ScheduleAddCourse :is-open="showAddCourse" @close="showAddCourse = false" />

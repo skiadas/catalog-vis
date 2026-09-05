@@ -12,10 +12,12 @@
         <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
-        <p v-if="feedback" class="suggested-feedback">{{ feedback }}</p>
+        <p v-if="feedback" class="suggested-feedback" role="status">{{ feedback }}</p>
 
         <div v-if="suggesting" class="field">
-          <label>Your proposal for {{ TERM_LABELS[activeTerm] }} ({{ schedule && schedule.name }})</label>
+          <span class="field-label"
+            >Your proposal for {{ TERM_LABELS[activeTerm] }} ({{ schedule && schedule.name }})</span
+          >
           <p class="modal-intro">
             These are the changes you have collected in this session. Nothing is written to the schedule until
             you propose them and the owner approves.

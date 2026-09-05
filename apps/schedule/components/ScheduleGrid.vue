@@ -110,7 +110,6 @@ import {
   buildVisual,
   buildEditVisual,
   proposeOverlay,
-  briefInstructor,
   instructorChip,
   termSlotOptions,
   termDayGroup,

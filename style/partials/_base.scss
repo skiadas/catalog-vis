@@ -43,6 +43,23 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+}
+// A skip-to-content link: visually hidden until keyboard focus lands on it.
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: var(--space-3);
+  z-index: var(--z-modal);
+  padding: var(--space-2) var(--space-4);
+  background: var(--primary);
+  color: white;
+  border-radius: 0 0 var(--radius) var(--radius);
+  text-decoration: none;
+  transition: top var(--duration-fast);
+
+  &:focus {
+    top: 0;
+  }
 } // ==== Base: page shell ====
 
 #app {
@@ -435,7 +452,8 @@ body {
 .field {
   margin-bottom: 14px;
 }
-.field label {
+.field label,
+.field-label {
   @include text-label;
   display: block;
   color: var(--text-muted);

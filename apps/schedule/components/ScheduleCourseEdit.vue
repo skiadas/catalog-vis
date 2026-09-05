@@ -82,7 +82,7 @@
         </div>
 
         <div class="field">
-          <label>Meeting time</label>
+          <span class="field-label">Meeting time</span>
           <div class="seg" role="group" aria-label="Meeting time">
             <button
               class="seg-btn"

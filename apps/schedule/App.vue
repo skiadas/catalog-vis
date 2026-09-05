@@ -1,4 +1,5 @@
 <template>
+  <a class="skip-link" href="#main">Skip to content</a>
   <nav class="top-nav">
     <div class="nav-brand">
       <span class="nav-logo">HC</span>
@@ -29,10 +30,10 @@
           />
           <button class="filter-btn primary" type="submit" :disabled="!usernameDraft.trim()">Sign in</button>
         </form>
-        <span v-if="authError" class="schedule-auth-error">{{ authError }}</span>
+        <span v-if="authError" class="schedule-auth-error" role="alert">{{ authError }}</span>
       </div>
       <div v-else-if="remote && currentUser" class="schedule-auth-cluster">
-        <span class="schedule-auth-label"
+        <span class="schedule-auth-label" aria-live="polite"
           >Signed in as <strong>{{ currentUser.username }}</strong></span
         >
         <button class="filter-btn" @click="doSignOut">Sign out</button>
@@ -40,9 +41,11 @@
     </div>
   </nav>
 
-  <div v-if="loading" class="loading">Loading catalog data...</div>
-  <div v-else-if="errorMessage" class="catalog-error">{{ errorMessage }}</div>
-  <RouterView v-else />
+  <main id="main">
+    <div v-if="loading" class="loading" role="status">Loading catalog data...</div>
+    <div v-else-if="errorMessage" class="catalog-error" role="alert">{{ errorMessage }}</div>
+    <RouterView v-else />
+  </main>
 
   <ScheduleHelp :is-open="showHelp" @close="showHelp = false" />
   <AuthPrompt />

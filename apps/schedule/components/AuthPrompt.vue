@@ -35,7 +35,7 @@
             aria-label="Username"
           />
           <button class="filter-btn primary" type="submit" :disabled="!usernameDraft.trim()">Sign in</button>
-          <span v-if="authError" class="schedule-auth-error">{{ authError }}</span>
+          <span v-if="authError" class="schedule-auth-error" role="alert">{{ authError }}</span>
         </form>
       </div>
     </div>

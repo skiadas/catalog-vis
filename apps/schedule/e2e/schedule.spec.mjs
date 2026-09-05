@@ -6,6 +6,26 @@
 // errors and console errors (the pre-sign-in 401s and favicon misses are
 // expected noise and filtered), exactly like the smoke script did.
 import { test, expect } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
+
+// Runs an axe scan and keeps only the violations that block WCAG AA (serious
+// and critical). The schedule app's contrast, focus, and labeling work is
+// gate-kept here so regressions fail the suite.
+const seriousViolations = async (page) => {
+  const results = await new AxeBuilder({ page }).analyze()
+  return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
+}
+const brief = (violations) =>
+  violations.map(
+    (v) =>
+      `${v.id} (${v.impact}): ${v.nodes
+        .slice(0, 3)
+        .map((n) => (n.target || []).join(' '))
+        .join(' | ')}`,
+  )
+// axe can sample colors mid-transition (a button fading between states scans
+// far below its real ratio); settle like the rest of the suite before scanning.
+const settle = (page) => page.waitForTimeout(400)
 
 // Collects page errors + console errors for a page; the signed-in flows by
 // definition hit 401s before login and favicon misses, so filter those.
@@ -179,8 +199,8 @@ test('history panel lists session edits; Undo to here reverts and Redo replays',
   await h.waitFor({ state: 'detached', timeout: 5000 })
 
   // Add a course: its editor opens pre-slotted. Saving with no field changes
-// writes nothing, so the add is the session's single history entry.
-await page.getByRole('button', { name: '＋ Add course' }).click()
+  // writes nothing, so the add is the session's single history entry.
+  await page.getByRole('button', { name: '＋ Add course' }).click()
   const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
   await addm.waitFor({ state: 'visible', timeout: 5000 })
   await addm.getByPlaceholder('Search code or name…').fill('BIO')
@@ -281,6 +301,59 @@ test('lab sections: add lab from the editor (auto-close), strip lab chip, schedu
   assertClean(errors)
 })
 
+test('main views and dialogs have no serious/critical accessibility violations', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  // Its own account: this test generates a dense random schedule, which would
+  // pollute the shared 'registrar' collection and break sibling tests' slot
+  // assertions.
+  await signIn(page, 'axe-user')
+  await createSchedule(page, 'Axe schedule')
+
+  // The grid with a generated schedule: colored blocks, pills, and filters.
+  await settle(page)
+  const gridViolations = await seriousViolations(page)
+  expect(brief(gridViolations), 'grid view').toEqual([])
+
+  // The manage dialog and the create dialog it opens.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await settle(page)
+  const manageViolations = await seriousViolations(page)
+  expect(brief(manageViolations), 'manage dialog').toEqual([])
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await settle(page)
+  const createViolations = await seriousViolations(page)
+  expect(brief(createViolations), 'create dialog').toEqual([])
+  // Populate it ("All departments") so the grid actually has colored blocks
+  // for the slot-view scan; the default Empty schedule renders nothing.
+  await page.getByRole('button', { name: 'All departments' }).click()
+  await page.locator('#schedule-create-name').fill('Axe create')
+  await page.getByRole('button', { name: 'Generate' }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await settle(page)
+
+  // A day view (buttons on cards) after opening a block's slot.
+  await page.locator('.cal-block:not(.off-pattern) .cal-block-time').first().click()
+  await page.locator('.cal-block-view').first().click()
+  await page.waitForURL(/#\/slot\//, { timeout: 5000 })
+  await settle(page)
+  const slotViolations = await seriousViolations(page)
+  expect(brief(slotViolations), 'slot view').toEqual([])
+
+  // The schedule collection is shared server-wide (ownership gates editing, not
+  // visibility), so this test's populated random schedule would pollute later
+  // tests' slot assertions. Clean up both schedules it created.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  for (const name of ['Axe create', 'Axe schedule']) {
+    await page.locator('.schedule-manage-row', { hasText: name }).getByRole('button', { name: `Delete ${name}` }).click()
+    await page.waitForTimeout(250)
+  }
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+
+  assertClean(errors)
+})
+
 test('offline boot: a fresh visitor works locally with no authenticated calls', async ({ page }) => {
   // This test's fresh context has no session cookie and empty localStorage:
   // the prompt must appear, choosing offline shows the persistent badge and
@@ -340,13 +413,15 @@ test('import registrar CSV creates a new schedule and routes rows by term', asyn
   const bar = page.locator('.cal-block[title="CS 220"]').first()
   await bar.waitFor({ timeout: 10000 })
   await expect(bar).toHaveCSS('z-index', '1')
-  await bar.click()
+  // Toggle the in-place list via the block's header (the time label); clicking
+  // the block's middle would land on an offering row and navigate instead.
+  await bar.locator('.cal-block-time').click()
   await expect(page).toHaveURL(/#\/$/)
   const barRow = bar.locator('.filter-offering').first()
   await expect(barRow).toBeVisible()
   await expect(barRow).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   // Click again: the list closes back to the count view.
-  await bar.click()
+  await bar.locator('.cal-block-time').click()
   await expect(barRow).not.toBeVisible()
 
   // Off-pattern rail (Fall: MAT 131 at 14:20-16:05) layers below the bars and
@@ -354,7 +429,7 @@ test('import registrar CSV creates a new schedule and routes rows by term', asyn
   const rail = page.locator('.cal-block.off-pattern').first()
   await rail.waitFor({ timeout: 10000 })
   await expect(rail).toHaveCSS('z-index', '0')
-  await rail.click()
+  await rail.locator('.cal-block-time').click()
   await expect(page).toHaveURL(/#\/$/)
   const railRow = rail.locator('.filter-offering').first()
   await expect(railRow).toBeVisible()
@@ -408,18 +483,18 @@ test('grid block click expands the course list in place; View slot navigates', a
 
   const block = page.locator('.cal-block:not(.off-pattern)').first()
   await block.waitFor({ timeout: 10000 })
-  await block.click()
+  await block.locator('.cal-block-time').click()
   // Still on the grid — the click expanded, it did not navigate away.
   await expect(page).toHaveURL(/#\/$/)
   const rows = block.locator('.filter-offering')
   await expect(rows.first()).toBeVisible()
 
   // Clicking the block again collapses the list back to the count view.
-  await block.click()
+  await block.locator('.cal-block-time').click()
   await expect(rows.first()).not.toBeVisible()
 
   // The expanded block's "View slot" link still reaches the slot page.
-  await block.click()
+  await block.locator('.cal-block-time').click()
   await block.locator('.cal-block-view').click()
   await expect(page).toHaveURL(/#\/slot\//)
 

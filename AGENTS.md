@@ -115,7 +115,9 @@ checks above proves the build stays green, not that a feature works:
   chromium`; the config's webServer builds the apps and boots a scratch-DB
   server; drives sign-in, creation, and the edit/suggest menus plus the
   meeting-pattern guards/strip/rail and the offline boot in a headless
-  browser and fails on console errors). It also runs in CI as its own
+  browser and fails on console errors). The suite also gates accessibility:
+  axe scans the main views and dialogs and fails on serious/critical
+  violations (contrast, focus, labels). It also runs in CI as its own
   main-only workflow (`.github/workflows/e2e.yml` — slow, separate from the
   fast gate). When the suite can't cover a flow, verify with an explicit
   manual run of the full stack (`npm run build && npm run serve`).
