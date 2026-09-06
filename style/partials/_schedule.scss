@@ -631,7 +631,8 @@
   @include text-caption;
   font-size: var(--font-2xs);
   align-self: flex-end;
-  padding: 2px 4px;
+  padding: 6px 8px;
+  min-height: 24px;
   color: var(--primary);
   background: none;
   border: none;
@@ -684,6 +685,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  // The edit button inside needs a 24px hit area (WCAG 2.5.8); give the row
+  // enough height to hold it.
+  min-height: 24px;
 }
 .filter-offering-main {
   display: flex;
@@ -698,8 +702,11 @@
 }
 .filter-offering-edit {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
+  // Pull the hit area over the row's padding so the dense grid row keeps its
+  // footprint; the icon stays centered and the target is a full 24x24.
+  margin: -3px -4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -932,7 +939,7 @@
   white-space: nowrap;
 }
 .schedule-pill-hide {
-  @include icon-btn(20px);
+  @include icon-btn(24px);
   font-size: var(--font-xs);
   line-height: var(--leading-none);
   color: var(--text-inverse);
@@ -940,7 +947,7 @@
   margin: 0 1px;
 }
 .schedule-pill-edit {
-  @include icon-btn(20px);
+  @include icon-btn(24px);
   font-size: var(--font-xs);
   line-height: var(--leading-none);
   color: var(--text-inverse);

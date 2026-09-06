@@ -15,6 +15,21 @@ const seriousViolations = async (page) => {
   const results = await new AxeBuilder({ page }).analyze()
   return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
 }
+// Target-size gate. axe ships `target-size` disabled and it doesn't engage
+// reliably, so assert the rendered boxes directly: the known small controls
+// must measure >= 24x24 CSS px (WCAG 2.5.8) wherever they render.
+async function assertTargetSize(page, selectors, label) {
+  for (const sel of selectors) {
+    const el = page.locator(sel).first()
+    await el.waitFor({ timeout: 5000 })
+    const box = await el.boundingBox()
+    expect(box, `${label}: ${sel} must have a box`).not.toBeNull()
+    if (box) {
+      expect(box.width, `${label}: ${sel} must be >= 24 wide`).toBeGreaterThanOrEqual(24)
+      expect(box.height, `${label}: ${sel} must be >= 24 tall`).toBeGreaterThanOrEqual(24)
+    }
+  }
+}
 const brief = (violations) =>
   violations.map(
     (v) =>
@@ -314,6 +329,7 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await settle(page)
   const gridViolations = await seriousViolations(page)
   expect(brief(gridViolations), 'grid view').toEqual([])
+  await assertTargetSize(page, ['.schedule-pill-edit', '.schedule-pill-hide'], 'grid view')
 
   // The manage dialog and the create dialog it opens.
   await page.getByRole('button', { name: /Your schedules/ }).click()
@@ -333,6 +349,25 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
   await settle(page)
 
+  // Edit mode surfaces the small inline edit pencils on offering rows; open a
+  // block so they render, scan their target sizes, then close both. Use this
+  // user's own (populated) schedule — the shared collection's other pills
+  // aren't owned, so their "Edit schedule" is disabled, and the empty
+  // "Axe schedule" has no rows to size.
+  await page
+    .locator('.schedule-pill', { hasText: 'Axe create' })
+    .locator('.schedule-pill-edit')
+    .first()
+    .click()
+  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  const blockTime = page.locator('.cal-block:not(.off-pattern) .cal-block-time').first()
+  await blockTime.click()
+  await settle(page)
+  await assertTargetSize(page, ['.filter-offering-edit', '.cal-block-view'], 'edit-mode grid')
+  await blockTime.click()
+  await page.getByRole('button', { name: 'Done' }).click()
+
   // A day view (buttons on cards) after opening a block's slot.
   await page.locator('.cal-block:not(.off-pattern) .cal-block-time').first().click()
   await page.locator('.cal-block-view').first().click()
@@ -346,7 +381,10 @@ test('main views and dialogs have no serious/critical accessibility violations',
   // tests' slot assertions. Clean up both schedules it created.
   await page.getByRole('button', { name: /Your schedules/ }).click()
   for (const name of ['Axe create', 'Axe schedule']) {
-    await page.locator('.schedule-manage-row', { hasText: name }).getByRole('button', { name: `Delete ${name}` }).click()
+    await page
+      .locator('.schedule-manage-row', { hasText: name })
+      .getByRole('button', { name: `Delete ${name}` })
+      .click()
     await page.waitForTimeout(250)
   }
   await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
