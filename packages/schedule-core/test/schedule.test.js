@@ -49,6 +49,8 @@ import {
   normalizeBand,
   calendarDayRange,
   clipBand,
+  assignLanes,
+  dayTimelineRange,
 } from '../schedule.js'
 
 const CSV = [
@@ -1445,4 +1447,151 @@ test('proposeOverlay renders concurrent proposals independently with proposers',
   assert.deepEqual(removals, [
     { cur: { prefix: 'CS', number: '101', section: 'A' }, suggestionId: 11, proposer: 'math' },
   ])
+})
+
+// ---------------------------------------------------------------------------
+// Day timeline: lane assignment + expanded range
+// ---------------------------------------------------------------------------
+
+const min = (h, m = 0) => h * 60 + m
+
+test('assignLanes: consecutive bands share one lane (no overlap on touch)', () => {
+  const lanes = assignLanes([
+    { time: '8:00-9:10', start: min(8), end: min(9, 10) },
+    { time: '9:20-10:30', start: min(9, 20), end: min(10, 30) },
+    { time: '10:40-11:50', start: min(10, 40), end: min(11, 50) },
+  ])
+  assert.equal(lanes.length, 3)
+  for (const b of lanes) {
+    assert.equal(b.lane, 0)
+    assert.equal(b.laneCount, 1)
+  }
+})
+
+test('assignLanes: strictly overlapping bands open lanes', () => {
+  const lanes = assignLanes([
+    { time: '8:00-9:10', start: min(8), end: min(9, 10) },
+    { time: '8:30-9:00', start: min(8, 30), end: min(9) },
+  ])
+  assert.deepEqual(
+    lanes.map((b) => b.lane),
+    [0, 1],
+  )
+  assert.equal(lanes[0].laneCount, 2)
+})
+
+test('assignLanes: three-way pileup opens three lanes', () => {
+  const lanes = assignLanes([
+    { time: 'a', start: min(8), end: min(10) },
+    { time: 'b', start: min(8, 30), end: min(9, 30) },
+    { time: 'c', start: min(9), end: min(10) },
+  ])
+  assert.deepEqual(
+    lanes.map((b) => b.lane),
+    [0, 1, 2],
+  )
+  assert.equal(lanes[0].laneCount, 3)
+})
+
+test('assignLanes: freed lane is reused by a later, touching block', () => {
+  const lanes = assignLanes([
+    { time: 'a', start: min(8), end: min(9) },
+    { time: 'b', start: min(8, 30), end: min(9, 30) },
+    // starts exactly when lane 0's occupant ended -> back into lane 0, even
+    // though it overlaps lane 1's occupant until 9:30
+    { time: 'c', start: min(9), end: min(10) },
+  ])
+  assert.deepEqual(
+    lanes.map((b) => b.lane),
+    [0, 1, 0],
+  )
+  assert.equal(lanes[0].laneCount, 2)
+})
+
+test('assignLanes: longer span wins the first lane on a start tie', () => {
+  const lanes = assignLanes([
+    { time: 'short', start: min(8), end: min(9) },
+    { time: 'long', start: min(8), end: min(10) },
+  ])
+  assert.equal(lanes[0].time, 'long')
+  assert.equal(lanes[0].lane, 0)
+  assert.equal(lanes[1].lane, 1)
+})
+
+test('dayTimelineRange: empty day / no meetings keeps the standard range', () => {
+  assert.deepEqual(dayTimelineRange('F', buildIndex([]), 'M'), { start: min(8), end: min(16) })
+  assert.deepEqual(dayTimelineRange('F', null, 'M'), { start: min(8), end: min(16) })
+})
+
+test('dayTimelineRange: expands (snapped) to the day earliest/latest meetings', () => {
+  const index = buildIndex([
+    { prefix: 'CS', number: '101', section: 'A', days: 'M', time: '7:15-8:00' },
+    { prefix: 'MUS', number: '001', section: 'A', days: 'MWF', time: '15:00-18:05' },
+  ])
+  // 7:15 snaps to 7:00; 18:05 snaps to 18:30
+  assert.deepEqual(dayTimelineRange('F', index, 'M'), { start: min(7), end: min(18, 30) })
+  // other days keep the standard range
+  assert.deepEqual(dayTimelineRange('F', index, 'T'), { start: min(8), end: min(16) })
+})
+
+test('dayTimelineRange: meetings inside the standard range keep it', () => {
+  const index = buildIndex([{ prefix: 'CS', number: '101', section: 'A', days: 'M', time: '9:20-10:30' }])
+  assert.deepEqual(dayTimelineRange('F', index, 'M'), { start: min(8), end: min(16) })
+})
+
+test('assignLanes: lanes scope to overlap clusters; non-overlapping bands stay full width', () => {
+  const lanes = assignLanes([
+    { time: 'wide', start: min(8), end: min(10, 30) },
+    { time: 'a', start: min(8), end: min(9, 10) },
+    { time: 'b', start: min(9, 20), end: min(10, 30) },
+    { time: 'afternoon', start: min(10, 40), end: min(11, 50) },
+  ])
+  const wide = lanes.find((l) => l.time === 'wide')
+  const a = lanes.find((l) => l.time === 'a')
+  const b = lanes.find((l) => l.time === 'b')
+  const afternoon = lanes.find((l) => l.time === 'afternoon')
+  // The morning cluster splits into two lanes...
+  assert.equal(wide.laneCount, 2)
+  assert.equal(a.laneCount, 2)
+  assert.equal(b.laneCount, 2)
+  // ...while the afternoon block overlaps nothing and keeps full width.
+  assert.equal(afternoon.lane, 0)
+  assert.equal(afternoon.laneCount, 1)
+})
+
+test('assignLanes: without laneRank, the earliest (longer) block takes the left lane', () => {
+  const lanes = assignLanes([
+    { time: 'custom', start: min(8), end: min(10, 30) },
+    { time: 'std', start: min(8), end: min(9, 10) },
+  ])
+  assert.equal(lanes.find((l) => l.time === 'custom').lane, 0)
+  assert.equal(lanes.find((l) => l.time === 'std').lane, 1)
+})
+
+test('assignLanes: laneRank 1 pins off-pattern bands right, standard bands left', () => {
+  const lanes = assignLanes([
+    { time: 'custom', start: min(8), end: min(10, 30), laneRank: 1 },
+    { time: 'std', start: min(8), end: min(9, 10), laneRank: 0 },
+    { time: 'std2', start: min(9, 20), end: min(10, 30), laneRank: 0 },
+  ])
+  const custom = lanes.find((l) => l.time === 'custom')
+  const std = lanes.find((l) => l.time === 'std')
+  const std2 = lanes.find((l) => l.time === 'std2')
+  // Standard bands share the left lane; the custom spans their right.
+  assert.equal(std.lane, 0)
+  assert.equal(std2.lane, 0)
+  assert.equal(custom.lane, 1)
+  assert.equal(std.laneCount, 2)
+  assert.equal(custom.laneCount, 2)
+})
+
+test('assignLanes: later customs lane after existing ones, still right of standard', () => {
+  const lanes = assignLanes([
+    { time: 'std', start: min(9, 20), end: min(10, 30), laneRank: 0 },
+    { time: 'c1', start: min(9), end: min(10), laneRank: 1 },
+    { time: 'c2', start: min(9, 30), end: min(10, 30), laneRank: 1 },
+  ])
+  assert.equal(lanes.find((l) => l.time === 'std').lane, 0)
+  assert.equal(lanes.find((l) => l.time === 'c1').lane, 1)
+  assert.equal(lanes.find((l) => l.time === 'c2').lane, 2)
 })

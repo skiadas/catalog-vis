@@ -913,6 +913,79 @@ export function blockStyle(slot) {
   }
 }
 
+// Assign time blocks to side-by-side lanes so overlapping bands stay readable
+// (the day timeline's generalization of the grid's bar/rail split). Blocks
+// sorted by start time (longer spans first on ties); each takes the first lane
+// whose last occupant ends at-or-before its start — touching bands share a
+// lane, so consecutive standard slots stay stacked flush — else a new lane is
+// opened. Lanes are scoped to overlap clusters: once a gap opens (no active
+// lane reaches the next block's start), the cluster's lane count is fixed and
+// later blocks start fresh at full width.
+//
+// Within a cluster, blocks order by their `laneRank` (default 0) before start
+// time, so a caller can pin a class of blocks to the leftmost lanes — the day
+// timeline ranks standard bands 0 and off-pattern/custom bands 1, matching the
+// grid's rails, which sit on the right half. Returns a new array with `lane`
+// and `laneCount` on every block (`laneCount` = that cluster's share of lanes,
+// for symmetric widths).
+export function assignLanes(blocks) {
+  const sorted = [...(blocks || [])].sort((a, b) => a.start - b.start || b.end - a.end)
+  const clusters = []
+  let cur = []
+  let clusterEnd = -Infinity
+  for (const b of sorted) {
+    if (b.start >= clusterEnd) {
+      if (cur.length) clusters.push(cur)
+      cur = []
+      clusterEnd = -Infinity
+    }
+    cur.push(b)
+    clusterEnd = Math.max(clusterEnd, b.end)
+  }
+  if (cur.length) clusters.push(cur)
+  const out = []
+  for (const cluster of clusters) {
+    const ordered = [...cluster].sort(
+      (a, b) => (a.laneRank || 0) - (b.laneRank || 0) || a.start - b.start || b.end - a.end,
+    )
+    const laneEnds = []
+    for (const b of ordered) {
+      let lane = laneEnds.findIndex((end) => end <= b.start)
+      if (lane < 0) {
+        lane = laneEnds.length
+        laneEnds.push(b.end)
+      } else {
+        laneEnds[lane] = b.end
+      }
+      out.push({ ...b, lane })
+    }
+    const count = laneEnds.length
+    for (let i = out.length - cluster.length; i < out.length; i++) out[i].laneCount = count
+  }
+  return out
+}
+
+// The hour range a single-day timeline renders: the term's standard range at
+// minimum, expanded outward (snapped to half-hours) to cover the day's
+// earliest and latest meetings, so an early/evening custom class renders in
+// full instead of clipping. A day with no meetings renders the standard range.
+export function dayTimelineRange(termKey, index, day) {
+  const base = calendarDayRange(termKey)
+  if (!index || !index.byDay || !index.byDay[day]) return base
+  let min = Infinity
+  let max = -Infinity
+  for (const it of index.byDay[day]) {
+    if (it.start == null || it.end == null) continue
+    if (it.start < min) min = it.start
+    if (it.end > max) max = it.end
+  }
+  if (!Number.isFinite(min)) return base
+  return {
+    start: Math.min(base.start, Math.floor(min / 30) * 30),
+    end: Math.max(base.end, Math.ceil(max / 30) * 30),
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 6. Display helpers
 // ---------------------------------------------------------------------------

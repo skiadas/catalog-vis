@@ -189,16 +189,23 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   await page.locator('.cal-block-tag', { hasText: 'custom' }).first().waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: 'Done' }).click()
 
-  // The day view splits normal slots from off-pattern customs: the custom
-  // 15:00-18:00 band (above, on the first day chip = M) shows in its own
-  // column with a custom tag. Monday is the first weekday column.
+  // The day view is a single-day timeline on the grid's shared scale: the
+  // custom 15:00-18:00 band (above, on the first day chip = M) renders as an
+  // off-pattern block whose top/height map exactly to its clock time — the
+  // axis is anchored at 8:00 (range.start 480) at 1.5px/min, so 15:00 sits at
+  // (900-480)*1.5 = 630px and the 3-hour span is 270px tall. Monday is the
+  // first weekday column.
   await page.locator('.cal-dayhead').first().click()
   await page.waitForURL(/#\/day\/M/, { timeout: 5000 })
   await settle(page)
-  const customCards = page.locator('.day-slot-card-custom')
-  await customCards.first().waitFor({ timeout: 5000 })
-  await expect(customCards.first()).toContainText('custom')
-  await expect(customCards.first().locator('.slot-pill').first()).toBeVisible()
+  const tlBlock = page.locator('.day-timeline .cal-block.off-pattern')
+  await tlBlock.first().waitFor({ timeout: 5000 })
+  await expect(tlBlock.first()).toContainText('custom')
+  await expect(tlBlock.first().locator('.filter-offering').first()).toBeVisible()
+  await expect(tlBlock.first()).toHaveCSS('top', '630px')
+  await expect(tlBlock.first()).toHaveCSS('height', '270px')
+  // The standard 8:00-9:10 zone shades the timeline behind the blocks.
+  await expect(page.locator('.day-timeline .tl-stdzone').first()).toBeVisible()
   const dayViolations = await seriousViolations(page)
   expect(brief(dayViolations), 'day view').toEqual([])
 
