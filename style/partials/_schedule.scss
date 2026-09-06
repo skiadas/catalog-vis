@@ -685,9 +685,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  // The edit button inside needs a 24px hit area (WCAG 2.5.8); give the row
-  // enough height to hold it.
-  min-height: 24px;
+  // The edit button inside needs a 24px hit area (WCAG 2.5.8); a 28px row
+  // gives it a couple pixels of breathing room instead of a knife-edge fit.
+  min-height: 28px;
 }
 .filter-offering-main {
   display: flex;
@@ -704,9 +704,9 @@
   flex: 0 0 auto;
   width: 24px;
   height: 24px;
-  // Pull the hit area over the row's padding so the dense grid row keeps its
-  // footprint; the icon stays centered and the target is a full 24x24.
-  margin: -3px -4px;
+  // Keep the row horizontally tight; vertical room comes from the row's
+  // 28px min-height (the icon stays centered and the target is 24x24).
+  margin: 0 -4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
