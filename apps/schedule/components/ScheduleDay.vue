@@ -7,37 +7,80 @@
     </div>
     <p class="results-count" v-if="!hasAny">No classes scheduled this day.</p>
 
-    <div
-      v-for="t in dayTimes"
-      :key="t.time"
-      class="day-slot-card"
-      :class="{ 'drag-over': dragOver === t.key }"
-      @dragover="zoneOver($event, t)"
-      @dragleave="zoneLeave"
-      @drop="zoneDrop($event, t)"
-    >
-      <button type="button" class="day-slot-head" @click="goScheduleSlot(day, t.time)">
-        <span class="day-slot-time">{{ formatTime(t.time) }}</span>
-        <span class="day-slot-count"
-          >{{ itemsFor(t.time).length }} offering{{ itemsFor(t.time).length !== 1 ? 's' : '' }}</span
+    <div class="day-col-grid">
+      <div class="day-col-standard">
+        <div
+          v-for="t in dayTimes"
+          :key="t.time"
+          class="day-slot-card"
+          :class="{ 'drag-over': dragOver === t.key }"
+          @dragover="zoneOver($event, t)"
+          @dragleave="zoneLeave"
+          @drop="zoneDrop($event, t)"
         >
-      </button>
-      <div class="day-slot-items" v-if="itemsFor(t.time).length">
-        <CoursePill
-          v-for="it in itemsFor(t.time)"
-          :key="it.code + it.o.section + it.sid"
-          :item="it"
-          :filter-active="filter.active"
-          :color="filter.color(it)"
-          :editable="isEditable(it)"
-          :draggable="isEditable(it)"
-          :drag-day="day"
-          :proposed="proposalFor(it) ? itemTitle(it) : ''"
-          :removed="removalFor(it) ? itemTitle(it) : ''"
-          @edit="openCourseEdit(it)"
-        />
+          <button type="button" class="day-slot-head" @click="goScheduleSlot(day, t.time)">
+            <span class="day-slot-time">{{ formatTime(t.time) }}</span>
+            <span class="day-slot-count"
+              >{{ itemsFor(t.time).length }} offering{{ itemsFor(t.time).length !== 1 ? 's' : '' }}</span
+            >
+          </button>
+          <div class="day-slot-items" v-if="itemsFor(t.time).length">
+            <CoursePill
+              v-for="it in itemsFor(t.time)"
+              :key="it.code + it.o.section + it.sid"
+              :item="it"
+              :filter-active="filter.active"
+              :color="filter.color(it)"
+              :editable="isEditable(it)"
+              :draggable="isEditable(it)"
+              :drag-day="day"
+              :proposed="proposalFor(it) ? itemTitle(it) : ''"
+              :removed="removalFor(it) ? itemTitle(it) : ''"
+              @edit="openCourseEdit(it)"
+            />
+          </div>
+          <div class="day-slot-empty" v-else>No offerings</div>
+        </div>
       </div>
-      <div class="day-slot-empty" v-else>No offerings</div>
+
+      <div class="day-col-custom" v-if="customBands.length">
+        <div class="day-col-title">Custom times</div>
+        <div
+          v-for="b in customBands"
+          :key="b.time"
+          class="day-slot-card day-slot-card-custom"
+          :class="{ 'drag-over': dragOver === b.time }"
+          @dragover="zoneOver($event, customZone(b))"
+          @dragleave="zoneLeave"
+          @drop="zoneDrop($event, customZone(b))"
+        >
+          <button type="button" class="day-slot-head" @click="goScheduleSlot(day, b.time)">
+            <span class="day-slot-time">{{ formatTime(b.time) }}</span>
+            <span class="day-slot-meta">
+              <span class="day-slot-tag">custom</span>
+              <span class="day-slot-count"
+                >{{ bandItems(b).length }} offering{{ bandItems(b).length !== 1 ? 's' : '' }}</span
+              >
+            </span>
+          </button>
+          <div class="day-slot-items" v-if="bandItems(b).length">
+            <CoursePill
+              v-for="it in bandItems(b)"
+              :key="it.code + it.o.section + it.sid"
+              :item="it"
+              :filter-active="filter.active"
+              :color="filter.color(it)"
+              :editable="isEditable(it)"
+              :draggable="isEditable(it)"
+              :drag-day="day"
+              :proposed="proposalFor(it) ? itemTitle(it) : ''"
+              :removed="removalFor(it) ? itemTitle(it) : ''"
+              @edit="openCourseEdit(it)"
+            />
+          </div>
+          <div class="day-slot-empty" v-else>No offerings</div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -56,6 +99,9 @@ import {
   buildEditVisual,
   proposeOverlay,
   colorForSchedule,
+  daySlotBlocks,
+  clipBand,
+  calendarDayRange,
 } from '@major-vis/schedule-core'
 import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
 import {
@@ -152,7 +198,36 @@ export default {
       if (filter.value.active) items = items.filter((it) => filter.value.matches(it))
       return items
     }
-    const hasAny = computed(() => dayTimes.value.some((t) => itemsFor(t.time).length > 0))
+
+    // Off-pattern ("custom") meetings on this day, grouped by band like the
+    // grid's rails: split by `daySlotBlocks`, kept when their band falls
+    // inside the term's rendered hours (bands fully outside stay in the
+    // no-meeting strip, exactly like the grid). They render as a second
+    // column beside the standard slot cards.
+    const dayRange = computed(() => calendarDayRange(activeTerm.value))
+    const customBands = computed(() =>
+      daySlotBlocks(day.value, shownIndex.value, activeTerm.value).filter(
+        (b) => b.offPattern && clipBand(b, dayRange.value),
+      ),
+    )
+    const bandItems = (b) => {
+      let items = b.items
+      if (filter.value.active) items = items.filter((it) => filter.value.matches(it))
+      return items
+    }
+    // Drag/drop zones on custom cards use the same shape as the standard
+    // cards, keyed by the band's time.
+    const customZone = (b) => ({
+      key: b.time,
+      day: day.value,
+      days: dayGroup(day.value),
+      time: b.time,
+    })
+    const hasAny = computed(
+      () =>
+        dayTimes.value.some((t) => itemsFor(t.time).length > 0) ||
+        customBands.value.some((b) => bandItems(b).length > 0),
+    )
 
     const proposalFor = (it) => (it.o && it.o.$prop) || null
     const removalFor = (it) => overlay.value.removalsByKey.get(`${it.code} ${it.o.section}`) || null
@@ -176,6 +251,9 @@ export default {
       day,
       dayTimes,
       itemsFor,
+      customBands,
+      bandItems,
+      customZone,
       hasAny,
       filter,
       prevDay,

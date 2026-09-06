@@ -189,6 +189,19 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   await page.locator('.cal-block-tag', { hasText: 'custom' }).first().waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: 'Done' }).click()
 
+  // The day view splits normal slots from off-pattern customs: the custom
+  // 15:00-18:00 band (above, on the first day chip = M) shows in its own
+  // column with a custom tag. Monday is the first weekday column.
+  await page.locator('.cal-dayhead').first().click()
+  await page.waitForURL(/#\/day\/M/, { timeout: 5000 })
+  await settle(page)
+  const customCards = page.locator('.day-slot-card-custom')
+  await customCards.first().waitFor({ timeout: 5000 })
+  await expect(customCards.first()).toContainText('custom')
+  await expect(customCards.first().locator('.slot-pill').first()).toBeVisible()
+  const dayViolations = await seriousViolations(page)
+  expect(brief(dayViolations), 'day view').toEqual([])
+
   assertClean(errors)
 })
 
