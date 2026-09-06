@@ -45,6 +45,24 @@ npm run dev:browse # browse app
 npm run dev:planner# planner app
 ```
 
+### Local development: `dev` vs `serve`
+
+Two ways run the apps, and they show different things:
+
+- **`npm run dev` (Vite, hot-reload)** — the fastest loop for working on an app's
+  UI. Changes appear without a build. Vite doesn't proxy the backend API, so the
+  app runs in its **offline/localStorage mode** (no sign-in, suggestions, or
+  ownership) — fine for layout, styling, and pure-client flows.
+- **`npm run serve` (Express, port 8080)** — serves the _built_ bundles from
+  `dist/` (the same output the container and the E2E suite consume), with the
+  backend API enabled. It doesn't watch sources: run `npm run build` after any
+  change and reload the browser (no restart needed). Use it — or
+  `npm run dev:serve`, which builds then serves — when you need the
+  server-backed flows (sign-in, suggested changes).
+
+`npm run build` is also what a deployment needs; `dist/` is gitignored and is
+rebuilt on demand, so you never commit bundles.
+
 ## Data pipeline
 
 | Step                               | Script                                                                                                 | Output                                    |

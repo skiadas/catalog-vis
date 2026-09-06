@@ -29,7 +29,10 @@ export default defineConfig({
       'e2e.db',
     )}" node server/src/index.js`,
     url: `${baseURL}/api/config`,
-    reuseExistingServer: !process.env.CI,
+    // Always boot a fresh scratch-DB server. Reusing whatever is on the port
+    // lets a stray dev server serve stale state into the run (and quietly
+    // breaks later tests); an occupied port now fails loudly instead.
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 })

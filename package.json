@@ -25,6 +25,7 @@
     "dev": "vite apps/schedule",
     "dev:browse": "vite apps/browse",
     "dev:planner": "vite apps/planner",
+    "dev:serve": "npm run build && npm run serve",
     "build": "vite build apps/schedule && vite build apps/browse && vite build apps/planner",
     "typecheck": "vue-tsc -p tsconfig.json",
     "check:apps": "npm run build && npm run typecheck"

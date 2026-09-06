@@ -704,9 +704,10 @@
   flex: 0 0 auto;
   width: 24px;
   height: 24px;
-  // Keep the row horizontally tight; vertical room comes from the row's
-  // 28px min-height (the icon stays centered and the target is 24x24).
-  margin: 0 -4px;
+  // The row's 8px horizontal padding insets the button from the pill's edges
+  // (only the 4px flex gap separates it from the course label); the target
+  // stays the full 24x24.
+  margin: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
