@@ -209,6 +209,26 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   const dayViolations = await seriousViolations(page)
   expect(brief(dayViolations), 'day view').toEqual([])
 
+  // The timeline block's "View slot" link reaches the slot page, and the
+  // slot page's back link returns to the day view.
+  const viewSlot = page.locator('.day-timeline .cal-block-view').first()
+  await viewSlot.waitFor({ timeout: 5000 })
+  await viewSlot.click()
+  await page.waitForURL(/#\/slot\/M\/15:00-18:00/, { timeout: 5000 })
+  await page.locator('.back-btn').click()
+  await page.waitForURL(/#\/day\/M/, { timeout: 5000 })
+  await settle(page)
+
+  // Entering edit mode from the day view stays on the day view: no grid
+  // redirect, the timeline's edit pencils appear, and the old
+  // "switch to the grid" hint is gone.
+  await page.locator('.schedule-pill-edit').first().click()
+  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await expect(page).toHaveURL(/#\/day\/M/)
+  await expect(page.locator('.day-timeline .filter-offering-edit').first()).toBeVisible()
+  await expect(page.getByText('Switch to the grid view')).toHaveCount(0)
+
   assertClean(errors)
 })
 

@@ -140,9 +140,6 @@
         >Changes are collected into a proposal for the owner to approve — nothing is written to the schedule
         until then.</span
       >
-      <span class="schedule-edit-hint" v-else-if="view !== 'grid'"
-        >Switch to the grid view to click a course's edit icon or drag it onto a time slot.</span
-      >
       <span class="schedule-edit-hint" v-else
         >Click a course's edit icon to change its settings, or drag it onto a time slot to move it.</span
       >
@@ -381,7 +378,6 @@ export default {
       setEditingSchedule(id, role)
       nameDraft.value = editingSchedule.value ? editingSchedule.value.name : ''
       showSchedules.value = false
-      if (view.value !== 'grid') goScheduleGrid()
     }
     const exitEdit = () => {
       // Leaving a suggest session with unsaved draft changes asks first.

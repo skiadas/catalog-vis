@@ -54,6 +54,14 @@
                 <span class="day-tl-count"
                   >{{ b.items.length }} course{{ b.items.length !== 1 ? 's' : '' }}</span
                 >
+                <button
+                  type="button"
+                  class="cal-block-view"
+                  :title="'View slot ' + formatTime(b.time)"
+                  @click="goScheduleSlot(day, b.time)"
+                >
+                  View slot
+                </button>
               </div>
               <div class="cal-block-depts">
                 <span
