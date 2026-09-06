@@ -825,10 +825,12 @@ export function instructorConflicts(index) {
 // 5. Calendar layout + time scale
 // ---------------------------------------------------------------------------
 
-// Shared vertical time scale for the weekly calendar.
+// Shared vertical time scale for the weekly calendar (px per minute). 1.5
+// keeps time-proportional sizing while giving a 70-minute class ~105px — room
+// for the header plus a few touch-target-sized course rows instead of one.
 export const DAY_START_MIN = 480 // 8:00
 export const DAY_END_MIN = 960 // 16:00
-export const PX_PER_MIN = 1
+export const PX_PER_MIN = 1.5
 
 // The day range to render: anchored to the term's standard hours (Fall/Winter
 // 8:00-16:00, Spring 8:00-17:00) so an off-pattern early/late class never

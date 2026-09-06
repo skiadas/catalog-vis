@@ -116,6 +116,7 @@ import {
   toMinutes,
   calendarDayRange,
   clipBand,
+  PX_PER_MIN,
   colorForSchedule,
 } from '@major-vis/schedule-core'
 import {
@@ -258,8 +259,8 @@ export default {
     const blockStyleFor = (band) => {
       const clipped = clipBand(band, dayRange.value)
       return {
-        top: clipped.start - dayRange.value.start + 'px',
-        height: clipped.end - clipped.start + 'px',
+        top: (clipped.start - dayRange.value.start) * PX_PER_MIN + 'px',
+        height: (clipped.end - clipped.start) * PX_PER_MIN + 'px',
         clippedTop: clipped.clippedTop,
         clippedBottom: clipped.clippedBottom,
       }
@@ -273,8 +274,8 @@ export default {
           key: blockKey(day, slot),
           slot,
           style: {
-            top: clip.start - dayRange.value.start + 'px',
-            height: clip.end - clip.start + 'px',
+            top: (clip.start - dayRange.value.start) * PX_PER_MIN + 'px',
+            height: (clip.end - clip.start) * PX_PER_MIN + 'px',
           },
           // Off-pattern blocks (from the band split) render as half-width rails
           // so normal courses keep the full column.

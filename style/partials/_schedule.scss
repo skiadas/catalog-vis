@@ -356,7 +356,7 @@
 
 .calendar-scroll {
   @include surface;
-  overflow-x: auto;
+  overflow: auto;
 }
 .calendar {
   min-width: 640px;

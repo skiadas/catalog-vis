@@ -20,7 +20,7 @@
             v-for="h in hours"
             :key="h.min"
             class="cal-hour"
-            :style="{ top: topOffset(h.min), height: '60px' }"
+            :style="{ top: topOffset(h.min), height: hourHeight }"
           >
             {{ h.label }}
           </div>
@@ -36,7 +36,14 @@
 </template>
 
 <script>
-import { WEEKDAYS, WEEKDAY_NAMES, hourMarks, DAY_START_MIN, DAY_END_MIN } from '@major-vis/schedule-core'
+import {
+  WEEKDAYS,
+  WEEKDAY_NAMES,
+  hourMarks,
+  DAY_START_MIN,
+  DAY_END_MIN,
+  PX_PER_MIN,
+} from '@major-vis/schedule-core'
 
 export default {
   name: 'WeeklyCalendar',
@@ -51,11 +58,13 @@ export default {
     const range =
       props.range && props.range.start != null ? props.range : { start: DAY_START_MIN, end: DAY_END_MIN }
     const hours = hourMarks(range.start, range.end)
-    const topOffset = (min) => min - range.start + 'px'
-    // The columns and ruler grow with the range (480px in Fall/Winter, 540px
-    // in Spring) so a lone hour label never overhangs the grid's box.
-    const calStyle = { '--cal-height': range.end - range.start + 'px' }
-    return { WEEKDAYS, WEEKDAY_NAMES, hours, topOffset, calStyle }
+    const topOffset = (min) => (min - range.start) * PX_PER_MIN + 'px'
+    // An hour band is 60 minutes tall at the shared scale.
+    const hourHeight = 60 * PX_PER_MIN + 'px'
+    // The columns and ruler grow with the range and scale so a lone hour label
+    // never overhangs the grid's box.
+    const calStyle = { '--cal-height': (range.end - range.start) * PX_PER_MIN + 'px' }
+    return { WEEKDAYS, WEEKDAY_NAMES, hours, topOffset, hourHeight, calStyle }
   },
 }
 </script>

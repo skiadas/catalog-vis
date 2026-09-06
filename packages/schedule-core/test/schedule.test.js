@@ -804,8 +804,8 @@ test('daySlotBlocks splits a band that mixes standard and off-pattern courses', 
   assert.equal(blocks[0].time, '8:00-10:30')
 })
 
-test('blockStyle positions absolutely', () => {
-  assert.deepEqual(blockStyle({ start: 560, end: 630 }), { top: '80px', height: '70px' })
+test('blockStyle positions absolutely at the shared px-per-minute scale', () => {
+  assert.deepEqual(blockStyle({ start: 560, end: 630 }), { top: '120px', height: '105px' })
 })
 
 // ---------------------------------------------------------------------------
