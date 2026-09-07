@@ -226,7 +226,7 @@
     :schedule-id="suggestionsScheduleId"
     @close="showSuggestions = false"
   />
-  <ScheduleHistory :is-open="showHistory" @close="showHistory = false" />
+  <ScheduleHistory :is-open="showHistory" @close="showHistory = false" @edit-course="onEditCourse" />
 </template>
 
 <script>
@@ -264,10 +264,8 @@ import {
   courseEditTarget,
   closeCourseEdit,
   historyEntries,
-  canUndo,
-  canRedo,
-  undo,
-  redo,
+  cancelLatest,
+  jumpToEdit,
 } from '../src/scheduleStore.js'
 import { TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
 import ScheduleGrid from './ScheduleGrid.vue'
@@ -400,7 +398,7 @@ export default {
       }
     }
 
-    // Global undo/redo while a session is active (Ctrl/Cmd+Z, +Shift for redo).
+    // Global "cancel the latest change" while a session is active (Ctrl/Cmd+Z).
     // An editable field that has focus keeps the shortcut — that's browser
     // native text undo, not a session undo.
     const onGlobalKeydown = (e) => {
@@ -410,11 +408,17 @@ export default {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable) return
       if (e.defaultPrevented) return
       if (!(e.metaKey || e.ctrlKey) || String(e.key).toLowerCase() !== 'z') return
-      if (e.shiftKey) redo()
-      else undo()
+      cancelLatest()
     }
     document.addEventListener('keydown', onGlobalKeydown)
     onBeforeUnmount(() => document.removeEventListener('keydown', onGlobalKeydown))
+
+    // The History panel's "Edit" action: close the panel, then open the course
+    // editor on that change's course (the editor renders above any view).
+    const onEditCourse = (op) => {
+      showHistory.value = false
+      jumpToEdit(op)
+    }
 
     return {
       view,
@@ -462,8 +466,7 @@ export default {
       courseEditTarget,
       closeCourseEdit,
       historyEntries,
-      canUndo,
-      canRedo,
+      onEditCourse,
       goScheduleGrid,
       goScheduleCourse,
       goScheduleInstructor,

@@ -21,7 +21,6 @@ import {
   addOfferingToSchedule,
   removeOfferingFromSchedule,
   TERM_KEYS,
-  TERM_LABELS,
   offeringIdFor,
   assignOfferingIds,
 } from '@major-vis/schedule-core'
@@ -360,76 +359,118 @@ export const editingDraft = computed(() => {
   return getDraft(editingScheduleId.value, activeTerm.value)
 })
 
-// ---- Undo / redo history (per active edit session) ----------------------
+// ---- Session change list (the "recent edits" of the active session) -----
 
-// The undo/redo stacks of an active editing session, keyed by
-// `${scheduleId}|${term}` (mirroring drafts, so switching the term within a
-// session keeps each term's buffer). Every mutating edit records an entry that
-// snapshots the term's offerings array BEFORE (`before`) and AFTER (`after`)
-// the change plus a human-readable label derived from the diff between them
-// (reusing the suggestion-change description machinery). The stacks reset
-// whenever the session changes (see the watcher below); they are in-memory
-// only, so a reload clears the buffer (applied edits stay persisted — only the
-// ability to unwind them is lost).
-const historyStacks = ref({})
-let historySeq = 0
+// Not a classic undo stack: the history panel shows the NET difference between
+// the session's base snapshot (what the term looked like when first touched in
+// this session) and the current state — one row per affected course. Dragging
+// a course to a slot and back nets to zero (no row); moving it twice nets to a
+// single "move" row. Every row can be cancelled individually (its op leaves
+// the net diff and the row flips to a cancelled, restorable state) or jumped
+// straight into the course editor. The state is in-memory only and resets
+// whenever the session changes; suggest-session edits go through the same
+// finalize path as any other edit, so cancels rewrite the draft, not the term.
+const sessionState = ref({})
+let sessionSeq = 0
 
 function historyKey(scheduleId, term) {
   return `${scheduleId}|${term}`
 }
 
 function clearAllHistory() {
-  historyStacks.value = {}
-  historySeq = 0
+  sessionState.value = {}
+  sessionSeq = 0
 }
 
-// Reset the undo buffer whenever the editing session changes — entering or
+// Reset the change list whenever the editing session changes — entering or
 // leaving a session, switching the schedule under edit, or a sign-out/state
-// load that clears the refs. Per-term buffers survive switching the active
-// term within a session, exactly like drafts do. Synced so the buffer is empty
-// the moment a new session starts (before any edit could be recorded).
+// load that clears the refs. Per-term lists survive switching the active term
+// within a session (each is captured lazily at its first edit). Synced so the
+// list is empty the moment a new session starts (before any edit could be
+// recorded).
 watch([editingScheduleId, editingRole], () => clearAllHistory(), { flush: 'sync' })
 
-function ensureHistory(scheduleId, term) {
-  const k = historyKey(scheduleId, term)
-  if (!historyStacks.value[k]) {
-    historyStacks.value = { ...historyStacks.value, [k]: { entries: [], redo: [] } }
-  }
-  return historyStacks.value[k]
+// Identity key of an op payload — add ops carry the offering, update/remove
+// ops carry `cur` — mirroring the diff core's identity rules (the content id
+// wins when present, else the section tuple + lab markers).
+function opKeyOf(op) {
+  const src = op && op.kind === 'add' ? op.offering : op && op.cur
+  if (!src) return ''
+  const id = src.id != null && src.id !== '' ? `#${src.id}` : ''
+  return `${src.prefix}|${src.number}|${src.section || ''}|${src.lab ? 'lab' : 'lec'}|${src.labSeq || 0}${id}`
 }
 
-function historyLabel(ops, term) {
-  if (ops.length === 1) return describeChange(ops[0])
-  if (ops.length <= 3) return ops.map(describeChange).join(' · ')
-  return `Replaced ${TERM_LABELS[term] || term} offerings (${ops.length} changes)`
+// Identity key of an offering row (the shape `opKeyOf` produces for it).
+function identityKeyOf(o) {
+  const id = o.id != null && o.id !== '' ? `#${o.id}` : ''
+  return `${o.prefix}|${o.number}|${o.section || ''}|${o.lab ? 'lab' : 'lec'}|${o.labSeq || 0}${id}`
+}
+
+// One session unit per (scheduleId, term): the base snapshot (a deep copy of
+// the term's offerings at first touch — the reference point every net diff is
+// measured against), per-course recency + latest op content, and explicit-
+// cancel tombstones (rows that stay listed as cancelled).
+function ensureSession(scheduleId, term, before) {
+  const k = historyKey(scheduleId, term)
+  let s = sessionState.value[k]
+  if (!s) {
+    s = {
+      base: (before || []).map((o) => ({ ...o })),
+      touched: {},
+      cancelled: {},
+    }
+    sessionState.value = { ...sessionState.value, [k]: s }
+  }
+  return s
+}
+
+// The net ops vs the session base for the current state of `part`.
+function netOps(s, part) {
+  return diffOfferings(s.base, part.offerings || [])
 }
 
 // Records one mutation of a term part. Callers invoke it AFTER assigning
-// `part.offerings` and pass the array that was there before the assignment, so
-// the entry captures the exact transition. The entry carries the precise
-// before/after diff (every operation, rendered as readable lines), which the
-// history panel shows in full. A new edit clears the redo stack; a write that
+// `part.offerings` and pass the array that was there before the assignment.
+// Each affected course's row is refreshed with its net content and recency; a
+// course that nets back to its base content (e.g. moved and moved back) drops
+// out of the list entirely unless it was explicitly cancelled. A write that
 // rewrites nothing records no entry at all.
 function recordHistory(part, before, scheduleId, term = activeTerm.value) {
   if (!scheduleId) return
-  const ops = diffOfferings(before, part.offerings)
-  if (!ops.length) return
-  const stack = ensureHistory(scheduleId, term)
-  stack.entries.push({
-    seq: ++historySeq,
-    before,
-    after: part.offerings,
-    label: historyLabel(ops, term),
-    lines: ops.map(describeChange),
-  })
-  stack.redo = []
-  historyStacks.value = { ...historyStacks.value }
+  const touched = diffOfferings(before || [], part.offerings || [])
+  if (!touched.length) return
+  const s = ensureSession(scheduleId, term, before)
+  const net = new Map(netOps(s, part).map((op) => [opKeyOf(op), op]))
+  let nextTouched = { ...s.touched }
+  let nextCancelled = s.cancelled
+  for (const op of touched) {
+    const key = opKeyOf(op)
+    if (net.has(key)) {
+      nextTouched[key] = { op: net.get(key), seq: ++sessionSeq }
+      if (nextCancelled[key]) {
+        const c = { ...nextCancelled }
+        delete c[key]
+        nextCancelled = c
+      }
+    } else if (nextCancelled[key]) {
+      // Netted out but explicitly cancelled: keep the row, refreshed.
+      nextTouched[key] = { op, seq: ++sessionSeq }
+    } else if (nextTouched[key]) {
+      // Netted out naturally (e.g. dragged there and back): the row vanishes.
+      const t = { ...nextTouched }
+      delete t[key]
+      nextTouched = t
+    }
+  }
+  s.touched = nextTouched
+  s.cancelled = nextCancelled
+  sessionState.value = { ...sessionState.value }
 }
 
 // Restores `offerings` onto the session's term part through the same finalize
 // path the mutators use: a suggest session writes the draft (dirty + touched);
-// an edit session bumps the version and mirrors/persists, so undo of a remote
-// term stays consistent with the server.
+// an edit session bumps the version and mirrors/persists, so cancelling a
+// change of a remote term stays consistent with the server.
 function finalizeHistoryWrite(part, draft, scheduleId, term) {
   if (draft) {
     part.dirty = true
@@ -442,93 +483,142 @@ function finalizeHistoryWrite(part, draft, scheduleId, term) {
   persistSchedules()
 }
 
-// The active session's history stack (or null when none is set up).
-function activeHistoryStack() {
+// The active session's change list (or null when none is set up).
+function activeSession() {
   const id = editingScheduleId.value
   if (!id) return null
-  return historyStacks.value[historyKey(id, activeTerm.value)] || null
+  return sessionState.value[historyKey(id, activeTerm.value)] || null
 }
 
-// Whether the active session has anything to undo / redo.
-export const canUndo = computed(() => Boolean(activeHistoryStack() && activeHistoryStack().entries.length))
-export const canRedo = computed(() => Boolean(activeHistoryStack() && activeHistoryStack().redo.length))
-
-// The session's transcript, newest first, for the history panel. Entries
-// currently on the redo stack render as the session's most recent steps (their
-// edits were undone but are replayable).
-export const historyEntries = computed(() => {
-  const stack = activeHistoryStack()
-  if (!stack) return []
-  const undone = new Set(stack.redo.map((e) => e.seq))
-  const order = {}
-  stack.entries.forEach((e, i) => {
-    order[e.seq] = i
-  })
-  return [...stack.entries, ...stack.redo]
-    .sort((a, b) => b.seq - a.seq)
-    .map((e) => ({
-      key: e.seq,
-      label: e.label,
-      lines: e.lines || [],
-      undone: undone.has(e.seq),
-      // The undo-stack index (0 = session start) for still-undoable entries;
-      // -1 for entries already undone (they're redoable, not undoable-here).
-      stackIndex: order[e.seq] != null ? order[e.seq] : -1,
-    }))
+// Whether the active session has any net change left to cancel.
+export const canCancel = computed(() => {
+  const id = editingScheduleId.value
+  const s = id && activeSession()
+  if (!s) return false
+  const v = viewPart(scheduleById(id), activeTerm.value)
+  return diffOfferings(s.base, v.offerings || []).length > 0
 })
 
-// Undoes the active session's most recent edit. Returns the undone entry's
-// label (for a toast/aria) or null when there is nothing to undo or no session.
-export function undo() {
-  return applyHistoryStep('undo')
-}
+// The session's transcript, newest first, for the history panel: one row per
+// course the session touched, showing its net change vs the base. Rows whose
+// course returned to its base content drop out entirely unless they were
+// explicitly cancelled (those stay listed, restorable). `editable` says
+// whether the row's course currently exists in the term, so the panel can
+// offer the jump-to-editor action only when there is something to edit.
+export const historyEntries = computed(() => {
+  const id = editingScheduleId.value
+  if (!id) return []
+  const s = activeSession()
+  if (!s) return []
+  const part = viewPart(scheduleById(id), activeTerm.value)
+  const offers = part.offerings || []
+  const net = new Map(diffOfferings(s.base, offers).map((op) => [opKeyOf(op), op]))
+  const present = new Set(offers.map(identityKeyOf))
+  const rows = []
+  for (const [key, t] of Object.entries(s.touched)) {
+    const active = net.get(key)
+    const cancelled = !active
+    if (!active && !s.cancelled[key]) continue
+    const op = active || t.op
+    rows.push({
+      key,
+      op,
+      label: describeChange(op),
+      seq: t.seq,
+      cancelled,
+      editable: present.has(key),
+    })
+  }
+  return rows.sort((a, b) => b.seq - a.seq)
+})
 
-// Re-applies the most recently undone edit. Returns the entry's label or null.
-export function redo() {
-  return applyHistoryStep('redo')
-}
-
-function applyHistoryStep(mode) {
-  const stack = activeHistoryStack()
-  if (!stack) return null
-  const source = mode === 'undo' ? stack.entries : stack.redo
-  const target = mode === 'undo' ? stack.redo : stack.entries
-  const entry = source.pop()
-  if (!entry) return null
-  const { part, draft } = mutablePart(editingScheduleId.value)
+// Cancels one change of the active session by key (the row's `key` from
+// `historyEntries`): its op leaves the net diff — the state is recomputed as
+// base + every other change, which is always conflict-free because each op
+// targets a distinct course — and the row flips to cancelled (restorable).
+// Returns the cancelled change's label, or null when there is nothing to
+// cancel (unknown key, already cancelled, or no session).
+export function cancelChange(key) {
+  const id = editingScheduleId.value
+  const s = id && activeSession()
+  if (!s) return null
+  const { part, draft } = mutablePart(id)
   if (!part) return null
-  part.offerings = mode === 'undo' ? entry.before : entry.after
-  target.push(entry)
-  historyStacks.value = { ...historyStacks.value }
-  finalizeHistoryWrite(part, draft, editingScheduleId.value, activeTerm.value)
-  return entry.label
+  const current = netOps(s, part)
+  const targetOp = current.find((op) => opKeyOf(op) === key)
+  if (!targetOp) return null
+  part.offerings = applyOperations(
+    s.base,
+    current.filter((op) => op !== targetOp),
+  )
+  if (!s.cancelled[key]) s.cancelled = { ...s.cancelled, [key]: true }
+  sessionState.value = { ...sessionState.value }
+  finalizeHistoryWrite(part, draft, id, activeTerm.value)
+  return describeChange(targetOp)
 }
 
-// Reverts the session back to the state before entry `index` (0 = the start of
-// the session), unwinding every later edit too. Returns the target entry's
-// label or null when the index is out of range or no session is active.
-export function undoThrough(index) {
-  const stack = activeHistoryStack()
-  if (!stack || index < 0 || index >= stack.entries.length) return null
-  const target = stack.entries[index]
-  const replayed = stack.entries.slice(index)
-  const { part, draft } = mutablePart(editingScheduleId.value)
-  if (!part) return null
-  part.offerings = target.before
-  stack.entries = stack.entries.slice(0, index)
-  // Redo replays from this entry forward: pushed in reverse so the oldest
-  // remaining edit comes off the redo stack first.
-  for (const e of replayed.slice().reverse()) stack.redo.push(e)
-  historyStacks.value = { ...historyStacks.value }
-  finalizeHistoryWrite(part, draft, editingScheduleId.value, activeTerm.value)
-  return target.label
+// Cancels the most recently touched *live* change of the active session — the
+// keyboard "undo" (Cmd/Ctrl+Z). Returns the cancelled change's label or null.
+export function cancelLatest() {
+  const row = historyEntries.value.find((e) => !e.cancelled)
+  return row ? cancelChange(row.key) : null
 }
 
-// Unwinds every edit of the active session back to its start.
-export function undoAll() {
-  const stack = activeHistoryStack()
-  if (!stack || !stack.entries.length) return null
-  return undoThrough(0)
+// Cancels every live change of the active session at once: the term returns to
+// its session base and every row stays listed as cancelled (restorable).
+// Returns true when at least one change was cancelled.
+export function cancelAll() {
+  const id = editingScheduleId.value
+  const s = id && activeSession()
+  if (!s) return false
+  const { part, draft } = mutablePart(id)
+  if (!part) return false
+  const current = netOps(s, part)
+  if (!current.length) return false
+  part.offerings = s.base.map((o) => ({ ...o }))
+  const cancelled = { ...s.cancelled }
+  for (const op of current) cancelled[opKeyOf(op)] = true
+  s.cancelled = cancelled
+  sessionState.value = { ...sessionState.value }
+  finalizeHistoryWrite(part, draft, id, activeTerm.value)
+  return true
+}
+
+// Brings a cancelled change back: its op re-applies onto the current state
+// (safe — nothing else touches that course) and the row returns to active.
+// Returns true when the row existed and was cancelled.
+export function restoreChange(key) {
+  const id = editingScheduleId.value
+  const s = id && activeSession()
+  const entry = s && s.touched[key]
+  if (!entry || !s.cancelled[key]) return false
+  const { part, draft } = mutablePart(id)
+  if (!part) return false
+  part.offerings = applyOperations(part.offerings || [], [entry.op])
+  const cancelled = { ...s.cancelled }
+  delete cancelled[key]
+  s.cancelled = cancelled
+  sessionState.value = { ...sessionState.value }
+  finalizeHistoryWrite(part, draft, id, activeTerm.value)
+  return true
+}
+
+// Opens the course editor on the course a change row describes — the panel's
+// "jump straight to this course" action. Resolves the op's identity against
+// the current term (draft-aware during a suggest session) and reuses the
+// shared course-edit target, so the editor opens above whatever view is
+// active. Returns false when the course no longer exists (e.g. a `remove`
+// change, or a cancelled `add`).
+export function jumpToEdit(op) {
+  const id = editingScheduleId.value
+  if (!id) return false
+  const schedule = scheduleById(id)
+  if (!schedule) return false
+  const key = opKeyOf(op)
+  const found = viewOfferings(schedule, activeTerm.value).find((o) => identityKeyOf(o) === key)
+  if (!found) return false
+  courseEditTarget.value = { o: found, code: `${found.prefix} ${found.number}`, sid: id }
+  return true
 }
 
 // Sets up (or keeps) the draft of a suggest session for `scheduleId`'s term:

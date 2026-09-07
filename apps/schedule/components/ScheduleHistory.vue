@@ -12,48 +12,44 @@
         <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
+        <p v-if="feedback" class="suggested-feedback" role="status">{{ feedback }}</p>
         <p class="modal-intro">
-          Every change made in this session, newest first. Undo steps back through them one at a time;
-          <em>Undo to here</em> rewinds everything after that change (the undone steps stay replayable with
-          Redo). Changes made before this session aren't listed.
+          This session's changes, compared with where the term started: one row per course, so moving a course
+          twice nets to one change (moving it back removes it from the list entirely). <em>Cancel</em> undoes
+          just that one change; the rest of the session stays put. Cancelled changes stay listed and can be
+          restored.
         </p>
 
         <div v-if="!entries.length" class="schedule-manage-empty">No changes yet this session.</div>
         <div v-else class="history-list">
-          <div v-for="e in entries" :key="e.key" class="history-row" :class="{ undone: e.undone }">
+          <div v-for="e in entries" :key="e.key" class="history-row" :class="{ cancelled: e.cancelled }">
             <div class="history-main">
               <span class="history-label">{{ e.label }}</span>
-              <span v-if="e.undone" class="history-undone">(undone)</span>
-              <div v-if="e.lines.length > 3" class="history-detail-wrap">
-                <ul class="history-detail" :class="{ expanded: isExpanded(e.key) }">
-                  <li v-for="(l, i) in shownLines(e)" :key="i">{{ l }}</li>
-                </ul>
-                <button
-                  class="filter-btn history-expand"
-                  @click="toggleExpanded(e.key)"
-                  :aria-expanded="isExpanded(e.key)"
-                >
-                  {{ isExpanded(e.key) ? 'Show less' : 'Show all ' + e.lines.length + ' changes' }}
-                </button>
-              </div>
+              <span v-if="e.cancelled" class="history-undone">(cancelled)</span>
             </div>
-            <button
-              v-if="!e.undone"
-              class="filter-btn history-undo-btn"
-              @click="undoThrough(e.stackIndex)"
-              :title="'Rewind to before this change' + shortcutHint"
-            >
-              Undo to here
-            </button>
+            <span v-if="e.cancelled" class="history-op-actions">
+              <button class="filter-btn" @click="doRestore(e)">Restore</button>
+              <button v-if="e.editable" class="filter-btn" @click="doEdit(e)">Edit</button>
+            </span>
+            <span v-else class="history-op-actions">
+              <button class="filter-btn" title="Undo just this change" @click="doCancel(e)">Cancel</button>
+              <button
+                v-if="e.editable"
+                class="filter-btn"
+                title="Open this course in the editor"
+                @click="doEdit(e)"
+              >
+                Edit
+              </button>
+            </span>
           </div>
         </div>
 
         <div class="controls history-controls">
           <span class="controls-spacer"></span>
-          <button class="filter-btn" :disabled="!canRedo" @click="redo">Redo</button>
-          <button class="filter-btn" :disabled="!canUndo" @click="undoAll">Undo all</button>
-          <button class="filter-btn primary" :disabled="!canUndo" @click="undo">
-            Undo{{ canUndo ? ' (⌘Z)' : '' }}
+          <button class="filter-btn" :disabled="!canCancel" @click="doCancelAll">Cancel all</button>
+          <button class="filter-btn primary" :disabled="!canCancel" @click="doCancelLatest">
+            Cancel latest{{ canCancel ? ' (⌘Z)' : '' }}
           </button>
         </div>
       </div>
@@ -62,18 +58,18 @@
 </template>
 
 <script>
-// "What happened in this session" panel with per-change undo. Mirror of the
-// suggested-changes modal in structure; state all comes from the schedule
-// store's per-session history stacks. Entries with many changes show the
-// first few ops plus a "Show all" toggle — the full list is always there.
+// "What happened in this session" panel. A net-diff change list, one row per
+// touched course: Cancel drops that single change out of the session (the row
+// flips to cancelled, restorable); Edit jumps into the course editor on that
+// course. Row content and state all come from the schedule store's per-session
+// change list, which reuses the suggestion diff machinery.
 import {
   historyEntries,
-  canUndo,
-  canRedo,
-  undo,
-  redo,
-  undoAll,
-  undoThrough,
+  canCancel,
+  cancelChange,
+  cancelLatest,
+  cancelAll,
+  restoreChange,
   editingSchedule,
   activeTerm,
 } from '../src/scheduleStore.js'
@@ -82,16 +78,12 @@ import { useModalFocus } from '../src/modalFocus.js'
 
 import { computed, ref } from 'vue'
 
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
-// Lines shown before the "Show all" toggle kicks in.
-const PREVIEW_LINES = 8
-
 export default {
   name: 'ScheduleHistory',
   props: {
     isOpen: { type: Boolean, default: false },
   },
-  emits: ['close'],
+  emits: ['close', 'edit-course'],
   setup(props, { emit }) {
     const modalEl = ref(null)
     const close = () => emit('close')
@@ -101,32 +93,31 @@ export default {
       const s = editingSchedule.value
       return s ? `${s.name} · ${TERM_LABELS[activeTerm.value] || activeTerm.value}` : ''
     })
-    const shortcutHint = isMac ? ' (⌘Z)' : ' (Ctrl+Z)'
-    // Which entries show their full change list (keys are undo-stack seq ids,
-    // stable across recomputes, so the toggle survives history churn).
-    const expandedKeys = ref(new Set())
-    const isExpanded = (key) => expandedKeys.value.has(key)
-    const toggleExpanded = (key) => {
-      const next = new Set(expandedKeys.value)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      expandedKeys.value = next
+    const feedback = ref('')
+    const doCancel = (e) => {
+      feedback.value = cancelChange(e.key) ? 'Change cancelled.' : 'Nothing to cancel.'
     }
-    const shownLines = (e) => (isExpanded(e.key) ? e.lines : e.lines.slice(0, PREVIEW_LINES))
+    const doRestore = (e) => {
+      feedback.value = restoreChange(e.key) ? 'Change restored.' : 'Nothing to restore.'
+    }
+    const doCancelAll = () => {
+      feedback.value = cancelAll() ? 'All changes cancelled — kept as cancelled rows.' : 'Nothing to cancel.'
+    }
+    const doCancelLatest = () => {
+      feedback.value = cancelLatest() ? 'Latest change cancelled.' : 'Nothing to cancel.'
+    }
+    const doEdit = (e) => emit('edit-course', e.op)
     return {
       entries,
       modalEl,
       nameLabel,
-      shortcutHint,
-      isExpanded,
-      toggleExpanded,
-      shownLines,
-      canUndo,
-      canRedo,
-      undo,
-      redo,
-      undoAll,
-      undoThrough,
+      feedback,
+      canCancel,
+      doCancel,
+      doRestore,
+      doCancelAll,
+      doCancelLatest,
+      doEdit,
     }
   },
 }

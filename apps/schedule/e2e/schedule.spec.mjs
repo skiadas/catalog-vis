@@ -232,7 +232,9 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   assertClean(errors)
 })
 
-test('history panel lists session edits; Undo to here reverts and Redo replays', async ({ page }) => {
+test('history panel lists session edits; Cancel removes one change, Restore brings it back, Edit jumps', async ({
+  page,
+}) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page)
@@ -254,7 +256,7 @@ test('history panel lists session edits; Undo to here reverts and Redo replays',
   await h.waitFor({ state: 'detached', timeout: 5000 })
 
   // Add a course: its editor opens pre-slotted. Saving with no field changes
-  // writes nothing, so the add is the session's single history entry.
+  // writes nothing, so the add is the session's single history row.
   await page.getByRole('button', { name: '＋ Add course' }).click()
   const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
   await addm.waitFor({ state: 'visible', timeout: 5000 })
@@ -271,13 +273,26 @@ test('history panel lists session edits; Undo to here reverts and Redo replays',
   await expect(row).toHaveText(/add/)
   await expect(h.locator('.history-row')).toHaveCount(1)
 
-  // Undo to here reverts the change (the row flips to "undone"); Redo replays.
-  await row.getByRole('button', { name: 'Undo to here' }).click()
-  await expect(row).toHaveClass(/undone/)
-  await h.getByRole('button', { name: 'Redo' }).click()
-  await expect(row).not.toHaveClass(/undone/)
+  // Cancel drops just this change; the row flips to cancelled (restorable).
+  await row.getByRole('button', { name: 'Cancel' }).click()
+  await expect(row).toHaveClass(/cancelled/)
+  await expect(row.getByText('(cancelled)')).toBeVisible()
+  await expect(row.getByRole('button', { name: 'Restore' })).toBeVisible()
 
-  await h.getByRole('button', { name: 'Close' }).click()
+  // Restore brings it back to a live row.
+  await row.getByRole('button', { name: 'Restore' }).click()
+  await expect(row).not.toHaveClass(/cancelled/)
+  await expect(row.getByRole('button', { name: 'Cancel' })).toBeVisible()
+
+  // The Edit action jumps straight into that course's editor (the history
+  // panel closes itself first).
+  await row.getByRole('button', { name: 'Edit' }).click()
+  const em2 = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em2.waitFor({ state: 'visible', timeout: 5000 })
+  await h.waitFor({ state: 'detached', timeout: 5000 })
+  await em2.getByRole('button', { name: 'Save changes' }).click()
+  await em2.waitFor({ state: 'detached', timeout: 5000 })
+
   await page.getByRole('button', { name: 'Done' }).click()
   assertClean(errors)
 })

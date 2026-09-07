@@ -121,22 +121,25 @@ else was being edited the editor closes itself and drops the user back onto
 the grid. Removing a lecture removes its labs; renaming a lecture's letter
 renames its labs' to match.
 
-**Undo & history**: every edit made in a session (add, remove, lab, move,
-field changes, and bulk replaces) is recorded in a per-session undo buffer.
-The edit bar's **History** button opens a transcript — newest first, each row
-reading like a suggestion change ("add CS 220 A", "CS 101 A: instructor set
-to Wahl"); a bulk replace's row lists every change (a "Show all N changes"
-toggle expands the full list) instead of hiding them behind a count. Each
-row offers **Undo to here**, and the footer has **Undo** / **Redo** /
-**Undo all**. **Ctrl/Cmd+Z** (with Shift for redo) works while
-the session is active, except when a text field has focus (that stays
-browser-native text undo). The buffer is in-memory and session-scoped: it
+**Recent changes & history**: the edit bar's **History** button opens the
+session's change list. It is not an undo stack: the panel shows the **net
+difference** between the current term and the session's base (what the term
+looked like when the session started, per term), one row per affected course —
+moving a course twice nets to a single "move" row, and moving it back removes
+the row entirely (the change is nothing, net of the session). Each live row
+offers **Cancel** (drops just that one change; the row flips to a
+restorable "(cancelled)" marker) and **Edit** (jumps straight into that
+course's editor, closing the panel — a mistake found later doesn't require
+hunting the course on the grid). Cancelled rows offer **Restore**. The footer
+has **Cancel all** and **Cancel latest**; **Ctrl/Cmd+Z** cancels the latest
+change while the session is active, except when a text field has focus (that
+stays browser-native text undo). The list is in-memory and session-scoped: it
 clears on **Done**, on switching schedules, or on reload — the edits
-themselves stay applied and persisted, only the ability to unwind them is
-lost. Suggestion review actions (approve/reject/withdraw) are not undoable.
-While a session is active the schedule manager also disables new-schedule
-actions (New schedule / Generate / Import CSV / Duplicate), so an edit in
-progress is never disturbed by a concurrent create.
+themselves stay applied and persisted, only the ability to cancel them is
+lost. Suggestion review actions (approve/reject/withdraw) are not cancellable
+from here. While a session is active the schedule manager also disables
+new-schedule actions (New schedule / Generate / Import CSV / Duplicate), so
+an edit in progress is never disturbed by a concurrent create.
 
 ## Suggested changes (remote, and mirrored offline)
 

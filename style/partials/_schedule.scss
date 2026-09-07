@@ -1443,7 +1443,7 @@
   white-space: pre-wrap;
 }
 
-/* Session history panel (per-session undo/redo transcript) */
+/* Session history panel (net-diff change list with per-row cancel/edit) */
 
 .history-list {
   display: flex;
@@ -1460,7 +1460,7 @@
   border-radius: var(--radius);
   background: var(--surface);
 }
-.history-row.undone {
+.history-row.cancelled {
   background: var(--gray-50);
   border-color: var(--gray-200);
 }
@@ -1473,48 +1473,20 @@
   font-size: 13.5px;
   color: var(--text);
 }
-.history-detail-wrap {
-  margin-top: 4px;
+.history-op-actions {
+  @include flex-row;
+  gap: var(--space-2);
 }
-.history-detail {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-left: 2px solid var(--border);
-  padding-left: var(--space-2);
-}
-.history-detail li {
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.history-detail.expanded {
-  max-height: 220px;
-  overflow-y: auto;
-}
-.history-detail.expanded li {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-}
-.history-expand {
-  margin-top: 4px;
+.history-op-actions .filter-btn {
   font-size: var(--font-xs);
   padding: 2px var(--space-2);
+  white-space: nowrap;
+  margin-top: 2px;
 }
 .history-undone {
   @include text-caption;
   color: var(--text-muted);
   white-space: nowrap;
-}
-.history-undo-btn {
-  font-size: var(--font-xs);
-  padding: 2px var(--space-2);
-  white-space: nowrap;
-  margin-top: 2px;
 }
 .history-controls {
   margin-top: var(--space-3);
