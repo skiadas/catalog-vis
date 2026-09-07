@@ -11,8 +11,9 @@ import AxeBuilder from '@axe-core/playwright'
 // Runs an axe scan and keeps only the violations that block WCAG AA (serious
 // and critical). The schedule app's contrast, focus, and labeling work is
 // gate-kept here so regressions fail the suite.
-const seriousViolations = async (page) => {
-  const results = await new AxeBuilder({ page }).analyze()
+const seriousViolations = async (page, scope) => {
+  const builder = scope ? new AxeBuilder({ page }).include(scope) : new AxeBuilder({ page })
+  const results = await builder.analyze()
   return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
 }
 // Target-size gate. axe ships `target-size` disabled and it doesn't engage
@@ -297,6 +298,106 @@ test('history panel lists session edits; Cancel removes one change, Restore brin
   assertClean(errors)
 })
 
+test('course editor guards unsaved changes, pins its actions, and completes instructor autocomplete', async ({
+  page,
+}) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+
+  // Build an 'Editor roster' schedule via CSV import: the instructor
+  // autocomplete pools come from the schedule's own term, so the rows must
+  // carry real instructors.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', 'apps/schedule/e2e/import.csv')
+  await expect(page.getByText(/Imported 9 course row\(s\)/)).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Editor roster')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await page.locator('.schedule-pill', { hasText: 'Editor roster' }).first().waitFor({ timeout: 10000 })
+
+  // Enter edit mode and open the course editor on the first offering row.
+  await page
+    .locator('.schedule-pill', { hasText: 'Editor roster' })
+    .locator('.schedule-pill-edit')
+    .first()
+    .click()
+  const menu = page.locator('.mode-menu')
+  await menu.waitFor({ state: 'visible', timeout: 5000 })
+  await menu.getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.cal-block:not(.off-pattern) .cal-block-time').first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await page.locator('.filter-offering-edit').first().click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+
+  // The action bar is pinned to the dialog's foot: Save changes never scrolls
+  // out of view, whatever the content height.
+  const saveBtn = em.getByRole('button', { name: 'Save changes' })
+  await expect(saveBtn).toBeInViewport()
+
+  // Change a field, then dismiss by clicking the overlay outside the dialog:
+  // the foot asks before discarding.
+  await em.locator('#course-edit-secondary').fill('Test Person')
+  const box = await em.boundingBox()
+  await page.mouse.click(box.x + box.width / 2, Math.max(2, box.y - 10))
+  await expect(em.getByText('Discard your unsaved changes?')).toBeVisible()
+
+  // Keep editing stays in the editor with the change intact.
+  await em.getByRole('button', { name: 'Keep editing' }).click()
+  await expect(em.getByText('Discard your unsaved changes?')).toHaveCount(0)
+  await expect(em.getByRole('button', { name: 'Save changes' })).toBeVisible()
+
+  // Escape also asks while dirty; a second Escape backs out of the ask.
+  await em.locator('#course-edit-instructor').focus()
+  await page.keyboard.press('Escape')
+  await expect(em.getByText('Discard your unsaved changes?')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(em.getByText('Discard your unsaved changes?')).toHaveCount(0)
+
+  // Discard closes the editor without writing anything.
+  await em.locator('#course-edit-instructor').focus()
+  await page.keyboard.press('Escape')
+  await em.getByRole('button', { name: 'Discard' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.getByRole('button', { name: /History/ }).click()
+  const h = page.locator('.modal[aria-labelledby="history-title"]')
+  await h.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(h.getByText('No changes yet this session.')).toBeVisible()
+  await h.getByRole('button', { name: 'Close' }).click()
+  await h.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Reopen the editor: the roster autocomplete suggests term instructors on
+  // focus and fills the free-text field on pick.
+  await page.locator('.filter-offering-edit').first().click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  const sec = em.locator('#course-edit-secondary')
+  await sec.focus()
+  const firstSuggestion = em.locator('.course-picker-dropdown .course-picker-option').first()
+  await expect(firstSuggestion).toBeVisible()
+  const name = (await firstSuggestion.innerText()).trim()
+  await firstSuggestion.click()
+  await expect(sec).toHaveValue(name)
+  await expect(em.locator('.course-picker-dropdown')).toHaveCount(0)
+
+  await em.getByRole('button', { name: 'Cancel' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+
+  // Delete the roster schedule: later tests' shared-server expectations (the
+  // fresh-context first-pill selection) must not see this test's leftovers.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Editor roster' })
+    .getByRole('button', { name: 'Delete Editor roster' })
+    .click()
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  assertClean(errors)
+})
+
 test('lab sections: add lab from the editor (auto-close), strip lab chip, schedule it, cascade remove', async ({
   page,
 }) => {
@@ -437,6 +538,23 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await blockTime.click()
   await settle(page)
   await assertTargetSize(page, ['.filter-offering-edit', '.cal-block-view'], 'edit-mode grid')
+
+  // The course editor: scan it open, then in its discard-confirm state.
+  await page.locator('.filter-offering-edit').first().click()
+  await settle(page)
+  const editDialog = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await editDialog.waitFor({ state: 'visible', timeout: 5000 })
+  const editViolations = await seriousViolations(page, '.modal[aria-labelledby="course-edit-title"]')
+  expect(brief(editViolations), 'course editor dialog').toEqual([])
+  await editDialog.locator('#course-edit-secondary').fill('Test Person')
+  await page.keyboard.press('Escape')
+  await settle(page)
+  const confirmViolations = await seriousViolations(page, '.modal[aria-labelledby="course-edit-title"]')
+  expect(brief(confirmViolations), 'course editor discard confirm').toEqual([])
+  await editDialog.getByRole('button', { name: 'Keep editing' }).click()
+  await editDialog.getByRole('button', { name: 'Cancel' }).click()
+  await editDialog.waitFor({ state: 'detached', timeout: 5000 })
+
   await blockTime.click()
   await page.getByRole('button', { name: 'Done' }).click()
 

@@ -47,16 +47,19 @@ export function useModalFocus(isOpen, dialogRef, onClose) {
   }
 
   // The dialog element is often `v-if`'d by the same condition, so focus is
-  // moved after the next paint has rendered it.
+  // moved after the next paint has rendered it. Never steals focus that is
+  // already inside the dialog (e.g. the course editor's own refocus while the
+  // mount animation frame is still pending).
   const moveFocusIn = () => {
     const el = dialogRef.value
     if (!el) return
+    if (el.contains(document.activeElement)) return
     const first = el.querySelector(FOCUSABLE)
     if (first) first.focus()
     else el.focus()
   }
 
-  const stop = watch(isOpen, (open) => {
+  const handler = (open) => {
     if (open) {
       lastFocused = document.activeElement
       document.addEventListener('keydown', onKeydown, true)
@@ -65,7 +68,11 @@ export function useModalFocus(isOpen, dialogRef, onClose) {
       detach()
       if (lastFocused && lastFocused.focus) lastFocused.focus()
     }
-  })
+  }
+
+  // Immediate: dialogs mounted already-open (the course editor) attach their
+  // trap at mount, not on the first open/close toggle.
+  const stop = watch(isOpen, handler, { immediate: true })
 
   onBeforeUnmount(() => {
     stop()

@@ -121,6 +121,15 @@ else was being edited the editor closes itself and drops the user back onto
 the grid. Removing a lecture removes its labs; renaming a lecture's letter
 renames its labs' to match.
 
+**Course editor**: its action bar is pinned to the dialog's foot (Remove
+course / Cancel / Save changes never scroll out of view), and closing a
+dirty editor — outside click, ×, or Escape — asks before discarding: the
+foot swaps to "Discard your unsaved changes?" with **Keep editing** /
+**Discard** (deliberate exits — Cancel, Save, Remove — close directly). The
+"Other instructors" field autocompletes from the term's instructor roster,
+matching the last comma-separated token ("Smith, Jo" → pick Jones), replacing
+the old chip wall.
+
 **Recent changes & history**: the edit bar's **History** button opens the
 session's change list. It is not an undo stack: the panel shows the **net
 difference** between the current term and the session's base (what the term

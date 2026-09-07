@@ -1151,8 +1151,11 @@
   color: var(--primary);
   font-weight: var(--weight-bold);
 }
-.slot-time-group.inactive {
-  opacity: 0.6;
+// The inactive group reads clearly (never a contrast-dimming opacity): its
+// name loses the primary treatment and keeps the muted text + border.
+.slot-time-group.inactive .slot-time-group-name {
+  border-color: var(--gray-200);
+  color: var(--text-muted);
 }
 
 .custom-time-row {
@@ -1196,18 +1199,18 @@
   font-size: 12.5px;
   color: var(--text-muted);
 }
-.quick-add-wrap {
-  @include flex-row(6px);
-  flex-wrap: wrap;
-  margin-top: var(--space-2);
-}
-.quick-add-hint {
-  flex-basis: 100%;
-  margin-bottom: 2px;
-}
-.quick-add-btn {
-  font-size: var(--font-xs);
-  padding: 2px var(--space-2);
+// "Other instructors" autocomplete: the suggestion list anchors under the
+// input (same surface as the course picker's dropdown).
+.secondary-suggest-wrap {
+  position: relative;
+
+  .search-input {
+    width: 100%;
+  }
+
+  .course-picker-dropdown {
+    max-height: 220px;
+  }
 }
 
 .schedule-upload-input {

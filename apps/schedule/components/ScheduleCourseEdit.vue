@@ -1,9 +1,15 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
-    <div ref="modalEl" class="modal" role="dialog" aria-modal="true" aria-labelledby="course-edit-title">
+  <div class="modal-overlay" @click.self="close">
+    <div
+      ref="modalEl"
+      class="modal modal-editor"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="course-edit-title"
+    >
       <div class="modal-head">
         <h3 id="course-edit-title">Edit {{ codeLabel }} {{ sectionLabel }}</h3>
-        <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
+        <button class="modal-close" @click="close" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
         <p class="modal-intro">
@@ -36,7 +42,12 @@
                 All instructors
               </button>
             </div>
-            <select id="course-edit-instructor" class="search-input" v-model="instructorSel">
+            <select
+              id="course-edit-instructor"
+              ref="instructorEl"
+              class="search-input"
+              v-model="instructorSel"
+            >
               <option value="">— No instructor —</option>
               <option v-for="i in instructorOptions" :key="i" :value="i">{{ i }}</option>
             </select>
@@ -57,28 +68,33 @@
 
         <div class="field">
           <label for="course-edit-secondary">Other instructors</label>
-          <input
-            id="course-edit-secondary"
-            class="search-input"
-            type="text"
-            v-model="secondaryText"
-            placeholder="e.g. Smith, Jones"
-          />
+          <div class="secondary-suggest-wrap" ref="secondarySuggestEl">
+            <input
+              id="course-edit-secondary"
+              class="search-input"
+              type="text"
+              v-model="secondaryText"
+              placeholder="e.g. Smith, Jones"
+              @focus="suggestOpen = true"
+              @blur="onSecondaryBlur"
+              @keydown.esc="suggestOpen = false"
+            />
+            <div v-if="suggestOpen && secondarySuggestions.length" class="course-picker-dropdown">
+              <button
+                v-for="n in secondarySuggestions"
+                :key="n"
+                type="button"
+                class="course-picker-option"
+                @mousedown.prevent
+                @click="pickSecondary(n)"
+              >
+                <span class="planner-pick-code">{{ n }}</span>
+              </button>
+            </div>
+          </div>
           <p class="field-hint">
             Comma-separated (like the registrar's <code>secondary_instr</code> column); leave blank for none.
           </p>
-          <div v-if="quickAddOptions.length" class="quick-add-wrap">
-            <span class="field-hint quick-add-hint">Add from schedule:</span>
-            <button
-              v-for="n in quickAddOptions"
-              :key="n"
-              type="button"
-              class="filter-btn quick-add-btn"
-              @click="quickAdd(n)"
-            >
-              {{ n }}
-            </button>
-          </div>
         </div>
 
         <div class="field">
@@ -208,8 +224,15 @@
             >. It's in the <strong>No meeting times</strong> strip; drag it onto a slot to schedule it.
           </p>
         </div>
-
-        <div class="controls">
+      </div>
+      <div class="modal-foot">
+        <template v-if="confirmDiscard">
+          <span class="field-hint">Discard your unsaved changes?</span>
+          <span class="controls-spacer"></span>
+          <button ref="keepEditEl" class="filter-btn" @click="keepEditing">Keep editing</button>
+          <button class="filter-btn primary" @click="discard">Discard</button>
+        </template>
+        <template v-else>
           <button class="filter-btn remove-course-btn" @click="removeCourse">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -232,7 +255,7 @@
           <span class="controls-spacer"></span>
           <button class="filter-btn" @click="$emit('close')">Cancel</button>
           <button class="filter-btn primary" :disabled="!canSave" @click="save">Save changes</button>
-        </div>
+        </template>
       </div>
     </div>
   </div>
@@ -263,7 +286,7 @@ import { useModalFocus } from '../src/modalFocus.js'
 import AirDatepicker from 'air-datepicker'
 import 'air-datepicker/air-datepicker.css'
 
-import { computed, ref, watch, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
 
 // Day letters available per term group (Spring is a single MTWRF group).
 const GROUP_DAYS = { MWF: ['M', 'W', 'F'], TR: ['T', 'R'], MTWRF: ['M', 'T', 'W', 'R', 'F'] }
@@ -281,7 +304,39 @@ export default {
     // The editor only exists while it's open (the parent gates it), so its
     // focus trap is always active for its lifetime.
     const modalEl = ref(null)
-    useModalFocus(ref(true), modalEl, () => emit('close'))
+    const instructorEl = ref(null)
+
+    // --- Guarded dismissal ---------------------------------------------
+    // Closing the editor with unsaved changes (outside click, ×, Escape) asks
+    // before discarding: the foot swaps to "Discard your unsaved changes?"
+    // with Keep editing / Discard. Keep editing returns to the form (the lead
+    // instructor field); Escape while confirming also keeps editing. Cancel,
+    // Save, Remove course, and the lab auto-close are deliberate exits and
+    // close directly.
+    const confirmDiscard = ref(false)
+    const keepEditEl = ref(null)
+    const close = () => {
+      if (confirmDiscard.value) {
+        keepEditing()
+        return
+      }
+      if (hasPendingChanges.value) {
+        confirmDiscard.value = true
+        nextTick(() => {
+          if (keepEditEl.value) keepEditEl.value.focus()
+        })
+        return
+      }
+      emit('close')
+    }
+    const discard = () => emit('close')
+    const keepEditing = () => {
+      confirmDiscard.value = false
+      nextTick(() => {
+        if (instructorEl.value) instructorEl.value.focus()
+      })
+    }
+    useModalFocus(ref(true), modalEl, close)
 
     const schedule = computed(() => scheduleById(props.scheduleId))
 
@@ -314,9 +369,11 @@ export default {
 
     // --- Other instructors ------------------------------------------------
     // A free-text list mirroring the registrar's `secondary_instr` column
-    // (comma-separated, whitespace tolerated), parsed on save. The quick-add
-    // chips draw from the same pools as the lead dropdown, minus the lead
-    // instructor and names already added.
+    // (comma-separated, whitespace tolerated), parsed on save. The autocomplete
+    // dropdown suggests names from the same pools as the lead dropdown (the
+    // whole term, minus the lead instructor and names already added), matched
+    // against the last comma-separated token so "Smith, Jo" can become
+    // "Smith, Jones" by picking a suggestion.
     const listKey = (names) =>
       [...new Set((names || []).map((n) => String(n || '').trim()).filter(Boolean))].join(',')
     const secondaryText = ref((o.secondaryInstructors || []).join(', '))
@@ -328,16 +385,37 @@ export default {
           .filter(Boolean),
       ),
     ])
-    const quickAddOptions = computed(() => {
+    const instructorPool = computed(() => {
       const lead = instructorSel.value
-      const current = secondaryNames.value
-      const pool = [...deptInstructors.value, ...allInstructors.value]
-      return [...new Set(pool)].filter((n) => n !== lead && !current.includes(n))
+      return [...new Set([...deptInstructors.value, ...allInstructors.value])].filter((n) => n !== lead)
     })
-    const quickAdd = (name) => {
-      const cur = secondaryNames.value
-      if (cur.includes(name)) return
-      secondaryText.value = [...cur, name].join(', ')
+    const suggestOpen = ref(false)
+    const secondarySuggestEl = ref(null)
+    const secondarySuggestions = computed(() => {
+      if (!suggestOpen.value) return []
+      const current = secondaryNames.value
+      const text = secondaryText.value
+      const token = text
+        .slice(text.lastIndexOf(',') + 1)
+        .trim()
+        .toLowerCase()
+      const pool = instructorPool.value.filter((n) => !current.includes(n))
+      const matched = token ? pool.filter((n) => n.toLowerCase().startsWith(token)) : pool
+      return matched.slice(0, 8)
+    })
+    // Closes the suggestion list when focus leaves the input + list (clicking
+    // an option is a mousedown.prevent, so the input keeps focus through click).
+    const onSecondaryBlur = (e) => {
+      const next = e.relatedTarget
+      if (next && secondarySuggestEl.value && secondarySuggestEl.value.contains(next)) return
+      suggestOpen.value = false
+    }
+    // Replaces the partially-typed token with the picked name.
+    const pickSecondary = (name) => {
+      const text = secondaryText.value
+      const i = text.lastIndexOf(',')
+      secondaryText.value = (i < 0 ? '' : `${text.slice(0, i + 1)} `) + name
+      suggestOpen.value = false
     }
 
     // --- Lab sections ----------------------------------------------------
@@ -594,8 +672,12 @@ export default {
       instructorSel,
       secondaryText,
       secondaryNames,
-      quickAddOptions,
-      quickAdd,
+      instructorPool,
+      suggestOpen,
+      secondarySuggestEl,
+      secondarySuggestions,
+      onSecondaryBlur,
+      pickSecondary,
       sectionSel,
       isLab,
       codeLabel,
@@ -604,6 +686,11 @@ export default {
       labLabel,
       addLab,
       hasPendingChanges,
+      confirmDiscard,
+      keepEditEl,
+      close,
+      keepEditing,
+      discard,
       timeMode,
       timeSel,
       slotsForGroup,
