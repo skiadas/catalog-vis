@@ -251,17 +251,6 @@
 .remove-course-btn:hover {
   background: var(--danger-08);
 }
-.lab-chip {
-  @include text-caption;
-  margin-left: 5px;
-  padding: 1px 4px;
-  border-radius: 3px;
-  background: var(--success-bg);
-  color: var(--success);
-  border: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
-  position: relative;
-  top: -1px;
-}
 .add-lab-row {
   margin: 0 0 var(--space-3);
 }
@@ -394,7 +383,9 @@
   align-items: center;
   gap: 2px;
   background: var(--accent-85);
-  color: var(--primary);
+  // The collapsed count/time/tag text sits directly on the light accent tint,
+  // so it uses the near-black text token (primary read 3.61:1 here, below AA).
+  color: var(--text);
   border: 1px solid var(--primary-35);
   overflow: hidden;
   text-align: center;

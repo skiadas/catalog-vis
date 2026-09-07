@@ -316,17 +316,20 @@ test('lab sections: add lab from the editor (auto-close), strip lab chip, schedu
     .waitFor({ timeout: 5000 })
   await em.waitFor({ state: 'detached', timeout: 5000 })
 
-  // The lab is unscheduled: it sits in the strip, marked with a LAB chip.
+  // The lab is unscheduled: it sits in the strip, identified by the
+  // registrar's shapes (course number 160L, section A1) — no LAB chip.
   const strip = page.locator('.no-meeting-strip')
-  const labPill = strip.locator('.slot-pill:has(.lab-chip)')
+  const labPill = strip.locator('.slot-pill', { hasText: 'ANTH 160L' })
   await labPill.first().waitFor({ timeout: 5000 })
-  await expect(labPill.first()).toContainText('ANTH 160')
+  await expect(labPill.first()).toContainText('ANTH 160L')
+  await expect(labPill.first()).toContainText('A1')
 
   // Reopen the lab from the strip: the editor marks it as a lab and offers no
-  // "Add lab section" (a lab cannot spawn labs).
+  // "Add lab section" (a lab cannot spawn labs). Its title names the offering
+  // by the registrar shapes, not a LAB label.
   await labPill.first().locator('.slot-pill-edit').click()
   await em.waitFor({ state: 'visible', timeout: 5000 })
-  await expect(em.locator('.lab-chip')).toHaveText('LAB')
+  await expect(em.locator('#course-edit-title')).toHaveText('Edit ANTH 160L A1')
   await expect(em.getByRole('button', { name: 'Add lab section' })).toHaveCount(0)
 
   // Give it a meeting time and save: it leaves the strip for the grid. The
@@ -338,7 +341,16 @@ test('lab sections: add lab from the editor (auto-close), strip lab chip, schedu
   await em.getByRole('button', { name: 'Save changes' }).click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
   await expect(strip.locator('.slot-pill')).toHaveCount(0)
-  await page.locator('.cal-block').filter({ hasText: 'ANTH 160' }).first().waitFor({ timeout: 5000 })
+  // The scheduled lab shows the same registrar shapes on the grid row and on
+  // the day timeline row: course number 160L + section A1, like the pill.
+  const labBlock = page.locator('.cal-block').filter({ hasText: 'ANTH 160L' })
+  await labBlock.first().waitFor({ timeout: 5000 })
+  await expect(labBlock.first().locator('.filter-offering', { hasText: 'ANTH 160L' })).toHaveCount(1)
+  await page.locator('.cal-dayhead').nth(1).click() // T: the lab meets TR 10:00-11:45
+  await page.waitForURL(/#\/day\/T/, { timeout: 5000 })
+  await settle(page)
+  await expect(page.locator('.day-timeline .filter-offering', { hasText: 'ANTH 160L' })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Grid', exact: true }).click()
 
   // Remove the lecture from its block: its lab is removed with it (no
   // orphan labs are left behind). Grid offerings render as `.filter-offering`.
@@ -388,6 +400,11 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
   await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
   await settle(page)
+  // The freshly generated schedule is auto-selected, so the grid now shows
+  // populated count blocks — scan it: the collapsed-block text must stay AA
+  // against the accent tint (this also gates the day timeline's card text).
+  const populatedGridViolations = await seriousViolations(page)
+  expect(brief(populatedGridViolations), 'populated grid view').toEqual([])
 
   // Edit mode surfaces the small inline edit pencils on offering rows; open a
   // block so they render, scan their target sizes, then close both. Use this

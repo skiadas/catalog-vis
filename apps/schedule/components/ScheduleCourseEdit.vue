@@ -2,7 +2,7 @@
   <div class="modal-overlay" @click.self="$emit('close')">
     <div ref="modalEl" class="modal" role="dialog" aria-modal="true" aria-labelledby="course-edit-title">
       <div class="modal-head">
-        <h3 id="course-edit-title">Edit {{ offering.code }}<span v-if="isLab" class="lab-chip">LAB</span></h3>
+        <h3 id="course-edit-title">Edit {{ codeLabel }} {{ sectionLabel }}</h3>
         <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
@@ -246,6 +246,8 @@ import {
   termConfig,
   termSlotOptions,
   normalizeBand,
+  offeringCodeLabel,
+  offeringSectionLabel,
 } from '@major-vis/schedule-core'
 import {
   scheduleById,
@@ -343,6 +345,10 @@ export default {
     // labs too (to fix instructor/time); only non-lab rows get the "Add lab
     // section" action, since a lab without its lecture is meaningless.
     const isLab = computed(() => Boolean(o.lab))
+    // Registrar-shaped identifiers (BIO 166 / BIO 166L, A / A2) — the title
+    // names the offering exactly as the registrar writes it.
+    const codeLabel = computed(() => offeringCodeLabel(o))
+    const sectionLabel = computed(() => offeringSectionLabel(o))
     const labAdded = ref(null)
     const closeTimer = ref(null)
 
@@ -592,6 +598,8 @@ export default {
       quickAdd,
       sectionSel,
       isLab,
+      codeLabel,
+      sectionLabel,
       labAdded,
       labLabel,
       addLab,

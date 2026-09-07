@@ -13,8 +13,7 @@
       @click="goScheduleCourse(item.code)"
       @keydown="onKeyActivate($event, () => goScheduleCourse(item.code))"
     >
-      {{ item.code }}<span class="sep">{{ item.o.section }}</span
-      ><span v-if="item.lab" class="lab-chip">LAB</span>
+      {{ codeLabel }}<span class="sep">{{ sectionLabel }}</span>
     </span>
     <span class="slot-pill-name">{{ courseName }}</span>
     <span
@@ -52,7 +51,12 @@
 <script>
 import { goScheduleCourse, goScheduleInstructor } from '../router.js'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
-import { buildDragPayload, instructorsOf } from '@major-vis/schedule-core'
+import {
+  buildDragPayload,
+  instructorsOf,
+  offeringCodeLabel,
+  offeringSectionLabel,
+} from '@major-vis/schedule-core'
 import { onKeyActivate } from '../src/keyboardNav.js'
 
 import { computed } from 'vue'
@@ -72,6 +76,10 @@ export default {
   emits: ['edit'],
   setup(props, { emit }) {
     const courseName = computed(() => catalogCourseName(props.item.code))
+    // Registrar-shaped identifiers (BIO 166 / BIO 166L, section A / A2) —
+    // labs carry the L in the course number, no separate marker.
+    const codeLabel = computed(() => offeringCodeLabel(props.item.o))
+    const sectionLabel = computed(() => offeringSectionLabel(props.item.o))
     const hasOthers = computed(() => instructorsOf(props.item.o).length > 1)
     const pillTitle = computed(
       () => props.proposed || props.removed || courseName.value || instructorsOf(props.item.o).join(', '),
@@ -85,6 +93,8 @@ export default {
       goScheduleCourse,
       goScheduleInstructor,
       courseName,
+      codeLabel,
+      sectionLabel,
       hasOthers,
       pillTitle,
       onKeyActivate,

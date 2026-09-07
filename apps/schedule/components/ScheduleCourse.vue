@@ -13,7 +13,7 @@
       <div class="req-block" v-for="s in sections" :key="s.code + s.o.section">
         <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px">
           <div>
-            <strong>Section {{ s.o.section }}</strong> · {{ s.o.days }} {{ formatTime(s.o.time) }}
+            <strong>{{ s.sectionLabel }}</strong> · {{ s.o.days }} {{ formatTime(s.o.time) }}
           </div>
           <div class="faculty">
             Instructor:

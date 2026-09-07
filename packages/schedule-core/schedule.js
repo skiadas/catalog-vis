@@ -375,6 +375,15 @@ export function courseNumberLabel(o) {
   return `${o.number}L`
 }
 
+// The registrar-shaped course code for a record (`BIO 166`, `BIO 166L`): the
+// code renderers display (the schedule/client `code` is the parent's plain
+// `BIO 166`). Labs are identified by the L in the course number, exactly as
+// the registrar writes them — no separate lab marker is needed.
+export function offeringCodeLabel(o) {
+  if (!o) return ''
+  return `${o.prefix} ${courseNumberLabel(o)}`
+}
+
 // The section cell for a record: labs carry their sequence in the section
 // (`A2` = section A, lab 2), lectures write the plain section letter.
 export function offeringSectionLabel(o) {

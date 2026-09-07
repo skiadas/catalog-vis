@@ -51,6 +51,9 @@ import {
   clipBand,
   assignLanes,
   dayTimelineRange,
+  offeringCodeLabel,
+  offeringSectionLabel,
+  courseNumberLabel,
 } from '../schedule.js'
 
 const CSV = [
@@ -1594,4 +1597,19 @@ test('assignLanes: later customs lane after existing ones, still right of standa
   assert.equal(lanes.find((l) => l.time === 'std').lane, 0)
   assert.equal(lanes.find((l) => l.time === 'c1').lane, 1)
   assert.equal(lanes.find((l) => l.time === 'c2').lane, 2)
+})
+
+// ---------------------------------------------------------------------------
+// Registrar-shaped labels: labs are identified by the L in the course number
+// and the sequence in the section cell, never by a separate marker
+// ---------------------------------------------------------------------------
+
+test('offeringCodeLabel / offeringSectionLabel: registrar shapes', () => {
+  const lecture = { prefix: 'BIO', number: '166', section: 'A' }
+  assert.equal(offeringCodeLabel(lecture), 'BIO 166')
+  assert.equal(offeringSectionLabel(lecture), 'A')
+  const lab = { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 2 }
+  assert.equal(offeringCodeLabel(lab), 'BIO 166L')
+  assert.equal(offeringSectionLabel(lab), 'A2')
+  assert.equal(courseNumberLabel(lab), '166L')
 })

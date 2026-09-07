@@ -78,7 +78,7 @@
                   :title="itemTitle(it) || (isEditable(it) ? 'Drag to move' : '')"
                 >
                   <span class="filter-offering-main"
-                    >{{ it.code }}{{ it.o.section
+                    >{{ offeringCodeLabel(it.o) }}{{ offeringSectionLabel(it.o)
                     }}<span class="do-inst">{{ instructorChip(it.o).label }}</span></span
                   >
                   <button
@@ -132,6 +132,8 @@ import {
   dayTimelineRange,
   assignLanes,
   instructorChip,
+  offeringCodeLabel,
+  offeringSectionLabel,
 } from '@major-vis/schedule-core'
 import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
 import {
@@ -334,6 +336,8 @@ export default {
       zoneFor,
       PX_PER_MIN,
       formatTime,
+      offeringCodeLabel,
+      offeringSectionLabel,
       goScheduleSlot,
       goScheduleCourse,
       rowColor,

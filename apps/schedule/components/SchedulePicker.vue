@@ -140,7 +140,13 @@ import {
   viewOfferings,
   publishedOfferings,
 } from '../src/scheduleStore.js'
-import { colorForSchedule, compareItems, renderCsv } from '@major-vis/schedule-core'
+import {
+  colorForSchedule,
+  compareItems,
+  renderCsv,
+  courseNumberLabel,
+  offeringSectionLabel,
+} from '@major-vis/schedule-core'
 import { onKeyActivate } from '../src/keyboardNav.js'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
@@ -217,8 +223,10 @@ export default {
         for (const o of offerings) {
           rows.push([
             o.prefix,
-            o.number,
-            o.section,
+            // Labs export in the registrar shape (166L, section A2) so a
+            // re-import round-trips the lab sequence.
+            courseNumberLabel(o),
+            offeringSectionLabel(o),
             o.instructor || '',
             (o.secondaryInstructors || []).join(', '),
             o.days || '',
