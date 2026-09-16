@@ -42,15 +42,34 @@
                 All instructors
               </button>
             </div>
-            <select
-              id="course-edit-instructor"
-              ref="instructorEl"
-              class="search-input"
-              v-model="instructorSel"
-            >
-              <option value="">— No instructor —</option>
-              <option v-for="i in instructorOptions" :key="i" :value="i">{{ i }}</option>
-            </select>
+            <div class="secondary-suggest-wrap" ref="instructorSuggestEl">
+              <input
+                id="course-edit-instructor"
+                ref="instructorEl"
+                class="search-input"
+                type="text"
+                v-model="instructorSel"
+                placeholder="Type or pick a name…"
+                @focus="instructorSuggestOpen = true"
+                @blur="onInstructorBlur"
+                @keydown.esc="instructorSuggestOpen = false"
+              />
+              <div
+                v-if="instructorSuggestOpen && instructorSuggestions.length"
+                class="course-picker-dropdown"
+              >
+                <button
+                  v-for="n in instructorSuggestions"
+                  :key="n"
+                  type="button"
+                  class="course-picker-option"
+                  @mousedown.prevent
+                  @click="pickInstructor(n)"
+                >
+                  <span class="planner-pick-code">{{ n }}</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="field field-fit">
@@ -281,7 +300,8 @@ import {
   editingRole,
   publishedPart,
 } from '../src/scheduleStore.js'
-import { courseName as catalogCourseName } from '@major-vis/catalog-client'
+import { courseName as catalogCourseName, programs, allCourses } from '@major-vis/catalog-client'
+import { buildFacultyAndEligible } from '@major-vis/schedule-core/generate'
 import { useModalFocus } from '../src/modalFocus.js'
 import AirDatepicker from 'air-datepicker'
 import 'air-datepicker/air-datepicker.css'
@@ -340,12 +360,24 @@ export default {
 
     const schedule = computed(() => scheduleById(props.scheduleId))
 
-    // Instructor dropdowns are drawn from the whole *term* the course is in.
+    // Instructor dropdowns are drawn from the catalog faculty rosters
+    // (per-program `faculty` lists, mapped to course prefixes the same way the
+    // schedule generator does) plus the whole *term* the course is in — so a
+    // brand-new schedule still offers the department's faculty, and names that
+    // appear on the schedule are always pickable.
     const courseOfferings = computed(() => {
       const s = schedule.value
       const part = publishedPart(s, activeTerm.value)
       return part ? part.offerings : []
     })
+
+    // prefix -> catalog faculty roster (the same map `generateSchedule` uses).
+    const facultyByPrefix = computed(
+      () => buildFacultyAndEligible(programs.value, allCourses.value).facultyByPrefix,
+    )
+    const allCatalogFaculty = computed(() =>
+      [...new Set(Object.values(facultyByPrefix.value).flat())].sort(compareInstructors),
+    )
 
     const deptInstructors = computed(() => {
       const set = new Set()
@@ -361,11 +393,44 @@ export default {
       return Array.from(set).sort(compareInstructors)
     })
 
-    const showAll = ref(o.instructor && !deptInstructors.value.includes(o.instructor))
-    const instructorOptions = computed(() => (showAll.value ? allInstructors.value : deptInstructors.value))
+    const deptOptions = computed(() =>
+      [...new Set([...(facultyByPrefix.value[o.prefix] || []), ...deptInstructors.value])].sort(
+        compareInstructors,
+      ),
+    )
+    const allOptions = computed(() =>
+      [...new Set([...allCatalogFaculty.value, ...allInstructors.value])].sort(compareInstructors),
+    )
+
+    const showAll = ref(o.instructor && !deptOptions.value.includes(o.instructor))
 
     const instructorSel = ref(o.instructor || '')
     const sectionSel = ref(o.section || '')
+
+    // The lead-instructor combobox: free text (any name is legal — new hires,
+    // adjuncts), with suggestions from the department pool (catalog roster +
+    // same-prefix term instructors) or the all-instructors pool, matched
+    // against the typed token.
+    const instructorSuggestOpen = ref(false)
+    const instructorSuggestEl = ref(null)
+    const instructorSuggestions = computed(() => {
+      if (!instructorSuggestOpen.value) return []
+      const pool = showAll.value ? allOptions.value : deptOptions.value
+      const token = instructorSel.value.trim().toLowerCase()
+      const matched = token ? pool.filter((n) => n.toLowerCase().startsWith(token)) : pool
+      return matched.slice(0, 8)
+    })
+    // Closes the suggestion list when focus leaves the input + list (clicking
+    // an option is a mousedown.prevent, so the input keeps focus through click).
+    const onInstructorBlur = (e) => {
+      const next = e.relatedTarget
+      if (next && instructorSuggestEl.value && instructorSuggestEl.value.contains(next)) return
+      instructorSuggestOpen.value = false
+    }
+    const pickInstructor = (name) => {
+      instructorSel.value = name
+      instructorSuggestOpen.value = false
+    }
 
     // --- Other instructors ------------------------------------------------
     // A free-text list mirroring the registrar's `secondary_instr` column
@@ -387,7 +452,7 @@ export default {
     ])
     const instructorPool = computed(() => {
       const lead = instructorSel.value
-      return [...new Set([...deptInstructors.value, ...allInstructors.value])].filter((n) => n !== lead)
+      return [...new Set([...deptOptions.value, ...allOptions.value])].filter((n) => n !== lead)
     })
     const suggestOpen = ref(false)
     const secondarySuggestEl = ref(null)
@@ -468,7 +533,7 @@ export default {
             ? normalizeBand(`${snapToFive(customStart.value)}-${snapToFive(customEnd.value)}`)
             : timeSel.value
       return (
-        instructorSel.value !== o.instructor ||
+        instructorSel.value.trim() !== (o.instructor || '') ||
         listKey(secondaryNames.value) !== listKey(o.secondaryInstructors) ||
         (sectionSel.value.trim() || o.section) !== o.section ||
         days !== (o.days || '') ||
@@ -642,7 +707,7 @@ export default {
         props.scheduleId,
         { prefix: o.prefix, number: o.number, section: o.section, lab: o.lab, labSeq: o.labSeq, id: o.id },
         {
-          instructor: instructorSel.value,
+          instructor: instructorSel.value.trim(),
           secondaryInstructors: [...secondaryNames.value],
           section: sectionSel.value.trim() || o.section,
           days,
@@ -668,8 +733,12 @@ export default {
       schedule,
       showAll,
       modalEl,
-      instructorOptions,
       instructorSel,
+      instructorSuggestOpen,
+      instructorSuggestEl,
+      instructorSuggestions,
+      onInstructorBlur,
+      pickInstructor,
       secondaryText,
       secondaryNames,
       instructorPool,

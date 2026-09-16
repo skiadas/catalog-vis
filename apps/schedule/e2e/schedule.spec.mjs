@@ -351,9 +351,14 @@ test('course editor guards unsaved changes, pins its actions, and completes inst
   await expect(em.getByText('Discard your unsaved changes?')).toHaveCount(0)
   await expect(em.getByRole('button', { name: 'Save changes' })).toBeVisible()
 
-  // Escape also asks while dirty; a second Escape backs out of the ask.
+  // Escape also asks while dirty; a second Escape backs out of the ask. The
+  // instructor field is a combobox now: focus opens its suggestions, and the
+  // same Escape that closes them also raises the discard ask (the input's esc
+  // handler and the modal's both fire on the keypress).
   await em.locator('#course-edit-instructor').focus()
+  await expect(em.locator('.course-picker-dropdown')).toBeVisible()
   await page.keyboard.press('Escape')
+  await expect(em.locator('.course-picker-dropdown')).toHaveCount(0)
   await expect(em.getByText('Discard your unsaved changes?')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(em.getByText('Discard your unsaved changes?')).toHaveCount(0)
@@ -393,6 +398,73 @@ test('course editor guards unsaved changes, pins its actions, and completes inst
   await page
     .locator('.schedule-manage-row', { hasText: 'Editor roster' })
     .getByRole('button', { name: 'Delete Editor roster' })
+    .click()
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  assertClean(errors)
+})
+
+test('instructor combobox suggests catalog faculty on a fresh schedule and accepts any typed name', async ({
+  page,
+}) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+
+  // A brand-new empty schedule has no offerings, so a term-derived pool would
+  // offer no names; the combobox seeds from the catalog's department rosters.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.locator('#schedule-create-name').fill('Fresh roster')
+  await page.getByRole('button', { name: 'Generate' }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await page.locator('.schedule-pill', { hasText: 'Fresh roster' }).first().waitFor({ timeout: 10000 })
+
+  // Edit mode, add BIO 161 — the editor opens on it directly.
+  await page
+    .locator('.schedule-pill', { hasText: 'Fresh roster' })
+    .locator('.schedule-pill-edit')
+    .first()
+    .click()
+  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: '＋ Add course' }).click()
+  const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
+  await addm.waitFor({ state: 'visible', timeout: 5000 })
+  await addm.getByPlaceholder('Search code or name…').fill('BIO 161')
+  await addm.locator('.schedule-add-option', { hasText: 'BIO 161' }).first().click()
+
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  const inst = em.locator('#course-edit-instructor')
+  await inst.focus()
+  // The department pool is the catalog BIO roster — a real faculty name is
+  // suggested with nothing else in the schedule.
+  await expect(em.locator('.course-picker-dropdown .course-picker-option', { hasText: 'Gall' })).toBeVisible()
+  // Typing a name from nobody's roster closes the suggestions and stays legal.
+  await inst.fill('Ada Lovelace')
+  await expect(em.locator('.course-picker-dropdown')).toHaveCount(0)
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+
+  // The saved free-text instructor is on the row: reopen the editor and check.
+  await page
+    .locator('.cal-block')
+    .filter({ hasText: 'BIO 161' })
+    .locator('.filter-offering-edit')
+    .first()
+    .click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(inst).toHaveValue('Ada Lovelace')
+  await em.getByRole('button', { name: 'Cancel' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+
+  // Clean up the shared server collection for later tests.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Fresh roster' })
+    .getByRole('button', { name: 'Delete Fresh roster' })
     .click()
   await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
   assertClean(errors)
