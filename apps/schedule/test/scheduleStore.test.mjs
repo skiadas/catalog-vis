@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'node:net'
 
-import { withRemote, flush, resetStore } from './helpers.mjs'
+import { withRemote, flush, resetStore, navigation } from './helpers.mjs'
 
 const COURSE = {
   prefix: 'CS',
@@ -65,6 +65,56 @@ test('boot without a session opens the auth prompt and fetches no schedules', as
     assert.equal(store.currentUser.value, null)
     assert.equal(store.schedules.value.length, 0)
   })
+})
+
+test('boot learns the auth provider from /api/config', async () => {
+  await withRemote(async ({ store }) => {
+    await store.initScheduleCollection()
+    assert.equal(store.authProvider.value, 'username')
+  })
+  await withRemote(
+    async ({ store }) => {
+      await store.initScheduleCollection()
+      assert.equal(store.authProvider.value, 'oidc')
+    },
+    {
+      auth: {
+        provider: 'oidc',
+        cookieSecure: false,
+        oidc: {
+          issuer: 'http://127.0.0.1:1',
+          clientId: 'major-vis',
+          clientSecret: 'secret',
+          redirectUri: 'http://127.0.0.1:1/api/auth/callback',
+          publicOrigin: '',
+          allowInsecureIssuer: true,
+        },
+      },
+    },
+  )
+})
+
+test('startSsoLogin leaves for the server login route with this app path', async () => {
+  await withRemote(async ({ base, store }) => {
+    await store.initScheduleCollection()
+    store.startSsoLogin()
+    assert.equal(navigation.assigned.at(-1), `${base}/api/auth/login?return_to=%2Fapps%2Fschedule%2F`)
+  })
+})
+
+test('auth_error from the OIDC callback surfaces in the prompt and is stripped from the URL', async () => {
+  navigation.location.href = 'http://localhost/apps/schedule/?auth_error=sso_access_denied'
+  navigation.location.search = '?auth_error=sso_access_denied'
+  try {
+    await withRemote(async ({ store }) => {
+      await store.initScheduleCollection()
+      assert.equal(store.authError.value, 'Sign-in was cancelled.')
+      assert.equal(store.authPromptOpen.value, true)
+    })
+  } finally {
+    navigation.location.href = 'http://localhost/apps/schedule/'
+    navigation.location.search = ''
+  }
 })
 
 test('workOffline seeds the local sample and a re-boot stays offline without prompting', async () => {

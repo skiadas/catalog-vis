@@ -2,13 +2,16 @@
 // construct it against an in-memory DB and assertions can exercise the API
 // without binding a port. Static file + catalog serving lives in index.js.
 //
-// Auth: an opaque session token in a cookie. Today the provider is "username"
-// (self-identify); the seam (`authProvider`) leaves room for SSO / one-time-code
-// later without touching the route contract.
+// Auth: an opaque session token in a cookie. The provider is chosen at boot —
+// `username` (self-identify; dev + tests) or `oidc` (external OpenID Connect
+// issuer, see ./auth/oidc.js). Either way the route contract the apps see is
+// the same: /api/config advertises the provider, /api/auth/session reports the
+// user, /api/auth/logout clears the session.
 
 import crypto from 'node:crypto'
 import express from 'express'
 import * as db from './db.js'
+import { createOidcProvider } from './auth/oidc.js'
 import { applyOperations, diffOfferings, describeChange } from '@major-vis/schedule-core/diff'
 
 const TERMS = ['F', 'W', 'S']
@@ -62,9 +65,38 @@ function hashToken(token) {
 //   database   — open DatabaseSync (from openDb)
 //   services   — enabled service keys (for /api/config)
 //   sessionCookie (string, default 'mjv_sid')
-export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
+//   auth       — auth config from loadConfig (provider + cookie flag + oidc coordinates)
+/**
+ * @param {{
+ *   database: import('node:sqlite').DatabaseSync,
+ *   services: string[],
+ *   sessionCookie?: string,
+ *   auth?: import('./config.js').AuthConfig,
+ * }} options
+ */
+export function createApp({
+  database,
+  services,
+  sessionCookie = 'mjv_sid',
+  auth = { provider: 'username', cookieSecure: false },
+}) {
   const app = express()
+  const authProvider = auth.provider || 'username'
   app.use(express.json({ limit: '2mb' }))
+
+  // Creates a session row + sets the opaque session cookie. The single place
+  // session policy lives, shared by both providers.
+  function startSession(res, user) {
+    const token = crypto.randomBytes(32).toString('hex')
+    db.createSession(database, user.id, hashToken(token))
+    res.cookie(sessionCookie, token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: !!auth.cookieSecure,
+      maxAge: 30 * 86400 * 1000,
+    })
+  }
 
   // --- Auth: resolve the session's user into req.user for authenticated routes.
   app.use((req, res, next) => {
@@ -92,27 +124,40 @@ export function createApp({ database, services, sessionCookie = 'mjv_sid' }) {
   app.get('/api/config', (req, res) => {
     res.json({
       services,
-      auth: { provider: 'username', user: req.user ? { username: req.user.username } : null },
+      auth: { provider: authProvider, user: req.user ? { username: req.user.username } : null },
     })
   })
 
   // ---- Auth --------------------------------------------------------------
-  app.post('/api/auth/login', (req, res) => {
-    const username = String((req.body && req.body.username) || '').trim()
-    if (!username || username.length > 120) {
-      return res.status(400).json({ error: 'username_required' })
-    }
-    const user = db.ensureUser(database, username)
-    const token = crypto.randomBytes(32).toString('hex')
-    db.createSession(database, user.id, hashToken(token))
-    res.cookie(sessionCookie, token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 30 * 86400 * 1000,
+  if (authProvider === 'oidc') {
+    // Login is a full-page redirect dance at the issuer: the app links to
+    // /api/auth/login and the issuer returns the browser to /api/auth/callback.
+    // The self-identify POST below is intentionally absent — with a real
+    // identity provider, a client-supplied username would let anyone claim any
+    // email.
+    const oidc = createOidcProvider({
+      database,
+      issuer: auth.oidc.issuer,
+      clientId: auth.oidc.clientId,
+      clientSecret: auth.oidc.clientSecret,
+      redirectUri: auth.oidc.redirectUri,
+      publicOrigin: auth.oidc.publicOrigin,
+      allowInsecureIssuer: auth.oidc.allowInsecureIssuer,
+      startSession,
     })
-    res.json({ user: { id: user.id, username: user.username } })
-  })
+    app.get('/api/auth/login', oidc.loginHandler)
+    app.get('/api/auth/callback', oidc.callbackHandler)
+  } else {
+    app.post('/api/auth/login', (req, res) => {
+      const username = String((req.body && req.body.username) || '').trim()
+      if (!username || username.length > 120) {
+        return res.status(400).json({ error: 'username_required' })
+      }
+      const user = db.ensureUser(database, username)
+      startSession(res, user)
+      res.json({ user: { id: user.id, username: user.username } })
+    })
+  }
 
   // Reports the current session's user, or user:null when unauthenticated (the
   // store treats a missing session as data, not an error — mirrors /api/config).

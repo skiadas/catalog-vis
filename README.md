@@ -139,8 +139,8 @@ build:
 - the **catalog API** — the three artifacts (`/majors.json`,
   `/requirements_parsed.json`, `/core_requirements.json`) plus a
   `/catalog.json` manifest, always public;
-- the **backend API** (`/api/*`: username self-identify auth, yearly
-  schedules/terms, suggested changes) backed by SQLite via the built-in
+- the **backend API** (`/api/*`: auth — username self-identify or OIDC SSO —
+  yearly schedules/terms, suggested changes) backed by SQLite via the built-in
   `node:sqlite` module — no native dependencies.
 
 To run it on a server, copy `compose.yaml` anywhere on the box and start the
@@ -156,6 +156,12 @@ Set `SERVICES` to a comma-separated list of `program | schedule | planner` to
 choose which apps are exposed (default `schedule`); `PORT`/`HOST` cover the
 listen socket. See `server/README.md`. The hostname-split seams (each app on
 its own host, the catalog API served elsewhere) exist but are not used yet.
+
+For the hosted setup — a Lightsail (or any VPS) deployment with TLS and login
+delegated to an external OpenID Connect issuer (e.g. the `otc-oidc` SSO) —
+`compose.yaml` carries an optional `proxy` profile (Caddy, TLS on 80/443) and
+the environment contract lives in `deploy/.env.example`; the full runbook is
+`docs/DEPLOY_LIGHTSAIL.md`.
 
 **Auto-updates**: `deploy/update.sh` pulls the latest image from GHCR and — if
 the image actually changed — recreates the container without touching the

@@ -1,12 +1,13 @@
 # @major-vis/server
 
 Backend for the major-vis apps: Express + the built-in **`node:sqlite`**
-database (Node ≥ 24). Serves the built apps + the catalog API, provides
-username-based auth, and exposes the yearly schedule / term / suggested-change
-APIs. Reuses the pure `@major-vis/schedule-core` domain logic directly (no
-duplicate scheduling code). It is also the **container process** — the
-deployment is a single container (see the root README "How it's deployed" and
-the `Dockerfile`).
+database (Node ≥ 24). Serves the built apps + the catalog API, provides auth
+(username self-identify or an external OpenID Connect issuer), and exposes the
+yearly schedule / term / suggested-change APIs. Reuses the pure
+`@major-vis/schedule-core` domain logic directly (no duplicate scheduling
+code). It is also the **container process** — the deployment is a single
+container (see the root README "How it's deployed", the `Dockerfile`, and
+`docs/DEPLOY_LIGHTSAIL.md` for the hosted setup).
 
 ## Run
 
@@ -14,7 +15,11 @@ the `Dockerfile`).
 npm run build && npm run serve
 # env: PORT (8080), HOST (0.0.0.0), DB_PATH (server/data/major-vis.db),
 #      SERVICES (comma list: program|schedule|planner; default schedule),
-#      STATIC_DIR (built static layout; defaults to the repo root)
+#      STATIC_DIR (built static layout; defaults to the repo root),
+#      AUTH_PROVIDER (username | oidc; default username)
+# oidc provider additionally requires: OIDC_ISSUER, OIDC_CLIENT_ID,
+#      OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI, and (recommended) PUBLIC_ORIGIN,
+#      COOKIE_SECURE=true — the server refuses to boot with any missing
 ```
 
 The container sets `STATIC_DIR=/srv/static` to an **assembled layout**: the
@@ -48,6 +53,9 @@ the `schema_migrations` table). `0001_baseline` creates:
   note, created_at)` — suggested changes
 - `suggestion_ops(id, suggestion_id, position, op, status, applied,
   resolved_at)` — one row per change of a suggestion (suggestion_id indexed)
+- `oidc_flows(state, nonce, code_verifier, return_to, created_at, expires_at)`
+  — single-use state for in-flight OIDC logins (`0002_oidc_flows`; only used by
+  the `oidc` provider, pruned lazily on the next login)
 
 Migrations are forward-only and run automatically at container boot, so normal
 deploys need no extra step. `npm run migrate up|pending|history` is the manual
@@ -78,7 +86,9 @@ the apps (CORS needed only when hosted off-origin).
 ```
 GET    /api/config                          -> { services, auth }
 GET    /api/auth/session                    -> { user } | 401
-POST   /api/auth/login { username }         -> { user }          (self-identify)
+POST   /api/auth/login { username }         -> { user }          (provider: username only)
+GET    /api/auth/login?return_to=           -> 302 to the issuer (provider: oidc only)
+GET    /api/auth/callback?code=&state=      -> 302 back to return_to (?auth_error=... on failure)
 POST   /api/auth/logout
 GET    /api/schedules?year=                 -> { schedules }     (auth)
 POST   /api/schedules { name, year }        -> { schedule }      (creates 3 empty term parts)
@@ -96,9 +106,24 @@ POST   /api/suggestions/:id/withdraw { opId? } -> { suggestion } (proposer; one 
 GET    /api/schedules/:id/suggestions/export?fmt=json|md|csv
 ```
 
-**Auth**: opaque session token in an `mjv_sid` httpOnly cookie. Today the
-provider is `username` (self-identify); the provider seam leaves room for SSO /
-one-time-code later without changing the route contract.
+**Auth**: opaque session token in an `mjv_sid` httpOnly cookie (30 days;
+`Secure` when `COOKIE_SECURE=true`). `AUTH_PROVIDER` picks the identity source:
+
+- `username` (default) — self-identify via `POST /api/auth/login { username }`.
+  Intended for local dev and tests; anyone can claim any name, so don't expose
+  it publicly.
+- `oidc` — authorization code + PKCE against `OIDC_ISSUER`
+  (`server/src/auth/oidc.js`, `openid-client`). `GET /api/auth/login` redirects
+  to the issuer, `/api/auth/callback` consumes the single-use state row
+  (`oidc_flows`), validates the ID token, and JIT-provisions the user from the
+  lowercased `email` claim (the `users.username` column holds the email). The
+  self-identify POST route is not registered in this mode. `return_to` is
+  validated to a same-origin path; failures redirect back with
+  `?auth_error=<code>`.
+
+Either way the apps see the same contract: `/api/config` advertises the
+provider, `/api/auth/session` reports the user (anonymous is `user: null`, not
+a 401), and `/api/auth/logout` clears the session.
 
 **Suggestions**: anyone can propose a change to a term as a list of diff
 operations (`add` / `remove` / `update` with absolute field values). Many

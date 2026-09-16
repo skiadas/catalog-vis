@@ -23,8 +23,29 @@ const shim = {
   removeItem: (k) => memoryStorage.delete(k),
 }
 
+// The browser navigation surface the store touches: `location` (OIDC redirects
+// and ?auth_error parsing) and `history.replaceState` (stripping the error).
+// Tests can mutate `navigation.location` and read `navigation.assigned`.
+export const navigation = {
+  assigned: [],
+  location: {
+    pathname: '/apps/schedule/',
+    href: 'http://localhost/apps/schedule/',
+    search: '',
+    hash: '',
+    assign(url) {
+      navigation.assigned.push(url)
+    },
+  },
+}
+
 globalThis.window = /** @type {Window & typeof globalThis} */ (
-  /** @type {unknown} */ ({ confirm: () => true, localStorage: shim })
+  /** @type {unknown} */ ({
+    confirm: () => true,
+    localStorage: shim,
+    location: navigation.location,
+    history: { replaceState: () => {} },
+  })
 )
 // The store reads the bare `localStorage` global (what browsers expose);
 // Node only provides it behind a flag, so shim it directly.
@@ -56,9 +77,14 @@ export function installCookieFetch() {
 }
 
 // An in-memory API server with a cookie-aware store fetch, remote mode on.
-export async function withRemote(fn) {
+// `auth` optionally overrides the server's auth config (e.g. an oidc provider).
+/**
+ * @param {(ctx: { srv: any, base: string, store: any }) => Promise<any>} fn
+ * @param {{ auth?: import('../../../server/src/config.js').AuthConfig }} [options]
+ */
+export async function withRemote(fn, { auth } = {}) {
   const database = await openDb(':memory:')
-  const app = createApp({ database, services: ['schedule'] })
+  const app = createApp({ database, services: ['schedule'], ...(auth ? { auth } : {}) })
   const srv = await startTestServer(app)
   // Static imports of the store would evaluate before the shims; load it after
   // the environment is ready.
@@ -92,6 +118,9 @@ export function resetStore(store) {
   store.setShowPendingSuggestions(true)
   store.authPromptOpen.value = false
   store.serverDetected.value = false
+  store.authProvider.value = 'username'
+  store.authError.value = ''
+  navigation.assigned = []
   memoryStorage.clear()
 }
 

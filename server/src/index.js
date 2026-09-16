@@ -38,7 +38,12 @@ export function mountLocalLayout(app, config) {
 export async function buildServer(env = process.env) {
   const config = loadConfig(env)
   const database = await openDb(config.dbPath)
-  const app = createApp({ database, services: config.services, sessionCookie: config.sessionCookie })
+  const app = createApp({
+    database,
+    services: config.services,
+    sessionCookie: config.sessionCookie,
+    auth: config.auth,
+  })
 
   // Compress everything — the catalog artifacts are the big transfers.
   app.use(compression())
@@ -82,5 +87,6 @@ if (isMain) {
   app.listen(config.port, config.host, () => {
     console.log(`major-vis server listening on http://${config.host}:${config.port}`)
     console.log(`services: ${config.services.join(', ')}`)
+    console.log(`auth: ${config.auth.provider}`)
   })
 }

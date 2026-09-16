@@ -11,8 +11,40 @@ services:
       PORT: "8080"
       HOST: 0.0.0.0
       DB_PATH: /data/major-vis.db
+      # Identity. `username` is self-identify (dev only); `oidc` delegates
+      # sign-in to an external OpenID Connect issuer (see deploy/.env.example
+      # and docs/DEPLOY_LIGHTSAIL.md).
+      AUTH_PROVIDER: ${AUTH_PROVIDER:-username}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
     volumes:
       - major-vis-data:/data
 
+  # TLS termination + reverse proxy for the deployed app. Off by default so a
+  # bare `docker compose up -d` stays plain http on 8080; enable it with
+  # COMPOSE_PROFILES=proxy and set APP_DOMAIN (deploy/.env.example documents
+  # the full environment).
+  caddy:
+    image: caddy:2.11.4-alpine
+    profiles: [proxy]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - major-vis
+
 volumes:
   major-vis-data:
+  caddy-data:
+  caddy-config:

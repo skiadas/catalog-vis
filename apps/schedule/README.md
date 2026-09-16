@@ -155,9 +155,14 @@ an edit in progress is never disturbed by a concurrent create.
 When the app is served by the backend (`server/`), `initScheduleCollection`
 pings `/api/config` and switches to **remote mode**: the schedule list and term
 edits are mirrored to the API (`apps/schedule/src/backend.js`) instead of
-`localStorage`. A visitor without a session sees the **auth prompt** — sign in
-(username self-identify; owners are whoever created a schedule), or **work
-offline**. Offline mode is for testing use only: the app runs entirely on
+`localStorage`. A visitor without a session sees the **auth prompt** — sign in,
+or **work offline**. Sign-in follows the provider the server advertises via
+`/api/config` (`auth.provider`): username self-identify (inline form; dev and
+tests) or **OIDC** — a "Sign in with SSO" button that redirects to the identity
+provider and back to `/api/auth/callback`, after which the server provisions
+the account from the verified email. A failed round-trip lands back with
+`?auth_error=<code>`, which the prompt turns into a message. Offline mode is
+for testing use only: the app runs entirely on
 `localStorage` (option "Work offline" remembers the choice in
 `major-vis.schedule.offline`), the top nav shows an "Offline — testing only"
 badge with a "Go online" button, and nothing created offline **ever transfers**

@@ -11,6 +11,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export const SERVICE_KEYS = ['program', 'schedule', 'planner']
 export const DEFAULT_SERVICES = ['schedule']
 
+// Identity providers: `username` is self-identify (local dev + tests); `oidc`
+// delegates login to an external OpenID Connect issuer (e.g. the college SSO).
+export const AUTH_PROVIDERS = ['username', 'oidc']
+
 export function parseServices(input) {
   if (input == null || String(input).trim() === '') return DEFAULT_SERVICES
   const seen = new Set()
@@ -21,6 +25,89 @@ export function parseServices(input) {
     seen.add(k)
   }
   return out.length ? out : DEFAULT_SERVICES
+}
+
+// Truthy env flags: '1' / 'true' (case-insensitive).
+function flag(input) {
+  const v = String(input ?? '')
+    .trim()
+    .toLowerCase()
+  return v === '1' || v === 'true'
+}
+
+// Loopback hosts may speak plain http (a local issuer in dev); anything else
+// must be https, and insecure issuers are never allowed in production.
+function isLoopbackUrl(value) {
+  try {
+    const host = new URL(value).hostname
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * @typedef {object} OidcConfig
+ * @property {string} issuer
+ * @property {string} clientId
+ * @property {string} clientSecret
+ * @property {string} redirectUri
+ * @property {string} publicOrigin   — empty means "derive from the request" (dev/tests)
+ * @property {boolean} allowInsecureIssuer
+ */
+
+/**
+ * @typedef {object} AuthConfig
+ * @property {'username' | 'oidc'} provider
+ * @property {boolean} cookieSecure
+ * @property {OidcConfig} [oidc]
+ */
+
+// The auth slice of the env contract. Fails fast at boot when `oidc` is
+// selected but its coordinates are incomplete — a server that cannot complete
+// a login should not start.
+/**
+ * @param {Record<string, string | undefined>} env
+ * @returns {AuthConfig}
+ */
+export function parseAuth(env) {
+  const provider = String(env.AUTH_PROVIDER || 'username').trim() || 'username'
+  if (!AUTH_PROVIDERS.includes(provider)) {
+    throw new Error(`AUTH_PROVIDER must be one of: ${AUTH_PROVIDERS.join(', ')}`)
+  }
+  /** @type {AuthConfig} */
+  const auth = {
+    provider: /** @type {'username' | 'oidc'} */ (provider),
+    cookieSecure: flag(env.COOKIE_SECURE),
+  }
+  if (provider !== 'oidc') return auth
+
+  const oidc = {
+    issuer: String(env.OIDC_ISSUER || '').trim(),
+    clientId: String(env.OIDC_CLIENT_ID || '').trim(),
+    clientSecret: String(env.OIDC_CLIENT_SECRET || '').trim(),
+    redirectUri: String(env.OIDC_REDIRECT_URI || '').trim(),
+    publicOrigin: String(env.PUBLIC_ORIGIN || '').trim(),
+    allowInsecureIssuer: false,
+  }
+  const required = ['OIDC_ISSUER', 'OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET', 'OIDC_REDIRECT_URI']
+  const missing = required.filter((key) => !String(env[key] || '').trim())
+  if (missing.length) throw new Error(`AUTH_PROVIDER=oidc requires: ${missing.join(', ')}`)
+  for (const [key, value] of [
+    ['OIDC_ISSUER', oidc.issuer],
+    ['OIDC_REDIRECT_URI', oidc.redirectUri],
+    ['PUBLIC_ORIGIN', oidc.publicOrigin],
+  ]) {
+    if (!value) continue
+    try {
+      new URL(value)
+    } catch {
+      throw new Error(`${key} must be a valid URL`)
+    }
+  }
+  oidc.allowInsecureIssuer = env.NODE_ENV !== 'production' && isLoopbackUrl(oidc.issuer)
+  auth.oidc = oidc
+  return auth
 }
 
 export function loadConfig(env = process.env) {
@@ -34,5 +121,6 @@ export function loadConfig(env = process.env) {
     repoRoot,
     dbPath: path.resolve(env.DB_PATH || path.join(repoRoot, 'server', 'data', 'major-vis.db')),
     sessionCookie: env.SESSION_COOKIE || 'mjv_sid',
+    auth: parseAuth(env),
   }
 }

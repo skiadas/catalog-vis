@@ -1,0 +1,8 @@
+# TLS front for the deployed major-vis container (the `proxy` compose profile).
+# Caddy obtains and renews Let's Encrypt certificates for APP_DOMAIN and
+# proxies to the app over the compose network. Login is delegated to the
+# external OIDC issuer, so this domain only ever serves the app itself.
+{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy major-vis:8080
+}

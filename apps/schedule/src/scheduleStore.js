@@ -67,6 +67,15 @@ export const serverDetected = ref(false)
 // the user is leaving offline mode).
 export const authPromptOpen = ref(false)
 
+// The identity provider the server advertises via /api/config: 'username'
+// (self-identify) or 'oidc' (sign-in leaves for the issuer's hosted login).
+export const authProvider = ref('username')
+
+// Message for a sign-in that failed on the way back from the issuer — the
+// server's OIDC callback returns the browser with ?auth_error=<code>. The auth
+// prompt renders it; empty when there is nothing to report.
+export const authError = ref('')
+
 // True when a server is present but the user chose to work offline (local-only
 // storage for testing). The top nav shows the offline badge + "Go online".
 export const offlineMode = computed(() => serverDetected.value && !remote.value)
@@ -164,6 +173,44 @@ export function closeAuthPrompt() {
   authPromptOpen.value = false
 }
 
+export function clearAuthError() {
+  authError.value = ''
+}
+
+const AUTH_ERROR_TEXT = {
+  invalid_state: 'That sign-in link is no longer valid — please try again.',
+  sso_unavailable: 'The sign-in service is unreachable right now — please try again shortly.',
+  sso_failed: 'Sign-in could not be completed — please try again.',
+  sso_access_denied: 'Sign-in was cancelled.',
+  email_missing: 'The sign-in service did not return an email address.',
+}
+
+// Turns ?auth_error=... (appended by the OIDC callback redirect) into a
+// message and strips it from the address bar, so a reload is clean.
+function consumeAuthError() {
+  if (typeof window === 'undefined') return
+  let url
+  try {
+    url = new URL(window.location.href)
+  } catch {
+    return
+  }
+  const code = url.searchParams.get('auth_error')
+  if (!code) return
+  authError.value = AUTH_ERROR_TEXT[code] || 'Sign-in failed — please try again.'
+  url.searchParams.delete('auth_error')
+  window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+}
+
+// Leaves for the issuer's hosted login (OIDC provider). The server returns the
+// browser to this app's path after the callback; a failed round-trip comes back
+// with ?auth_error=..., which the boot path turns back into a message.
+export function startSsoLogin() {
+  if (typeof window === 'undefined') return
+  clearAuthError()
+  window.location.assign(backend.ssoLoginUrl(window.location.pathname || '/'))
+}
+
 // The user chose to work offline (testing only): flip to local-only storage,
 // remember the choice so reloads stay offline, and seed the local sample. Any
 // data created in offline mode lives only in this browser and never transfers
@@ -184,6 +231,7 @@ export function workOffline() {
 export async function resumeOnline() {
   if (typeof window !== 'undefined') localStorage.removeItem(LS_OFFLINE)
   if (!serverDetected.value) return false
+  clearAuthError()
   setRemote(true)
   const user = await loadCurrentUser()
   if (!user) return false
@@ -214,6 +262,7 @@ export async function loadCurrentUser() {
 // server state. Returns true on success.
 export async function signIn(username) {
   if (!remote.value || typeof window === 'undefined') return false
+  clearAuthError()
   const user = await backend.login(String(username || '').trim())
   if (!user) return false
   currentUser.value = user
@@ -1484,9 +1533,11 @@ function seedSchedules(seedList) {
 // catalog for the sample generation).
 export async function initScheduleCollection() {
   if (typeof window === 'undefined') return
-  const isRemote = await backend.detectRemote()
-  serverDetected.value = isRemote
-  if (!isRemote || localStorage.getItem(LS_OFFLINE) === '1') {
+  consumeAuthError()
+  const config = await backend.fetchConfig()
+  serverDetected.value = !!config
+  authProvider.value = (config && config.auth && config.auth.provider) || 'username'
+  if (!config || localStorage.getItem(LS_OFFLINE) === '1') {
     setRemote(false)
     seedSampleSchedule()
     return

@@ -20,7 +20,8 @@
         <button class="filter-btn" @click="openAuthPrompt()">Go online</button>
       </div>
       <div v-else-if="remote && !currentUser" class="schedule-auth-cluster">
-        <form class="schedule-auth-form" @submit.prevent="doSignIn">
+        <button v-if="isOidc" class="filter-btn primary" @click="startSsoLogin">Sign in with SSO</button>
+        <form v-else class="schedule-auth-form" @submit.prevent="doSignIn">
           <input
             class="search-input schedule-auth-input"
             type="text"
@@ -58,20 +59,31 @@
 // the collection first. The auth prompt (sign in or work offline) is shown at
 // boot when a server is present but the visitor has no session.
 import { errorMessage, loading } from '@major-vis/catalog-client'
-import { remote, currentUser, offlineMode, openAuthPrompt, signIn, signOut } from './src/scheduleStore.js'
+import {
+  remote,
+  currentUser,
+  offlineMode,
+  authProvider,
+  openAuthPrompt,
+  signIn,
+  signOut,
+  startSsoLogin,
+} from './src/scheduleStore.js'
 import ScheduleHelp from './components/ScheduleHelp.vue'
 import AuthPrompt from './components/AuthPrompt.vue'
 
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 export default {
   name: 'ScheduleAppRoot',
   components: { ScheduleHelp, AuthPrompt },
   setup() {
-    // Remote sign-in (username self-identify). The shared schedules, pending
-    // suggestions, and ownership roles all require a session.
+    // Remote sign-in: username self-identify or an OIDC redirect, per the
+    // server's /api/config. The shared schedules, pending suggestions, and
+    // ownership roles all require a session.
     const usernameDraft = ref('')
     const authError = ref('')
+    const isOidc = computed(() => authProvider.value === 'oidc')
     const doSignIn = async () => {
       authError.value = ''
       const ok = await signIn(usernameDraft.value)
@@ -96,6 +108,8 @@ export default {
       currentUser,
       offlineMode,
       openAuthPrompt,
+      isOidc,
+      startSsoLogin,
       usernameDraft,
       authError,
       doSignIn,

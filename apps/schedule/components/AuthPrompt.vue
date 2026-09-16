@@ -19,7 +19,9 @@
         </p>
 
         <div class="auth-prompt-actions">
-          <button v-if="!showForm" class="filter-btn primary" @click="beginOnline">Sign in</button>
+          <button v-if="!showForm" class="filter-btn primary" @click="beginOnline">
+            {{ isOidc ? 'Sign in with SSO' : 'Sign in' }}
+          </button>
           <button v-if="!offlineMode && !showForm" class="filter-btn" @click="workOffline">
             Work offline
           </button>
@@ -35,8 +37,10 @@
             aria-label="Username"
           />
           <button class="filter-btn primary" type="submit" :disabled="!usernameDraft.trim()">Sign in</button>
-          <span v-if="authError" class="schedule-auth-error" role="alert">{{ authError }}</span>
         </form>
+        <span v-if="authError || redirectError" class="schedule-auth-error" role="alert">
+          {{ authError || redirectError }}
+        </span>
       </div>
     </div>
   </div>
@@ -44,20 +48,24 @@
 
 <script>
 // "Sign in or work offline" auth prompt, shown at boot when a server is present
-// but the visitor has no session (and when leaving offline mode). Work done
-// offline stays local-only and never transfers; the dialog says so at every
-// branch (choosing offline, and signing in from offline).
+// but the visitor has no session (and when leaving offline mode). Sign-in is
+// either username self-identify (inline form) or the server's OIDC redirect (a
+// button that leaves for the issuer). Work done offline stays local-only and
+// never transfers; the dialog says so at every branch.
 import {
   offlineMode,
   authPromptOpen,
+  authProvider,
+  authError as redirectError,
   signIn,
+  startSsoLogin,
   workOffline,
   resumeOnline,
   closeAuthPrompt,
 } from '../src/scheduleStore.js'
 import { useModalFocus } from '../src/modalFocus.js'
 
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 export default {
   name: 'AuthPrompt',
@@ -66,13 +74,20 @@ export default {
     const authError = ref('')
     const showForm = ref(false)
     const modalEl = ref(null)
+    const isOidc = computed(() => authProvider.value === 'oidc')
 
     // "Sign in": leave offline mode if needed and check for a session. With a
-    // live session the dialog closes; otherwise the username form appears.
+    // live session the dialog closes; with OIDC the browser leaves for the
+    // issuer; with username self-identify the form appears.
     const beginOnline = async () => {
       const resumed = await resumeOnline()
       authError.value = ''
-      showForm.value = !resumed
+      if (resumed) return
+      if (isOidc.value) {
+        startSsoLogin()
+        return
+      }
+      showForm.value = true
     }
     const submit = async () => {
       authError.value = ''
@@ -96,6 +111,8 @@ export default {
       modalEl,
       offlineMode,
       authPromptOpen,
+      isOidc,
+      redirectError,
       usernameDraft,
       authError,
       showForm,

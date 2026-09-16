@@ -14,13 +14,22 @@ export function setApiBase(base) {
   apiBase = base
 }
 
-export async function detectRemote() {
+// Fetches the server's config advertisement ({ services, auth }), or null when
+// no backend is serving this app. `auth.provider` tells the store whether
+// sign-in is username self-identify or an OIDC redirect.
+export async function fetchConfig() {
   try {
     const res = await fetch(`${apiBase}/config`, { method: 'GET' })
-    return res.ok
+    if (!res.ok) return null
+    const data = await res.json()
+    return data && typeof data === 'object' ? data : null
   } catch {
-    return false
+    return null
   }
+}
+
+export async function detectRemote() {
+  return (await fetchConfig()) !== null
 }
 
 export async function fetchSchedules() {
@@ -112,6 +121,13 @@ export async function deleteSchedule(id) {
 }
 
 // ---- Session -------------------------------------------------------------
+
+// URL that starts the OIDC login dance: the server redirects to the issuer and
+// back to `returnTo` (an app path the server validates as same-origin).
+export function ssoLoginUrl(returnTo) {
+  const url = `${apiBase}/auth/login`
+  return returnTo ? `${url}?return_to=${encodeURIComponent(returnTo)}` : url
+}
 
 // Signs in with a username (self-identify). Returns the user or null.
 export async function login(username) {

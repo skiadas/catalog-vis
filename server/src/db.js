@@ -67,6 +67,16 @@ import { assignOfferingIds } from '@major-vis/schedule-core'
  */
 
 /**
+ * @typedef {object} OidcFlowRow
+ * @property {string} state
+ * @property {string} nonce
+ * @property {string} code_verifier
+ * @property {string} return_to
+ * @property {string} created_at
+ * @property {string} expires_at
+ */
+
+/**
  * @typedef {object} SuggestionParentRow
  * @property {number} id
  * @property {number} schedule_id
@@ -292,6 +302,44 @@ export function sessionUser(db, tokenHash) {
  */
 export function deleteSession(db, tokenHash) {
   db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash)
+}
+
+// ---- OIDC login flows ------------------------------------------------------
+// One row per in-flight authorization-code login: the state/nonce/PKCE checks
+// the callback must satisfy, plus where to send the browser afterwards. The
+// state is the primary key, so a replayed callback finds no row.
+
+/**
+ * @param {DB} db
+ * @param {{ state: string, nonce: string, codeVerifier: string, returnTo?: string, ttl?: number }} flow
+ */
+export function createOidcFlow(db, { state, nonce, codeVerifier, returnTo = '/', ttl = 600 }) {
+  // Lazy pruning: the login path is the only writer, so expired rows from
+  // abandoned logins are swept here instead of on a timer.
+  db.prepare('DELETE FROM oidc_flows WHERE expires_at < ?').run(new Date().toISOString())
+  const expiresAt = new Date(Date.now() + ttl * 1000).toISOString()
+  db.prepare(
+    `INSERT INTO oidc_flows (state, nonce, code_verifier, return_to, expires_at)
+     VALUES (?, ?, ?, ?, ?)`,
+  ).run(state, nonce, codeVerifier, returnTo, expiresAt)
+}
+
+// Deletes and returns the flow for `state` (single use). Returns null when the
+// state is unknown or already expired.
+/**
+ * @param {DB} db
+ * @returns {OidcFlowRow | null}
+ */
+export function consumeOidcFlow(db, state) {
+  return transaction(db, (d) => {
+    const row = /** @type {OidcFlowRow | undefined} */ (
+      d.prepare('SELECT * FROM oidc_flows WHERE state = ?').get(state)
+    )
+    if (!row) return null
+    d.prepare('DELETE FROM oidc_flows WHERE state = ?').run(state)
+    if (new Date(row.expires_at).getTime() < Date.now()) return null
+    return row
+  })
 }
 
 // ---- Schedules -----------------------------------------------------------

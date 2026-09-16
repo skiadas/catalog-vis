@@ -151,6 +151,7 @@ When a task touches a specific piece, read its README (map above) plus:
 | service config / launcher                 | `packages/app-config/README.md`                                        |
 | deep-link URL contracts                   | `docs/ARCHITECTURE.md`                                                 |
 | backend / API                             | `server/README.md`                                                     |
+| hosted deployment / OIDC auth runbook     | `docs/DEPLOY_LIGHTSAIL.md` + the auth sections of `server/README.md`   |
 
 ## Current gotchas
 
@@ -163,6 +164,7 @@ When a task touches a specific piece, read its README (map above) plus:
   deployment seams exist but are not used yet.
 - Courses a requirement references with no description anywhere are **CAT4** —
   genuine source gaps, not planner bugs.
-- Plans and schedules persist only in `localStorage` — no server-side accounts
-  yet (the backend DB holds schedules/suggestions when `SERVICES` enables the
-  backend and the app detects it). Server-side degree audit is a future step.
+- Plans persist only in `localStorage` — server-side degree audit is a future
+  step. Schedules live in the backend DB when `SERVICES` enables the backend
+  and the app detects it; identity is username self-identify (dev/tests) or an
+  external OIDC SSO in production (`AUTH_PROVIDER=oidc`).

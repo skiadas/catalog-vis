@@ -1,7 +1,7 @@
 {
   "name": "@major-vis/server",
   "version": "0.1.0",
-  "description": "Backend for the major-vis schedule/planner apps: Express + SQLite serving the static apps, the catalog artifacts, auth (username self-identify), and the yearly schedule/term/changes APIs. Reuses the pure @major-vis/schedule-core domain logic.",
+  "description": "Backend for the major-vis schedule/planner apps: Express + SQLite serving the static apps, the catalog artifacts, auth (username self-identify or OIDC SSO), and the yearly schedule/term/changes APIs. Reuses the pure @major-vis/schedule-core domain logic.",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
@@ -13,12 +13,13 @@
     "test": "node --test"
   },
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=24"
   },
   "dependencies": {
     "@major-vis/schedule-core": "*",
     "compression": "^1.8.1",
     "express": "^4.21.2",
+    "openid-client": "^6.8.8",
     "umzug": "^3.8.3"
   },
   "license": "UNLICENSED",
