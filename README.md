@@ -163,9 +163,10 @@ delegated to an external OpenID Connect issuer (e.g. the `otc-oidc` SSO) —
 the environment contract lives in `deploy/.env.example`; the full runbook is
 `docs/DEPLOY_LIGHTSAIL.md`.
 
-**Auto-updates**: `deploy/update.sh` pulls the latest image from GHCR and — if
-the image actually changed — recreates the container without touching the
-volume. Run it from cron:
+**Auto-updates**: `deploy/update.sh` refreshes the repo-owned deploy files
+(`compose.yaml`, `deploy/Caddyfile`), pulls the latest image from GHCR and — if
+the image actually changed — recreates the stack without touching the volume
+or `.env`. Run it from cron:
 
 ```sh
 0 3 * * * /opt/major-vis/deploy/update.sh >> /var/log/major-vis-update.log 2>&1

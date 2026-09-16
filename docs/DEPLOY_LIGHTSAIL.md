@@ -115,8 +115,10 @@ In DevTools, the `mjv_sid` cookie should show `Secure`, `HttpOnly`, `Lax`.
 
 ## 5. Updates
 
-Cron pulls the latest GHCR image and recreates the container only when the
-image actually changed:
+Cron pulls the latest GHCR image and recreates the stack only when the image
+actually changed. The script also refreshes the repo-owned deploy files
+(`compose.yaml` + `deploy/Caddyfile`) before pulling, so config changes ride
+along with image updates; `.env` and the data volume are never touched:
 
 ```sh
 # crontab -e, on the app instance
@@ -124,8 +126,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 0 3 * * * /opt/major-vis/deploy/update.sh >> /var/log/major-vis-update.log 2>&1
 ```
 
-The script re-runs `docker compose up -d`, so the `.env`'s `COMPOSE_PROFILES`
-keeps Caddy running across updates.
+`docker compose up -d` re-reads `.env`, so the `COMPOSE_PROFILES` value keeps
+Caddy running across updates. To apply a config-only change immediately
+(without waiting for the next image), run `docker compose up -d` by hand.
 
 ## 6. Backups
 
