@@ -498,12 +498,36 @@ test('main views and dialogs have no serious/critical accessibility violations',
   const gridViolations = await seriousViolations(page)
   expect(brief(gridViolations), 'grid view').toEqual([])
   await assertTargetSize(page, ['.schedule-pill-edit', '.schedule-pill-hide'], 'grid view')
+  // The shared collection's other pills belong to the registrar — the picker
+  // labels them so "who owns this?" is never a mystery.
+  await expect(page.locator('.schedule-pill-owner').first()).toBeVisible()
 
   // The manage dialog and the create dialog it opens.
   await page.getByRole('button', { name: /Your schedules/ }).click()
   await settle(page)
   const manageViolations = await seriousViolations(page)
   expect(brief(manageViolations), 'manage dialog').toEqual([])
+  // Ownership is explicit in the list, and non-owned rows offer no delete
+  // button (a delete the server rejects would resurrect on the next refresh).
+  await expect(page.locator('.schedule-manage-owner', { hasText: 'by registrar' }).first()).toBeVisible()
+  await expect(page.locator('.schedule-manage-owner', { hasText: 'You' })).toHaveCount(1)
+  await expect(page.locator('.schedule-manage-del')).toHaveCount(1)
+  // The picker pills label shared schedules too: toggle one of the
+  // registrar's into the view, assert the owner suffix, toggle it back off.
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Smoke schedule' })
+    .getByRole('button', { name: 'Show Smoke schedule' })
+    .click()
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await settle(page)
+  await expect(
+    page.locator('.schedule-pill', { hasText: 'Smoke schedule' }).locator('.schedule-pill-owner'),
+  ).toHaveText('(by registrar)')
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Smoke schedule' })
+    .getByRole('button', { name: 'Hide Smoke schedule' })
+    .click()
   await page.getByRole('button', { name: '＋ New schedule' }).click()
   await settle(page)
   const createViolations = await seriousViolations(page)

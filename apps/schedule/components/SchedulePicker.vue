@@ -10,12 +10,15 @@
         class="schedule-pill"
         :class="{ 'menu-open': menuFor === s.id }"
         :style="{ backgroundColor: colorForSchedule(s.id) }"
-        :title="'Hide ' + s.name"
+        :title="'Hide ' + s.name + ownerSuffix(s)"
         tabindex="0"
         @click="toggleSchedule(s.id)"
         @keydown="onKeyActivate($event, () => toggleSchedule(s.id))"
       >
-        <span class="schedule-pill-label">{{ s.name }}</span>
+        <span class="schedule-pill-label"
+          >{{ s.name
+          }}<span v-if="ownerSuffix(s)" class="schedule-pill-owner">{{ ownerSuffix(s) }}</span></span
+        >
         <span class="mode-menu-wrap">
           <button
             class="schedule-pill-edit"
@@ -139,6 +142,7 @@ import {
   activeTerm,
   viewOfferings,
   publishedOfferings,
+  isOwner,
 } from '../src/scheduleStore.js'
 import {
   colorForSchedule,
@@ -164,6 +168,9 @@ export default {
       schedules.value.filter((s) => selectedScheduleIds.value.includes(s.id)),
     )
     const menuFor = ref(null)
+    // Owner hint for a schedule: " (by registrar)" on shared rows, nothing for
+    // the user's own ("You" everywhere would just be noise on the pills).
+    const ownerSuffix = (s) => (isOwner(s) ? '' : s.owner ? ` (by ${s.owner})` : '')
 
     // CSV action menu: a single "CSV ▾" button in the picker's right cluster.
     // Clicking anywhere else on the page closes it.
@@ -274,6 +281,7 @@ export default {
     return {
       props,
       visibleSchedules,
+      ownerSuffix,
       selectedScheduleIds,
       scheduleColorApplicable,
       filterActive,

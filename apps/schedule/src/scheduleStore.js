@@ -1126,9 +1126,14 @@ export function importCsvRows(scheduleId, rows) {
   return written
 }
 
-// Removes a schedule and deselects it if it was visible.
+// Removes a schedule and deselects it if it was visible. Remote: the server
+// enforces ownership, so a non-owned schedule is left alone — a delete that
+// silently resurrects on the next refresh is worse than no delete at all.
 export function deleteSchedule(id) {
-  schedules.value = schedules.value.filter((s) => s.id !== id)
+  const s = scheduleById(id)
+  if (!s) return
+  if (remote.value && !isOwner(s)) return
+  schedules.value = schedules.value.filter((x) => x.id !== id)
   selectedScheduleIds.value = selectedScheduleIds.value.filter((x) => x !== id)
   if (editingScheduleId.value === id) {
     editingScheduleId.value = null
@@ -1497,10 +1502,13 @@ function loadSelectedSchedules() {
 }
 
 // Seed the schedule collection. Prefers schedules already saved in localStorage;
-// otherwise populates from the freshly fetched sample schedule.
+// otherwise populates from the freshly fetched sample schedule. An explicit
+// delete-all (stored key present but empty) is respected — the sample returns
+// only when the key has never been written.
 function seedSchedules(seedList) {
   const stored = loadSchedules()
-  schedules.value = stored && stored.length ? stored : seedList.map(normalizeStored)
+  const everStored = typeof window !== 'undefined' && localStorage.getItem(LS_SCHEDULES) !== null
+  schedules.value = stored && stored.length ? stored : everStored ? [] : seedList.map(normalizeStored)
   if (!stored || !stored.length) persistSchedules()
   const selected = loadSelectedSchedules()
   const valid = (sel) =>

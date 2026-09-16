@@ -140,6 +140,25 @@ test('workOffline seeds the local sample and a re-boot stays offline without pro
   })
 })
 
+test('offline: deleting every schedule sticks — a reload does not re-seed the sample', async () => {
+  await withRemote(async ({ store }) => {
+    await store.initScheduleCollection()
+    store.workOffline()
+    assert.ok(store.schedules.value.length > 0, 'sample schedule seeded locally')
+
+    // Delete everything, then simulate a reload: the stored empty collection
+    // must win over the sample seed.
+    for (const s of [...store.schedules.value]) store.deleteSchedule(s.id)
+    assert.equal(store.schedules.value.length, 0)
+    store.setRemote(true)
+    store.serverDetected.value = false
+    await store.initScheduleCollection()
+    assert.equal(store.remote.value, false)
+    assert.equal(store.authPromptOpen.value, false)
+    assert.equal(store.schedules.value.length, 0, 'explicit delete-all is not undone by seeding')
+  })
+})
+
 test('resumeOnline from offline restores the server view when a session is live', async () => {
   await withRemote(async ({ store }) => {
     await store.initScheduleCollection()
@@ -716,6 +735,26 @@ test('importCsvRows is blocked for a remote non-owner and applied for the owner'
   })
 })
 
+test('deleteSchedule is owner-only in remote mode; the row survives a non-owner attempt', async () => {
+  await withRemote(async ({ srv, store }) => {
+    await srv.post('/api/auth/login', { username: 'registrar' })
+    const created = (await srv.post('/api/schedules', { name: 'Shared', year: '2026-27' })).json.schedule
+
+    await store.signIn('alice')
+    store.deleteSchedule(created.id)
+    await flush()
+    assert.ok(store.scheduleById(created.id), 'non-owner delete leaves the row locally')
+    assert.equal((await srv.get('/api/schedules')).json.schedules.length, 1)
+
+    // The owner's delete goes through locally and server-side.
+    await store.signIn('registrar')
+    store.deleteSchedule(created.id)
+    await flush()
+    assert.equal(store.scheduleById(created.id), null)
+    assert.equal((await srv.get('/api/schedules')).json.schedules.length, 0)
+  })
+})
+
 test('importCsvRows rerunning replaces the touched parts (registrar re-feed)', async () => {
   await withRemote(async ({ srv, store }) => {
     await srv.post('/api/auth/login', { username: 'registrar' })
@@ -794,12 +833,23 @@ test('history: cancelling one change keeps the rest; restore brings it back', as
     const matRow = store.historyEntries.value.find((e) => e.label.includes('add MAT'))
     const version = store.scheduleById(id).terms.F.version
     assert.ok(store.cancelChange(csRow.key), 'the single change is cancellable')
-    assert.equal(store.scheduleById(id).terms.F.version, version + 1, 'a cancel bumps the version like an edit')
+    assert.equal(
+      store.scheduleById(id).terms.F.version,
+      version + 1,
+      'a cancel bumps the version like an edit',
+    )
 
     const after = store.viewOfferings(store.scheduleById(id))
     assert.equal(after.length, 2, 'the other change stays')
-    assert.ok(after.some((o) => o.prefix === 'MAT'), 'the MAT add is untouched')
-    assert.equal(after.find((o) => o.prefix === 'CS').instructor, '', 'only the instructor change was cancelled')
+    assert.ok(
+      after.some((o) => o.prefix === 'MAT'),
+      'the MAT add is untouched',
+    )
+    assert.equal(
+      after.find((o) => o.prefix === 'CS').instructor,
+      '',
+      'only the instructor change was cancelled',
+    )
 
     let rows = store.historyEntries.value
     assert.equal(rows.length, 2, 'the cancelled row stays listed')
@@ -847,7 +897,10 @@ test('history: cancelAll returns the session to its base; rows stay listed as ca
     assert.equal(store.cancelAll(), false, 'nothing live -> no-op')
     const rows = store.historyEntries.value
     assert.equal(rows.length, 2)
-    assert.ok(rows.every((e) => e.cancelled), 'every row stays listed as cancelled')
+    assert.ok(
+      rows.every((e) => e.cancelled),
+      'every row stays listed as cancelled',
+    )
 
     // A restored row re-applies just that change on top of the base.
     const matRow = rows.find((e) => e.label.includes('add MAT'))
@@ -878,7 +931,10 @@ test('history: cancelLatest (Cmd/Ctrl+Z) cancels the newest live change, then th
     assert.equal(store.viewOfferings(store.scheduleById(id)).length, 2, 'MAT add untouched')
     assert.equal(store.viewOfferings(store.scheduleById(id)).find((o) => o.prefix === 'CS').instructor, '')
     assert.match(store.cancelLatest(), /add MAT/)
-    assert.deepEqual(store.viewOfferings(store.scheduleById(id)).map((o) => o.number), ['101'])
+    assert.deepEqual(
+      store.viewOfferings(store.scheduleById(id)).map((o) => o.number),
+      ['101'],
+    )
     assert.equal(store.cancelLatest(), null, 'nothing left to cancel')
     assert.equal(store.canCancel.value, false)
   })
@@ -911,7 +967,10 @@ test('history: no session means cancels are no-ops; bulk replaces become per-cou
     const removeRow = rows.find((e) => e.label.startsWith('remove'))
     assert.ok(store.cancelChange(removeRow.key))
     assert.deepEqual(
-      store.viewOfferings(store.scheduleById(id)).map((o) => o.number).sort(),
+      store
+        .viewOfferings(store.scheduleById(id))
+        .map((o) => o.number)
+        .sort(),
       ['101', '161', '220'],
       'only the removed CS 101 comes back',
     )
@@ -983,7 +1042,11 @@ test('history: suggest-session cancels rewrite the draft so proposals exclude th
 
     const matRow = store.historyEntries.value.find((e) => e.label.includes('add MAT'))
     assert.ok(store.cancelChange(matRow.key))
-    assert.equal(store.viewOfferings(store.scheduleById(id)).length, 1, 'the draft drops the cancelled course')
+    assert.equal(
+      store.viewOfferings(store.scheduleById(id)).length,
+      1,
+      'the draft drops the cancelled course',
+    )
     const ops = store.draftOperations(id)
     assert.equal(ops.length, 1, 'nothing left to propose for the cancelled change')
     assert.equal(ops[0].kind, 'update')
@@ -1007,8 +1070,24 @@ test('split-section rows edit, move, and cancel independently with a single net 
     // share the section tuple, exactly like the registrar's split meetings.
     const id = await store.addSchedule('Split', '2026-27', [])
     store.importCsvRows(id, [
-      { prefix: 'MUS', number: '001', section: 'A', instructor: 'Smith', days: 'MW', time: '16:00-16:50', term: 'F' },
-      { prefix: 'MUS', number: '001', section: 'A', instructor: 'Smith', days: 'R', time: '16:10-17:00', term: 'F' },
+      {
+        prefix: 'MUS',
+        number: '001',
+        section: 'A',
+        instructor: 'Smith',
+        days: 'MW',
+        time: '16:00-16:50',
+        term: 'F',
+      },
+      {
+        prefix: 'MUS',
+        number: '001',
+        section: 'A',
+        instructor: 'Smith',
+        days: 'R',
+        time: '16:10-17:00',
+        term: 'F',
+      },
     ])
     const rows = () => store.viewOfferings(store.scheduleById(id))
     assert.equal(rows().length, 2)
@@ -1019,7 +1098,11 @@ test('split-section rows edit, move, and cancel independently with a single net 
 
     // Editing the R meeting changes only it; the session shows one net row.
     assert.ok(
-      store.updateOffering(id, { prefix: 'MUS', number: '001', section: 'A', id: rows()[1].id }, { instructor: 'Wahl' }),
+      store.updateOffering(
+        id,
+        { prefix: 'MUS', number: '001', section: 'A', id: rows()[1].id },
+        { instructor: 'Wahl' },
+      ),
     )
     assert.equal(rows()[0].instructor, 'Smith', 'MW sibling untouched')
     assert.equal(rows()[1].instructor, 'Wahl')
@@ -1053,7 +1136,11 @@ test('split-section rows edit, move, and cancel independently with a single net 
 
     // A fresh edit re-touching the same course brings the row back to life.
     assert.ok(
-      store.updateOffering(id, { prefix: 'MUS', number: '001', section: 'A', id: rows()[1].id }, { instructor: 'Doe' }),
+      store.updateOffering(
+        id,
+        { prefix: 'MUS', number: '001', section: 'A', id: rows()[1].id },
+        { instructor: 'Doe' },
+      ),
     )
     assert.equal(store.historyEntries.value.length, 1)
     assert.equal(store.historyEntries.value[0].cancelled, false)
@@ -1075,7 +1162,10 @@ test('history: rows expose editability and jump-to-edit opens the course editor'
     store.updateOffering(id, { prefix: 'CS', number: '101', section: 'A' }, { instructor: 'Wahl' })
 
     let rows = store.historyEntries.value
-    assert.ok(rows.every((e) => e.editable), 'live add/update rows are editable right away')
+    assert.ok(
+      rows.every((e) => e.editable),
+      'live add/update rows are editable right away',
+    )
 
     const matRow = rows.find((e) => e.label.includes('add MAT'))
     assert.ok(store.jumpToEdit(matRow.op))

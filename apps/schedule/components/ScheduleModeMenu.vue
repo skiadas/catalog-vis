@@ -4,7 +4,13 @@
     <button
       class="mode-menu-item"
       :disabled="!canEdit"
-      :title="canEdit ? 'Edit this schedule directly' : 'Only the owner can edit directly'"
+      :title="
+        canEdit
+          ? 'Edit this schedule directly'
+          : schedule.owner
+            ? `Only ${schedule.owner} can edit directly`
+            : 'Only the owner can edit directly'
+      "
       @click="$emit('mode', schedule.id, 'edit')"
     >
       Edit schedule

@@ -964,6 +964,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.schedule-pill .schedule-pill-owner {
+  font-size: var(--font-xs);
+  margin-left: 3px;
+}
 .schedule-pill-hide {
   @include icon-btn(24px);
   font-size: var(--font-xs);
@@ -1043,6 +1047,10 @@
   &-meta {
     font-size: var(--font-sm);
     color: var(--text-muted);
+  }
+
+  &-owner {
+    font-style: italic;
   }
 
   &-eye,

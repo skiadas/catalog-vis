@@ -46,7 +46,7 @@
           {{
             owned
               ? 'Pending changes from the departments are live: approve or reject each change individually; the trail keeps everything that happened.'
-              : "You don't own this schedule. Proposals here are suggestions for the owner — make your changes via 'Suggest changes'."
+              : `You don't own this schedule${ownerName ? ` (${ownerName} does)` : ''}. Proposals here are suggestions for the owner — make your changes via 'Suggest changes'.`
           }}
         </p>
 
@@ -150,6 +150,7 @@ export default {
     )
     const schedule = computed(() => (props.scheduleId ? scheduleById(props.scheduleId) : null))
     const owned = computed(() => isOwner(schedule.value))
+    const ownerName = computed(() => (schedule.value && schedule.value.owner) || '')
     const suggesting = computed(() => isSuggestSessionFor(props.scheduleId))
     const noteDraft = ref('')
     const feedback = ref('')
@@ -245,6 +246,7 @@ export default {
       schedule,
       modalEl,
       owned,
+      ownerName,
       suggesting,
       suggestions,
       noteDraft,

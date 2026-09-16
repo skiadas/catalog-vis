@@ -199,6 +199,10 @@
     <div v-if="!selectedScheduleIds.length" class="empty-state">
       <p v-if="schedules.length">
         {{ schedules.length }} schedule{{ schedules.length !== 1 ? 's' : '' }} available but none selected.
+        <span v-if="remote"
+          >The collection is shared — schedules you didn't create belong to other users and accept suggested
+          changes, not direct edits.</span
+        >
       </p>
       <p v-else><strong>No schedules yet.</strong> Create one via "Your schedules" → "New schedule".</p>
     </div>
@@ -266,6 +270,7 @@ import {
   historyEntries,
   cancelLatest,
   jumpToEdit,
+  remote,
 } from '../src/scheduleStore.js'
 import { TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
 import ScheduleGrid from './ScheduleGrid.vue'
@@ -425,6 +430,7 @@ export default {
       sortedCourses,
       selectedCode,
       showFilter,
+      remote,
       filterMode,
       filterPanelOpen,
       pickFilter,

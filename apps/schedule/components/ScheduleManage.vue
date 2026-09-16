@@ -12,7 +12,11 @@
         <button class="modal-close" @click="close" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
-        <p class="modal-intro">
+        <p class="modal-intro" v-if="remote">
+          Everyone on this server shares this collection — you can edit or delete only your own schedules; the
+          rest accept suggested changes.
+        </p>
+        <p class="modal-intro" v-else>
           These schedules live in this browser. Toggle which ones are displayed, generate new ones, or delete
           schedules you no longer need.
         </p>
@@ -45,6 +49,7 @@
                       .join(', ')
                   }}
                 </span>
+                <span class="schedule-manage-owner">{{ ownerLabel(s) }}</span>
               </div>
             </div>
             <button
@@ -139,6 +144,7 @@
               </svg>
             </button>
             <button
+              v-if="canDelete(s)"
               class="schedule-manage-del"
               :aria-label="'Delete ' + s.name"
               :title="'Delete ' + s.name"
@@ -304,6 +310,8 @@ import {
   editingScheduleId,
   activeTerm,
   viewOfferings,
+  remote,
+  isOwner,
 } from '../src/scheduleStore.js'
 import { allCourses } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS, parseCsv } from '@major-vis/schedule-core'
@@ -444,6 +452,12 @@ export default {
     }
 
     const removeSchedule = (id) => deleteSchedule(id)
+    // "You" for owned schedules, the owner's username otherwise (the server
+    // joins it into every row); offline everything is the single local user.
+    const ownerLabel = (s) => (isOwner(s) ? 'You' : s.owner ? `by ${s.owner}` : '')
+    // Deleting is owner-only server-side; a hidden button beats a delete that
+    // silently resurrects on the next refresh. Offline: everything is owned.
+    const canDelete = (s) => !remote.value || isOwner(s)
     // Duplicates a schedule, then drops into edit mode on the copy (which is
     // auto-selected by `duplicateSchedule`). Awaited: a failed duplicate keeps
     // the user where they are.
@@ -498,6 +512,9 @@ export default {
       importWarning,
       csvError,
       removeSchedule,
+      ownerLabel,
+      canDelete,
+      remote,
       duplicateAndEdit,
       schedules,
       selectedScheduleIds,
