@@ -113,6 +113,13 @@ one coherent proposal — never redundant intermediate moves — and re-enter a
 suggestion session by replaying their own pending ops onto the freshest
 published state.
 
+**The manage dialog shows your own schedules first.** The shared collection
+still loads in full (suggestions and ownership checks work by id), but the
+list defaults to owned rows; shared schedules are revealed by a toggle or by
+searching by name _or owner username_, and a year filter narrows both sections.
+The selection defaults to the first owned schedule (nothing when the user owns
+none), so a stranger's schedule is never auto-selected.
+
 **Labs**: the course editor's "Add lab section" (lecture rows only) creates a
 lab that mirrors the lecture's section letter, copies its instructors (lead
 plus secondary), and starts unscheduled in the "No meeting times" strip,

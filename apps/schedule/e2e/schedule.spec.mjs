@@ -76,11 +76,13 @@ async function signIn(page, username = 'registrar') {
 }
 
 // Creates a named schedule and closes the manage modal (backdrop click) so
-// the header pills are reachable.
-async function createSchedule(page, name) {
+// the header pills are reachable. An optional year exercises the manage
+// dialog's year filter.
+async function createSchedule(page, name, year = '') {
   await page.getByRole('button', { name: /Your schedules/ }).click()
   await page.getByRole('button', { name: '＋ New schedule' }).click()
   await page.locator('#schedule-create-name').fill(name)
+  if (year) await page.locator('#schedule-create-year').fill(year)
   await page.getByRole('button', { name: 'Generate' }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
   await page.getByText(name).first().waitFor({ timeout: 10000 })
@@ -563,27 +565,41 @@ test('main views and dialogs have no serious/critical accessibility violations',
   // pollute the shared 'registrar' collection and break sibling tests' slot
   // assertions.
   await signIn(page, 'axe-user')
-  await createSchedule(page, 'Axe schedule')
+  // Give this schedule a year so the manage dialog's year filter has options.
+  await createSchedule(page, 'Axe schedule', '2026-27')
 
   // The grid with a generated schedule: colored blocks, pills, and filters.
   await settle(page)
   const gridViolations = await seriousViolations(page)
   expect(brief(gridViolations), 'grid view').toEqual([])
   await assertTargetSize(page, ['.schedule-pill-edit', '.schedule-pill-hide'], 'grid view')
-  // The shared collection's other pills belong to the registrar — the picker
-  // labels them so "who owns this?" is never a mystery.
-  await expect(page.locator('.schedule-pill-owner').first()).toBeVisible()
 
   // The manage dialog and the create dialog it opens.
   await page.getByRole('button', { name: /Your schedules/ }).click()
   await settle(page)
   const manageViolations = await seriousViolations(page)
   expect(brief(manageViolations), 'manage dialog').toEqual([])
-  // Ownership is explicit in the list, and non-owned rows offer no delete
-  // button (a delete the server rejects would resurrect on the next refresh).
-  await expect(page.locator('.schedule-manage-owner', { hasText: 'by registrar' }).first()).toBeVisible()
+  // Own schedules come first: only this user's row is listed (with a delete
+  // button), and the shared section is hidden by default.
   await expect(page.locator('.schedule-manage-owner', { hasText: 'You' })).toHaveCount(1)
   await expect(page.locator('.schedule-manage-del')).toHaveCount(1)
+  await expect(page.locator('.schedule-manage-section-title', { hasText: 'Shared' })).toHaveCount(0)
+  // Search matches the OWNER's username, not just schedule names: typing
+  // 'registrar' matches only shared rows, surfacing the reveal hint.
+  await page.locator('.schedule-manage-search').fill('registrar')
+  await expect(page.getByText(/shared schedules? match/)).toBeVisible()
+  await page.locator('.schedule-manage-search').fill('')
+  // Reveal the shared section: rows label the owner and offer no delete
+  // button (a delete the server rejects would resurrect on the next refresh).
+  await page.getByRole('button', { name: 'Show shared' }).click()
+  await expect(page.locator('.schedule-manage-owner', { hasText: 'by registrar' }).first()).toBeVisible()
+  await expect(page.locator('.schedule-manage-del')).toHaveCount(1)
+  // The year filter narrows both sections: the registrar's schedules have no
+  // year, so selecting 2026-27 leaves only this user's row.
+  await page.locator('#schedule-manage-year').selectOption('2026-27')
+  await expect(page.locator('.schedule-manage-row', { hasText: 'Smoke schedule' })).toHaveCount(0)
+  await expect(page.locator('.schedule-manage-row', { hasText: 'Axe schedule' })).toHaveCount(1)
+  await page.locator('#schedule-manage-year').selectOption('')
   // The picker pills label shared schedules too: toggle one of the
   // registrar's into the view, assert the owner suffix, toggle it back off.
   await page
@@ -600,6 +616,7 @@ test('main views and dialogs have no serious/critical accessibility violations',
     .locator('.schedule-manage-row', { hasText: 'Smoke schedule' })
     .getByRole('button', { name: 'Hide Smoke schedule' })
     .click()
+  await page.getByRole('button', { name: 'Hide shared' }).click()
   await page.getByRole('button', { name: '＋ New schedule' }).click()
   await settle(page)
   const createViolations = await seriousViolations(page)

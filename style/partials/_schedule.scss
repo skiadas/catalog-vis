@@ -1012,6 +1012,49 @@
     margin-bottom: 12px;
   }
 
+  &-tools {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    .schedule-manage-search {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    .schedule-manage-year {
+      width: auto;
+      flex: 0 0 auto;
+    }
+
+    .schedule-manage-shared-toggle {
+      flex: 0 0 auto;
+      align-self: center;
+      white-space: nowrap;
+    }
+  }
+
+  &-hint {
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    margin: 0 0 12px;
+
+    .filter-btn {
+      margin-left: 6px;
+    }
+  }
+
+  &-section-title {
+    @include text-semibold;
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+    margin: 4px 2px 6px;
+
+    &:not(:first-child) {
+      margin-top: 14px;
+    }
+  }
+
   &-empty {
     font-size: var(--font-md);
     color: var(--text-muted);

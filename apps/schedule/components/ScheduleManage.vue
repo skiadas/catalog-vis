@@ -13,92 +13,149 @@
       </div>
       <div class="modal-body">
         <p class="modal-intro" v-if="remote">
-          Everyone on this server shares this collection — you can edit or delete only your own schedules; the
-          rest accept suggested changes.
+          Your schedules come first. Shared ones are one search away — find them by name or owner, then toggle
+          them on to see them. Only owners can edit or delete a schedule; the rest accept suggested changes.
         </p>
         <p class="modal-intro" v-else>
           These schedules live in this browser. Toggle which ones are displayed, generate new ones, or delete
           schedules you no longer need.
         </p>
-        <input
-          class="search-input schedule-manage-search"
-          type="search"
-          placeholder="Search schedules…"
-          aria-label="Search schedules"
-          v-model="manageQuery"
-        />
-        <div class="schedule-manage-list">
-          <div
-            v-for="s in filteredSchedules"
-            :key="s.id"
-            class="schedule-manage-row"
-            :class="{ 'menu-open': menuFor === s.id }"
+        <div class="schedule-manage-tools">
+          <input
+            class="search-input schedule-manage-search"
+            type="search"
+            placeholder="Search name or owner…"
+            aria-label="Search schedules"
+            v-model="manageQuery"
+          />
+          <select
+            v-if="yearOptions.length"
+            id="schedule-manage-year"
+            class="search-input schedule-manage-year"
+            aria-label="Filter by year"
+            v-model="yearFilter"
           >
-            <span class="schedule-swatch" :style="{ backgroundColor: colorForSchedule(s.id) }"></span>
-            <div class="schedule-manage-main">
-              <div class="schedule-manage-name">{{ s.name }}</div>
-              <div class="schedule-manage-meta">
-                {{ s.year || '—' }} · {{ viewOfferings(s).length }} offerings this term
-                <span v-if="TERM_KEYS.some((t) => viewOfferings(s, t).length)">
-                  ·
-                  {{
-                    TERM_KEYS.map((t) =>
-                      viewOfferings(s, t).length ? TERM_LABELS[t] + ': ' + viewOfferings(s, t).length : '',
-                    )
-                      .filter(Boolean)
-                      .join(', ')
-                  }}
-                </span>
-                <span class="schedule-manage-owner">{{ ownerLabel(s) }}</span>
-              </div>
+            <option value="">All years</option>
+            <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+          </select>
+          <button
+            v-if="remote"
+            class="filter-btn schedule-manage-shared-toggle"
+            :class="{ active: showShared }"
+            :aria-pressed="showShared"
+            @click="showShared = !showShared"
+          >
+            {{ showShared ? 'Hide shared' : 'Show shared' }}
+          </button>
+        </div>
+        <p v-if="sharedHint" class="schedule-manage-hint">
+          {{ sharedHint }} shared schedule{{ sharedHint === 1 ? '' : 's' }} match
+          <button class="filter-btn" @click="showShared = true">Show shared</button>
+        </p>
+        <div class="schedule-manage-list">
+          <template v-for="group in listGroups" :key="group.label">
+            <div v-if="group.rows.length" class="schedule-manage-section-title">
+              {{ group.label }} ({{ group.rows.length }})
             </div>
-            <button
-              class="schedule-manage-eye"
-              :aria-label="(selectedScheduleIds.includes(s.id) ? 'Hide' : 'Show') + ' ' + s.name"
-              :class="{ active: selectedScheduleIds.includes(s.id) }"
-              :title="(selectedScheduleIds.includes(s.id) ? 'Hide' : 'Show') + ' ' + s.name"
-              @click="toggleSchedule(s.id)"
+            <div
+              v-for="s in group.rows"
+              :key="s.id"
+              class="schedule-manage-row"
+              :class="{ 'menu-open': menuFor === s.id }"
             >
-              <svg
-                v-if="selectedScheduleIds.includes(s.id)"
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+              <span class="schedule-swatch" :style="{ backgroundColor: colorForSchedule(s.id) }"></span>
+              <div class="schedule-manage-main">
+                <div class="schedule-manage-name">{{ s.name }}</div>
+                <div class="schedule-manage-meta">
+                  {{ s.year || '—' }} · {{ viewOfferings(s).length }} offerings this term
+                  <span v-if="TERM_KEYS.some((t) => viewOfferings(s, t).length)">
+                    ·
+                    {{
+                      TERM_KEYS.map((t) =>
+                        viewOfferings(s, t).length ? TERM_LABELS[t] + ': ' + viewOfferings(s, t).length : '',
+                      )
+                        .filter(Boolean)
+                        .join(', ')
+                    }}
+                  </span>
+                  <span class="schedule-manage-owner">{{ ownerLabel(s) }}</span>
+                </div>
+              </div>
+              <button
+                class="schedule-manage-eye"
+                :aria-label="(selectedScheduleIds.includes(s.id) ? 'Hide' : 'Show') + ' ' + s.name"
+                :class="{ active: selectedScheduleIds.includes(s.id) }"
+                :title="(selectedScheduleIds.includes(s.id) ? 'Hide' : 'Show') + ' ' + s.name"
+                @click="toggleSchedule(s.id)"
               >
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-              <svg
-                v-else
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                <path d="M14.12 14.12A3 3 0 1 1 9.88 9.88" />
-                <line x1="1" y1="1" x2="23" y2="23" />
-              </svg>
-            </button>
-            <span class="mode-menu-wrap">
+                <svg
+                  v-if="selectedScheduleIds.includes(s.id)"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <svg
+                  v-else
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                  <path d="M14.12 14.12A3 3 0 1 1 9.88 9.88" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              </button>
+              <span class="mode-menu-wrap">
+                <button
+                  class="schedule-manage-icon"
+                  :class="{ active: menuFor === s.id || editingScheduleId === s.id }"
+                  :aria-label="'Edit or suggest changes for ' + s.name"
+                  :title="'Edit or suggest changes for ' + s.name"
+                  @click="menuFor = menuFor === s.id ? null : s.id"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                  </svg>
+                </button>
+                <ScheduleModeMenu
+                  :schedule="s"
+                  :open="menuFor === s.id"
+                  @mode="editSchedule"
+                  @close="menuFor = null"
+                />
+              </span>
               <button
                 class="schedule-manage-icon"
-                :class="{ active: menuFor === s.id || editingScheduleId === s.id }"
-                :aria-label="'Edit or suggest changes for ' + s.name"
-                :title="'Edit or suggest changes for ' + s.name"
-                @click="menuFor = menuFor === s.id ? null : s.id"
+                :aria-label="'Duplicate ' + s.name"
+                :title="editing ? 'Finish editing before duplicating' : 'Duplicate ' + s.name"
+                :disabled="editing"
+                @click="duplicateAndEdit(s.id)"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -107,71 +164,42 @@
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  stroke-width="2.2"
+                  stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 >
-                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                 </svg>
               </button>
-              <ScheduleModeMenu
-                :schedule="s"
-                :open="menuFor === s.id"
-                @mode="editSchedule"
-                @close="menuFor = null"
-              />
-            </span>
-            <button
-              class="schedule-manage-icon"
-              :aria-label="'Duplicate ' + s.name"
-              :title="editing ? 'Finish editing before duplicating' : 'Duplicate ' + s.name"
-              :disabled="editing"
-              @click="duplicateAndEdit(s.id)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+              <button
+                v-if="canDelete(s)"
+                class="schedule-manage-del"
+                :aria-label="'Delete ' + s.name"
+                :title="'Delete ' + s.name"
+                @click="removeSchedule(s.id)"
               >
-                <rect x="9" y="9" width="13" height="13" rx="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-            </button>
-            <button
-              v-if="canDelete(s)"
-              class="schedule-manage-del"
-              :aria-label="'Delete ' + s.name"
-              :title="'Delete ' + s.name"
-              @click="removeSchedule(s.id)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <line x1="10" y1="11" x2="10" y2="17" />
-                <line x1="14" y1="11" x2="14" y2="17" />
-              </svg>
-            </button>
-          </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <line x1="10" y1="11" x2="10" y2="17" />
+                  <line x1="14" y1="11" x2="14" y2="17" />
+                </svg>
+              </button>
+            </div>
+          </template>
         </div>
-        <div v-if="filteredSchedules.length === 0" class="schedule-manage-empty">
-          No schedules match "{{ manageQuery }}".
-        </div>
+        <div v-if="noRows" class="schedule-manage-empty">No schedules match "{{ manageQuery }}".</div>
         <button
           class="filter-btn primary"
           :disabled="editing"
@@ -330,14 +358,53 @@ export default {
   setup(props, { emit }) {
     const manageQuery = ref('')
     const menuFor = ref(null)
+    // The shared-schedules section starts hidden: your own schedules come
+    // first, and a search (by name OR owner) or the toggle reveals the rest.
+    const showShared = ref(false)
+    // Year filter: '' is "All years"; the dropdown lists the years present.
+    const yearFilter = ref('')
+    const yearOptions = computed(() => {
+      const set = new Set(schedules.value.map((s) => s.year).filter(Boolean))
+      return Array.from(set).sort().reverse()
+    })
     // New-schedule / duplicate / import actions stay off while a session is
     // active, so an edit in progress is never disturbed by a concurrent create.
     const editing = computed(() => Boolean(editingScheduleId.value))
     const filteredSchedules = computed(() => {
       const q = manageQuery.value.trim().toLowerCase()
-      if (!q) return schedules.value
-      return schedules.value.filter((s) => s.name.toLowerCase().includes(q))
+      const yr = yearFilter.value
+      return schedules.value.filter((s) => {
+        if (yr && s.year !== yr) return false
+        if (!q) return true
+        return (
+          s.name.toLowerCase().includes(q) ||
+          String(s.owner || '')
+            .toLowerCase()
+            .includes(q)
+        )
+      })
     })
+    const ownedRows = computed(() => filteredSchedules.value.filter((s) => isOwner(s)))
+    const sharedRows = computed(() => filteredSchedules.value.filter((s) => !isOwner(s)))
+    // The list renders as sections (own first, then shared when shown) so the
+    // row markup lives in one place.
+    const listGroups = computed(() => {
+      const groups = []
+      if (ownedRows.value.length) groups.push({ label: 'Your schedules', rows: ownedRows.value })
+      if (remote.value && showShared.value && sharedRows.value.length)
+        groups.push({ label: 'Shared schedules', rows: sharedRows.value })
+      return groups
+    })
+    // While the shared section is hidden, a search that finds only shared
+    // rows surfaces a hint instead of a dead "no matches" line. An empty
+    // query shows nothing — the toggle is the way to browse shared schedules.
+    const sharedHint = computed(() => {
+      if (!remote.value || showShared.value) return 0
+      const q = manageQuery.value.trim()
+      if (!q || ownedRows.value.length) return 0
+      return sharedRows.value.length
+    })
+    const noRows = computed(() => !listGroups.value.length)
 
     const showCreate = ref(false)
     const newKind = ref('empty')
@@ -490,7 +557,12 @@ export default {
       manageEl,
       createEl,
       manageQuery,
-      filteredSchedules,
+      showShared,
+      yearFilter,
+      yearOptions,
+      listGroups,
+      sharedHint,
+      noRows,
       editing,
       showCreate,
       creating,

@@ -204,7 +204,10 @@
           changes, not direct edits.</span
         >
       </p>
-      <p v-else><strong>No schedules yet.</strong> Create one via "Your schedules" → "New schedule".</p>
+      <p v-else>
+        <strong>No schedules yet.</strong> Create one via "Your schedules" → "New schedule"
+        <span v-if="remote">, or search shared schedules there.</span>
+      </p>
     </div>
     <template v-else>
       <ScheduleGrid v-if="view === 'grid'" />

@@ -286,7 +286,9 @@ export async function signOut() {
 // Replaces the local view with the backend's schedule collection (after a
 // sign-in, or at boot). Returns false when the backend isn't reachable /
 // authenticated. Any drafts or sessions from the previous identity are
-// dropped.
+// dropped. The default selection is the user's own schedules — a stranger's
+// schedule is never auto-selected (it stays one search away in the manage
+// dialog).
 async function loadServerState() {
   const list = await backend.fetchSchedules()
   if (!list) return false
@@ -294,10 +296,11 @@ async function loadServerState() {
   const selected = loadSelectedSchedules()
   const valid = (sel) =>
     Array.isArray(sel) && sel.filter((id) => schedules.value.some((s) => s.id === id)).length > 0
+  const firstOwned = ownedSchedules()[0]
   selectedScheduleIds.value = valid(selected)
     ? selected.filter((id) => schedules.value.some((s) => s.id === id))
-    : schedules.value.length
-      ? [schedules.value[0].id]
+    : firstOwned
+      ? [firstOwned.id]
       : []
   persistSelectedSchedules()
   editingScheduleId.value = null
@@ -316,6 +319,11 @@ export function isOwner(schedule) {
   if (!currentUser.value) return false
   if (schedule.owner_user_id == null) return false
   return Number(schedule.owner_user_id) === Number(currentUser.value.id)
+}
+
+// The schedules owned by the current user (everything, offline).
+export function ownedSchedules() {
+  return schedules.value.filter((s) => isOwner(s))
 }
 
 // Visible suggestions per schedule id (the server's visibility rule: everyone

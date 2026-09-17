@@ -56,6 +56,31 @@ test('signIn loads the shared schedules from the server and selects the first', 
   })
 })
 
+test("signIn defaults the selection to the first owned schedule, never a stranger's", async () => {
+  await withRemote(async ({ srv, store }) => {
+    await srv.post('/api/auth/login', { username: 'registrar' })
+    await srv.post('/api/schedules', { name: 'AAA Stranger', year: '2026-27' })
+    const alice = srv.newClient()
+    await alice.post('/api/auth/login', { username: 'alice' })
+    const mine = (await alice.post('/api/schedules', { name: 'ZZZ Mine', year: '2026-27' })).json.schedule
+
+    await store.signIn('alice')
+    assert.equal(store.schedules.value.length, 2)
+    assert.deepEqual(store.selectedScheduleIds.value, [mine.id], 'own schedule selected despite sorting last')
+  })
+})
+
+test('signIn selects nothing when the user owns no schedules', async () => {
+  await withRemote(async ({ srv, store }) => {
+    await srv.post('/api/auth/login', { username: 'registrar' })
+    await srv.post('/api/schedules', { name: 'Stranger', year: '2026-27' })
+
+    await store.signIn('alice')
+    assert.equal(store.schedules.value.length, 1)
+    assert.deepEqual(store.selectedScheduleIds.value, [])
+  })
+})
+
 test('boot without a session opens the auth prompt and fetches no schedules', async () => {
   await withRemote(async ({ store }) => {
     await store.initScheduleCollection()
