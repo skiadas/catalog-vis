@@ -87,5 +87,14 @@ export default [
       },
     },
   },
+  {
+    // E2E specs pass browser objects (DataTransfer, …) into page.evaluate.
+    files: ['apps/**/e2e/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        DataTransfer: 'readonly',
+      },
+    },
+  },
   prettier,
 ]
