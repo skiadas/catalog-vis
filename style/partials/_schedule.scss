@@ -622,6 +622,10 @@
   flex-direction: column;
   gap: 2px;
   width: 100%;
+  // Pills keep clear of the slot edges so the band itself stays clickable
+  // around them (most visibly on off-pattern rails, where the strip between
+  // the rail and the pills is the only band space to hit).
+  padding: 0 var(--space-3);
   // A concrete min-height (not the flex default auto) lets this area shrink to
   // the block's remaining space and scroll its offerings instead of clipping,
   // while still keeping at least one course/instructor line visible.
