@@ -48,9 +48,10 @@
         <div class="controls history-controls">
           <span class="controls-spacer"></span>
           <button class="filter-btn" :disabled="!canCancel" @click="doCancelAll">Cancel all</button>
-          <button class="filter-btn primary" :disabled="!canCancel" @click="doCancelLatest">
+          <button class="filter-btn" :disabled="!canCancel" @click="doCancelLatest">
             Cancel latest{{ canCancel ? ' (⌘Z)' : '' }}
           </button>
+          <button class="filter-btn primary" @click="$emit('close')">OK</button>
         </div>
       </div>
     </div>
