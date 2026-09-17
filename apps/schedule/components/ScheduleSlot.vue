@@ -16,7 +16,7 @@
     <div class="slot-pills" v-else>
       <CoursePill
         v-for="it in items"
-        :key="it.code + it.o.section + it.sid"
+        :key="offeringItemKey(it)"
         :item="it"
         :filter-active="filter.active"
         :color="filter.color(it)"
@@ -42,6 +42,7 @@ import {
   proposeOverlay,
   colorForSchedule,
   termSlotOptions,
+  offeringItemKey,
 } from '@major-vis/schedule-core'
 import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
 import {
@@ -172,6 +173,7 @@ export default {
       filter,
       WEEKDAY_NAMES,
       formatTime,
+      offeringItemKey,
       goScheduleCourse,
       goScheduleDay,
       isEditable,

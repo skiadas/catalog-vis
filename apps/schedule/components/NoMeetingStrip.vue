@@ -12,7 +12,7 @@
       >
     </p>
     <div class="no-meeting-list">
-      <div v-for="it in items" :key="it.code + ' ' + it.o.section + ' ' + it.sid" class="no-meeting-row">
+      <div v-for="it in items" :key="offeringItemKey(it)" class="no-meeting-row">
         <CoursePill
           :item="it"
           :filter-active="filter.active"
@@ -31,7 +31,14 @@
 </template>
 
 <script>
-import { WEEKDAYS, daySlotBlocks, clipBand, calendarDayRange, formatTime } from '@major-vis/schedule-core'
+import {
+  WEEKDAYS,
+  daySlotBlocks,
+  clipBand,
+  calendarDayRange,
+  formatTime,
+  offeringItemKey,
+} from '@major-vis/schedule-core'
 import { schedule, activeTerm, editingScheduleId, openCourseEdit } from '../src/scheduleStore.js'
 import CoursePill from './CoursePill.vue'
 
@@ -50,13 +57,19 @@ export default {
   setup(props) {
     const items = computed(() => {
       const range = calendarDayRange(activeTerm.value)
+      // Dedup and key by the offering's full identity: `code + section` is the
+      // same for a lecture and every lab on its letter (labs carry the L in
+      // the number and the sequence in the section label, not in those fields),
+      // so the plain key would collapse or ghost rows. `offeringItemKey`
+      // includes the lab marker, labSeq, content id, and source schedule.
+      const keyOf = (it) => offeringItemKey(it)
       const out = [...(schedule.value.unscheduled || [])]
-      const seen = new Set(out.map((it) => `${it.code} ${it.o.section} ${it.sid}`))
+      const seen = new Set(out.map(keyOf))
       for (const d of WEEKDAYS) {
         for (const b of daySlotBlocks(d, schedule.value)) {
           if (clipBand(b, range)) continue
           for (const it of b.items) {
-            const key = `${it.code} ${it.o.section} ${it.sid}`
+            const key = keyOf(it)
             if (!seen.has(key)) {
               seen.add(key)
               out.push(it)
@@ -72,6 +85,7 @@ export default {
       items,
       editMode,
       formatTime,
+      offeringItemKey,
       activeTerm,
       openCourseEdit,
     }

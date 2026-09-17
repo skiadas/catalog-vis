@@ -110,7 +110,11 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
 - `nextSectionLetter(offerings, prefix, number)` → first free section letter
   (lab rows are ignored — their letters mirror the lecture's)
 - `offerKey(o)` → the stable identity tuple (`prefix|number|section|L|seq`),
-  the one key every identity match uses; `courseNumberLabel(o)` → the
+  the one key every identity match uses; `offeringItemKey(it)` → the render
+  identity of an indexed item (record identity + content id + source
+  schedule) — the key lists mixing a lecture with its labs must use (the
+  plain `code + section` is identical for a lecture and every lab on its
+  letter); `courseNumberLabel(o)` → the
   registrar-shaped number (`166L` for labs, plain for lectures);
   `offeringSectionLabel(o)` → the registrar-shaped section (`A2` for labs,
   plain for lectures); `nextLabSeq(offerings, prefix, number, section)` →

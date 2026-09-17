@@ -558,6 +558,91 @@ test('lab sections: add lab from the editor (auto-close), strip lab chip, schedu
   assertClean(errors)
 })
 
+test('no-meeting strip keys a lecture and its labs apart and survives filter toggles', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+  await createSchedule(page, 'Strip test')
+
+  // Edit mode; add ANTH 160 (pre-slotted) with a lab (auto-close lands the
+  // unscheduled lab in the strip), then a second department's course.
+  await page.locator('.schedule-pill-edit').first().click()
+  const menu = page.locator('.mode-menu')
+  await menu.waitFor({ state: 'visible', timeout: 5000 })
+  await menu.getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  const addCourse = async (code) => {
+    await page.getByRole('button', { name: '＋ Add course' }).click()
+    const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
+    await addm.waitFor({ state: 'visible', timeout: 5000 })
+    await addm.getByPlaceholder('Search code or name…').fill(code)
+    await addm.locator('.schedule-add-option', { hasText: code }).first().click()
+    const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+    await em.waitFor({ state: 'visible', timeout: 5000 })
+  }
+  const saveAndClose = async () => {
+    const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+    await em.getByRole('button', { name: 'Save changes' }).click()
+    await em.waitFor({ state: 'detached', timeout: 5000 })
+  }
+  const unschedule = async (code) => {
+    const block = page.locator('.cal-block').filter({ hasText: code }).first()
+    await block.locator('.filter-offering', { hasText: code }).locator('.filter-offering-edit').click()
+    const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+    await em.waitFor({ state: 'visible', timeout: 5000 })
+    await em.getByRole('button', { name: 'No meeting time' }).click()
+    await saveAndClose()
+  }
+
+  await addCourse('ANTH 160')
+  await page
+    .locator('.modal[aria-labelledby="course-edit-title"]')
+    .getByRole('button', { name: 'Add lab section' })
+    .click()
+  await page
+    .getByText(/Lab added — ANTH 160L A1/)
+    .first()
+    .waitFor({ timeout: 5000 })
+  await page
+    .locator('.modal[aria-labelledby="course-edit-title"]')
+    .waitFor({ state: 'detached', timeout: 5000 })
+  await addCourse('BIO 160')
+  await saveAndClose()
+  // Unschedule both lectures: the lecture + lab now share the strip (the
+  // plain code+section key is identical for a lecture and its lab, which used
+  // to make this list ghost rows on updates).
+  await unschedule('ANTH 160')
+  await unschedule('BIO 160')
+
+  const strip = page.locator('.no-meeting-strip')
+  await expect(strip).toBeVisible()
+  await expect(strip.locator('.no-meeting-row')).toHaveCount(3)
+  await expect(strip.locator('.no-meeting-count')).toHaveText('3')
+  await expect(strip.locator('.slot-pill', { hasText: 'ANTH 160L' })).toHaveCount(1)
+  await expect(strip.locator('.slot-pill', { hasText: /ANTH 160A/ })).toHaveCount(1)
+
+  // Toggle the ANTH filter on and off: the strip must track the filtered list
+  // exactly (no duplicated rows), and the count badge must match the rows.
+  const anthChip = page.locator('.filter-chip', { hasText: 'ANTH' })
+  await page.getByRole('button', { name: /Departments/ }).click()
+  await anthChip.waitFor({ state: 'visible', timeout: 5000 })
+  await anthChip.click()
+  await settle(page)
+  await expect(strip.locator('.no-meeting-row')).toHaveCount(2)
+  await expect(strip.locator('.no-meeting-count')).toHaveText('2')
+  await expect(strip.locator('.slot-pill', { hasText: 'ANTH 160L' })).toHaveCount(1)
+  await expect(strip.locator('.slot-pill', { hasText: 'BIO 160' })).toHaveCount(0)
+  await anthChip.click()
+  await settle(page)
+  await expect(strip.locator('.no-meeting-row')).toHaveCount(3)
+  await anthChip.click()
+  await settle(page)
+  await expect(strip.locator('.no-meeting-row')).toHaveCount(2)
+  await expect(strip.locator('.no-meeting-count')).toHaveText('2')
+
+  assertClean(errors)
+})
+
 test('main views and dialogs have no serious/critical accessibility violations', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })

@@ -66,7 +66,7 @@
               <div class="cal-block-depts">
                 <OfferingRow
                   v-for="it in b.items"
-                  :key="it.code + it.o.section + it.sid"
+                  :key="offeringItemKey(it)"
                   :item="it"
                   :color="rowColor(it)"
                   :editable="isEditable(it)"
@@ -104,6 +104,7 @@ import {
   daySlotBlocks,
   dayTimelineRange,
   assignLanes,
+  offeringItemKey,
 } from '@major-vis/schedule-core'
 import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
 import {
@@ -309,6 +310,7 @@ export default {
       formatTime,
       goScheduleSlot,
       rowColor,
+      offeringItemKey,
       isEditable,
       proposalFor,
       removalFor,

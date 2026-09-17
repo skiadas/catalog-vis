@@ -46,7 +46,7 @@
             <div class="cal-block-depts">
               <OfferingRow
                 v-for="it in b.slot.items"
-                :key="it.code + it.o.section + it.sid"
+                :key="offeringItemKey(it)"
                 :item="it"
                 :color="rowColor(it)"
                 :editable="isEditable(it)"
@@ -89,6 +89,7 @@ import {
   clipBand,
   PX_PER_MIN,
   colorForSchedule,
+  offeringItemKey,
 } from '@major-vis/schedule-core'
 import {
   selectedDepartments,
@@ -315,6 +316,7 @@ export default {
       toggleOpen,
       rowColor,
       filter,
+      offeringItemKey,
       goScheduleSlot,
       goScheduleDay,
       dropZones,

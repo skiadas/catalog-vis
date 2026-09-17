@@ -452,6 +452,17 @@ export function offeringKey(o) {
   return `${o.prefix || ''}|${o.number || ''}|${o.section || ''}${o.lab ? '|L' : ''}${o.lab ? o.labSeq || '' : ''}`
 }
 
+// The stable render identity of an indexed offering item (`{ o, sid }` as
+// `buildIndex` produces): the record identity plus its content `id` (so
+// split-meeting rows sharing a section tuple stay distinct) and its source
+// schedule. Lists that mix a lecture with its labs must key/dedup by this —
+// the plain `code + section` is the same for a lecture and every lab on its
+// letter, and duplicate keys make keyed renders ghost rows on updates.
+export function offeringItemKey(it) {
+  if (!it) return ''
+  return `${offeringKey(it.o)}|${(it.o && it.o.id) || ''}|${it.sid || ''}`
+}
+
 // Deterministic content hash — the stable `id` producers assign at import or
 // creation (the `id`-preferred key in the diff machinery). Two rows with the
 // same section tuple but different day/time bands hash differently, so split

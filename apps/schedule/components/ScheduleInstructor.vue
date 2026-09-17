@@ -54,7 +54,13 @@
 <script>
 import { useRoute } from 'vue-router'
 import { schedule } from '../src/scheduleStore.js'
-import { instructorConflicts, compareInstructors, DAY_START_MIN, PX_PER_MIN } from '@major-vis/schedule-core'
+import {
+  instructorConflicts,
+  compareInstructors,
+  DAY_START_MIN,
+  PX_PER_MIN,
+  offeringItemKey,
+} from '@major-vis/schedule-core'
 import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../router.js'
 import WeeklyCalendar from './WeeklyCalendar.vue'
 
@@ -84,7 +90,7 @@ export default {
       items.value.filter((it) => it.days.includes(day)).sort((a, b) => a.start - b.start)
     const dayItems = (day) =>
       itemsInDay(day).map((it) => ({
-        key: it.code + it.o.section + it.o.time,
+        key: offeringItemKey(it),
         it,
         style: itemStyle(it),
       }))

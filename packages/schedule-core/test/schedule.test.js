@@ -54,6 +54,7 @@ import {
   offeringCodeLabel,
   offeringSectionLabel,
   courseNumberLabel,
+  offeringItemKey,
 } from '../schedule.js'
 
 const CSV = [
@@ -820,6 +821,54 @@ test('daySlotBlocks classifies per day: the same course is a rail on a day whose
 
 test('blockStyle positions absolutely at the shared px-per-minute scale', () => {
   assert.deepEqual(blockStyle({ start: 560, end: 630 }), { top: '120px', height: '105px' })
+})
+
+test('offeringItemKey never collides between a lecture, its labs, or split rows', () => {
+  const rows = [
+    { prefix: 'CS', number: '223', section: 'J', days: '', time: '', instructor: 'Vosmeier', $sid: 'base' },
+    {
+      prefix: 'CS',
+      number: '223',
+      section: 'J',
+      lab: true,
+      labSeq: 1,
+      days: '',
+      time: '',
+      instructor: 'Vosmeier',
+      $sid: 'base',
+    },
+    {
+      prefix: 'CS',
+      number: '223',
+      section: 'J',
+      lab: true,
+      labSeq: 2,
+      days: '',
+      time: '',
+      instructor: 'Vosmeier',
+      $sid: 'base',
+    },
+    // A split-meeting row of the lecture (distinct content id, same tuple).
+    {
+      prefix: 'CS',
+      number: '223',
+      section: 'J',
+      days: 'R',
+      time: '18:00-19:00',
+      instructor: 'Vosmeier',
+      $sid: 'base',
+    },
+  ]
+  const index = buildIndex(assignOfferingIds(rows))
+  const keys = index.byCourse['CS 223'].map((it) => offeringItemKey(it))
+  assert.equal(new Set(keys).size, keys.length, 'lecture, labs, and split rows all distinct')
+  // The same row in another schedule (different sid) is a distinct offering.
+  const other = buildIndex(assignOfferingIds(rows.map((r) => ({ ...r, $sid: 'other' }))))
+  assert.notEqual(
+    offeringItemKey(other.byCourse['CS 223'][0]),
+    offeringItemKey(index.byCourse['CS 223'][0]),
+    'different source schedule stays distinct',
+  )
 })
 
 // ---------------------------------------------------------------------------
