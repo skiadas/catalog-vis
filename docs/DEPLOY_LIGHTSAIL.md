@@ -118,13 +118,19 @@ In DevTools, the `mjv_sid` cookie should show `Secure`, `HttpOnly`, `Lax`.
 Cron pulls the latest GHCR image and recreates the stack only when the image
 actually changed. The script also refreshes the repo-owned deploy files
 (`compose.yaml` + `deploy/Caddyfile`) before pulling, so config changes ride
-along with image updates; `.env` and the data volume are never touched:
+along with image updates; `.env` and the data volume are never touched. A run
+with nothing new is just a `docker compose pull -q` plus a log line, so an
+**hourly** schedule is cheap — changes land within about an hour of a push:
 
 ```sh
 # crontab -e, on the app instance
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-0 3 * * * /opt/major-vis/deploy/update.sh >> /var/log/major-vis-update.log 2>&1
+17 * * * * /opt/major-vis/deploy/update.sh >> /var/log/major-vis-update.log 2>&1
 ```
+
+Any minute works for the schedule — pick one that avoids the top of the hour.
+The log grows by one line per run; rotate it (or truncate) occasionally if the
+hourly cadence bothers you.
 
 `docker compose up -d` re-reads `.env`, so the `COMPOSE_PROFILES` value keeps
 Caddy running across updates. To apply a config-only change immediately

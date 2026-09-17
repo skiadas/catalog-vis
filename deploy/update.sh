@@ -2,12 +2,16 @@
 # Cron updater for the major-vis container: refresh the deploy files the repo
 # owns (compose.yaml + deploy/Caddyfile), pull the latest GHCR image, and
 # recreate the stack only when the image actually changed (so cron noise and
-# pointless restarts are avoided on unchanged nights). `.env` is never touched
-# — operator settings (client secret, domains) survive every update.
+# pointless restarts are avoided — a run with nothing new is just a cheap
+# `docker compose pull -q` + a log line, so running it every hour is fine).
+# `.env` is never touched — operator settings (client secret, domains) survive
+# every update.
 #
 # Crontab (note cron's minimal PATH — set it or use absolute paths):
 #   PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-#   0 3 * * * /opt/major-vis/deploy/update.sh >> /var/log/major-vis-update.log 2>&1
+#   17 * * * * /opt/major-vis/deploy/update.sh >> /var/log/major-vis-update.log 2>&1
+#   (hourly at :17; any minute works — pick one that avoids the top of the
+#    hour, and re-run `crontab -e` after editing this file)
 #
 # Overrides: IMAGE_TAG (default "latest"), PUBLIC_PORT (default 8080),
 # SERVICES (default "schedule") — same envs compose.yaml honors.
