@@ -118,6 +118,13 @@ test('non-owner cannot modify but can suggest; others see pending; owner approve
     assert.equal((await carol.post('/api/auth/login', { username: 'carol' })).status, 200)
 
     const { schedule } = (await alice.post('/api/schedules', { name: 'Registrar', year: '2026-27' })).json
+    // Schedules are private by default; this flow is about suggestion
+    // mechanics, so the owner opens the schedule up to everyone.
+    const opened = await alice.patch(`/api/schedules/${schedule.id}`, {
+      visibility: 'public',
+      suggestMode: 'public',
+    })
+    assert.equal(opened.status, 200)
     // seed the schedule with a course
     await alice.put(`/api/schedules/${schedule.id}/terms/F`, {
       offerings: [
@@ -208,6 +215,8 @@ test('concurrent suggestions from many proposers approve independently, in any o
     assert.equal((await physics.post('/api/auth/login', { username: 'physics' })).status, 200)
     assert.equal((await math.post('/api/auth/login', { username: 'math' })).status, 200)
     const { schedule } = (await alice.post('/api/schedules', { name: 'Registrar', year: '2026-27' })).json
+    // Private by default: open the schedule so the two departments can propose.
+    await alice.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
     await alice.put(`/api/schedules/${schedule.id}/terms/F`, {
       offerings: [
         { prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '9:20-10:30' },
@@ -432,6 +441,8 @@ test('per-op withdraw by a separate proposer: rejected+withdrawn derives withdra
     assert.equal((await registrar.post('/api/auth/login', { username: 'registrar' })).status, 200)
     assert.equal((await math.post('/api/auth/login', { username: 'math' })).status, 200)
     const { schedule } = (await registrar.post('/api/schedules', { name: 'Withdraw', year: '2026-27' })).json
+    // Private by default: open the schedule so math can propose against it.
+    await registrar.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
     await registrar.put(`/api/schedules/${schedule.id}/terms/F`, {
       offerings: [
         { prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '10:00-11:45' },
@@ -664,6 +675,224 @@ test('rename and mark official by owner', async () => {
     assert.equal(patched.status, 200)
     assert.equal(patched.json.schedule.name, 'Official Draft')
     assert.equal(patched.json.schedule.status, 'official')
+  } finally {
+    srv.close()
+    db.close()
+  }
+})
+
+// ---- Access control (visibility + suggesters) ---------------------------
+
+// Creates alice's schedule with a seeded course and returns { srv, alice, bob,
+// carol, schedule, term } with everyone signed in.
+async function accessFixture() {
+  const database = await openDb(':memory:')
+  const app = createApp({ database, services: ['schedule'] })
+  const srv = await startTestServer(app)
+  const alice = srv.newClient()
+  const bob = srv.newClient()
+  const carol = srv.newClient()
+  assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
+  assert.equal((await bob.post('/api/auth/login', { username: 'bob' })).status, 200)
+  assert.equal((await carol.post('/api/auth/login', { username: 'carol' })).status, 200)
+  const { schedule } = (await alice.post('/api/schedules', { name: 'Access', year: '2026-27' })).json
+  await alice.put(`/api/schedules/${schedule.id}/terms/F`, {
+    offerings: [{ prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '9:20-10:30' }],
+  })
+  const term = (await alice.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
+  return { srv, db: database, alice, bob, carol, schedule, term }
+}
+
+test('new schedules are private by default: owner-only list, 404s for others', async () => {
+  const { srv, db, alice, bob, schedule } = await accessFixture()
+  try {
+    // The schedule row advertises the defaults.
+    const row = (await alice.get(`/api/schedules/${schedule.id}`)).json.schedule
+    assert.equal(row.visibility, 'private')
+    assert.equal(row.suggestMode, 'owner')
+    assert.deepEqual(row.viewers, [])
+    assert.deepEqual(row.suggesters, [])
+
+    // Alice sees her own schedule; bob sees nothing.
+    assert.equal((await alice.get('/api/schedules')).json.schedules.length, 1)
+    assert.deepEqual((await bob.get('/api/schedules')).json.schedules, [])
+
+    // Bob cannot read the schedule, its terms, suggestions, or export — 404
+    // everywhere, so its existence is never leaked.
+    assert.equal((await bob.get(`/api/schedules/${schedule.id}`)).status, 404)
+    assert.equal((await bob.get(`/api/schedules/${schedule.id}/terms/F`)).status, 404)
+    assert.equal((await bob.get(`/api/schedules/${schedule.id}/suggestions`)).status, 404)
+    assert.equal(
+      (await bob.get(`/api/schedules/${schedule.id}/suggestions/export?fmt=md`)).status,
+      404,
+    )
+
+    // Bob cannot propose either (same 404, not a 403).
+    const sug = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: 1,
+      operations: [{ kind: 'remove', cur: { prefix: 'CS', number: '220', section: 'A' } }],
+    })
+    assert.equal(sug.status, 404)
+  } finally {
+    srv.close()
+    db.close()
+  }
+})
+
+test('shared visibility admits listed viewers only; suggestion POST is gated separately', async () => {
+  const { srv, db, alice, bob, carol, schedule, term } = await accessFixture()
+  try {
+    // Bob is a listed viewer; carol is not. Suggesting stays owner-only.
+    const patched = await alice.patch(`/api/schedules/${schedule.id}`, {
+      visibility: 'shared',
+      viewers: ['Bob', 'bob@hanover.edu'],
+      suggesters: [],
+    })
+    assert.equal(patched.status, 200)
+    // List entries are canonicalized (trimmed, lowercased, deduped).
+    assert.deepEqual(patched.json.schedule.viewers, ['bob', 'bob@hanover.edu'])
+
+    // Bob sees the schedule in the list and can read it.
+    assert.equal((await bob.get('/api/schedules')).json.schedules.length, 1)
+    assert.equal((await bob.get(`/api/schedules/${schedule.id}`)).status, 200)
+    assert.equal((await bob.get(`/api/schedules/${schedule.id}/terms/F`)).json.term.version, term.version)
+
+    // Carol still gets 404s.
+    assert.equal((await carol.get(`/api/schedules/${schedule.id}`)).status, 404)
+    assert.deepEqual((await carol.get('/api/schedules')).json.schedules, [])
+
+    // A viewer who may not suggest gets a clear 403 on proposal.
+    const denied = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: term.version,
+      operations: [{ kind: 'remove', cur: { prefix: 'CS', number: '220', section: 'A' } }],
+    })
+    assert.equal(denied.status, 403)
+    assert.equal(denied.json.error, 'not_suggester')
+  } finally {
+    srv.close()
+    db.close()
+  }
+})
+
+test('listed suggesters can view and propose even when visibility stays private', async () => {
+  const { srv, db, alice, bob, carol, schedule, term } = await accessFixture()
+  try {
+    // suggest_mode=shared with bob listed; visibility stays private.
+    await alice.patch(`/api/schedules/${schedule.id}`, {
+      suggestMode: 'shared',
+      suggesters: ['bob'],
+    })
+
+    // Bob (a suggester) can view the schedule despite its private visibility…
+    assert.equal((await bob.get(`/api/schedules/${schedule.id}`)).status, 200)
+    assert.equal((await bob.get(`/api/schedules/${schedule.id}/terms/F`)).status, 200)
+    assert.equal((await bob.get(`/api/schedules/${schedule.id}/suggestions`)).status, 200)
+    // …and propose.
+    const sug = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: term.version,
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'CS', number: '220', section: 'A' },
+          changes: { instructor: 'Skiadas' },
+          diff: [],
+        },
+      ],
+    })
+    assert.equal(sug.status, 201)
+
+    // Carol is neither viewer nor suggester: still fully hidden.
+    assert.equal((await carol.get(`/api/schedules/${schedule.id}`)).status, 404)
+    assert.equal((await carol.get('/api/schedules')).json.schedules.length, 0)
+  } finally {
+    srv.close()
+    db.close()
+  }
+})
+
+test('public visibility + suggest_mode open the schedule to every signed-in user', async () => {
+  const { srv, db, alice, carol, schedule, term } = await accessFixture()
+  try {
+    await alice.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
+
+    // Carol sees it in the list and can read + propose.
+    assert.equal((await carol.get('/api/schedules')).json.schedules.length, 1)
+    assert.equal((await carol.get(`/api/schedules/${schedule.id}/terms/F`)).status, 200)
+    const sug = await carol.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: term.version,
+      operations: [{ kind: 'remove', cur: { prefix: 'CS', number: '220', section: 'A' } }],
+    })
+    assert.equal(sug.status, 201)
+
+    // …but she cannot write terms directly (ownership is unchanged).
+    assert.equal(
+      (await carol.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [] })).status,
+      403,
+    )
+  } finally {
+    srv.close()
+    db.close()
+  }
+})
+
+test('access fields are owner-only and validated', async () => {
+  const { srv, db, alice, bob, schedule } = await accessFixture()
+  try {
+    // Non-owner cannot touch access fields.
+    assert.equal(
+      (await bob.patch(`/api/schedules/${schedule.id}`, { visibility: 'public' })).status,
+      403,
+    )
+
+    // Bad enums and bad lists are refused.
+    assert.equal(
+      (await alice.patch(`/api/schedules/${schedule.id}`, { visibility: 'nope' })).status,
+      400,
+    )
+    assert.equal(
+      (await alice.patch(`/api/schedules/${schedule.id}`, { suggestMode: 'nope' })).status,
+      400,
+    )
+    assert.equal(
+      (await alice.patch(`/api/schedules/${schedule.id}`, { viewers: 'bob' })).status,
+      400,
+    )
+    assert.equal(
+      (await alice.patch(`/api/schedules/${schedule.id}`, { suggesters: [''] })).status,
+      400,
+    )
+    assert.equal(
+      (await alice.patch(`/api/schedules/${schedule.id}`, { suggesters: ['x'.repeat(121)] })).status,
+      400,
+    )
+
+    // Mixed update: name/status and access fields together work.
+    const patched = await alice.patch(`/api/schedules/${schedule.id}`, {
+      name: 'Open',
+      status: 'official',
+      visibility: 'shared',
+      suggestMode: 'shared',
+      viewers: ['bob'],
+      suggesters: ['bob', 'BOB'],
+    })
+    assert.equal(patched.status, 200)
+    assert.equal(patched.json.schedule.name, 'Open')
+    assert.equal(patched.json.schedule.status, 'official')
+    assert.equal(patched.json.schedule.visibility, 'shared')
+    assert.equal(patched.json.schedule.suggestMode, 'shared')
+    assert.deepEqual(patched.json.schedule.viewers, ['bob'])
+    assert.deepEqual(patched.json.schedule.suggesters, ['bob'])
+
+    // A partial access update leaves the other fields untouched.
+    const partial = await alice.patch(`/api/schedules/${schedule.id}`, { suggesters: ['carol'] })
+    assert.equal(partial.status, 200)
+    assert.equal(partial.json.schedule.visibility, 'shared')
+    assert.deepEqual(partial.json.schedule.viewers, ['bob'])
+    assert.deepEqual(partial.json.schedule.suggesters, ['carol'])
   } finally {
     srv.close()
     db.close()

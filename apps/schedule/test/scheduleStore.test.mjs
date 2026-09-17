@@ -59,7 +59,9 @@ test('signIn loads the shared schedules from the server and selects the first', 
 test("signIn defaults the selection to the first owned schedule, never a stranger's", async () => {
   await withRemote(async ({ srv, store }) => {
     await srv.post('/api/auth/login', { username: 'registrar' })
-    await srv.post('/api/schedules', { name: 'AAA Stranger', year: '2026-27' })
+    const stranger = (await srv.post('/api/schedules', { name: 'AAA Stranger', year: '2026-27' })).json.schedule
+    // Schedules are private by default; open the stranger's so alice sees it.
+    await srv.patch(`/api/schedules/${stranger.id}`, { visibility: 'public' })
     const alice = srv.newClient()
     await alice.post('/api/auth/login', { username: 'alice' })
     const mine = (await alice.post('/api/schedules', { name: 'ZZZ Mine', year: '2026-27' })).json.schedule
@@ -73,7 +75,8 @@ test("signIn defaults the selection to the first owned schedule, never a strange
 test('signIn selects nothing when the user owns no schedules', async () => {
   await withRemote(async ({ srv, store }) => {
     await srv.post('/api/auth/login', { username: 'registrar' })
-    await srv.post('/api/schedules', { name: 'Stranger', year: '2026-27' })
+    const created = (await srv.post('/api/schedules', { name: 'Stranger', year: '2026-27' })).json.schedule
+    await srv.patch(`/api/schedules/${created.id}`, { visibility: 'public' })
 
     await store.signIn('alice')
     assert.equal(store.schedules.value.length, 1)
@@ -240,6 +243,7 @@ test('refreshAllSuggestions never fetches suggestions for client-only schedule i
   await withRemote(async ({ srv, store }) => {
     await srv.post('/api/auth/login', { username: 'registrar' })
     const created = (await srv.post('/api/schedules', { name: 'Shared' })).json.schedule
+    await srv.patch(`/api/schedules/${created.id}`, { visibility: 'public' })
     await store.signIn('alice')
 
     // A stale/un-synced entry (no server ownership) sits in the local list.
@@ -293,6 +297,8 @@ test('non-owner suggest sessions consolidate into one upserted proposal; externa
     const registrar = srv.newClient()
     await registrar.post('/api/auth/login', { username: 'registrar' })
     const schedule = (await registrar.post('/api/schedules', { name: 'Shared' })).json.schedule
+    // Private by default: open the schedule so physics can propose against it.
+    await registrar.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
     await registrar.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [COURSE] })
 
     // Physics signs in via the store and enters a suggest session.
@@ -734,6 +740,8 @@ test('importCsvRows is blocked for a remote non-owner and applied for the owner'
   await withRemote(async ({ srv, store }) => {
     await srv.post('/api/auth/login', { username: 'registrar' })
     const created = (await srv.post('/api/schedules', { name: 'Shared', year: '2026-27' })).json.schedule
+    // Open visibility so alice sees the schedule; writes stay owner-only.
+    await srv.patch(`/api/schedules/${created.id}`, { visibility: 'public' })
     await store.signIn('alice')
 
     const rows = [
@@ -764,6 +772,8 @@ test('deleteSchedule is owner-only in remote mode; the row survives a non-owner 
   await withRemote(async ({ srv, store }) => {
     await srv.post('/api/auth/login', { username: 'registrar' })
     const created = (await srv.post('/api/schedules', { name: 'Shared', year: '2026-27' })).json.schedule
+    // Open visibility so alice sees the schedule; deletes stay owner-only.
+    await srv.patch(`/api/schedules/${created.id}`, { visibility: 'public' })
 
     await store.signIn('alice')
     store.deleteSchedule(created.id)

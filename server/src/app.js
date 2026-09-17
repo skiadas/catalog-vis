@@ -119,6 +119,29 @@ export function createApp({
     req.schedule = schedule
     next()
   }
+  // Reads a schedule the user may view: the owner, everyone for 'public',
+  // listed viewers for 'shared' — and listed suggesters always (you must see
+  // a schedule to propose against it). Anyone else gets 404 — a private
+  // schedule must not even leak its existence.
+  const requireView = (req, res, next) => {
+    const schedule = db.getSchedule(database, Number(req.params.id))
+    if (!schedule) return res.status(404).json({ error: 'not_found' })
+    if (!db.canViewSchedule(schedule, req.user)) return res.status(404).json({ error: 'not_found' })
+    req.schedule = schedule
+    next()
+  }
+  // Writes a suggestion for a schedule the user may propose against: the
+  // owner, everyone for 'public', listed suggesters for 'shared'. Non-viewers
+  // are 404'd (they shouldn't know the schedule exists); viewers who may not
+  // suggest get a clear 403.
+  const requireSuggest = (req, res, next) => {
+    const schedule = db.getSchedule(database, Number(req.params.id))
+    if (!schedule) return res.status(404).json({ error: 'not_found' })
+    if (!db.canViewSchedule(schedule, req.user)) return res.status(404).json({ error: 'not_found' })
+    if (!db.canSuggestSchedule(schedule, req.user)) return res.status(403).json({ error: 'not_suggester' })
+    req.schedule = schedule
+    next()
+  }
 
   // ---- Config ------------------------------------------------------------
   app.get('/api/config', (req, res) => {
@@ -173,9 +196,11 @@ export function createApp({
   })
 
   // ---- Schedules ---------------------------------------------------------
+  // The list is filtered to schedules the caller may view: everything for
+  // 'public', listed viewers/suggesters for 'shared', owner-only for 'private'.
   app.get('/api/schedules', requireAuth, (req, res) => {
     const year = typeof req.query.year === 'string' ? req.query.year : undefined
-    res.json({ schedules: db.listSchedules(database, { year }) })
+    res.json({ schedules: db.listSchedules(database, { year, user: req.user }) })
   })
 
   app.post('/api/schedules', requireAuth, (req, res) => {
@@ -186,21 +211,38 @@ export function createApp({
     res.status(201).json({ schedule })
   })
 
-  app.get('/api/schedules/:id', requireAuth, (req, res) => {
-    const schedule = db.getSchedule(database, Number(req.params.id))
-    if (!schedule) return res.status(404).json({ error: 'not_found' })
-    res.json({ schedule })
+  app.get('/api/schedules/:id', requireAuth, requireView, (req, res) => {
+    res.json({ schedule: req.schedule })
   })
 
   app.patch('/api/schedules/:id', requireAuth, requireOwner, (req, res) => {
     const name = req.body && typeof req.body.name === 'string' ? req.body.name.trim() : undefined
     const status = req.body && typeof req.body.status === 'string' ? req.body.status : undefined
+    const visibility = req.body && typeof req.body.visibility === 'string' ? req.body.visibility : undefined
+    const suggestMode =
+      req.body && typeof req.body.suggestMode === 'string' ? req.body.suggestMode : undefined
     if (status !== undefined && !['draft', 'official'].includes(status))
       return res.status(400).json({ error: 'bad_status' })
     if (name !== undefined && name === '') return res.status(400).json({ error: 'name_required' })
+    if (visibility !== undefined && !['private', 'shared', 'public'].includes(visibility))
+      return res.status(400).json({ error: 'bad_visibility' })
+    if (suggestMode !== undefined && !['owner', 'shared', 'public'].includes(suggestMode))
+      return res.status(400).json({ error: 'bad_suggest_mode' })
+    const viewers =
+      req.body && req.body.viewers !== undefined ? db.normalizeNameList(req.body.viewers) : undefined
+    const suggesters =
+      req.body && req.body.suggesters !== undefined ? db.normalizeNameList(req.body.suggesters) : undefined
+    if (req.body && req.body.viewers !== undefined && !viewers)
+      return res.status(400).json({ error: 'bad_viewers' })
+    if (req.body && req.body.suggesters !== undefined && !suggesters)
+      return res.status(400).json({ error: 'bad_suggesters' })
     const schedule = db.updateScheduleMeta(database, req.schedule.id, {
       name: name || undefined,
       status,
+      visibility,
+      suggestMode,
+      viewers,
+      suggesters,
     })
     res.json({ schedule })
   })
@@ -211,7 +253,7 @@ export function createApp({
   })
 
   // ---- Term parts --------------------------------------------------------
-  app.get('/api/schedules/:id/terms/:term', requireAuth, (req, res) => {
+  app.get('/api/schedules/:id/terms/:term', requireAuth, requireView, (req, res) => {
     if (!TERMS.includes(req.params.term)) return res.status(400).json({ error: 'bad_term' })
     const term = db.getTerm(database, Number(req.params.id), req.params.term)
     if (!term) return res.status(404).json({ error: 'not_found' })
@@ -237,9 +279,8 @@ export function createApp({
   // concurrently: approving one op never invalidates others — it applies to
   // whatever the term's current state is (unmatched ops no-op, duplicate adds
   // dedupe). `baseVersion` is recorded for the paper trail only, never enforced.
-  app.post('/api/schedules/:id/suggestions', requireAuth, (req, res) => {
-    const schedule = db.getSchedule(database, Number(req.params.id))
-    if (!schedule) return res.status(404).json({ error: 'not_found' })
+  app.post('/api/schedules/:id/suggestions', requireAuth, requireSuggest, (req, res) => {
+    const schedule = req.schedule
     const term = req.body && req.body.term
     if (!TERMS.includes(term)) return res.status(400).json({ error: 'bad_term' })
     const operations = Array.isArray(req.body && req.body.operations) ? req.body.operations : []
@@ -258,9 +299,8 @@ export function createApp({
     res.status(201).json({ suggestion })
   })
 
-  app.get('/api/schedules/:id/suggestions', requireAuth, (req, res) => {
-    const schedule = db.getSchedule(database, Number(req.params.id))
-    if (!schedule) return res.status(404).json({ error: 'not_found' })
+  app.get('/api/schedules/:id/suggestions', requireAuth, requireView, (req, res) => {
+    const schedule = req.schedule
     const all = db.listSuggestions(database, schedule.id)
     // Everyone sees the live (pending) suggestions from every proposer so
     // departments can coordinate; history (approved/rejected/withdrawn/moot) is
@@ -356,9 +396,8 @@ export function createApp({
     res.json({ suggestion: db.getSuggestion(database, suggestion.id) })
   })
 
-  app.get('/api/schedules/:id/suggestions/export', requireAuth, (req, res) => {
-    const schedule = db.getSchedule(database, Number(req.params.id))
-    if (!schedule) return res.status(404).json({ error: 'not_found' })
+  app.get('/api/schedules/:id/suggestions/export', requireAuth, requireView, (req, res) => {
+    const schedule = req.schedule
     const all = db.listSuggestions(database, schedule.id)
     const visible =
       schedule.owner_user_id === req.user.id

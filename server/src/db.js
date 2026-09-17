@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { Umzug } from 'umzug'
 import { suggestionStatus } from '@major-vis/schedule-core/diff'
 import { assignOfferingIds } from '@major-vis/schedule-core'
+import { canonicalUsername } from './names.js'
 
 /** @typedef {import('node:sqlite').DatabaseSync} DB */
 
@@ -40,6 +41,27 @@ import { assignOfferingIds } from '@major-vis/schedule-core'
  * @property {string} name
  * @property {string} year
  * @property {string} status
+ * @property {'private' | 'shared' | 'public'} visibility
+ * @property {'owner' | 'shared' | 'public'} suggestMode
+ * @property {string[]} viewers
+ * @property {string[]} suggesters
+ * @property {number} owner_user_id
+ * @property {string | null} owner
+ */
+
+// The raw `schedules.*` row as SQLite returns it (JSON lists still strings,
+// and `suggest_mode` in its snake_case column name) — what the repository
+// SELECTs produce before `getSchedule`/`listSchedules` reshape them.
+/**
+ * @typedef {object} ScheduleRawRow
+ * @property {number} id
+ * @property {string} name
+ * @property {string} year
+ * @property {string} status
+ * @property {'private' | 'shared' | 'public'} visibility
+ * @property {'owner' | 'shared' | 'public'} suggest_mode
+ * @property {string} viewers
+ * @property {string} suggesters
  * @property {number} owner_user_id
  * @property {string | null} owner
  */
@@ -342,15 +364,93 @@ export function consumeOidcFlow(db, state) {
   })
 }
 
+// ---- Access control ------------------------------------------------------
+// Per-schedule visibility + suggestion permissions, enforced by the routes.
+// `viewers`/`suggesters` are canonical username lists on the schedule row;
+// modes: visibility 'private' (owner only) | 'shared' (listed viewers) |
+// 'public' (everyone); suggest_mode 'owner' | 'shared' (listed suggesters) |
+// 'public'. A listed suggester can always view the schedule too — you must see
+// a schedule to propose against it.
+
+// Parses a stored JSON username list back into an array (malformed rows read
+// as empty, never crash).
+/**
+ * @param {unknown} str
+ * @returns {string[]}
+ */
+function storedNameList(str) {
+  try {
+    const arr = JSON.parse(String(str ?? '[]'))
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+}
+
+// Canonicalizes + validates a username list for storage: each entry trimmed +
+// lowercased (canonicalUsername), deduped, non-empty, length-bounded. Returns
+// the list, or null when the input isn't a valid name list.
+/**
+ * @param {unknown} list
+ * @returns {string[] | null}
+ */
+export function normalizeNameList(list) {
+  if (!Array.isArray(list)) return null
+  const out = []
+  const seen = new Set()
+  for (const raw of list) {
+    const name = canonicalUsername(String(raw))
+    if (!name) return null
+    if (!seen.has(name)) {
+      seen.add(name)
+      out.push(name)
+    }
+  }
+  return out
+}
+
+// Whether `user` may view the schedule. The owner always can; 'public' is
+// visible to every signed-in user; 'shared' only to the listed viewers. A
+// listed suggester can always view too (regardless of the visibility mode):
+// you must see a schedule to propose against it.
+/**
+ * @param {ScheduleRow} schedule
+ * @param {{ id: number, username: string }} user
+ * @returns {boolean}
+ */
+export function canViewSchedule(schedule, user) {
+  if (!user) return false
+  if (Number(schedule.owner_user_id) === Number(user.id)) return true
+  if (schedule.visibility === 'public') return true
+  if (schedule.visibility === 'shared' && schedule.viewers.includes(user.username)) return true
+  return schedule.suggesters.includes(user.username)
+}
+
+// Whether `user` may propose suggestions for the schedule: the owner always
+// can; 'public' lets every signed-in user; 'shared' only the listed
+// suggesters.
+/**
+ * @param {ScheduleRow} schedule
+ * @param {{ id: number, username: string }} user
+ * @returns {boolean}
+ */
+export function canSuggestSchedule(schedule, user) {
+  if (!user) return false
+  if (Number(schedule.owner_user_id) === Number(user.id)) return true
+  if (schedule.suggestMode === 'public') return true
+  if (schedule.suggestMode === 'shared') return schedule.suggesters.includes(user.username)
+  return false
+}
+
 // ---- Schedules -----------------------------------------------------------
 
 /**
  * @param {DB} db
- * @param {{ year?: string }} [opts]
+ * @param {{ year?: string; user?: { id: number, username: string } }} [opts]
  */
-export function listSchedules(db, { year } = {}) {
+export function listSchedules(db, { year, user } = {}) {
   const clause = year != null && year !== '' ? 'WHERE s.year = ?' : ''
-  const rows = /** @type {ScheduleRow[]} */ (
+  const rows = /** @type {ScheduleRawRow[]} */ (
     db
       .prepare(
         `SELECT s.*, u.username AS owner FROM schedules s
@@ -358,9 +458,20 @@ export function listSchedules(db, { year } = {}) {
       )
       .all(...(clause ? [year] : []))
   )
+  const schedules = rows.map((r) => {
+    const { suggest_mode, viewers, suggesters, ...rest } = r
+    return {
+      ...rest,
+      suggestMode: suggest_mode,
+      viewers: storedNameList(viewers),
+      suggesters: storedNameList(suggesters),
+      terms: getTerms(db, r.id),
+    }
+  })
   // Full term payloads (offerings + version), the same shape `getSchedule`
-  // returns — the schedule app's store renders directly from this list.
-  return rows.map((r) => ({ ...r, terms: getTerms(db, r.id) }))
+  // returns — the schedule app's store renders directly from this list. A
+  // `user` (the caller) narrows the list to schedules they can view.
+  return user ? schedules.filter((s) => canViewSchedule(s, user)) : schedules
 }
 
 // All three term parts of a schedule with their full offering payloads.
@@ -409,7 +520,7 @@ export function createSchedule(db, { name, year, ownerUserId }) {
  * @param {DB} db
  */
 export function getSchedule(db, id) {
-  const row = /** @type {ScheduleRow | undefined} */ (
+  const row = /** @type {ScheduleRawRow | undefined} */ (
     db
       .prepare(
         'SELECT s.*, u.username AS owner FROM schedules s JOIN users u ON u.id = s.owner_user_id WHERE s.id = ?',
@@ -417,7 +528,14 @@ export function getSchedule(db, id) {
       .get(id)
   )
   if (!row) return null
-  return { ...row, terms: getTerms(db, id) }
+  const { suggest_mode, viewers, suggesters, ...rest } = row
+  return {
+    ...rest,
+    suggestMode: suggest_mode,
+    viewers: storedNameList(viewers),
+    suggesters: storedNameList(suggesters),
+    terms: getTerms(db, id),
+  }
 }
 
 /**
@@ -441,8 +559,17 @@ export function getTerm(db, scheduleId, term) {
 
 /**
  * @param {DB} db
+ * @param {number} id
+ * @param {{
+ *   name?: string;
+ *   status?: string;
+ *   visibility?: 'private' | 'shared' | 'public';
+ *   suggestMode?: 'owner' | 'shared' | 'public';
+ *   viewers?: string[];
+ *   suggesters?: string[];
+ * }} meta
  */
-export function updateScheduleMeta(db, id, { name, status }) {
+export function updateScheduleMeta(db, id, { name, status, visibility, suggestMode, viewers, suggesters }) {
   const fields = []
   const vals = []
   if (name != null) {
@@ -452,6 +579,22 @@ export function updateScheduleMeta(db, id, { name, status }) {
   if (status != null) {
     fields.push('status = ?')
     vals.push(status)
+  }
+  if (visibility != null) {
+    fields.push('visibility = ?')
+    vals.push(visibility)
+  }
+  if (suggestMode != null) {
+    fields.push('suggest_mode = ?')
+    vals.push(suggestMode)
+  }
+  if (viewers != null) {
+    fields.push('viewers = ?')
+    vals.push(JSON.stringify(viewers))
+  }
+  if (suggesters != null) {
+    fields.push('suggesters = ?')
+    vals.push(JSON.stringify(suggesters))
   }
   if (!fields.length) return getSchedule(db, id)
   fields.push("updated_at = datetime('now')")

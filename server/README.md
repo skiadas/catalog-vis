@@ -45,8 +45,10 @@ the `schema_migrations` table). `0001_baseline` creates:
 
 - `users(id, username, created_at)`
 - `sessions(id, user_id, token_hash, created_at, expires_at)` — token_hash indexed
-- `schedules(id, name, year, owner_user_id, status, version, created_at,
-  updated_at)` — owner FK cascades on user delete
+- `schedules(id, name, year, owner_user_id, status, version, visibility,
+  suggest_mode, viewers, suggesters, created_at, updated_at)` — owner FK
+  cascades on user delete; `viewers`/`suggesters` are JSON username arrays
+  (`0003_access_control`)
 - `schedule_terms(id, schedule_id, term, payload, version)` — one row per
   (schedule, term); `payload` is the JSON offerings array
 - `schedule_changes(id, schedule_id, term, proposer_user_id, base_version,
@@ -90,20 +92,20 @@ POST   /api/auth/login { username }         -> { user }          (provider: user
 GET    /api/auth/login?return_to=           -> 302 to the issuer (provider: oidc only)
 GET    /api/auth/callback?code=&state=      -> 302 back to return_to (?auth_error=... on failure)
 POST   /api/auth/logout
-GET    /api/schedules?year=                 -> { schedules }     (auth)
+GET    /api/schedules?year=                 -> { schedules }     (auth; filtered to schedules the caller may view)
 POST   /api/schedules { name, year }        -> { schedule }      (creates 3 empty term parts)
-GET    /api/schedules/:id                   -> { schedule: { ..., terms } }
-PATCH  /api/schedules/:id { name?, status? }-> { schedule }      (owner)
+GET    /api/schedules/:id                   -> { schedule: { ..., terms } }  (viewers)
+PATCH  /api/schedules/:id { name?, status?, visibility?, suggestMode?, viewers?, suggesters? } -> { schedule } (owner)
 DELETE /api/schedules/:id                                          (owner)
-GET    /api/schedules/:id/terms/:term       -> { term: { offerings, version } }
+GET    /api/schedules/:id/terms/:term       -> { term: { offerings, version } }  (viewers)
 PUT    /api/schedules/:id/terms/:term       -> { term }           (owner, full replace)
-POST   /api/schedules/:id/suggestions       -> { suggestion }    (auth; base_version informational)
-GET    /api/schedules/:id/suggestions       -> { suggestions }   (everyone sees pending; own history + owner sees all)
+POST   /api/schedules/:id/suggestions       -> { suggestion }    (suggesters; base_version informational)
+GET    /api/schedules/:id/suggestions       -> { suggestions }   (viewers: pending from all + own history; owner sees all)
 PATCH  /api/suggestions/:id                 -> { suggestion }    (proposer, while no op is owner-resolved)
 POST   /api/suggestions/:id/approve  { opId } -> { term, suggestion } (owner; applies that one op)
 POST   /api/suggestions/:id/reject   { opId } -> { suggestion }  (owner)
 POST   /api/suggestions/:id/withdraw { opId? } -> { suggestion } (proposer; one op, or every remaining pending op)
-GET    /api/schedules/:id/suggestions/export?fmt=json|md|csv
+GET    /api/schedules/:id/suggestions/export?fmt=json|md|csv     (viewers)
 ```
 
 **Auth**: opaque session token in an `mjv_sid` httpOnly cookie (30 days;
@@ -125,13 +127,30 @@ Either way the apps see the same contract: `/api/config` advertises the
 provider, `/api/auth/session` reports the user (anonymous is `user: null`, not
 a 401), and `/api/auth/logout` clears the session.
 
-**Suggestions**: anyone can propose a change to a term as a list of diff
-operations (`add` / `remove` / `update` with absolute field values). Many
-suggestions from many proposers stay live **concurrently**: approval applies
-the operations to whatever the term's current state is (no base-version guard),
-so approving one proposal never invalidates others. Unmatched ops no-op,
-duplicate adds dedupe, and an approval that changes nothing is recorded as
-**`moot`**.
+**Schedule access**: every schedule has two independent, owner-controlled
+settings. `visibility` — `private` (only the owner sees it), `shared` (the
+listed `viewers` see it), or `public` (every signed-in user). `suggestMode` —
+`owner` (only the owner proposes), `shared` (the listed `suggesters` propose),
+or `public` (everyone proposes). Both default to the most restrictive option
+(`private`/`owner`), so nothing is shared until its owner opens it up; existing
+rows in a deployed DB pick up the same defaults on migration. A listed
+suggester can always view the schedule too, whatever the visibility mode — you
+must see a schedule to propose against it. `viewers`/`suggesters` are arrays of
+canonical usernames (trimmed + lowercased server-side; a full email and its
+bare local part are distinct entries until a default domain is configured).
+The list endpoints enforce all of this: `GET /api/schedules` returns only
+viewable schedules, schedule/term/suggestion/export reads 404 for non-viewers
+(a private schedule never leaks its existence), suggestion POSTs 403
+`not_suggester` for viewers who may not propose, and the PATCH fields are
+owner-only with validated enums and name lists (400 on bad input).
+
+**Suggestions**: anyone allowed by the schedule's `suggestMode` can propose a
+change to a term as a list of diff operations (`add` / `remove` / `update`
+with absolute field values). Many suggestions from many proposers stay live
+**concurrently**: approval applies the operations to whatever the term's
+current state is (no base-version guard), so approving one proposal never
+invalidates others. Unmatched ops no-op, duplicate adds dedupe, and an
+approval that changes nothing is recorded as **`moot`**.
 
 **Ops are first-class**: each operation of a proposal is stored as its own
 `suggestion_ops` row (id, position, op payload, status, applied, resolved_at),
