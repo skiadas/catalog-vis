@@ -533,15 +533,16 @@
    the full column and the exception reads as the exception. Rails layer BELOW
    normal bars (z 0 vs 1): normal bars keep full width and stay clickable, and
    a rail is clickable in the gaps between bars and past the ruled hours. The
-   rail is wide enough (3/4 of the column) to hold a course code and section
-   legibly; it never shares its band with a normal bar — a course that
-   coincides with a standard band of the day merges into the normal block.
-   Clipped edges get a corner notch to show the class continues beyond the
-   ruled hours. */
+   rail spans 80% of the column — wide enough to hold a course code and
+   section legibly, with the left fifth still clickable/droppable when the
+   band sits between normal sections; it never shares its band with a normal
+   bar — a course that coincides with a standard band of the day merges into
+   the normal block. Clipped edges get a corner notch to show the class
+   continues beyond the ruled hours. */
 .cal-block.off-pattern {
   left: auto;
   right: 4px;
-  width: 75%;
+  width: 80%;
   border: 1.5px dashed var(--primary-35);
   background: var(--accent-12);
   z-index: 0;

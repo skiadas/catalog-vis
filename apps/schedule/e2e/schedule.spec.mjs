@@ -737,15 +737,15 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await settle(page)
   await assertTargetSize(page, ['.filter-offering-edit', '.cal-block-view'], 'edit-mode grid')
 
-  // The drag grip is the only draggable part of an offering row: the rows
-  // themselves carry no draggable attribute, and every row in edit mode shows
-  // a grip (which is draggable and grab-cursored).
+  // The whole offering row is draggable (its native drag image is the row), but
+  // only the grip advertises it: the grip carries the grab cursor and is not
+  // itself a drag source.
   const offeringRows = page.locator('.filter-offering')
   await expect(offeringRows.first()).toBeVisible()
-  await expect(offeringRows.first()).not.toHaveAttribute('draggable')
+  await expect(offeringRows.first()).toHaveAttribute('draggable', 'true')
   const grips = page.locator('.filter-offering-handle')
   expect(await grips.count()).toBeGreaterThan(0)
-  await expect(grips.first()).toHaveAttribute('draggable', 'true')
+  await expect(grips.first()).not.toHaveAttribute('draggable')
   await expect(grips.first()).toHaveCSS('cursor', 'grab')
 
   // The course editor: scan it open, then in its discard-confirm state.
@@ -934,6 +934,61 @@ test('grid block click expands the course list in place; View slot navigates', a
   await block.locator('.cal-block-time').click()
   await block.locator('.cal-block-view').click()
   await expect(page).toHaveURL(/#\/slot\//)
+
+  assertClean(errors)
+})
+
+test('edit mode drags a course by its row onto an empty slot; the pencil never drags', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+
+  // A Single-department schedule is sparse: single-row blocks and plenty of
+  // empty standard bands (dropzones) to drag onto.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.locator('#schedule-create-name').fill('Drag test')
+  await page.getByRole('button', { name: 'Single department' }).click()
+  await page.getByRole('button', { name: 'Generate' }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+
+  // Edit mode on THAT schedule (the collection holds other schedules too).
+  await page
+    .locator('.schedule-pill', { hasText: 'Drag test' })
+    .locator('.schedule-pill-edit')
+    .click()
+  const menu = page.locator('.mode-menu')
+  await menu.waitFor({ state: 'visible', timeout: 5000 })
+  await menu.getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  const block = page.locator('.cal-block:not(.off-pattern):not(.cal-dropzone)').first()
+  await block.waitFor({ timeout: 10000 })
+  await block.locator('.cal-block-time').click()
+  await settle(page)
+
+  const row = block.locator('.filter-offering').first()
+  await expect(row).toHaveAttribute('draggable', 'true')
+  const course = await row.locator('.filter-offering-code').innerText()
+  const dropzones = page.locator('.cal-dropzone')
+  await expect(dropzones.first()).toBeVisible()
+
+  // A drag that starts on the pencil carries no payload (the guard cancels it
+  // before setData), so the drop is a no-op and the row stays put.
+  const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
+  await row.locator('.filter-offering-edit').dispatchEvent('dragstart', { dataTransfer })
+  await dropzones.first().dispatchEvent('dragover', { dataTransfer })
+  await dropzones.first().dispatchEvent('drop', { dataTransfer })
+  await settle(page)
+  await expect(block.locator('.filter-offering-code', { hasText: course })).toHaveCount(1)
+
+  // A drag from the row body carries the payload: the course leaves its block
+  // for the empty band (its band is now unoccupied).
+  await row.dispatchEvent('dragstart', { dataTransfer })
+  await dropzones.first().dispatchEvent('dragover', { dataTransfer })
+  await dropzones.first().dispatchEvent('drop', { dataTransfer })
+  await settle(page)
+  await expect(block.locator('.filter-offering-code', { hasText: course })).toHaveCount(0)
 
   assertClean(errors)
 })

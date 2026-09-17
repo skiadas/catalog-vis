@@ -3,19 +3,14 @@
     class="filter-offering"
     :class="{ proposed, removed }"
     :style="{ backgroundColor: color }"
+    :draggable="draggable"
     tabindex="0"
     :title="title || (draggable ? 'Drag to move' : '')"
     @click.stop="goScheduleCourse(item.code)"
     @keydown="onKeyActivate($event, () => goScheduleCourse(item.code))"
+    @dragstart="$emit('dragstart', $event)"
   >
-    <span
-      v-if="draggable"
-      class="filter-offering-handle"
-      :title="'Drag ' + item.code + ' to move'"
-      aria-hidden="true"
-      :draggable="true"
-      @dragstart="$emit('dragstart', $event)"
-    >
+    <span v-if="draggable" class="filter-offering-handle" aria-hidden="true">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="9"

@@ -64,7 +64,8 @@ grid. Classification is per day: a course whose meeting time matches a
 standard band of that day merges into the normal block (even if its overall
 day pattern is unusual), while a course whose time isn't a standard band of
 the day (custom times, or bands belonging to another day group) renders as a
-right-anchored dashed **"custom" rail** at 3/4 of the column width, and its
+right-anchored dashed **"custom" rail** spanning 80% of the column width, and
+its
 in-range portion is clamped at the grid's edges with a corner notch when it
 starts before or ends after the ruled hours. Courses entirely outside the
 ruled hours — together with no-meeting-time courses — appear in the **"No

@@ -6,6 +6,35 @@ import { buildDragPayload, dragPayloadFrom } from '@major-vis/schedule-core'
 
 import { onUnmounted, ref } from 'vue'
 
+// The course row/pill selectors a drag can start on (the grid's offering rows
+// and the no-meeting-strip pills share these handlers).
+const ROW_SELECTOR = '.filter-offering, .slot-pill'
+const EDIT_SELECTOR = '.filter-offering-edit, .slot-pill-edit'
+
+// Sets a custom drag image: the whole course row/pill (cloned, widened to its
+// content, pencil stripped) instead of whatever small element the drag began
+// on, so the ghost reads as "this course" and the grab point stays under the
+// cursor. The clone is parked off-screen, snapshotted by `setDragImage`, and
+// dropped on the next frame (the browser captures the image synchronously).
+export function setDragGhost(e) {
+  const row = e.target && e.target.closest ? e.target.closest(ROW_SELECTOR) : null
+  if (!row) return
+  const rect = row.getBoundingClientRect()
+  const ghost = row.cloneNode(true)
+  ghost.querySelectorAll(EDIT_SELECTOR).forEach((el) => el.remove())
+  ghost.style.position = 'fixed'
+  ghost.style.left = '-10000px'
+  ghost.style.top = '0'
+  ghost.style.width = 'max-content'
+  ghost.style.whiteSpace = 'nowrap'
+  ghost.style.opacity = '0.85'
+  ghost.style.pointerEvents = 'none'
+  ghost.style.zIndex = '10000'
+  document.body.appendChild(ghost)
+  e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top)
+  requestAnimationFrame(() => ghost.remove())
+}
+
 // Returns the shared edit-mode drag state + handlers, parameterized by the
 // schedule being edited (`editingId`, a ref) and the store's moveOffering
 // action. A drop target is `{ key, day, days, time }` (grid uses the day-column
@@ -32,9 +61,17 @@ export function useScheduleDrag(editingId, moveOffering) {
   })
   const onDragStart = (e, it, day) => {
     if (!isEditable(it)) return
+    // The whole row is draggable, but the edit pencil stays click-only: a
+    // drag that begins on it is cancelled (a child can't opt out of its
+    // ancestor's drag source, so the handler is the gate).
+    if (e.target && e.target.closest && e.target.closest(EDIT_SELECTOR)) {
+      e.preventDefault()
+      return
+    }
     dragging.value = true
     e.dataTransfer.setData('text/plain', buildDragPayload(it, day))
     e.dataTransfer.effectAllowed = 'move'
+    setDragGhost(e)
   }
   const zoneOver = (e, z) => {
     e.preventDefault()

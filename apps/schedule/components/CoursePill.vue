@@ -3,16 +3,11 @@
     class="slot-pill"
     :class="{ 'filter-colored': filterActive, editable, proposed, removed }"
     :style="filterActive ? { backgroundColor: color } : {}"
+    :draggable="draggable"
     :title="pillTitle"
+    @dragstart="onDragStart"
   >
-    <span
-      v-if="draggable"
-      class="slot-pill-handle"
-      :title="'Drag ' + item.code + ' to move'"
-      aria-hidden="true"
-      :draggable="true"
-      @dragstart="onDragStart"
-    >
+    <span v-if="draggable" class="slot-pill-handle" aria-hidden="true">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="9"
@@ -80,6 +75,7 @@ import {
   offeringSectionLabel,
 } from '@major-vis/schedule-core'
 import { onKeyActivate } from '../src/keyboardNav.js'
+import { setDragGhost } from '../scheduleDrag.js'
 
 import { computed } from 'vue'
 
@@ -107,8 +103,14 @@ export default {
       () => props.proposed || props.removed || courseName.value || instructorsOf(props.item.o).join(', '),
     )
     const onDragStart = (e) => {
+      // The whole pill is draggable, but the edit pencil stays click-only.
+      if (e.target && e.target.closest && e.target.closest('.slot-pill-edit')) {
+        e.preventDefault()
+        return
+      }
       e.dataTransfer.setData('text/plain', buildDragPayload(props.item, props.dragDay))
       e.dataTransfer.effectAllowed = 'move'
+      setDragGhost(e)
     }
     const onEdit = () => emit('edit')
     return {
