@@ -121,13 +121,23 @@
 }
 .slot-pill.filter-colored:hover {
   background: var(--primary-90);
-} /* Editable pills (edit mode): draggable affordance + an edit button */
+} /* Editable pills (edit mode): a drag grip + an edit button */
 
-.slot-pill.editable {
+.slot-pill-handle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  margin-right: 2px;
   cursor: grab;
+  color: var(--text-muted);
 }
-.slot-pill.editable:active {
+.slot-pill-handle:active {
   cursor: grabbing;
+}
+.slot-pill.filter-colored .slot-pill-handle {
+  color: var(--text-on-block-dim);
 }
 .slot-pill-edit {
   @include icon-btn(24px);
@@ -479,10 +489,20 @@
   color: var(--text-muted);
   white-space: nowrap;
 }
-.filter-offering.draggable {
+.filter-offering-handle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  padding: 0 2px 0 1px;
   cursor: grab;
+  color: var(--text-on-block-dim);
 }
-.filter-offering.draggable:active {
+.filter-offering-handle:hover {
+  color: var(--text-on-block);
+}
+.filter-offering-handle:active {
   cursor: grabbing;
 }
 .cal-block.over {

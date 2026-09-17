@@ -4,9 +4,31 @@
     :class="{ 'filter-colored': filterActive, editable, proposed, removed }"
     :style="filterActive ? { backgroundColor: color } : {}"
     :title="pillTitle"
-    :draggable="draggable"
-    @dragstart="onDragStart"
   >
+    <span
+      v-if="draggable"
+      class="slot-pill-handle"
+      :title="'Drag ' + item.code + ' to move'"
+      aria-hidden="true"
+      :draggable="true"
+      @dragstart="onDragStart"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="9"
+        height="13"
+        viewBox="0 0 9 13"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <circle cx="2.5" cy="2.5" r="1.5" />
+        <circle cx="6.5" cy="2.5" r="1.5" />
+        <circle cx="2.5" cy="6.5" r="1.5" />
+        <circle cx="6.5" cy="6.5" r="1.5" />
+        <circle cx="2.5" cy="10.5" r="1.5" />
+        <circle cx="6.5" cy="10.5" r="1.5" />
+      </svg>
+    </span>
     <span
       class="slot-pill-code"
       tabindex="0"

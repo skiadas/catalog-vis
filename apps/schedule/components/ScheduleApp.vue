@@ -141,7 +141,8 @@
         until then.</span
       >
       <span class="schedule-edit-hint" v-else
-        >Click a course's edit icon to change its settings, or drag it onto a time slot to move it.</span
+        >Click a course's edit icon to change its settings, or drag it by its grip onto a time slot to move
+        it.</span
       >
       <button
         class="filter-btn schedule-history-btn"

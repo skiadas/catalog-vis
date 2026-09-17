@@ -652,6 +652,17 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await settle(page)
   await assertTargetSize(page, ['.filter-offering-edit', '.cal-block-view'], 'edit-mode grid')
 
+  // The drag grip is the only draggable part of an offering row: the rows
+  // themselves carry no draggable attribute, and every row in edit mode shows
+  // a grip (which is draggable and grab-cursored).
+  const offeringRows = page.locator('.filter-offering')
+  await expect(offeringRows.first()).toBeVisible()
+  await expect(offeringRows.first()).not.toHaveAttribute('draggable')
+  const grips = page.locator('.filter-offering-handle')
+  expect(await grips.count()).toBeGreaterThan(0)
+  await expect(grips.first()).toHaveAttribute('draggable', 'true')
+  await expect(grips.first()).toHaveCSS('cursor', 'grab')
+
   // The course editor: scan it open, then in its discard-confirm state.
   await page.locator('.filter-offering-edit').first().click()
   await settle(page)

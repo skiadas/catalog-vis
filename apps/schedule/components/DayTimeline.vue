@@ -64,45 +64,18 @@
                 </button>
               </div>
               <div class="cal-block-depts">
-                <span
+                <OfferingRow
                   v-for="it in b.items"
                   :key="it.code + it.o.section + it.sid"
-                  class="filter-offering"
-                  :class="{ draggable: isEditable(it), proposed: proposalFor(it), removed: removalFor(it) }"
-                  :style="{ backgroundColor: rowColor(it) }"
+                  :item="it"
+                  :color="rowColor(it)"
+                  :editable="isEditable(it)"
                   :draggable="isEditable(it)"
-                  tabindex="0"
-                  @click.stop="goScheduleCourse(it.code)"
-                  @keydown="onKeyActivate($event, () => goScheduleCourse(it.code))"
+                  :proposed="proposalFor(it) ? itemTitle(it) : ''"
+                  :removed="removalFor(it) ? itemTitle(it) : ''"
+                  @edit="openCourseEdit(it)"
                   @dragstart="onDragStart($event, it, day)"
-                  :title="itemTitle(it) || (isEditable(it) ? 'Drag to move' : '')"
-                >
-                  <span class="filter-offering-main"
-                    >{{ offeringCodeLabel(it.o) }}{{ offeringSectionLabel(it.o)
-                    }}<span class="do-inst">{{ instructorChip(it.o).label }}</span></span
-                  >
-                  <button
-                    v-if="isEditable(it)"
-                    class="filter-offering-edit"
-                    :title="'Edit ' + it.code"
-                    aria-label="Edit course"
-                    @click.stop="openCourseEdit(it)"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="11"
-                      height="11"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2.2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                    </svg>
-                  </button>
-                </span>
+                />
               </div>
             </div>
           </div>
@@ -131,9 +104,6 @@ import {
   daySlotBlocks,
   dayTimelineRange,
   assignLanes,
-  instructorChip,
-  offeringCodeLabel,
-  offeringSectionLabel,
 } from '@major-vis/schedule-core'
 import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
 import {
@@ -147,9 +117,9 @@ import {
   moveOffering,
   openCourseEdit,
 } from '../src/scheduleStore.js'
-import { goScheduleSlot, goScheduleCourse } from '../router.js'
+import { goScheduleSlot } from '../router.js'
 import { useScheduleDrag } from '../scheduleDrag.js'
-import { onKeyActivate } from '../src/keyboardNav.js'
+import OfferingRow from './OfferingRow.vue'
 
 import { computed } from 'vue'
 
@@ -159,6 +129,7 @@ import { computed } from 'vue'
 // the day's meetings; overlapping bands lane-split side by side.
 export default {
   name: 'DayTimeline',
+  components: { OfferingRow },
   setup() {
     const route = useRoute()
     const day = computed(() => String(route.params.day || ''))
@@ -336,12 +307,8 @@ export default {
       zoneFor,
       PX_PER_MIN,
       formatTime,
-      offeringCodeLabel,
-      offeringSectionLabel,
       goScheduleSlot,
-      goScheduleCourse,
       rowColor,
-      instructorChip,
       isEditable,
       proposalFor,
       removalFor,
@@ -353,7 +320,6 @@ export default {
       zoneLeave,
       zoneDrop,
       openCourseEdit,
-      onKeyActivate,
       empty,
     }
   },

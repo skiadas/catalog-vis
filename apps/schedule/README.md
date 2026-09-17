@@ -114,6 +114,10 @@ one coherent proposal — never redundant intermediate moves — and re-enter a
 suggestion session by replaying their own pending ops onto the freshest
 published state.
 
+In edit mode a course's row/pill gains a **drag grip** (a dotted handle at the
+left edge, grab cursor) — the only draggable part of the row, so hover never
+confuses drag (grip) with click (course code, instructor, pencil).
+
 **The manage dialog shows your own schedules first.** The shared collection
 still loads in full (suggestions and ownership checks work by id), but the
 list defaults to owned rows; shared schedules are revealed by a toggle or by
