@@ -120,12 +120,18 @@ actually changed. The script also refreshes the repo-owned deploy files
 (`compose.yaml` + `deploy/Caddyfile`) before pulling, so config changes ride
 along with image updates; `.env` and the data volume are never touched. A run
 with nothing new is just a `docker compose pull -q` plus a log line, so an
-**hourly** schedule is cheap — changes land within about an hour of a push:
+**hourly** schedule is cheap — changes land within about an hour of a push.
+
+The job runs as the **deploy user** (`ubuntu`), not root — so `ubuntu` must
+own `/opt/major-vis` (the runbook's `sudo mkdir`/`sudo curl` steps leave it
+root-owned; `sudo chown -R ubuntu:ubuntu /opt/major-vis` once). The log goes
+to `/opt/major-vis/update.log` rather than `/var/log`, which a non-root cron
+can't write:
 
 ```sh
 # crontab -e, on the app instance
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-17 * * * * /opt/major-vis/deploy/update.sh >> /var/log/major-vis-update.log 2>&1
+17 * * * * /opt/major-vis/deploy/update.sh >> /opt/major-vis/update.log 2>&1
 ```
 
 Any minute works for the schedule — pick one that avoids the top of the hour.
@@ -167,5 +173,10 @@ auth prompt translates into a message:
   the SSO's `clients.json` disagree (whitespace counts).
 - **Session not sticking**: `COOKIE_SECURE=true` requires HTTPS; for plain-http
   local runs set it to `false`.
+- **Updater never runs / no log file**: the cron job fires (`CRON` lines in
+  `journalctl -u cron`) but the site never updates. A non-root crontab writing
+  to `/var/log` fails silently with permission denied, and a root-owned
+  `/opt/major-vis` breaks the deploy-file refresh the same way — the job must
+  be the deploy user's and log to `/opt/major-vis/update.log` (see §5).
 - **SSO restart**: in-memory SSO sessions are lost (users re-enter a code on
   their next sign-in); the app's own `mjv_sid` sessions survive in SQLite.

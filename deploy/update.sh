@@ -7,9 +7,13 @@
 # `.env` is never touched — operator settings (client secret, domains) survive
 # every update.
 #
-# Crontab (note cron's minimal PATH — set it or use absolute paths):
+# Crontab (note cron's minimal PATH — set it or use absolute paths). The job
+# runs as the deploy user (no root needed), so that user must own
+# /opt/major-vis — the runbook's `sudo mkdir`/`sudo curl` steps leave it
+# root-owned, which silently breaks both the log redirect and the deploy-file
+# refresh below:
 #   PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-#   17 * * * * /opt/major-vis/deploy/update.sh >> /var/log/major-vis-update.log 2>&1
+#   17 * * * * /opt/major-vis/deploy/update.sh >> /opt/major-vis/update.log 2>&1
 #   (hourly at :17; any minute works — pick one that avoids the top of the
 #    hour, and re-run `crontab -e` after editing this file)
 #
