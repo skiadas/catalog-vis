@@ -60,9 +60,11 @@ times are allowed; an offering can also be set to "No meeting time".
 
 **Patterns the grid distinguishes:** the calendar is anchored to the term's
 standard hours — one early/late class never stretches or hides the normal
-grid. A course whose time isn't a standard band of its day group (custom
-times, TR-band times on MWF days after a careless day-group switch) renders as
-a **half-width dashed "custom" rail** instead of a full block, and its
+grid. Classification is per day: a course whose meeting time matches a
+standard band of that day merges into the normal block (even if its overall
+day pattern is unusual), while a course whose time isn't a standard band of
+the day (custom times, or bands belonging to another day group) renders as a
+right-anchored dashed **"custom" rail** at 3/4 of the column width, and its
 in-range portion is clamped at the grid's edges with a corner notch when it
 starts before or ends after the ruled hours. Courses entirely outside the
 ruled hours — together with no-meeting-time courses — appear in the **"No
@@ -74,8 +76,7 @@ Clicking a grid block **opens its course list in the same footprint** (click
 again to close; only one block open at a time), with a "View slot" link to
 the slot page. Rails layer deterministically: normal bars on top of custom
 rails (a rail stays clickable in the gaps between bars and past the ruled
-hours); the rare rail that exactly overlaps a standard band sits on top of
-it; an opened block rises above everything. A toolbar **All · Normal ·
+hours); an opened block rises above everything. A toolbar **All · Normal ·
 Custom** toggle (persisted locally) restricts the grid to all blocks, only
 standard-slot bars, or only off-slot custom rails — hidden blocks stay
 reachable via their slot/course pages.

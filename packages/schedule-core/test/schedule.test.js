@@ -777,36 +777,45 @@ test('daySlotBlocks groups a day into time slots', () => {
   assert.equal(blocks[0].items.length, 3)
 })
 
-test('daySlotBlocks splits a band that mixes standard and off-pattern courses', () => {
+test('daySlotBlocks merges a course that coincides with a standard band of the day', () => {
   const index = buildIndex([
     { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '10:40-11:50', instructor: 'Vosmeier' },
-    // An MR weekday set at an exact MWF band: off-pattern, sharing the band.
+    // An MR weekday set at an exact MWF band: off-pattern as a pattern, but on
+    // Monday it coincides with the MWF band, so it merges into the standard
+    // block instead of rendering as a separate rail.
     { prefix: 'BIO', number: '161', section: 'A', days: 'MR', time: '10:40-11:50', instructor: 'Patterson' },
     // A genuine spanning custom in the same column (M) at another band.
     { prefix: 'MAT', number: '131', section: 'A', days: 'MWF', time: '8:00-10:30', instructor: 'Aydogan' },
   ])
   const blocks = daySlotBlocks('M', index, 'F')
   const atBand = blocks.filter((b) => b.time === '10:40-11:50')
-  assert.equal(atBand.length, 2, 'mixed band splits into standard block + rail')
-  const std = atBand.find((b) => !b.offPattern)
-  const rail = atBand.find((b) => b.offPattern)
+  assert.equal(atBand.length, 1, 'coinciding course merges into the standard block')
+  const merged = atBand[0]
+  assert.equal(merged.offPattern, false)
   assert.deepEqual(
-    std.items.map((it) => it.o.prefix),
-    ['CS'],
+    merged.items.map((it) => it.o.prefix).sort(),
+    ['BIO', 'CS'],
+    'the block holds both courses',
   )
-  assert.deepEqual(
-    rail.items.map((it) => it.o.prefix),
-    ['BIO'],
-    'the rail holds only the off-pattern course',
-  )
-  assert.equal(rail.sameSpan, true, 'squeezed rail marks its exact overlap')
-  assert.equal(std.sameSpan, false)
   // Spanning custom: its own off-pattern block, never merged with the band.
   const spanning = blocks.find((b) => b.time === '8:00-10:30')
   assert.equal(spanning.offPattern, true)
-  assert.equal(spanning.sameSpan, false)
   // Sorted by start, longer spans first (contained rails paint on top).
   assert.equal(blocks[0].time, '8:00-10:30')
+})
+
+test('daySlotBlocks classifies per day: the same course is a rail on a day whose band it misses', () => {
+  const index = buildIndex([
+    // 10:40-11:50 is an MWF band but not a TR band, so BIO 161 merges on
+    // Monday yet renders as an off-pattern rail on Thursday.
+    { prefix: 'BIO', number: '161', section: 'A', days: 'MR', time: '10:40-11:50', instructor: 'Patterson' },
+  ])
+  const monday = daySlotBlocks('M', index, 'F')
+  assert.equal(monday.length, 1)
+  assert.equal(monday[0].offPattern, false, 'MWF-band time merges on Monday')
+  const thursday = daySlotBlocks('R', index, 'F')
+  assert.equal(thursday.length, 1)
+  assert.equal(thursday[0].offPattern, true, 'the same time is a rail on Thursday')
 })
 
 test('blockStyle positions absolutely at the shared px-per-minute scale', () => {

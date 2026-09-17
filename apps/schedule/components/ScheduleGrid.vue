@@ -19,7 +19,6 @@
           :class="{
             filtered: b.active,
             open: isOpen(b.key),
-            subsumed: b.subsumed,
             over: dragOver === dayGroup(day) + '|' + b.slot.time,
             'off-pattern': b.offPattern,
             'clipped-top': b.clippedTop,
@@ -59,8 +58,9 @@
                 :title="itemTitle(it) || (isEditable(it) ? 'Drag to move' : '')"
               >
                 <span class="filter-offering-main"
-                  >{{ offeringCodeLabel(it.o) }}{{ offeringSectionLabel(it.o)
-                  }}<span class="do-inst">{{ instructorChip(it.o).label }}</span></span
+                  ><span class="filter-offering-code"
+                    >{{ offeringCodeLabel(it.o) }} {{ offeringSectionLabel(it.o) }}</span
+                  ><span class="do-inst">{{ instructorChip(it.o).label }}</span></span
                 >
                 <button
                   v-if="isEditable(it)"
@@ -279,12 +279,10 @@ export default {
             top: (clip.start - dayRange.value.start) * PX_PER_MIN + 'px',
             height: (clip.end - clip.start) * PX_PER_MIN + 'px',
           },
-          // Off-pattern blocks (from the band split) render as half-width rails
-          // so normal courses keep the full column.
+          // Off-pattern blocks (custom times, or a band belonging to another
+          // day group) render as right-anchored rails so normal courses keep
+          // the full column.
           offPattern: slot.offPattern,
-          // A squeezed rail exactly overlapping its standard sibling sits above
-          // it (the rare case); everything else layers rails below the bars.
-          subsumed: slot.sameSpan,
           clippedTop: clip.clippedTop,
           clippedBottom: clip.clippedBottom,
           title: slotTitle(slot),

@@ -878,15 +878,18 @@ export function formatHour(min) {
   return `${h12}${min < 720 ? 'a' : 'p'}`
 }
 
-// Group a single weekday's offerings into blocks. Courses at a band form a
-// full-width block; off-pattern courses (custom times, or exact bands of
-// another day group) sharing the same band are split into their own
-// half-rail block, so a band never mixes patterns — each block's count,
-// custom flag, and title stay coherent. `sameSpan` marks a rail that exactly
-// overlaps its standard sibling (the rare squeezed case, rendered above it).
+// Group a single weekday's offerings into blocks. A band is standard for the
+// day when its time is one of the day-group's assignable bands; every course
+// in a band shares the band's minutes, so a band is uniformly standard or
+// off-pattern — blocks never mix patterns, and each block's count, custom
+// flag, and title stay coherent. Off-pattern bands (custom times, or a band
+// belonging to another day group) render as the grid's "custom" rail; a
+// course that coincides with a standard band of the day renders in the normal
+// block even when its overall day pattern is unusual (an MR course at an
+// MWF-band time merges into Monday's block; on Thursday it is a rail).
 // Blocks sort by start time with longer spans first, so a contained rail
 // paints above the spanning one that touches it.
-// Returns [{ time, start, end, items, offPattern, sameSpan }].
+// Returns [{ time, start, end, items, offPattern }].
 export function daySlotBlocks(day, index, termKey = 'F') {
   if (!index || !index.byDay[day]) return []
   const byTime = {}
@@ -897,19 +900,10 @@ export function daySlotBlocks(day, index, termKey = 'F') {
     }
     byTime[key].items.push(item)
   }
+  const bands = termSlotOptions(termKey, day)
   const out = []
   for (const b of Object.values(byTime)) {
-    const std = b.items.filter((it) => isStandardPattern(termKey, it.o.days, it.o.time))
-    const off = b.items.filter((it) => !isStandardPattern(termKey, it.o.days, it.o.time))
-    if (!off.length) {
-      out.push({ ...b, items: std, offPattern: false, sameSpan: false })
-    } else if (!std.length) {
-      out.push({ ...b, items: off, offPattern: true, sameSpan: false })
-    } else {
-      // Mixed band: full-width standard block plus the off-pattern half-rail.
-      out.push({ ...b, items: std, offPattern: false, sameSpan: false })
-      out.push({ ...b, items: off, offPattern: true, sameSpan: true })
-    }
+    out.push({ ...b, offPattern: !bands.some((s) => s.start === b.start && s.end === b.end) })
   }
   return out.sort((a, b) => a.start - b.start || b.end - a.end)
 }
@@ -934,7 +928,7 @@ export function blockStyle(slot) {
 // Within a cluster, blocks order by their `laneRank` (default 0) before start
 // time, so a caller can pin a class of blocks to the leftmost lanes — the day
 // timeline ranks standard bands 0 and off-pattern/custom bands 1, matching the
-// grid's rails, which sit on the right half. Returns a new array with `lane`
+// grid's rails, which anchor right. Returns a new array with `lane`
 // and `laneCount` on every block (`laneCount` = that cluster's share of lanes,
 // for symmetric widths).
 export function assignLanes(blocks) {

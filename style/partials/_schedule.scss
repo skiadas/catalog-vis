@@ -508,24 +508,23 @@
   opacity: 0.85;
   word-break: break-word;
 }
-/* Off-pattern courses: a band whose time isn't a standard slot of its day
-   group renders as a half-width rail (dashed, tinted) so normal classes keep
+/* Off-pattern courses: a band whose time isn't a standard slot of that day
+   renders as a right-anchored rail (dashed, tinted) so normal classes keep
    the full column and the exception reads as the exception. Rails layer BELOW
    normal bars (z 0 vs 1): normal bars keep full width and stay clickable, and
    a rail is clickable in the gaps between bars and past the ruled hours. The
-   rare squeezed rail that exactly overlaps its standard sibling sits above it
-   (`subsumed`) so it stays interactive. Clipped edges get a corner notch to
-   show the class continues beyond the ruled hours. */
+   rail is wide enough (3/4 of the column) to hold a course code and section
+   legibly; it never shares its band with a normal bar — a course that
+   coincides with a standard band of the day merges into the normal block.
+   Clipped edges get a corner notch to show the class continues beyond the
+   ruled hours. */
 .cal-block.off-pattern {
   left: auto;
   right: 4px;
-  width: 50%;
+  width: 75%;
   border: 1.5px dashed var(--primary-35);
   background: var(--accent-12);
   z-index: 0;
-}
-.cal-block.off-pattern.subsumed {
-  z-index: 2;
 }
 .cal-block.off-pattern:hover {
   background: var(--accent-12);
@@ -637,10 +636,18 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 2px;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+}
+/* The code+section label truncates on the right only (the leading course
+   code always stays visible), with the instructor chip kept intact. */
+.filter-offering-code {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -746,9 +753,11 @@
   flex: 0 0 auto;
 }
 /* The instructor chip inside colored offering rows renders at full strength:
-   the 90% white would drop below WCAG AA on the row's color. */
+   the 90% white would drop below WCAG AA on the row's color. It never shrinks
+   — the code label takes the truncation. */
 .filter-offering .do-inst {
   opacity: 1;
+  flex: 0 0 auto;
 } /* Schedule filter chips */
 
 .filter-panel {

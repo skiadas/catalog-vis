@@ -23,7 +23,7 @@ old schedules stay valid.
 
 **`id`** is a deterministic content hash producers assign at import/creation
 (and fill on legacy records during load): two rows that share a section tuple
-but meet at different bands — a *split meeting*, e.g. MUS 001 A on MW
+but meet at different bands — a _split meeting_, e.g. MUS 001 A on MW
 16:00-16:50 AND R 16:10-17:00 — are distinct offerings with distinct ids, and
 identical duplicate rows get a first-seen `-1`/`-2` suffix. Every identity
 match (`matchOffering`, update/remove/move/diff/apply/drag) prefers the id, so
@@ -32,7 +32,7 @@ remains the fallback for legacy rows without ids. Ids are never serialized to
 CSV; re-parsing the same file yields the same ids.
 
 `days` is a subset of `MTWRF`; `time` is a `"HH:MM-HH:MM"` 24h band.
-Time-band *logic* compares minute values, never band strings: any spelling of
+Time-band _logic_ compares minute values, never band strings: any spelling of
 the same minutes (`08:00-09:10`, whitespace, `08:00:00` seconds) is treated
 identically, and bands are stored/exported in the canonical `8:00-9:10` form
 (`parseCsv` and the app's editor normalize on write via `normalizeBand`).
@@ -54,7 +54,7 @@ renumbered deterministically.
 
 - `parseCsv(text)` → `offering[]` (columns `dept_prefix`,
   `course_number`, `course_section`, `instructor`, `secondary_instr`, `days`,
-  `times`; blank or literal `NULL` cells — meeting *and* instructor columns —
+  `times`; blank or literal `NULL` cells — meeting _and_ instructor columns —
   mark "no value" (a `NULL` lead reads as no instructor, a `NULL`
   `secondary_instr` as no others, `NULL` tokens inside a list are dropped);
   the optional `secondary_instr` column is a commma-separated (quoted) list parsed
@@ -84,9 +84,13 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
   (a blank time renders as `"No meeting time"`), `slotKey(day, time)`,
   `daySlotTimes(day)`
 - `termSlotOptions(termKey, day)` → that day's assignable bands
-- `isStandardPattern(termKey, days, time)` → whether an offering's time is one
-  of its day group's standard bands (the off-pattern test the grid's rail cue
-  uses)
+- `isStandardPattern(termKey, days, time)` → the full-pattern test: whether an
+  offering's day set sits in one day group with one of that group's standard
+  bands. `daySlotBlocks` classifies per day instead — a course that coincides
+  with a standard band of that day merges into the normal block even when its
+  overall pattern fails this test
+- `daySlotBlocks(day, index, termKey)` → that day's grid blocks
+  (`[{ time, start, end, items, offPattern }]`)
 - `compareItems(a, b)`, `compareCodes(a, b)`
 
 ### Editing
@@ -121,7 +125,7 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
 ### Calendar layout
 
 - `DAY_START_MIN = 480`, `DAY_END_MIN = 960`, `PX_PER_MIN = 1`
-- `hourMarks()`, `formatHour(min)`, `daySlotBlocks(day, index)`,
+- `hourMarks()`, `formatHour(min)`,
   `blockStyle(slot)` (absolute-position styles)
 - `calendarDayRange(termKey)` → the term's standard rendered range (anchored,
   so an off-pattern early/late class never stretches the grid)
