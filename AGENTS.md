@@ -128,6 +128,31 @@ Amend instead of adding fixup commits if the latest commit is unpushed and the
 fix is for issues it introduced. **Never push unless asked** — inspect
 `git status`/`git diff` before staging.
 
+**UI and e2e discipline** — unit tests can't see template/component bugs; the
+e2e suite is the only net for them. Rules learned the hard way:
+
+- **Cover a new UI surface in the same slice.** When a change adds or
+  reworks a dialog/menu/row, extend `apps/schedule/e2e/schedule.spec.mjs`
+  while the context is fresh — not as a final check at the end of a phase.
+- **A behavior change (new default, permission rule) often invalidates
+  existing test fixtures.** Grep the suite for the old assumption before
+  running: private-by-default silently broke every test that relied on
+  everyone seeing everyone's schedules.
+- **Instrument before theorizing.** A failing interaction that contradicts
+  your mental model gets a DOM dump first (`page.evaluate(() =>
+  document.body.innerText)` / the dialog's `outerHTML`) — guessing at
+  focus-trap or event races without evidence wastes whole runs.
+- **Vue footguns.** Template expressions auto-unwrap refs: never pass a ref
+  into a handler from a template (the handler receives the value — make
+  handlers read their own refs). A component whose overlay is `v-if`'d but
+  which stays mounted keeps its instance state across opens — and across
+  sign-outs; reset state when it closes (`watch(isOpen)`) or `v-if` the
+  component itself.
+- **Row-shape seams** (`server/src/db.js`): raw SQL rows (snake_case, JSON
+  strings) and API-shaped rows (camelCase, parsed) are two types.
+  Predicates/consumers write against the shaped row; the reshape happens
+  once at the repository boundary.
+
 **Common tasks** — run the Python pipeline from the repo root (scripts anchor
 data to the root via `ROOT`): `python3 tools/catalog-pipeline/scrape_catalog.py`
 re-scrapes; the full regeneration workflow and the serve command are in
@@ -168,3 +193,7 @@ When a task touches a specific piece, read its README (map above) plus:
   step. Schedules live in the backend DB when `SERVICES` enables the backend
   and the app detects it; identity is username self-identify (dev/tests) or an
   external OIDC SSO in production (`AUTH_PROVIDER=oidc`).
+- The schedule manage modal stays **mounted while closed** (only its overlay
+  is `v-if`'d) and resets `showShared`/`menuFor` when it closes — keep that
+  watcher when adding instance state, or the state leaks across opens and
+  sign-outs.
