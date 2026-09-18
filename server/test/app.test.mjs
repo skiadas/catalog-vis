@@ -647,6 +647,58 @@ test('suggestions export as md and csv', async () => {
   }
 })
 
+test('suggestion exports name proposers by display name, then short username', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({ database, services: ['schedule'], adminUsernames: new Set(['registrar']) })
+  const srv = await startTestServer(app)
+  try {
+    const registrar = srv.newClient()
+    await registrar.post('/api/auth/login', { username: 'registrar' })
+    // One proposer has a real name; the other only an email identity.
+    await registrar.post('/api/admin/users', {
+      username: 'wahl',
+      displayName: 'John Wahl',
+      departments: ['CS'],
+    })
+    await registrar.post('/api/admin/users', {
+      username: 'bob@hanover.edu',
+      departments: ['CS'],
+    })
+    const { schedule } = (await registrar.post('/api/schedules', { name: 'Names' })).json
+    await registrar.patch(`/api/schedules/${schedule.id}`, {
+      visibility: 'public',
+      suggestMode: 'public',
+    })
+    await registrar.put(`/api/schedules/${schedule.id}/terms/F`, {
+      offerings: [{ prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '9:20-10:30' }],
+    })
+    const term = (await registrar.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
+    const propose = async (username) => {
+      const client = srv.newClient()
+      await client.post('/api/auth/login', { username })
+      const res = await client.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: term.version,
+        operations: [{ kind: 'remove', cur: { prefix: 'CS', number: '220', section: 'A' } }],
+      })
+      assert.equal(res.status, 201)
+    }
+    await propose('wahl')
+    await propose('bob@hanover.edu')
+
+    const md = await registrar.get(`/api/schedules/${schedule.id}/suggestions/export?fmt=md`)
+    assert.match(md.text, /by John Wahl/)
+    assert.match(md.text, /by bob\)/)
+    assert.doesNotMatch(md.text, /bob@hanover\.edu/)
+    const csv = await registrar.get(`/api/schedules/${schedule.id}/suggestions/export?fmt=csv`)
+    assert.match(csv.text, /John Wahl/)
+    assert.doesNotMatch(csv.text, /bob@hanover\.edu/)
+  } finally {
+    srv.close()
+    database.close()
+  }
+})
+
 test('suggestion ops carrying secondaryInstructors apply and describe', async () => {
   const { srv, db } = await authClient()
   try {

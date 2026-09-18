@@ -12,7 +12,7 @@ import crypto from 'node:crypto'
 import express from 'express'
 import * as db from './db.js'
 import { createOidcProvider } from './auth/oidc.js'
-import { canonicalUsername } from './names.js'
+import { canonicalUsername, shortUsername } from './names.js'
 import { applyOperations, diffOfferings, describeChange } from '@major-vis/schedule-core/diff'
 
 const TERMS = ['F', 'W', 'S']
@@ -534,10 +534,16 @@ export function createApp({
         ? all
         : all.filter((c) => c.status === 'pending' || c.proposer_user_id === req.user.id)
     const fmt = req.query.fmt === 'json' || !req.query.fmt ? 'json' : req.query.fmt === 'md' ? 'md' : 'csv'
+    // The export names proposers the way the app does: the directory's real
+    // name when set, else the username without its domain.
+    const nameOf = new Map(
+      db.listUsers(database).map((u) => [u.username, u.displayName || shortUsername(u.username)]),
+    )
+    const proposerName = (c) => nameOf.get(c.proposer) || shortUsername(c.proposer)
     if (fmt === 'md') {
       const lines = visible.map((c) => {
         const ops = renderOpsWithStatuses(c.operations).join('; ') || '(empty)'
-        return `- **Suggestion #${c.id}** (${c.term}, by ${c.proposer}): ${ops}${c.note ? ' — ' + c.note : ''} [${c.status}]`
+        return `- **Suggestion #${c.id}** (${c.term}, by ${proposerName(c)}): ${ops}${c.note ? ' — ' + c.note : ''} [${c.status}]`
       })
       return res.type('text/markdown').send(lines.join('\n') || '_No suggestions._')
     }
@@ -545,7 +551,7 @@ export function createApp({
       const rows = [['id', 'term', 'proposer', 'status', 'base_version', 'change']]
       for (const c of visible) {
         const desc = renderOpsWithStatuses(c.operations).join('; ')
-        rows.push([c.id, c.term, c.proposer, c.status, c.base_version, desc || '(empty)'])
+        rows.push([c.id, c.term, proposerName(c), c.status, c.base_version, desc || '(empty)'])
       }
       const csv = rows.map((r) => r.map(csvCell).join(',')).join('\n')
       return res.type('text/csv').send(csv)

@@ -197,7 +197,8 @@ rejected everything); `resolved_at` is the max over the ops'. The proposer can
 `PATCH` the proposal (replacing the ops list, which restarts them as pending)
 only while no op is **owner-resolved** (409 `in_review`); their own withdrawn
 ops don't freeze the list. The md/csv export annotates each op with its status
-(`... [accepted]`). `suggestionStatus`/`pureOps` in
+(`... [accepted]`) and names proposers the way the app does (directory display
+name, else username without its domain). `suggestionStatus`/`pureOps` in
 `@major-vis/schedule-core/diff` implement the derivation and the pure-payload
 unwrapping; `applyOperations`/`proposeOverlay` stay fully stateless. The
 recorded `base_version` is informational only — the paper trail keeps every row

@@ -1611,8 +1611,13 @@
   font-size: var(--font-lg);
   line-height: 1;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 0;
   border-radius: 4px;
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .access-list-remove:hover {
   background: var(--danger-bg);
@@ -1697,8 +1702,13 @@
   cursor: pointer;
   font-size: var(--font-sm);
   line-height: 1;
-  padding: 0 2px;
+  padding: 0;
   border-radius: 50%;
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .directory-dept-remove:hover {
   background: var(--danger-08);
@@ -1713,8 +1723,8 @@
   background: none;
   color: var(--primary);
   border-radius: var(--radius-pill);
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   line-height: 1;
   cursor: pointer;
   font-size: var(--font-sm);

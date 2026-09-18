@@ -1135,6 +1135,16 @@ test('admins maintain the user directory; access lists autocomplete from it', as
   await dir.locator('.directory-dept-editor').getByRole('button', { name: 'Add' }).click()
   await expect(row.locator('.directory-dept', { hasText: 'CS' })).toBeVisible()
   await expect(dir.getByText('Saved.')).toBeVisible()
+
+  // The dialog scans clean and its new controls meet the 24px target size.
+  await settle(page)
+  const dirViolations = await seriousViolations(page, '.modal[aria-labelledby="directory-title"]')
+  expect(brief(dirViolations), 'directory dialog').toEqual([])
+  await assertTargetSize(
+    page,
+    ['.directory-dept-remove', '.directory-dept-add', '.directory-name-edit'],
+    'directory dialog',
+  )
   await dir.locator('.controls').getByRole('button', { name: 'Close' }).click()
   await dir.waitFor({ state: 'detached', timeout: 5000 })
 

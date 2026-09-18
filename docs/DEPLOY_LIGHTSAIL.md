@@ -98,7 +98,13 @@ docker compose logs -f caddy   # watch certificate issuance, then Ctrl-C
 
 `docker compose` reads `.env` automatically. The `proxy` profile starts Caddy
 on 80/443; the app itself is bound to `127.0.0.1:8080` (set via `PUBLIC_PORT`)
-and reached by Caddy over the compose network.
+and reached by Caddy over the compose network. Two optional settings shape
+identity and delegation: `AUTH_DOMAIN` (e.g. `hanover.edu`) makes bare
+usernames canonicalize to full addresses, and `ADMIN_USERNAMES` (canonical
+usernames, comma-separated) designates the admins who maintain the in-app user
+directory — real names and each user's departments. Populate the directory
+before relying on suggested changes: a non-owner proposal is scoped to the
+proposer's departments, so a user with no departments can propose nothing.
 
 ## 4. Verify
 
@@ -110,8 +116,10 @@ curl -s -o /dev/null -w '%{http_code}\n' https://catalog.harisskiadas.com/api/sc
 ```
 
 In a browser: open the app → **Sign in with SSO** → email code → land back
-signed in; create a schedule; a second account sees it in the shared list.
-In DevTools, the `mjv_sid` cookie should show `Secure`, `HttpOnly`, `Lax`.
+signed in; create a schedule (private to you by default); open its **Access**
+dialog to share it with a listed user or everyone, and a second account sees it
+in their shared list. In DevTools, the `mjv_sid` cookie should show `Secure`,
+`HttpOnly`, `Lax`.
 
 ## 5. Updates
 
