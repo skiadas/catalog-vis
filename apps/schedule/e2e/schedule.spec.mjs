@@ -994,21 +994,25 @@ test('edit mode drags a course by its row onto an empty slot; the pencil never d
   const course = await row.locator('.filter-offering-code').innerText()
   const dropzones = page.locator('.cal-dropzone')
   await expect(dropzones.first()).toBeVisible()
+  // Drop onto the LAST empty band: landing in an earlier band than the course
+  // currently sits in would make the moved course the new `.first()` block and
+  // break the "left its block" assertion below (the locator re-resolves).
+  const target = dropzones.last()
 
   // A drag that starts on the pencil carries no payload (the guard cancels it
   // before setData), so the drop is a no-op and the row stays put.
   const dataTransfer = await page.evaluateHandle(() => new DataTransfer())
   await row.locator('.filter-offering-edit').dispatchEvent('dragstart', { dataTransfer })
-  await dropzones.first().dispatchEvent('dragover', { dataTransfer })
-  await dropzones.first().dispatchEvent('drop', { dataTransfer })
+  await target.dispatchEvent('dragover', { dataTransfer })
+  await target.dispatchEvent('drop', { dataTransfer })
   await settle(page)
   await expect(block.locator('.filter-offering-code', { hasText: course })).toHaveCount(1)
 
   // A drag from the row body carries the payload: the course leaves its block
   // for the empty band (its band is now unoccupied).
   await row.dispatchEvent('dragstart', { dataTransfer })
-  await dropzones.first().dispatchEvent('dragover', { dataTransfer })
-  await dropzones.first().dispatchEvent('drop', { dataTransfer })
+  await target.dispatchEvent('dragover', { dataTransfer })
+  await target.dispatchEvent('drop', { dataTransfer })
   await settle(page)
   await expect(block.locator('.filter-offering-code', { hasText: course })).toHaveCount(0)
 
@@ -1021,7 +1025,15 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page, 'alice')
-  await createSchedule(page, 'Access schedule')
+  // A single-department schedule comes with courses, so the suggest-session
+  // gating below has something to gate.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.locator('#schedule-create-name').fill('Access schedule')
+  await page.getByRole('button', { name: 'Single department' }).click()
+  await page.getByRole('button', { name: 'Generate' }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
 
   // Alice opens the Access dialog on her row: shared visibility with bob +
   // carol as viewers, and only bob as a suggester.
@@ -1068,7 +1080,19 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await menu.waitFor({ state: 'visible', timeout: 5000 })
   await expect(menu.getByRole('button', { name: 'Edit schedule' })).toBeDisabled()
   await expect(menu.getByRole('button', { name: 'Suggest changes' })).toBeEnabled()
-  await page.keyboard.press('Escape') // closes the menu and the manage modal
+
+  // Bob is a suggester but has no directory departments, so entering a suggest
+  // session leaves every course uneditable (no pencils) and the panel explains
+  // the department limit.
+  await menu.getByRole('button', { name: 'Suggest changes' }).click()
+  await page.getByText('Suggestion mode:').first().waitFor({ timeout: 5000 })
+  await expect(page.locator('.filter-offering-edit')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Suggested changes' }).click()
+  const panel = page.locator('.modal[aria-labelledby="suggested-title"]')
+  await panel.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(panel.getByText(/no departments yet/i)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Done' }).click() // leave suggest mode
 
   // Carol: a viewer but not a suggester — both actions are gated.
   await page.getByRole('button', { name: 'Sign out' }).click()

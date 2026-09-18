@@ -51,6 +51,7 @@ import {
   selectedScheduleIds,
   colorSchedules,
   editingScheduleId,
+  canTouchOffering,
   showPendingSuggestions,
   pendingSuggestionsForTerm,
   openCourseEdit,
@@ -159,7 +160,10 @@ export default {
       times.value.length
         ? goScheduleSlot(day.value, times.value[(timeIndex.value + 1) % times.value.length])
         : null
-    const isEditable = (it) => editingScheduleId.value != null && it.sid === editingScheduleId.value
+    const isEditable = (it) =>
+      editingScheduleId.value != null &&
+      it.sid === editingScheduleId.value &&
+      canTouchOffering(it.sid, it.o && it.o.prefix)
     return {
       day,
       time,

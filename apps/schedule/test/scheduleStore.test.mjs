@@ -1317,3 +1317,94 @@ test('canSuggest mirrors the server permission rules', async () => {
     assert.equal(store.canSuggest(store.scheduleById(created.id)), true)
   })
 })
+
+test('canTouchOffering scopes non-owner suggest sessions to their departments', async () => {
+  await withRemote(
+    async ({ srv, store }) => {
+      const registrar = srv.newClient()
+      await registrar.post('/api/auth/login', { username: 'registrar' })
+      const created = (await registrar.post('/api/schedules', { name: 'Dept' })).json.schedule
+      await registrar.patch(`/api/schedules/${created.id}`, {
+        visibility: 'public',
+        suggestMode: 'public',
+      })
+      const grant = await registrar.post('/api/admin/users', {
+        username: 'bob',
+        departments: ['CS'],
+      })
+      assert.equal(grant.status, 201)
+
+      await store.signIn('bob')
+      await store.setEditingSchedule(created.id, 'suggest')
+      assert.deepEqual(store.myDepartments.value, ['CS'])
+      assert.equal(store.canTouchOffering(created.id, 'CS'), true)
+      assert.equal(store.canTouchOffering(created.id, 'MAT'), false, 'outside bob’s departments')
+      assert.equal(store.canTouchOffering(created.id, 'cs'), true, 'prefixes compare uppercased')
+
+      // Owner sessions may touch anything.
+      await store.setEditingSchedule(null)
+      await store.signIn('registrar')
+      await store.setEditingSchedule(created.id, 'suggest')
+      assert.equal(store.canTouchOffering(created.id, 'MAT'), true)
+
+      // Offline everything is owned, so everything is touchable.
+      store.setRemote(false)
+      assert.equal(store.canTouchOffering(created.id, 'MAT'), true)
+    },
+    { adminUsernames: new Set(['registrar']) },
+  )
+})
+
+test('proposeDraft surfaces the dept scoping refusal and keeps the draft dirty', async () => {
+  await withRemote(
+    async ({ srv, store }) => {
+      const registrar = srv.newClient()
+      await registrar.post('/api/auth/login', { username: 'registrar' })
+      const created = (await registrar.post('/api/schedules', { name: 'Dept' })).json.schedule
+      await registrar.patch(`/api/schedules/${created.id}`, {
+        visibility: 'public',
+        suggestMode: 'public',
+      })
+      await registrar.put(`/api/schedules/${created.id}/terms/F`, {
+        offerings: [
+          { prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '9:20-10:30' },
+          { prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '10:00-11:45' },
+        ],
+      })
+      await registrar.post('/api/admin/users', { username: 'bob', departments: ['CS'] })
+
+      await store.signIn('bob')
+      const entered = await store.setEditingSchedule(created.id, 'suggest')
+      assert.equal(entered, true)
+      // Bob moves a MAT course (outside his departments) in the draft.
+      const moved = store.moveOffering(created.id, 'MAT', '131', 'A', {
+        fromDay: 'T',
+        toDay: 'W',
+        group: 'MWF',
+        time: '12:00-13:10',
+      })
+      assert.equal(moved, true)
+      const refused = await store.proposeDraft(created.id, '')
+      assert.equal(refused.error, 'dept_restricted')
+      assert.match(refused.codes, /MAT 131/)
+      const draft = store.pendingDrafts.value[`${created.id}:F`]
+      assert.equal(draft.dirty, true, 'a refused proposal leaves the draft unsaved')
+
+      // Discarding the draft and starting over, a CS-only change proposes
+      // cleanly.
+      store.clearDraft(created.id)
+      await store.setEditingSchedule(null)
+      await store.setEditingSchedule(created.id, 'suggest')
+      const movedCs = store.moveOffering(created.id, 'CS', '220', 'A', {
+        fromDay: 'M',
+        toDay: 'T',
+        group: 'TR',
+        time: '10:00-11:45',
+      })
+      assert.equal(movedCs, true)
+      const saved = await store.proposeDraft(created.id, '')
+      assert.ok(saved && !saved.error, 'CS stays in scope')
+    },
+    { adminUsernames: new Set(['registrar']) },
+  )
+})

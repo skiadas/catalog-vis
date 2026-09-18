@@ -17,8 +17,8 @@
           :item="it"
           :filter-active="filter.active"
           :color="filter.active ? filter.color(it) : ''"
-          :editable="editMode"
-          :draggable="editMode"
+          :editable="isEditable(it)"
+          :draggable="isEditable(it)"
           :drag-day="''"
           @edit="openCourseEdit(it)"
         />
@@ -39,7 +39,13 @@ import {
   formatTime,
   offeringItemKey,
 } from '@major-vis/schedule-core'
-import { schedule, activeTerm, editingScheduleId, openCourseEdit } from '../src/scheduleStore.js'
+import {
+  schedule,
+  activeTerm,
+  editingScheduleId,
+  canTouchOffering,
+  openCourseEdit,
+} from '../src/scheduleStore.js'
 import CoursePill from './CoursePill.vue'
 
 import { computed } from 'vue'
@@ -81,9 +87,16 @@ export default {
       return out
     })
     const editMode = computed(() => Boolean(editingScheduleId.value))
+    // Per-item editability: the session's own schedule, scoped to the user's
+    // departments in a non-owner suggest session.
+    const isEditable = (it) =>
+      editingScheduleId.value != null &&
+      it.sid === editingScheduleId.value &&
+      canTouchOffering(it.sid, it.o && it.o.prefix)
     return {
       items,
       editMode,
+      isEditable,
       formatTime,
       offeringItemKey,
       activeTerm,

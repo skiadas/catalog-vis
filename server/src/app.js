@@ -127,9 +127,20 @@ export function createApp({
   }
   // Whether `user` is an administrator (from the ADMIN_USERNAMES config).
   const isAdminUser = (user) => Boolean(user && adminUsernames.has(String(user.username)))
-  // The user object the app sees — admin is part of the identity contract so
-  // the UI can show the directory controls.
-  const userJson = (user) => ({ id: user.id, username: user.username, admin: isAdminUser(user) })
+  // The user's directory entry (display name + departments), or null.
+  const directoryEntry = (user) => (user ? db.getDirectoryUser(database, user.id) : null)
+  // The user object the app sees — admin + departments are part of the
+  // identity contract so the UI can show the directory controls and gate
+  // suggest sessions to the user's own departments.
+  const userJson = (user) => {
+    const entry = directoryEntry(user)
+    return {
+      id: user.id,
+      username: user.username,
+      admin: isAdminUser(user),
+      departments: (entry && entry.departments) || [],
+    }
+  }
   const requireAdmin = (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'not_authenticated' })
     if (!isAdminUser(req.user)) return res.status(403).json({ error: 'not_admin' })
@@ -137,9 +148,19 @@ export function createApp({
   }
   // The departments a user belongs to (from the admin-maintained directory),
   // as a Set of prefixes; empty for non-directory users.
-  const departmentSet = (user) => {
-    const entry = user ? db.getDirectoryUser(database, user.id) : null
-    return new Set((entry && entry.departments) || [])
+  const departmentSet = (user) => new Set(userJson(user).departments)
+  // The dept-scoping verdict for a non-owner's op list: null when every op
+  // touches one of the user's directory departments, else the 403 body naming
+  // the offending courses (`dept_restricted` + codes).
+  const deptBlocked = (operations, user) => {
+    if (!Array.isArray(operations)) return null
+    const mine = departmentSet(user)
+    const outOfScope = operations.filter((op) => op && !mine.has(opPrefix(op)))
+    if (!outOfScope.length) return null
+    const codes = outOfScope
+      .map((op) => `${opPrefix(op)} ${op.kind === 'add' ? op.offering.number : op.cur.number}`)
+      .join(', ')
+    return { error: 'dept_restricted', codes }
   }
   const requireOwner = (req, res, next) => {
     const schedule = db.getSchedule(database, Number(req.params.id))
@@ -378,16 +399,8 @@ export function createApp({
     // entry: every op must touch one of their prefixes (an empty entry allows
     // nothing). The owner is exempt — their own schedule.
     if (schedule.owner_user_id !== req.user.id) {
-      const mine = departmentSet(req.user)
-      const outOfScope = (req.body && Array.isArray(req.body.operations) ? req.body.operations : []).filter(
-        (op) => op && !mine.has(opPrefix(op)),
-      )
-      if (outOfScope.length) {
-        const codes = outOfScope
-          .map((op) => `${opPrefix(op)} ${op.kind === 'add' ? op.offering.number : op.cur.number}`)
-          .join(', ')
-        return res.status(403).json({ error: 'dept_restricted', codes })
-      }
+      const blocked = deptBlocked(req.body && req.body.operations, req.user)
+      if (blocked) return res.status(403).json(blocked)
     }
     const term = req.body && req.body.term
     if (!TERMS.includes(term)) return res.status(400).json({ error: 'bad_term' })
@@ -438,6 +451,15 @@ export function createApp({
     const note = req.body && typeof req.body.note === 'string' ? req.body.note.trim() : undefined
     if (operations === undefined && note === undefined)
       return res.status(400).json({ error: 'nothing_to_update' })
+    // A non-owner replacing their ops is dept-scoped like a fresh proposal:
+    // the replacement must not touch departments outside their entry.
+    if (operations !== undefined && suggestion.proposer_user_id === req.user.id) {
+      const schedule = db.getSchedule(database, suggestion.schedule_id)
+      if (schedule && schedule.owner_user_id !== req.user.id) {
+        const blocked = deptBlocked(operations, req.user)
+        if (blocked) return res.status(403).json(blocked)
+      }
+    }
     const updated = db.updateSuggestion(database, suggestion.id, {
       ...(operations !== undefined ? { operations } : {}),
       ...(note !== undefined ? { note } : {}),

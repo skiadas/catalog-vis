@@ -171,8 +171,10 @@ owner-only with validated enums and name lists (400 on bad input).
 change to a term as a list of diff operations (`add` / `remove` / `update`
 with absolute field values). A non-owner's proposal is additionally scoped to
 the departments in their directory entry: any operation touching another
-department's course is refused with 403 `dept_restricted` (the owner is
-exempt). Many suggestions from many proposers stay live **concurrently**:
+prefix is refused with 403 `dept_restricted` (the body names the courses), and
+an empty entry can propose nothing. The same check guards a proposer replacing
+their own pending ops (`PATCH /api/suggestions/:id`); the owner is exempt from
+both. Many suggestions from many proposers stay live **concurrently**:
 approval applies the operations to whatever the term's current state is (no
 base-version guard), so approving one proposal never invalidates others.
 Unmatched ops no-op, duplicate adds dedupe, and an approval that changes

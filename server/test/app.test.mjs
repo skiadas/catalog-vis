@@ -1004,6 +1004,7 @@ test('admins manage the user directory; non-admins are refused', async () => {
     const session = await alice.get('/api/auth/session')
     assert.equal(session.json.user.username, 'alice')
     assert.equal(session.json.user.admin, true)
+    assert.deepEqual(session.json.user.departments, [])
     const bobSession = await bob.get('/api/auth/session')
     assert.equal(bobSession.json.user.admin, false)
     const config = await alice.get('/api/config')
@@ -1031,6 +1032,7 @@ test('admins manage the user directory; non-admins are refused', async () => {
     // The pre-created account is there (signs in later as the same identity).
     const carolLogin = await srv.newClient().post('/api/auth/login', { username: 'carol' })
     assert.equal(carolLogin.status, 200)
+    assert.deepEqual(carolLogin.json.user.departments, ['CS', 'MAT'], 'login carries departments')
 
     // Editing: display name can be cleared, departments replaced.
     const patched = await alice.patch(`/api/admin/users/${created.json.user.id}`, {
@@ -1148,6 +1150,35 @@ test('non-owner suggestions are scoped to their directory departments', async ()
       ],
     })
     assert.equal(ok.status, 201)
+
+    // The proposer's own PATCH is dept-scoped too: swapping in an
+    // out-of-department op is refused, a CS-only replacement is allowed.
+    const sugId = ok.json.suggestion.id
+    const patchBlocked = await bob.patch(`/api/suggestions/${sugId}`, {
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'MAT', number: '131', section: 'A' },
+          changes: { time: '14:15-16:00' },
+          diff: [],
+        },
+      ],
+    })
+    assert.equal(patchBlocked.status, 403)
+    assert.equal(patchBlocked.json.error, 'dept_restricted')
+    assert.match(patchBlocked.json.codes, /MAT 131/)
+    const patchOk = await bob.patch(`/api/suggestions/${sugId}`, {
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'CS', number: '220', section: 'A' },
+          changes: { time: '13:00-14:10' },
+          diff: [],
+        },
+      ],
+    })
+    assert.equal(patchOk.status, 200)
+    assert.equal(patchOk.json.suggestion.operations[0].op.changes.time, '13:00-14:10')
 
     // …but a MAT change is refused with the offending code named.
     const denied = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {

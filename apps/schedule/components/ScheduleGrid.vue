@@ -104,6 +104,7 @@ import {
   selectedScheduleIds,
   colorSchedules,
   editingScheduleId,
+  canTouchOffering,
   showPendingSuggestions,
   pendingSuggestionsForTerm,
   moveOffering,
@@ -280,6 +281,7 @@ export default {
     const { dragOver, dragging, isEditable, onDragStart, zoneOver, zoneLeave, zoneDrop } = useScheduleDrag(
       editingScheduleId,
       moveOffering,
+      canTouchOffering,
     )
 
     // The assignable time bands per weekday for the active term are the drop

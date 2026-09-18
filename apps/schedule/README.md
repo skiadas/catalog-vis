@@ -108,23 +108,42 @@ directly and **Suggest changes** collects edits into a draft, shown live on the
 calendar (the draft stands in for the published term while the session is
 active). Both are offered to owners and offline users; in remote mode a
 non-owner is only offered Suggest (direct writes require ownership, enforced
-server-side). Proposing diffs the draft against the server's current term and
+server-side), and Suggest is disabled unless the schedule's suggest permission
+admits the user (owner only / listed suggesters / everyone — see the access
+settings below). Proposing diffs the draft against the server's current term and
 upserts the proposer's own pending suggestion (create, or replace the ops of
 their existing pending one), so a department's edits always consolidate into
 one coherent proposal — never redundant intermediate moves — and re-enter a
 suggestion session by replaying their own pending ops onto the freshest
 published state.
 
-In edit mode a course's row/pill gains a **drag grip** (a dotted handle at the
-left edge, grab cursor) — the only draggable part of the row, so hover never
-confuses drag (grip) with click (course code, instructor, pencil).
+**Suggestions are department-scoped.** A non-owner's session only lets them
+touch courses in the departments their directory entry lists (no pencil, no
+drag for the rest), and the server refuses any proposal operation touching
+another department (`dept_restricted`, naming the courses); the panel says so
+instead of the generic "nothing to propose". Owners and offline users may touch
+anything, and a user with no departments can propose nothing until an admin
+adds them (the panel says that too).
 
-**The manage dialog shows your own schedules first.** The shared collection
-still loads in full (suggestions and ownership checks work by id), but the
-list defaults to owned rows; shared schedules are revealed by a toggle or by
-searching by name _or owner username_, and a year filter narrows both sections.
-The selection defaults to the first owned schedule (nothing when the user owns
-none), so a stranger's schedule is never auto-selected.
+In edit mode a course's row/pill is draggable, with a **drag grip** (a dotted
+handle at the left edge, grab cursor) as the visual affordance; the pencil is
+click-only (a drag starting on it is cancelled), so hover never confuses drag
+with click.
+
+**Owners control their schedule's access.** Each of your rows carries an
+**Access** button opening a dialog that sets who can see the schedule
+(*only you* / *listed users* / *everyone*) and who can suggest changes (the
+same three choices), with per-user lists whose username inputs autocomplete
+from the user directory. New schedules start private (only the owner) with
+owner-only suggestions. A row badge summarizes the current visibility
+(`private` / `shared · n viewers` / `public`).
+
+**The manage dialog shows your own schedules first.** The visible collection
+loads in full (a private schedule simply isn't in it), but the list defaults to
+owned rows; shared schedules are revealed by a toggle or by searching by name
+_or owner username_, and a year filter narrows both sections. The selection
+defaults to the first owned schedule (nothing when the user owns none), so a
+stranger's schedule is never auto-selected.
 
 **Labs**: the course editor's "Add lab section" (lecture rows only) creates a
 lab that mirrors the lecture's section letter, copies its instructors (lead
@@ -182,11 +201,17 @@ badge with a "Go online" button, and nothing created offline **ever transfers**
 to the server — going online replaces the browser's view with the server's
 collection (the prompt repeats the warning when leaving offline mode). A
 returning visitor with a live session loads the shared collection silently,
-no prompt. Suggestions are concurrent: any number of departments may hold
-live pending proposals ("suggested moves"), visible to everyone — pending
-suggestions render as dashed overlay blocks on the calendar (the "Show
-proposals" toggle, on by default), so departments see where each other plan to
-offer courses. The owner reviews each pending suggestion **change by change**:
+no prompt. **Usernames display without their domain** (the server stores the
+canonical identity, e.g. the OIDC email; the app shows the local part) and
+directory entries supply real names where an admin has set them. Admins
+(`ADMIN_USERNAMES`) get a **Directory** button in the nav: a dialog listing
+every account with an editable real name and department chips (prefixes,
+autocompleted from the catalog). Suggestions are concurrent: any number of
+departments may hold live pending proposals ("suggested moves"), visible to
+everyone who can see the schedule — pending suggestions render as dashed
+overlay blocks on the calendar (the "Show proposals" toggle, on by default),
+so departments see where each other plan to offer courses. The owner reviews
+each pending suggestion **change by change**:
 every operation of a suggestion is first-class (its own id + resolution:
 `pending`/`accepted`/`rejected`/`withdrawn`), and the panel offers an
 individual Approve/Reject per change. The proposer can withdraw their own

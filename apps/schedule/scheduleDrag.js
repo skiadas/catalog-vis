@@ -36,16 +36,25 @@ export function setDragGhost(e) {
 }
 
 // Returns the shared edit-mode drag state + handlers, parameterized by the
-// schedule being edited (`editingId`, a ref) and the store's moveOffering
-// action. A drop target is `{ key, day, days, time }` (grid uses the day-column
-// key, day view the slot time).
-export function useScheduleDrag(editingId, moveOffering) {
+// schedule being edited (`editingId`, a ref), the store's moveOffering action,
+// and an optional `canTouch(scheduleId, prefix)` predicate that scopes which
+// courses the session may touch (non-owner suggest sessions are limited to the
+// proposer's departments; default: anything editable). A drop target is
+// `{ key, day, days, time }` (grid uses the day-column key, day view the slot
+// time).
+/**
+ * @param {import('vue').Ref<number | string | null>} editingId
+ * @param {Function} moveOffering
+ * @param {(scheduleId: number | string, prefix: string) => boolean} [canTouch]
+ */
+export function useScheduleDrag(editingId, moveOffering, canTouch = () => true) {
   const dragOver = ref(null)
   // True while a drag is actually in progress (a draggable course was picked
   // up and not yet dropped or cancelled). Consumed by the grid to advertise
   // empty slots as drop targets only during a drag.
   const dragging = ref(false)
-  const isEditable = (it) => editingId.value != null && it.sid === editingId.value
+  const isEditable = (it) =>
+    editingId.value != null && it.sid === editingId.value && canTouch(it.sid, it.o && it.o.prefix)
   const clearDrag = () => {
     dragging.value = false
     dragOver.value = null
@@ -86,6 +95,9 @@ export function useScheduleDrag(editingId, moveOffering) {
     clearDrag()
     const p = dragPayloadFrom(e)
     if (!p || p.sid !== editingId.value) return
+    // A drop only lands when the session may touch the course (defense in
+    // depth: the drag source was gated already).
+    if (!canTouch(p.sid, p.prefix)) return
     moveOffering(
       p.sid,
       p.prefix,

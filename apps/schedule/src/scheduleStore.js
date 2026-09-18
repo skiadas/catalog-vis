@@ -250,6 +250,25 @@ export const currentUser = ref(null)
 // config; the server includes the flag on every user object it returns).
 export const isAdmin = computed(() => Boolean(currentUser.value && currentUser.value.admin))
 
+// The signed-in user's departments (from the admin-maintained directory; the
+// server includes them on every user object). Empty offline and for users
+// without a directory entry.
+export const myDepartments = computed(() => {
+  const user = currentUser.value
+  return (user && user.departments) || []
+})
+
+// Whether the active session may touch a course with `prefix` on
+// `scheduleId`: owners (and every offline session, where everything is owned)
+// may touch anything; a non-owner's suggest session is scoped to the user's
+// departments — the client-side mirror of the server's `dept_restricted` rule.
+export function canTouchOffering(scheduleId, prefix) {
+  const s = scheduleById(scheduleId)
+  if (!s) return false
+  if (editingRole.value !== 'suggest' || isOwner(s)) return true
+  return myDepartments.value.includes(String(prefix || '').toUpperCase())
+}
+
 // Loads the current user from the backend when in remote mode. No-op (null)
 // otherwise. Returns the user or null.
 export async function loadCurrentUser() {
@@ -777,7 +796,9 @@ export function draftOperations(scheduleId, term = activeTerm.value) {
 // diffs against the server's fresh current term and upserts the proposer's own
 // pending suggestion (create, or PATCH the existing one). Offline: the same
 // against the local store with a localStorage trail. Returns the suggestion row
-// or null when there is nothing to propose.
+// when it was saved, null when there is nothing to propose, or a
+// `{ error, codes? }` marker when the server refused (e.g. the dept-scoping
+// `dept_restricted`) — the draft stays dirty so the proposer can fix it.
 export async function proposeDraft(scheduleId, note) {
   const term = activeTerm.value
   const draft = getDraft(scheduleId, term)
@@ -793,7 +814,6 @@ export async function proposeDraft(scheduleId, note) {
     const current = await backend.fetchTerm(scheduleId, term)
     if (!current) return null
     const ops = diffOfferings(current.offerings || [], draft.offerings || [])
-    draft.dirty = false
     if (!ops.length) return null
     const own = ownPendingSuggestion(scheduleId, term)
     // Re-proposing identical operations is a no-op (the upsert would be empty).
@@ -812,7 +832,12 @@ export async function proposeDraft(scheduleId, note) {
         })
     setLocalTerm(scheduleId, term, current.offerings, current.version)
     draft.version = current.version
-    if (saved) await refreshSuggestions(scheduleId)
+    // A refusal (an `{ error }` marker) keeps the draft dirty: nothing was
+    // written, so the work is still unsaved and fixable.
+    if (saved && !saved.error) {
+      draft.dirty = false
+      await refreshSuggestions(scheduleId)
+    }
     return saved
   }
   const part = publishedPart(s, term) || { offerings: [], version: 0 }

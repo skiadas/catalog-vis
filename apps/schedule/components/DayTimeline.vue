@@ -113,6 +113,7 @@ import {
   selectedScheduleIds,
   colorSchedules,
   editingScheduleId,
+  canTouchOffering,
   showPendingSuggestions,
   pendingSuggestionsForTerm,
   moveOffering,
@@ -291,6 +292,7 @@ export default {
     const { dragOver, dragging, isEditable, onDragStart, zoneOver, zoneLeave, zoneDrop } = useScheduleDrag(
       editingScheduleId,
       moveOffering,
+      canTouchOffering,
     )
 
     const empty = computed(() => blocks.value.length === 0)

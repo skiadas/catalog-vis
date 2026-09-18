@@ -192,7 +192,8 @@ export async function fetchSuggestions(scheduleId) {
 // Submits a suggested change for a term. `payload` = { term, baseVersion,
 // operations, note }. Operations come from `@major-vis/schedule-core/diff`'s
 // `diffOfferings` (add/remove/update with per-field diff). Returns the created
-// suggestion or null.
+// suggestion, or a `{ error, codes? }` marker the caller can report (e.g. the
+// server's `dept_restricted` scoping refusal), or null on transport failure.
 export async function createSuggestion(scheduleId, payload) {
   try {
     const res = await fetch(`${apiBase}/schedules/${encodeURIComponent(scheduleId)}/suggestions`, {
@@ -200,7 +201,7 @@ export async function createSuggestion(scheduleId, payload) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    if (!res.ok) return null
+    if (!res.ok) return await errorBody(res)
     const data = await res.json()
     return (data && data.suggestion) || null
   } catch {
@@ -241,7 +242,8 @@ export async function rejectSuggestion(id, opId) {
 }
 
 // Replaces a pending suggestion's operations and/or note (own proposals only).
-// Returns the updated suggestion or null.
+// Returns the updated suggestion, or a `{ error, codes? }` marker the caller
+// can report, or null on transport failure.
 export async function updateSuggestion(id, payload) {
   try {
     const res = await fetch(`${apiBase}/suggestions/${encodeURIComponent(id)}`, {
@@ -249,9 +251,21 @@ export async function updateSuggestion(id, payload) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    if (!res.ok) return null
+    if (!res.ok) return await errorBody(res)
     const data = await res.json()
     return (data && data.suggestion) || null
+  } catch {
+    return null
+  }
+}
+
+// The server's error body ({ error, codes? }) for a failed request, so callers
+// can surface a precise message (e.g. dept_restricted); null when the body
+// isn't parseable.
+async function errorBody(res) {
+  try {
+    const data = await res.json()
+    return data && data.error ? { error: data.error, codes: data.codes } : null
   } catch {
     return null
   }

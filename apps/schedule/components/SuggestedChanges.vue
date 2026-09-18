@@ -22,6 +22,10 @@
             These are the changes you have collected in this session. Nothing is written to the schedule until
             you propose them and the owner approves.
           </p>
+          <p v-if="!owned && !myDepartments.length" class="suggested-feedback" role="status">
+            Your account has no departments yet — suggestions are limited to your departments, so ask an admin
+            to add them before proposing.
+          </p>
           <div class="suggested-draft-preview">{{ draftText }}</div>
           <div class="field">
             <label for="suggested-note">Note (optional)</label>
@@ -128,6 +132,7 @@ import {
   isSuggestSessionFor,
   scheduleById,
   currentUser,
+  myDepartments,
   remote,
   activeTerm,
 } from '../src/scheduleStore.js'
@@ -234,6 +239,13 @@ export default {
     const doPropose = async () => {
       if (!props.scheduleId) return
       const created = await proposeDraft(props.scheduleId, noteDraft.value)
+      if (created && created.error) {
+        feedback.value =
+          created.error === 'dept_restricted'
+            ? `Not proposed: you can only suggest changes in your departments (blocked: ${created.codes || 'some courses'}).`
+            : 'Could not propose — please try again.'
+        return
+      }
       feedback.value = created
         ? `Proposed ${TERM_LABELS[activeTerm.value]} changes.`
         : 'Nothing new to propose (no changes since the last proposal).'
@@ -266,6 +278,7 @@ export default {
       hasPending,
       rowLabel,
       isMine,
+      myDepartments,
       doApproveOp,
       doRejectOp,
       doWithdrawOp,

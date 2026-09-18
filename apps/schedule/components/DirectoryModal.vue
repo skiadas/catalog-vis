@@ -77,6 +77,7 @@
                   type="text"
                   placeholder="e.g. CS"
                   aria-label="Department prefix"
+                  list="directory-dept-prefixes"
                   v-model="deptDraft"
                   @keydown.enter.prevent="addDept(u)"
                 />
@@ -97,6 +98,9 @@
           <span class="controls-spacer"></span>
           <button class="filter-btn" @click="$emit('close')">Close</button>
         </div>
+        <datalist id="directory-dept-prefixes">
+          <option v-for="p in deptPrefixes" :key="p" :value="p"></option>
+        </datalist>
       </div>
     </div>
   </div>
@@ -111,10 +115,11 @@
 // courses.
 
 import * as backend from '../src/backend.js'
+import { allCourses } from '@major-vis/catalog-client'
 import { displayName } from '../src/names.js'
 import { useModalFocus } from '../src/modalFocus.js'
 
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 export default {
   name: 'DirectoryModal',
@@ -136,6 +141,12 @@ export default {
     const newDisplayName = ref('')
     const editingDeptFor = ref(null)
     const deptDraft = ref('')
+    // Department autocomplete: the course prefixes that exist in the catalog.
+    const deptPrefixes = computed(() => {
+      const set = new Set()
+      for (const code of Object.keys(allCourses.value)) set.add(code.split(' ')[0])
+      return Array.from(set).sort()
+    })
 
     const load = async () => {
       feedback.value = ''
@@ -211,6 +222,7 @@ export default {
       newDisplayName,
       editingDeptFor,
       deptDraft,
+      deptPrefixes,
       doAdd,
       setName,
       addDept,
