@@ -77,14 +77,23 @@ export function installCookieFetch() {
 }
 
 // An in-memory API server with a cookie-aware store fetch, remote mode on.
-// `auth` optionally overrides the server's auth config (e.g. an oidc provider).
+// `auth` optionally overrides the server's auth config (e.g. an oidc provider);
+// `adminUsernames` optionally designates directory admins.
 /**
  * @param {(ctx: { srv: any, base: string, store: any }) => Promise<any>} fn
- * @param {{ auth?: import('../../../server/src/config.js').AuthConfig }} [options]
+ * @param {{
+ *   auth?: import('../../../server/src/config.js').AuthConfig,
+ *   adminUsernames?: Set<string>,
+ * }} [options]
  */
-export async function withRemote(fn, { auth } = {}) {
+export async function withRemote(fn, { auth, adminUsernames } = {}) {
   const database = await openDb(':memory:')
-  const app = createApp({ database, services: ['schedule'], ...(auth ? { auth } : {}) })
+  const app = createApp({
+    database,
+    services: ['schedule'],
+    ...(auth ? { auth } : {}),
+    ...(adminUsernames ? { adminUsernames } : {}),
+  })
   const srv = await startTestServer(app)
   // Static imports of the store would evaluate before the shims; load it after
   // the environment is ready.

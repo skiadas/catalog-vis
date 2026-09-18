@@ -2,6 +2,7 @@
 // env contract so the app factory is easy to construct in tests too.
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { canonicalUsername } from './names.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -127,6 +128,9 @@ export function loadConfig(env = process.env) {
     // Empty = no domain default; names are used exactly as typed (the username
     // provider is the common case).
     authDomain: parseAuthDomain(env.AUTH_DOMAIN),
+    // Admins (canonical usernames) manage the user directory: display names
+    // and the departments each user belongs to.
+    adminUsernames: parseAdminUsernames(env.ADMIN_USERNAMES, env.AUTH_DOMAIN),
   }
 }
 
@@ -140,4 +144,16 @@ export function parseAuthDomain(raw) {
   if (!value) return ''
   if (/^[a-z0-9.-]+\.[a-z]{2,}$/.test(value) && !value.includes('@') && !value.includes('/')) return value
   throw new Error('AUTH_DOMAIN must be a bare domain like "hanover.edu" (no scheme, path, or @)')
+}
+
+// Parses ADMIN_USERNAMES: a comma-separated list of canonical usernames (each
+// canonicalized like the auth flows). Unset = no admins (the directory API is
+// inert). Returns a Set of canonical names.
+export function parseAdminUsernames(raw, domain = '') {
+  const out = new Set()
+  for (const part of String(raw ?? '').split(',')) {
+    const name = canonicalUsername(part, domain)
+    if (name) out.add(name)
+  }
+  return out
 }

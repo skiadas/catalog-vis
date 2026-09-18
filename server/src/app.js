@@ -35,6 +35,14 @@ function inReview(suggestion) {
   })
 }
 
+// The prefix an op touches: the added offering, or the course it removes or
+// updates.
+function opPrefix(op) {
+  if (!op) return ''
+  if (op.kind === 'add') return String((op.offering && op.offering.prefix) || '')
+  return String((op.cur && op.cur.prefix) || '')
+}
+
 // Renders the ops of a suggestion with their resolution statuses appended for
 // the export trail ("CS 220 A: ... [accepted]"); pending ops render bare.
 function renderOpsWithStatuses(operations) {
@@ -74,6 +82,7 @@ function hashToken(token) {
  *   sessionCookie?: string,
  *   auth?: import('./config.js').AuthConfig,
  *   authDomain?: string,
+ *   adminUsernames?: Set<string>,
  * }} options
  */
 export function createApp({
@@ -82,6 +91,7 @@ export function createApp({
   sessionCookie = 'mjv_sid',
   auth = { provider: 'username', cookieSecure: false },
   authDomain = '',
+  adminUsernames = new Set(),
 }) {
   const app = express()
   const authProvider = auth.provider || 'username'
@@ -114,6 +124,22 @@ export function createApp({
   const requireAuth = (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'not_authenticated' })
     next()
+  }
+  // Whether `user` is an administrator (from the ADMIN_USERNAMES config).
+  const isAdminUser = (user) => Boolean(user && adminUsernames.has(String(user.username)))
+  // The user object the app sees — admin is part of the identity contract so
+  // the UI can show the directory controls.
+  const userJson = (user) => ({ id: user.id, username: user.username, admin: isAdminUser(user) })
+  const requireAdmin = (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'not_authenticated' })
+    if (!isAdminUser(req.user)) return res.status(403).json({ error: 'not_admin' })
+    next()
+  }
+  // The departments a user belongs to (from the admin-maintained directory),
+  // as a Set of prefixes; empty for non-directory users.
+  const departmentSet = (user) => {
+    const entry = user ? db.getDirectoryUser(database, user.id) : null
+    return new Set((entry && entry.departments) || [])
   }
   const requireOwner = (req, res, next) => {
     const schedule = db.getSchedule(database, Number(req.params.id))
@@ -150,7 +176,7 @@ export function createApp({
   app.get('/api/config', (req, res) => {
     res.json({
       services,
-      auth: { provider: authProvider, user: req.user ? { username: req.user.username } : null },
+      auth: { provider: authProvider, user: req.user ? userJson(req.user) : null },
     })
   })
 
@@ -179,14 +205,14 @@ export function createApp({
       if (!username) return res.status(400).json({ error: 'username_required' })
       const user = db.ensureUser(database, username)
       startSession(res, user)
-      res.json({ user: { id: user.id, username: user.username } })
+      res.json({ user: userJson(user) })
     })
   }
 
   // Reports the current session's user, or user:null when unauthenticated (the
   // store treats a missing session as data, not an error — mirrors /api/config).
   app.get('/api/auth/session', (req, res) => {
-    res.json({ user: req.user ? { id: req.user.id, username: req.user.username } : null })
+    res.json({ user: req.user ? userJson(req.user) : null })
   })
 
   app.post('/api/auth/logout', (req, res) => {
@@ -194,6 +220,68 @@ export function createApp({
     if (token) db.deleteSession(database, hashToken(token))
     res.clearCookie(sessionCookie, { path: '/' })
     res.json({ ok: true })
+  })
+
+  // ---- User directory (admin-maintained) --------------------------------
+  // Admins keep the directory over the JIT-provisioned accounts: display
+  // names (shown instead of bare usernames) and the departments each user
+  // belongs to (the scope for whose suggestions may touch which courses).
+  // Accounts can be pre-created before the person ever signs in.
+  app.get('/api/admin/users', requireAdmin, (req, res) => {
+    res.json({ users: db.listUsers(database) })
+  })
+
+  app.post('/api/admin/users', requireAdmin, (req, res) => {
+    const username = canonicalUsername(req.body && req.body.username, authDomain)
+    if (!username) return res.status(400).json({ error: 'username_required' })
+    const displayName =
+      req.body && req.body.displayName != null ? String(req.body.displayName).trim() || null : undefined
+    const departments =
+      req.body && req.body.departments !== undefined
+        ? db.normalizePrefixList(req.body.departments)
+        : undefined
+    if (req.body && req.body.departments !== undefined && !departments)
+      return res.status(400).json({ error: 'bad_departments' })
+    const user = db.ensureUser(database, username)
+    const entry = db.setUserDirectory(database, user.id, { displayName, departments })
+    res.status(201).json({ user: entry })
+  })
+
+  app.patch('/api/admin/users/:id', requireAdmin, (req, res) => {
+    const id = Number(req.params.id)
+    const displayName =
+      req.body && req.body.displayName != null ? String(req.body.displayName).trim() || null : undefined
+    const departments =
+      req.body && req.body.departments !== undefined
+        ? db.normalizePrefixList(req.body.departments)
+        : undefined
+    if (req.body && req.body.departments !== undefined && !departments)
+      return res.status(400).json({ error: 'bad_departments' })
+    if (displayName === undefined && departments === undefined)
+      return res.status(400).json({ error: 'nothing_to_update' })
+    const entry = db.setUserDirectory(database, id, { displayName, departments })
+    if (!entry) return res.status(404).json({ error: 'not_found' })
+    res.json({ user: entry })
+  })
+
+  // Username autocomplete for the access dialogs: any signed-in user can look
+  // up accounts in the directory by username or display name (names only —
+  // no schedule data). Returns a bounded list of { username, displayName }.
+  app.get('/api/users', requireAuth, (req, res) => {
+    const q = String(req.query.q || '')
+      .trim()
+      .toLowerCase()
+    const users = db.listUsers(database)
+    const matches = q
+      ? users.filter(
+          (u) =>
+            u.username.toLowerCase().includes(q) ||
+            String(u.displayName || '')
+              .toLowerCase()
+              .includes(q),
+        )
+      : users
+    res.json({ users: matches.slice(0, 8) })
   })
 
   // ---- Schedules ---------------------------------------------------------
@@ -286,6 +374,21 @@ export function createApp({
   // dedupe). `baseVersion` is recorded for the paper trail only, never enforced.
   app.post('/api/schedules/:id/suggestions', requireAuth, requireSuggest, (req, res) => {
     const schedule = req.schedule
+    // A non-owner's proposal is scoped to the departments in their directory
+    // entry: every op must touch one of their prefixes (an empty entry allows
+    // nothing). The owner is exempt — their own schedule.
+    if (schedule.owner_user_id !== req.user.id) {
+      const mine = departmentSet(req.user)
+      const outOfScope = (req.body && Array.isArray(req.body.operations) ? req.body.operations : []).filter(
+        (op) => op && !mine.has(opPrefix(op)),
+      )
+      if (outOfScope.length) {
+        const codes = outOfScope
+          .map((op) => `${opPrefix(op)} ${op.kind === 'add' ? op.offering.number : op.cur.number}`)
+          .join(', ')
+        return res.status(403).json({ error: 'dept_restricted', codes })
+      }
+    }
     const term = req.body && req.body.term
     if (!TERMS.includes(term)) return res.status(400).json({ error: 'bad_term' })
     const operations = Array.isArray(req.body && req.body.operations) ? req.body.operations : []

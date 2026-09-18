@@ -37,6 +37,7 @@
         <span class="schedule-auth-label" aria-live="polite"
           >Signed in as <strong>{{ displayName(currentUser.username) }}</strong></span
         >
+        <button v-if="isAdmin" class="filter-btn" @click="showDirectory = true">Directory</button>
         <button class="filter-btn" @click="doSignOut">Sign out</button>
       </div>
     </div>
@@ -50,6 +51,7 @@
 
   <ScheduleHelp :is-open="showHelp" @close="showHelp = false" />
   <AuthPrompt />
+  <DirectoryModal :is-open="showDirectory" @close="showDirectory = false" />
 </template>
 
 <script>
@@ -62,6 +64,7 @@ import { errorMessage, loading } from '@major-vis/catalog-client'
 import {
   remote,
   currentUser,
+  isAdmin,
   offlineMode,
   authProvider,
   openAuthPrompt,
@@ -71,13 +74,14 @@ import {
 } from './src/scheduleStore.js'
 import ScheduleHelp from './components/ScheduleHelp.vue'
 import AuthPrompt from './components/AuthPrompt.vue'
+import DirectoryModal from './components/DirectoryModal.vue'
 import { displayName } from './src/names.js'
 
 import { computed, ref } from 'vue'
 
 export default {
   name: 'ScheduleAppRoot',
-  components: { ScheduleHelp, AuthPrompt },
+  components: { ScheduleHelp, AuthPrompt, DirectoryModal },
   setup() {
     // Remote sign-in: username self-identify or an OIDC redirect, per the
     // server's /api/config. The shared schedules, pending suggestions, and
@@ -102,11 +106,13 @@ export default {
     const toggleHelp = () => {
       showHelp.value = !showHelp.value
     }
+    const showDirectory = ref(false)
     return {
       loading,
       errorMessage,
       remote,
       currentUser,
+      isAdmin,
       offlineMode,
       openAuthPrompt,
       isOidc,
@@ -118,6 +124,7 @@ export default {
       displayName,
       showHelp,
       toggleHelp,
+      showDirectory,
     }
   },
 }

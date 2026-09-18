@@ -107,7 +107,7 @@ test('owner replaces a term part and version bumps', async () => {
 
 test('non-owner cannot modify but can suggest; others see pending; owner approves', async () => {
   const database = await openDb(':memory:')
-  const app = createApp({ database, services: ['schedule'] })
+  const app = createApp({ database, services: ['schedule'], adminUsernames: new Set(['alice']) })
   const srv = await startTestServer(app)
   try {
     const alice = srv.newClient()
@@ -116,6 +116,12 @@ test('non-owner cannot modify but can suggest; others see pending; owner approve
     assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
     assert.equal((await bob.post('/api/auth/login', { username: 'bob' })).status, 200)
     assert.equal((await carol.post('/api/auth/login', { username: 'carol' })).status, 200)
+    // Non-owner proposals are dept-scoped; the fixture's courses are CS.
+    assert.equal((await alice.post('/api/admin/users', { username: 'bob', departments: ['CS'] })).status, 201)
+    assert.equal(
+      (await alice.post('/api/admin/users', { username: 'carol', departments: ['CS'] })).status,
+      201,
+    )
 
     const { schedule } = (await alice.post('/api/schedules', { name: 'Registrar', year: '2026-27' })).json
     // Schedules are private by default; this flow is about suggestion
@@ -205,7 +211,7 @@ test('non-owner cannot modify but can suggest; others see pending; owner approve
 
 test('concurrent suggestions from many proposers approve independently, in any order', async () => {
   const database = await openDb(':memory:')
-  const app = createApp({ database, services: ['schedule'] })
+  const app = createApp({ database, services: ['schedule'], adminUsernames: new Set(['alice']) })
   const srv = await startTestServer(app)
   try {
     const alice = srv.newClient()
@@ -214,6 +220,14 @@ test('concurrent suggestions from many proposers approve independently, in any o
     assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
     assert.equal((await physics.post('/api/auth/login', { username: 'physics' })).status, 200)
     assert.equal((await math.post('/api/auth/login', { username: 'math' })).status, 200)
+    assert.equal(
+      (await alice.post('/api/admin/users', { username: 'physics', departments: ['PHY'] })).status,
+      201,
+    )
+    assert.equal(
+      (await alice.post('/api/admin/users', { username: 'math', departments: ['MAT'] })).status,
+      201,
+    )
     const { schedule } = (await alice.post('/api/schedules', { name: 'Registrar', year: '2026-27' })).json
     // Private by default: open the schedule so the two departments can propose.
     await alice.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
@@ -433,13 +447,22 @@ test('one suggestion, per-op resolution: partial approve stays pending, review l
 
 test('per-op withdraw by a separate proposer: rejected+withdrawn derives withdrawn; withdraw-all; edits after outline ops stay allowed', async () => {
   const database = await openDb(':memory:')
-  const app = createApp({ database, services: ['schedule'] })
+  const app = createApp({ database, services: ['schedule'], adminUsernames: new Set(['registrar']) })
   const srv = await startTestServer(app)
   try {
     const registrar = srv.newClient()
     const math = srv.newClient()
     assert.equal((await registrar.post('/api/auth/login', { username: 'registrar' })).status, 200)
     assert.equal((await math.post('/api/auth/login', { username: 'math' })).status, 200)
+    assert.equal(
+      (
+        await registrar.post('/api/admin/users', {
+          username: 'math',
+          departments: ['MAT', 'PHY'],
+        })
+      ).status,
+      201,
+    )
     const { schedule } = (await registrar.post('/api/schedules', { name: 'Withdraw', year: '2026-27' })).json
     // Private by default: open the schedule so math can propose against it.
     await registrar.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
@@ -693,7 +716,7 @@ test('rename and mark official by owner', async () => {
 // carol, schedule, term } with everyone signed in.
 async function accessFixture() {
   const database = await openDb(':memory:')
-  const app = createApp({ database, services: ['schedule'] })
+  const app = createApp({ database, services: ['schedule'], adminUsernames: new Set(['alice']) })
   const srv = await startTestServer(app)
   const alice = srv.newClient()
   const bob = srv.newClient()
@@ -782,6 +805,8 @@ test('shared visibility admits listed viewers only; suggestion POST is gated sep
 test('listed suggesters can view and propose even when visibility stays private', async () => {
   const { srv, db, alice, bob, carol, schedule, term } = await accessFixture()
   try {
+    // Bob's proposals are dept-scoped to CS (the fixture's course).
+    assert.equal((await alice.post('/api/admin/users', { username: 'bob', departments: ['CS'] })).status, 201)
     // suggest_mode=shared with bob listed; visibility stays private.
     await alice.patch(`/api/schedules/${schedule.id}`, {
       suggestMode: 'shared',
@@ -820,6 +845,11 @@ test('public visibility + suggest_mode open the schedule to every signed-in user
   const { srv, db, alice, carol, schedule, term } = await accessFixture()
   try {
     await alice.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
+    // Carol's proposal is dept-scoped to CS (the fixture's course).
+    assert.equal(
+      (await alice.post('/api/admin/users', { username: 'carol', departments: ['CS'] })).status,
+      201,
+    )
 
     // Carol sees it in the list and can read + propose.
     assert.equal((await carol.get('/api/schedules')).json.schedules.length, 1)
@@ -948,6 +978,229 @@ test('access lists canonicalize bare usernames with a default domain', async () 
 
     // Bob therefore sees the schedule and can propose.
     assert.equal((await bob.get(`/api/schedules/${schedule.id}`)).status, 200)
+  } finally {
+    srv.close()
+    database.close()
+  }
+})
+
+// ---- Admin user directory + autocomplete --------------------------------
+
+test('admins manage the user directory; non-admins are refused', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({
+    database,
+    services: ['schedule'],
+    adminUsernames: new Set(['alice']),
+  })
+  const srv = await startTestServer(app)
+  try {
+    const alice = srv.newClient()
+    const bob = srv.newClient()
+    assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
+    assert.equal((await bob.post('/api/auth/login', { username: 'bob' })).status, 200)
+
+    // The identity contract advertises the admin flag.
+    const session = await alice.get('/api/auth/session')
+    assert.equal(session.json.user.username, 'alice')
+    assert.equal(session.json.user.admin, true)
+    const bobSession = await bob.get('/api/auth/session')
+    assert.equal(bobSession.json.user.admin, false)
+    const config = await alice.get('/api/config')
+    assert.equal(config.json.auth.user.admin, true)
+
+    // Non-admins get 403s on the directory.
+    assert.equal((await bob.get('/api/admin/users')).status, 403)
+    assert.equal((await bob.post('/api/admin/users', { username: 'carol' })).status, 403)
+
+    // The admin lists the directory, pre-creates an account, and edits it.
+    assert.deepEqual(
+      (await alice.get('/api/admin/users')).json.users.map((u) => u.username),
+      ['alice', 'bob'],
+    )
+    const created = await alice.post('/api/admin/users', {
+      username: 'Carol',
+      displayName: 'Carol Novak',
+      departments: ['cs', 'MAT'],
+    })
+    assert.equal(created.status, 201)
+    assert.equal(created.json.user.username, 'carol')
+    assert.equal(created.json.user.displayName, 'Carol Novak')
+    assert.deepEqual(created.json.user.departments, ['CS', 'MAT'], 'prefixes canonicalize uppercased')
+
+    // The pre-created account is there (signs in later as the same identity).
+    const carolLogin = await srv.newClient().post('/api/auth/login', { username: 'carol' })
+    assert.equal(carolLogin.status, 200)
+
+    // Editing: display name can be cleared, departments replaced.
+    const patched = await alice.patch(`/api/admin/users/${created.json.user.id}`, {
+      displayName: '',
+      departments: ['BIO'],
+    })
+    assert.equal(patched.status, 200)
+    assert.equal(patched.json.user.displayName, null)
+    assert.deepEqual(patched.json.user.departments, ['BIO'])
+
+    // Bad input is refused.
+    assert.equal(
+      (await alice.patch(`/api/admin/users/${created.json.user.id}`, { departments: 'CS' })).status,
+      400,
+    )
+    assert.equal((await alice.patch(`/api/admin/users/99999`, { displayName: 'X' })).status, 404)
+  } finally {
+    srv.close()
+    database.close()
+  }
+})
+
+test('username autocomplete searches the directory for any signed-in user', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({
+    database,
+    services: ['schedule'],
+    adminUsernames: new Set(['alice']),
+  })
+  const srv = await startTestServer(app)
+  try {
+    const alice = srv.newClient()
+    assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
+    await alice.post('/api/admin/users', {
+      username: 'wahl',
+      displayName: 'John Wahl',
+      departments: ['CS'],
+    })
+    await alice.post('/api/admin/users', {
+      username: 'bob',
+      displayName: 'Bob Skiadas',
+      departments: ['MAT'],
+    })
+
+    // A plain signed-in user (not an admin) can autocomplete names.
+    const carol = srv.newClient()
+    assert.equal((await carol.post('/api/auth/login', { username: 'carol' })).status, 200)
+    const byName = await carol.get('/api/users?q=wahl')
+    assert.equal(byName.status, 200)
+    assert.deepEqual(
+      byName.json.users.map((u) => u.username),
+      ['wahl'],
+    )
+    assert.equal(byName.json.users[0].displayName, 'John Wahl')
+    const byDisplay = await carol.get('/api/users?q=skiadas')
+    assert.deepEqual(
+      byDisplay.json.users.map((u) => u.username),
+      ['bob'],
+    )
+    // Empty query returns the whole directory (bounded) — carol herself was
+    // JIT-provisioned by her login.
+    const all = await carol.get('/api/users')
+    assert.equal(all.json.users.length, 4)
+    // Anonymous is refused.
+    const anon = srv.newClient()
+    assert.equal((await anon.get('/api/users?q=wahl')).status, 401)
+  } finally {
+    srv.close()
+    database.close()
+  }
+})
+
+test('non-owner suggestions are scoped to their directory departments', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({
+    database,
+    services: ['schedule'],
+    adminUsernames: new Set(['alice']),
+  })
+  const srv = await startTestServer(app)
+  try {
+    const alice = srv.newClient()
+    const bob = srv.newClient()
+    assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
+    assert.equal((await bob.post('/api/auth/login', { username: 'bob' })).status, 200)
+    // Bob belongs to CS only.
+    const created = await alice.post('/api/admin/users', {
+      username: 'bob',
+      displayName: 'Bob Wahl',
+      departments: ['CS'],
+    })
+    assert.equal(created.status, 201)
+
+    const { schedule } = (await alice.post('/api/schedules', { name: 'Dept' })).json
+    await alice.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
+    await alice.put(`/api/schedules/${schedule.id}/terms/F`, {
+      offerings: [
+        { prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '9:20-10:30' },
+        { prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '10:00-11:45' },
+      ],
+    })
+    const term = (await alice.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
+
+    // Bob can propose a CS change…
+    const ok = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: term.version,
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'CS', number: '220', section: 'A' },
+          changes: { time: '12:00-13:10' },
+          diff: [],
+        },
+      ],
+    })
+    assert.equal(ok.status, 201)
+
+    // …but a MAT change is refused with the offending code named.
+    const denied = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: term.version,
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'MAT', number: '131', section: 'A' },
+          changes: { time: '14:15-16:00' },
+          diff: [],
+        },
+      ],
+    })
+    assert.equal(denied.status, 403)
+    assert.equal(denied.json.error, 'dept_restricted')
+    assert.match(denied.json.codes, /MAT 131/)
+
+    // A mixed proposal fails on the first out-of-scope op.
+    const mixed = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: term.version,
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'CS', number: '220', section: 'A' },
+          changes: { time: '12:00-13:10' },
+          diff: [],
+        },
+        {
+          kind: 'update',
+          cur: { prefix: 'MAT', number: '131', section: 'A' },
+          changes: { time: '14:15-16:00' },
+          diff: [],
+        },
+      ],
+    })
+    assert.equal(mixed.status, 403)
+
+    // The owner is exempt: alice can propose anything.
+    const ownerOp = await alice.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: term.version,
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'MAT', number: '131', section: 'A' },
+          changes: { time: '14:15-16:00' },
+          diff: [],
+        },
+      ],
+    })
+    assert.equal(ownerOp.status, 201)
   } finally {
     srv.close()
     database.close()

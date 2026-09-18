@@ -18,7 +18,9 @@ npm run build && npm run serve
 #      STATIC_DIR (built static layout; defaults to the repo root),
 #      AUTH_PROVIDER (username | oidc; default username),
 #      AUTH_DOMAIN (optional bare domain, e.g. hanover.edu: bare usernames
-#        typed at sign-in or in access lists canonicalize to name@domain)
+#        typed at sign-in or in access lists canonicalize to name@domain),
+#      ADMIN_USERNAMES (optional comma list of canonical usernames allowed to
+#        maintain the user directory)
 # oidc provider additionally requires: OIDC_ISSUER, OIDC_CLIENT_ID,
 #      OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI, and (recommended) PUBLIC_ORIGIN,
 #      COOKIE_SECURE=true — the server refuses to boot with any missing
@@ -45,7 +47,9 @@ migrations** — `server/migrations/*.sql`, applied in filename order by umzug a
 boot inside `openDb` (each file in one transaction, applied names recorded in
 the `schema_migrations` table). `0001_baseline` creates:
 
-- `users(id, username, created_at)`
+- `users(id, username, display_name, departments, created_at)` —
+  `display_name`/`departments` (JSON prefix array) are admin-managed
+  (`0004_directory`)
 - `sessions(id, user_id, token_hash, created_at, expires_at)` — token_hash indexed
 - `schedules(id, name, year, owner_user_id, status, version, visibility,
   suggest_mode, viewers, suggesters, created_at, updated_at)` — owner FK
@@ -94,6 +98,10 @@ POST   /api/auth/login { username }         -> { user }          (provider: user
 GET    /api/auth/login?return_to=           -> 302 to the issuer (provider: oidc only)
 GET    /api/auth/callback?code=&state=      -> 302 back to return_to (?auth_error=... on failure)
 POST   /api/auth/logout
+GET    /api/users?q=                        -> { users }         (auth; directory autocomplete)
+GET    /api/admin/users                     -> { users }         (admin)
+POST   /api/admin/users { username, displayName?, departments? } -> { user } (admin)
+PATCH  /api/admin/users/:id { displayName?, departments? }       -> { user } (admin)
 GET    /api/schedules?year=                 -> { schedules }     (auth; filtered to schedules the caller may view)
 POST   /api/schedules { name, year }        -> { schedule }      (creates 3 empty term parts)
 GET    /api/schedules/:id                   -> { schedule: { ..., terms } }  (viewers)
@@ -127,7 +135,19 @@ GET    /api/schedules/:id/suggestions/export?fmt=json|md|csv     (viewers)
 
 Either way the apps see the same contract: `/api/config` advertises the
 provider, `/api/auth/session` reports the user (anonymous is `user: null`, not
-a 401), and `/api/auth/logout` clears the session.
+a 401), and `/api/auth/logout` clears the session. User objects carry an
+`admin` flag (true when the username is in `ADMIN_USERNAMES`), so the app can
+show the directory controls.
+
+**User directory**: admins (`ADMIN_USERNAMES`) maintain a directory over the
+JIT-provisioned accounts — the real/catalog name (`display_name`, shown
+instead of the bare username everywhere) and the departments each user belongs
+to (`departments`, a JSON array of course prefixes). Accounts can be
+pre-created (`POST /api/admin/users`) before the person ever signs in; the
+departments are the scope used to decide whose suggestions may touch which
+courses (see below). Any signed-in user can autocomplete against the directory
+(`GET /api/users?q=`, matching username or display name, bounded) for the
+access lists.
 
 **Schedule access**: every schedule has two independent, owner-controlled
 settings. `visibility` — `private` (only the owner sees it), `shared` (the
@@ -149,11 +169,14 @@ owner-only with validated enums and name lists (400 on bad input).
 
 **Suggestions**: anyone allowed by the schedule's `suggestMode` can propose a
 change to a term as a list of diff operations (`add` / `remove` / `update`
-with absolute field values). Many suggestions from many proposers stay live
-**concurrently**: approval applies the operations to whatever the term's
-current state is (no base-version guard), so approving one proposal never
-invalidates others. Unmatched ops no-op, duplicate adds dedupe, and an
-approval that changes nothing is recorded as **`moot`**.
+with absolute field values). A non-owner's proposal is additionally scoped to
+the departments in their directory entry: any operation touching another
+department's course is refused with 403 `dept_restricted` (the owner is
+exempt). Many suggestions from many proposers stay live **concurrently**:
+approval applies the operations to whatever the term's current state is (no
+base-version guard), so approving one proposal never invalidates others.
+Unmatched ops no-op, duplicate adds dedupe, and an approval that changes
+nothing is recorded as **`moot`**.
 
 **Ops are first-class**: each operation of a proposal is stored as its own
 `suggestion_ops` row (id, position, op payload, status, applied, resolved_at),

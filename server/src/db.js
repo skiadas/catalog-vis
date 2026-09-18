@@ -25,6 +25,16 @@ import { canonicalUsername } from './names.js'
  * @typedef {object} UserRow
  * @property {number} id
  * @property {string} username
+ * @property {string | null} display_name
+ * @property {string} departments
+ */
+
+/**
+ * @typedef {object} DirectoryUserRow
+ * @property {number} id
+ * @property {string} username
+ * @property {string | null} displayName
+ * @property {string[]} departments
  */
 
 /**
@@ -284,6 +294,113 @@ export function ensureUser(db, username) {
   const found = userByUsername(db, username)
   if (found) return found
   return createUser(db, username)
+}
+
+// ---- User directory (admin-maintained) -----------------------------------
+// Admins keep a directory over the JIT-provisioned accounts: a display name
+// (the real/catalog name shown instead of the bare username) and the
+// departments the user belongs to (course prefixes, used to scope whose
+// suggestions may touch which departments). Accounts can be pre-created
+// before the person ever signs in.
+
+// Parses a stored JSON department list back into an array.
+/**
+ * @param {string} str
+ * @returns {string[]}
+ */
+function storedPrefixList(str) {
+  try {
+    const arr = JSON.parse(String(str ?? '[]'))
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+}
+
+// Canonicalizes + validates a department prefix list for storage: each entry
+// trimmed + uppercased (course prefixes are case-insensitive), deduped,
+// non-empty, length-bounded. Returns the list, or null when the input isn't a
+// valid prefix list.
+/**
+ * @param {unknown} list
+ * @returns {string[] | null}
+ */
+export function normalizePrefixList(list) {
+  if (!Array.isArray(list)) return null
+  const out = []
+  const seen = new Set()
+  for (const raw of list) {
+    const prefix = String(raw ?? '')
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, '')
+    if (!prefix || prefix.length > 12) return null
+    if (!seen.has(prefix)) {
+      seen.add(prefix)
+      out.push(prefix)
+    }
+  }
+  return out
+}
+
+// The full directory: every account with its display name and departments,
+// sorted by display name then username (null display names sort as the
+// username).
+/**
+ * @param {DB} db
+ * @returns {DirectoryUserRow[]}
+ */
+export function listUsers(db) {
+  const rows = /** @type {UserRow[]} */ (
+    db.prepare('SELECT * FROM users ORDER BY display_name IS NULL, display_name, username').all()
+  )
+  return rows.map((r) => ({
+    id: r.id,
+    username: r.username,
+    displayName: r.display_name,
+    departments: storedPrefixList(r.departments),
+  }))
+}
+
+// Updates a directory entry's display name and/or departments. Departments are
+// stored as the canonical (uppercased, deduped) list. Returns the updated
+// entry, or null when the id is unknown.
+/**
+ * @param {DB} db
+ * @param {number} id
+ * @param {{ displayName?: string | null; departments?: string[] }} changes
+ * @returns {DirectoryUserRow | null}
+ */
+export function setUserDirectory(db, id, { displayName, departments }) {
+  const fields = []
+  const vals = []
+  if (displayName !== undefined) {
+    fields.push('display_name = ?')
+    vals.push(displayName === null ? null : displayName.slice(0, 120))
+  }
+  if (departments !== undefined) {
+    fields.push('departments = ?')
+    vals.push(JSON.stringify(departments))
+  }
+  if (!fields.length) return getDirectoryUser(db, id)
+  db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).run(...vals, id)
+  return getDirectoryUser(db, id)
+}
+
+/**
+ * @param {DB} db
+ * @param {number} id
+ * @returns {DirectoryUserRow | null}
+ */
+export function getDirectoryUser(db, id) {
+  const row = /** @type {UserRow | undefined} */ (db.prepare('SELECT * FROM users WHERE id = ?').get(id))
+  if (!row) return null
+  return {
+    id: row.id,
+    username: row.username,
+    displayName: row.display_name,
+    departments: storedPrefixList(row.departments),
+  }
 }
 
 /**

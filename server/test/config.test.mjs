@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { loadConfig, parseAuth, parseAuthDomain } from '../src/config.js'
+import { loadConfig, parseAuth, parseAuthDomain, parseAdminUsernames } from '../src/config.js'
 
 test('parseAuth defaults to username self-identify with insecure cookies off', () => {
   assert.deepEqual(parseAuth({}), { provider: 'username', cookieSecure: false })
@@ -73,4 +73,19 @@ test('parseAuthDomain accepts a bare domain and rejects malformed ones', () => {
 test('loadConfig exposes authDomain', () => {
   assert.equal(loadConfig({}).authDomain, '')
   assert.equal(loadConfig({ AUTH_DOMAIN: 'Hanover.edu' }).authDomain, 'hanover.edu')
+})
+
+test('parseAdminUsernames canonicalizes the comma list; unset means no admins', () => {
+  assert.deepEqual(parseAdminUsernames(undefined), new Set())
+  assert.deepEqual(parseAdminUsernames(''), new Set())
+  assert.deepEqual(
+    parseAdminUsernames('CSkiadas, wahl@hanover.edu, bob'),
+    new Set(['cskiadas', 'wahl@hanover.edu', 'bob']),
+  )
+  assert.deepEqual(parseAdminUsernames('bob, BOB', 'hanover.edu'), new Set(['bob@hanover.edu']))
+})
+
+test('loadConfig exposes adminUsernames', () => {
+  assert.deepEqual(loadConfig({}).adminUsernames, new Set())
+  assert.deepEqual(loadConfig({ ADMIN_USERNAMES: 'a, b' }).adminUsernames, new Set(['a', 'b']))
 })

@@ -59,7 +59,8 @@ test('signIn loads the shared schedules from the server and selects the first', 
 test("signIn defaults the selection to the first owned schedule, never a stranger's", async () => {
   await withRemote(async ({ srv, store }) => {
     await srv.post('/api/auth/login', { username: 'registrar' })
-    const stranger = (await srv.post('/api/schedules', { name: 'AAA Stranger', year: '2026-27' })).json.schedule
+    const stranger = (await srv.post('/api/schedules', { name: 'AAA Stranger', year: '2026-27' })).json
+      .schedule
     // Schedules are private by default; open the stranger's so alice sees it.
     await srv.patch(`/api/schedules/${stranger.id}`, { visibility: 'public' })
     const alice = srv.newClient()
@@ -293,113 +294,123 @@ test('addSchedule seeds the active term on the server once the create lands', as
 })
 
 test('non-owner suggest sessions consolidate into one upserted proposal; external approvals rebase later sessions', async () => {
-  await withRemote(async ({ srv, store }) => {
-    const registrar = srv.newClient()
-    await registrar.post('/api/auth/login', { username: 'registrar' })
-    const schedule = (await registrar.post('/api/schedules', { name: 'Shared' })).json.schedule
-    // Private by default: open the schedule so physics can propose against it.
-    await registrar.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
-    await registrar.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [COURSE] })
+  await withRemote(
+    async ({ srv, store }) => {
+      const registrar = srv.newClient()
+      await registrar.post('/api/auth/login', { username: 'registrar' })
+      const schedule = (await registrar.post('/api/schedules', { name: 'Shared' })).json.schedule
+      // Private by default: open the schedule so physics can propose against it.
+      await registrar.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
+      // Non-owner proposals are dept-scoped: physics belongs to the departments
+      // its proposals touch (CS 220, BIO 161).
+      const grant = await registrar.post('/api/admin/users', {
+        username: 'physics',
+        departments: ['CS', 'BIO'],
+      })
+      assert.equal(grant.status, 201)
+      await registrar.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [COURSE] })
 
-    // Physics signs in via the store and enters a suggest session.
-    assert.equal(await store.signIn('physics'), true)
-    assert.equal(await store.setEditingSchedule(schedule.id, 'suggest'), true)
-    assert.ok(store.pendingDrafts.value[`${schedule.id}:F`])
+      // Physics signs in via the store and enters a suggest session.
+      assert.equal(await store.signIn('physics'), true)
+      assert.equal(await store.setEditingSchedule(schedule.id, 'suggest'), true)
+      assert.ok(store.pendingDrafts.value[`${schedule.id}:F`])
 
-    // Two moves in one session: only the final state enters the proposal.
-    store.moveOffering(schedule.id, 'CS', '220', 'A', {
-      fromDay: 'M',
-      toDay: 'T',
-      group: 'TR',
-      time: '10:00-11:45',
-    })
-    store.moveOffering(schedule.id, 'CS', '220', 'A', {
-      fromDay: 'T',
-      toDay: 'T',
-      group: 'TR',
-      time: '14:15-16:00',
-    })
-    const proposed = await store.proposeDraft(schedule.id, 'physics move')
-    assert.ok(proposed)
-    assert.equal(proposed.status, 'pending')
-    assert.equal(proposed.operations.length, 1)
-    assert.equal(proposed.operations[0].op.kind, 'update')
-    assert.equal(proposed.operations[0].op.changes.time, '14:15-16:00')
-    assert.equal(proposed.operations[0].resolution.status, 'pending')
+      // Two moves in one session: only the final state enters the proposal.
+      store.moveOffering(schedule.id, 'CS', '220', 'A', {
+        fromDay: 'M',
+        toDay: 'T',
+        group: 'TR',
+        time: '10:00-11:45',
+      })
+      store.moveOffering(schedule.id, 'CS', '220', 'A', {
+        fromDay: 'T',
+        toDay: 'T',
+        group: 'TR',
+        time: '14:15-16:00',
+      })
+      const proposed = await store.proposeDraft(schedule.id, 'physics move')
+      assert.ok(proposed)
+      assert.equal(proposed.status, 'pending')
+      assert.equal(proposed.operations.length, 1)
+      assert.equal(proposed.operations[0].op.kind, 'update')
+      assert.equal(proposed.operations[0].op.changes.time, '14:15-16:00')
+      assert.equal(proposed.operations[0].resolution.status, 'pending')
 
-    // Re-proposing an unchanged draft is a no-op; editing again upserts the
-    // same row (still one pending suggestion for physics).
-    assert.equal(await store.proposeDraft(schedule.id, ''), null)
-    store.moveOffering(schedule.id, 'CS', '220', 'A', {
-      fromDay: 'T',
-      toDay: 'T',
-      group: 'TR',
-      time: '8:00-9:45',
-    })
-    const revised = await store.proposeDraft(schedule.id, '')
-    assert.ok(revised)
-    assert.equal(revised.id, proposed.id)
-    assert.equal(revised.operations[0].op.changes.time, '8:00-9:45')
-    const own = store.suggestionsBySchedule.value[schedule.id].filter((s) => s.status === 'pending')
-    assert.equal(own.length, 1)
+      // Re-proposing an unchanged draft is a no-op; editing again upserts the
+      // same row (still one pending suggestion for physics).
+      assert.equal(await store.proposeDraft(schedule.id, ''), null)
+      store.moveOffering(schedule.id, 'CS', '220', 'A', {
+        fromDay: 'T',
+        toDay: 'T',
+        group: 'TR',
+        time: '8:00-9:45',
+      })
+      const revised = await store.proposeDraft(schedule.id, '')
+      assert.ok(revised)
+      assert.equal(revised.id, proposed.id)
+      assert.equal(revised.operations[0].op.changes.time, '8:00-9:45')
+      const own = store.suggestionsBySchedule.value[schedule.id].filter((s) => s.status === 'pending')
+      assert.equal(own.length, 1)
 
-    // The owner approves it; physics sees the resolved history.
-    // The upserted revision replaced the ops (new child rows), so approve the
-    // current revision's op id.
-    const approved = await registrar.post(`/api/suggestions/${revised.id}/approve`, {
-      opId: revised.operations[0].id,
-    })
-    assert.equal(approved.status, 200)
-    await store.refreshSuggestions(schedule.id)
-    const history = store.suggestionsBySchedule.value[schedule.id]
-    assert.equal(history[0].status, 'approved')
+      // The owner approves it; physics sees the resolved history.
+      // The upserted revision replaced the ops (new child rows), so approve the
+      // current revision's op id.
+      const approved = await registrar.post(`/api/suggestions/${revised.id}/approve`, {
+        opId: revised.operations[0].id,
+      })
+      assert.equal(approved.status, 200)
+      await store.refreshSuggestions(schedule.id)
+      const history = store.suggestionsBySchedule.value[schedule.id]
+      assert.equal(history[0].status, 'approved')
 
-    // The term moved on (owner added a course directly). A NEW suggest session
-    // replays physics' own pending ops onto the fresh base: another proposal
-    // (BIO -> TR) survives, while the owner's additions stay part of the base.
-    const withBio = [
-      { ...COURSE, days: 'TR', time: '8:00-9:45' },
-      { prefix: 'BIO', number: '161', section: 'A', days: 'MWF', time: '8:00-9:10' },
-    ]
-    await registrar.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: withBio })
-    await store.refreshSuggestions(schedule.id)
-    await store.setEditingSchedule(null)
-    assert.equal(await store.setEditingSchedule(schedule.id, 'suggest'), true)
+      // The term moved on (owner added a course directly). A NEW suggest session
+      // replays physics' own pending ops onto the fresh base: another proposal
+      // (BIO -> TR) survives, while the owner's additions stay part of the base.
+      const withBio = [
+        { ...COURSE, days: 'TR', time: '8:00-9:45' },
+        { prefix: 'BIO', number: '161', section: 'A', days: 'MWF', time: '8:00-9:10' },
+      ]
+      await registrar.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: withBio })
+      await store.refreshSuggestions(schedule.id)
+      await store.setEditingSchedule(null)
+      assert.equal(await store.setEditingSchedule(schedule.id, 'suggest'), true)
 
-    store.moveOffering(schedule.id, 'BIO', '161', 'A', {
-      fromDay: 'M',
-      toDay: 'T',
-      group: 'TR',
-      time: '14:15-16:00',
-    })
-    const bioProposal = await store.proposeDraft(schedule.id, '')
-    assert.ok(bioProposal)
-    assert.equal(bioProposal.operations.length, 1)
-    assert.equal(bioProposal.operations[0].op.cur.number, '161')
-    assert.equal(bioProposal.operations[0].resolution.status, 'pending')
+      store.moveOffering(schedule.id, 'BIO', '161', 'A', {
+        fromDay: 'M',
+        toDay: 'T',
+        group: 'TR',
+        time: '14:15-16:00',
+      })
+      const bioProposal = await store.proposeDraft(schedule.id, '')
+      assert.ok(bioProposal)
+      assert.equal(bioProposal.operations.length, 1)
+      assert.equal(bioProposal.operations[0].op.cur.number, '161')
+      assert.equal(bioProposal.operations[0].resolution.status, 'pending')
 
-    // The owner adds MAT 131 without approving BIO's proposal; physics re-
-    // enters suggest: the draft = fresh published state + replayed own ops.
-    const withMat = [
-      ...withBio,
-      { prefix: 'MAT', number: '131', section: 'A', days: 'MWF', time: '12:00-13:10' },
-    ]
-    await registrar.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: withMat })
-    await store.refreshSuggestions(schedule.id)
-    await store.setEditingSchedule(null)
-    assert.equal(await store.setEditingSchedule(schedule.id, 'suggest'), true)
+      // The owner adds MAT 131 without approving BIO's proposal; physics re-
+      // enters suggest: the draft = fresh published state + replayed own ops.
+      const withMat = [
+        ...withBio,
+        { prefix: 'MAT', number: '131', section: 'A', days: 'MWF', time: '12:00-13:10' },
+      ]
+      await registrar.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: withMat })
+      await store.refreshSuggestions(schedule.id)
+      await store.setEditingSchedule(null)
+      assert.equal(await store.setEditingSchedule(schedule.id, 'suggest'), true)
 
-    const draft = store.viewOfferings(store.scheduleById(schedule.id))
-    const byCode = (code) => draft.find((o) => `${o.prefix} ${o.number}` === code)
-    assert.ok(byCode('MAT 131'), 'owner addition stays in the base')
-    assert.equal(byCode('BIO 161').time, '14:15-16:00', 'own pending intent replayed')
-    assert.equal(byCode('CS 220').time, '8:00-9:45', 'approved state stays in the base')
+      const draft = store.viewOfferings(store.scheduleById(schedule.id))
+      const byCode = (code) => draft.find((o) => `${o.prefix} ${o.number}` === code)
+      assert.ok(byCode('MAT 131'), 'owner addition stays in the base')
+      assert.equal(byCode('BIO 161').time, '14:15-16:00', 'own pending intent replayed')
+      assert.equal(byCode('CS 220').time, '8:00-9:45', 'approved state stays in the base')
 
-    // physics may still withdraw the pending BIO proposal.
-    const bio = store.suggestionsBySchedule.value[schedule.id].find((s) => s.status === 'pending')
-    assert.ok(bio)
-    assert.ok(await store.withdrawSuggestion(bio.id))
-  })
+      // physics may still withdraw the pending BIO proposal.
+      const bio = store.suggestionsBySchedule.value[schedule.id].find((s) => s.status === 'pending')
+      assert.ok(bio)
+      assert.ok(await store.withdrawSuggestion(bio.id))
+    },
+    { adminUsernames: new Set(['registrar']) },
+  )
 })
 
 test('offline trail mirrors the lifecycle: propose, withdraw, propose again, self-approve', async () => {

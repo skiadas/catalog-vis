@@ -372,6 +372,7 @@
               type="text"
               placeholder="username"
               aria-label="Add viewer"
+              list="access-user-names"
               v-model="accessViewerDraft"
               @keydown.enter.prevent="addViewer"
             />
@@ -416,6 +417,11 @@
             </button>
           </div>
         </div>
+        <datalist id="access-user-names">
+          <option v-for="u in nameSuggestions" :key="u.username" :value="u.username">
+            {{ displayName(u.displayName || u.username) }}
+          </option>
+        </datalist>
         <p class="modal-intro">
           A listed suggester can always see the schedule too. Everyone signed in can see and propose on public
           schedules.
@@ -465,6 +471,7 @@ import { allCourses } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS, parseCsv } from '@major-vis/schedule-core'
 import { useModalFocus } from '../src/modalFocus.js'
 import { displayName } from '../src/names.js'
+import * as backend from '../src/backend.js'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
 import { ref, computed, watch } from 'vue'
@@ -662,6 +669,22 @@ export default {
     const accessSuggesterDraft = ref('')
     const accessFeedback = ref('')
     const savingAccess = ref(false)
+    // Directory autocomplete for the access lists: as either draft is typed,
+    // search the directory for matching accounts (debounced) and offer them
+    // through the shared datalist.
+    const nameSuggestions = ref([])
+    let nameSearchTimer = null
+    watch([accessViewerDraft, accessSuggesterDraft], ([viewer, suggester]) => {
+      clearTimeout(nameSearchTimer)
+      const q = String(viewer || suggester || '').trim()
+      if (!q) {
+        nameSuggestions.value = []
+        return
+      }
+      nameSearchTimer = setTimeout(async () => {
+        nameSuggestions.value = await backend.searchUsers(q)
+      }, 150)
+    })
     const openAccess = (s) => {
       if (editing.value) return
       accessSchedule.value = s
@@ -833,6 +856,7 @@ export default {
       saveAccess,
       accessBadge,
       accessTitle,
+      nameSuggestions,
       schedules,
       selectedScheduleIds,
       toggleSchedule,

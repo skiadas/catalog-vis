@@ -1088,3 +1088,45 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
 
   assertClean(errors)
 })
+
+test('admins maintain the user directory; access lists autocomplete from it', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page) // registrar is an admin (ADMIN_USERNAMES in the webServer env)
+
+  // The Directory button is visible to the admin.
+  await page.getByRole('button', { name: 'Directory' }).click()
+  const dir = page.locator('.modal[aria-labelledby="directory-title"]')
+  await dir.waitFor({ state: 'visible', timeout: 5000 })
+
+  // Add an account with a real name, then give it a department.
+  await dir.getByLabel('Directory username').fill('wahl')
+  await dir.getByLabel('Directory display name').fill('John Wahl')
+  await dir.locator('.directory-add').getByRole('button', { name: 'Add' }).click()
+  await expect(dir.getByText('Account added.')).toBeVisible()
+  const row = dir.locator('.directory-row', { hasText: 'wahl' })
+  await row.waitFor({ state: 'visible', timeout: 5000 })
+  await row.getByRole('button', { name: 'Add department for John Wahl' }).click()
+  await dir.getByLabel('Department prefix').fill('CS')
+  await dir.locator('.directory-dept-editor').getByRole('button', { name: 'Add' }).click()
+  await expect(row.locator('.directory-dept', { hasText: 'CS' })).toBeVisible()
+  await expect(dir.getByText('Saved.')).toBeVisible()
+  await dir.locator('.controls').getByRole('button', { name: 'Close' }).click()
+  await dir.waitFor({ state: 'detached', timeout: 5000 })
+
+  // The access dialog's list inputs autocomplete from the directory.
+  await createSchedule(page, 'Directory schedule')
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: 'Access for Directory schedule' }).click()
+  const access = page.locator('.modal[aria-labelledby="schedule-access-title"]')
+  await access.waitFor({ state: 'visible', timeout: 5000 })
+  await access.locator('#access-visibility').selectOption('shared')
+  await access.getByLabel('Add viewer').fill('wahl')
+  const options = access.locator('#access-user-names option')
+  await expect(options.first()).toHaveAttribute('value', 'wahl')
+  await expect(options.first()).toContainText('John Wahl')
+  await access.getByRole('button', { name: 'Cancel' }).click()
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } }) // close manage
+
+  assertClean(errors)
+})

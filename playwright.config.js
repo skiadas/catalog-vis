@@ -24,7 +24,7 @@ export default defineConfig({
     baseURL,
   },
   webServer: {
-    command: `npm run build && PORT=${PORT} HOST=127.0.0.1 DB_PATH="${join(
+    command: `npm run build && PORT=${PORT} HOST=127.0.0.1 ADMIN_USERNAMES=registrar DB_PATH="${join(
       mkdtempSync(join(tmpdir(), 'major-vis-e2e-')),
       'e2e.db',
     )}" node server/src/index.js`,

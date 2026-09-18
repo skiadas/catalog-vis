@@ -274,3 +274,63 @@ export async function withdrawSuggestion(id, opId) {
     return null
   }
 }
+
+// ---- User directory (admin) ---------------------------------------------
+
+export async function fetchAdminUsers() {
+  try {
+    const res = await fetch(`${apiBase}/admin/users`, { method: 'GET' })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data && data.users) || []
+  } catch {
+    return []
+  }
+}
+
+// Pre-creates (or links) an account: `{ username, displayName?, departments? }`.
+// Returns the directory entry or null.
+export async function createAdminUser(payload) {
+  try {
+    const res = await fetch(`${apiBase}/admin/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data && data.user) || null
+  } catch {
+    return null
+  }
+}
+
+// Updates a directory entry's `{ displayName?, departments? }`. Returns the
+// entry or null.
+export async function updateAdminUser(id, payload) {
+  try {
+    const res = await fetch(`${apiBase}/admin/users/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data && data.user) || null
+  } catch {
+    return null
+  }
+}
+
+// Username autocomplete over the directory: `q` matches username or display
+// name. Returns [{ username, displayName }] or [].
+export async function searchUsers(q) {
+  try {
+    const res = await fetch(`${apiBase}/users?q=${encodeURIComponent(q || '')}`, { method: 'GET' })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data && data.users) || []
+  } catch {
+    return []
+  }
+}

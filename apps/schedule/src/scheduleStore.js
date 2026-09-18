@@ -246,6 +246,10 @@ export async function resumeOnline() {
 
 export const currentUser = ref(null)
 
+// Whether the signed-in user is an administrator (the server's ADMIN_USERNAMES
+// config; the server includes the flag on every user object it returns).
+export const isAdmin = computed(() => Boolean(currentUser.value && currentUser.value.admin))
+
 // Loads the current user from the backend when in remote mode. No-op (null)
 // otherwise. Returns the user or null.
 export async function loadCurrentUser() {
