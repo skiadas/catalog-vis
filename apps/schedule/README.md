@@ -204,9 +204,12 @@ returning visitor with a live session loads the shared collection silently,
 no prompt. **Usernames display without their domain** (the server stores the
 canonical identity, e.g. the OIDC email; the app shows the local part) and
 directory entries supply real names where an admin has set them. Admins
-(`ADMIN_USERNAMES`) get a **Directory** button in the nav: a dialog listing
-every account with an editable real name and department chips (prefixes,
-autocompleted from the catalog). Suggestions are concurrent: any number of
+(`ADMIN_USERNAMES`) get a **Directory** link in the nav to a dedicated admin
+page (`#/admin`): the account list with editable real names and department
+chips (prefixes, autocompleted from the catalog), a filter, and a **bulk CSV
+import** (`username,displayName,departments`) for loading a whole roster at
+once. Non-admins who reach the URL see a denial state. Suggestions are
+concurrent: any number of
 departments may hold live pending proposals ("suggested moves"), visible to
 everyone who can see the schedule — pending suggestions render as dashed
 overlay blocks on the calendar (the "Show proposals" toggle, on by default),

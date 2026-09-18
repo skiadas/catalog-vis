@@ -102,6 +102,7 @@ GET    /api/users?q=                        -> { users }         (auth; director
 GET    /api/admin/users                     -> { users }         (admin)
 POST   /api/admin/users { username, displayName?, departments? } -> { user } (admin)
 PATCH  /api/admin/users/:id { displayName?, departments? }       -> { user } (admin)
+POST   /api/admin/users/import (text/csv body)                   -> { added, updated, errors } (admin)
 GET    /api/schedules?year=                 -> { schedules }     (auth; filtered to schedules the caller may view)
 POST   /api/schedules { name, year }        -> { schedule }      (creates 3 empty term parts)
 GET    /api/schedules/:id                   -> { schedule: { ..., terms } }  (viewers)
@@ -147,7 +148,19 @@ pre-created (`POST /api/admin/users`) before the person ever signs in; the
 departments are the scope used to decide whose suggestions may touch which
 courses (see below). Any signed-in user can autocomplete against the directory
 (`GET /api/users?q=`, matching username or display name, bounded) for the
-access lists.
+access lists. The admin app reaches all of this on its own page (`#/admin`).
+
+The directory also bulk-imports from a CSV (`POST /api/admin/users/import`,
+raw `text/csv` body) so a roster can be loaded in one go and the per-account UI
+reserved for small fixes. Columns are `username,displayName,departments`; the
+header row is optional, departments live in one cell separated by commas,
+semicolons, or whitespace, and bare usernames canonicalize through
+`AUTH_DOMAIN` exactly like login. Every row upserts by canonical username —
+unknown accounts are pre-created, known ones get display name + departments
+replaced (the import is authoritative for the rows it carries). A malformed row
+is never fatal: it comes back in `errors` as `{ row, reason }` (`row` is the
+1-based data-row number) and the rest of the file imports; the response counts
+`{ added, updated, errors }`. Parsing lives in `src/directory-import.js`.
 
 **Schedule access**: every schedule has two independent, owner-controlled
 settings. `visibility` — `private` (only the owner sees it), `shared` (the

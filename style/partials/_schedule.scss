@@ -1743,6 +1743,76 @@
   font-size: var(--font-sm);
 }
 
+/* The dedicated admin page (directory + bulk import): reuses the directory-*
+   row styles above, adds page layout, the import panel, and the filter. */
+.admin-page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3) var(--space-6);
+}
+.admin-head {
+  @include flex-row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.admin-title {
+  font-size: var(--font-xl);
+  font-weight: var(--weight-semibold);
+}
+a.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.admin-section-title {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-semibold);
+  margin-bottom: var(--space-2);
+}
+.admin-import,
+.admin-accounts {
+  margin-top: var(--space-4);
+}
+.admin-import-actions {
+  @include flex-row;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+.admin-file-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.admin-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.admin-file-label:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.admin-file-label.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.admin-import-errors {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+  color: var(--danger);
+  font-size: var(--font-sm);
+}
+.admin-denied {
+  @include surface;
+  padding: var(--space-4);
+  color: var(--text-muted);
+}
+
 /* Remote sign-in (compact cluster in the top-nav corner) */
 
 .schedule-auth-cluster {

@@ -647,6 +647,70 @@ test('suggestions export as md and csv', async () => {
   }
 })
 
+test('directory CSV import upserts accounts and reports row errors', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({
+    database,
+    services: ['schedule'],
+    authDomain: 'hanover.edu',
+    adminUsernames: new Set(['registrar@hanover.edu']),
+  })
+  const srv = await startTestServer(app)
+  try {
+    const registrar = srv.newClient()
+    await registrar.post('/api/auth/login', { username: 'registrar' })
+    // A pre-existing entry the import should update, plus new accounts.
+    await registrar.post('/api/admin/users', { username: 'wahl', displayName: 'Old Name' })
+    const csv = [
+      'username,displayName,departments',
+      'wahl,John Wahl,"CS, MATH"',
+      'cskiadas,Charilaos Skiadas,CS',
+      ',No Name,CS',
+      'broken,Someone,TOOLONGPREFIX',
+    ].join('\n')
+    const res = await registrar.postRaw('/api/admin/users/import', csv)
+    assert.equal(res.status, 200)
+    assert.deepEqual(res.json, {
+      added: 1,
+      updated: 1,
+      errors: [
+        { row: 3, reason: 'missing_username' },
+        { row: 4, reason: 'bad_departments' },
+      ],
+    })
+    const users = (await registrar.get('/api/admin/users')).json.users
+    const wahl = users.find((u) => u.username === 'wahl@hanover.edu')
+    assert.equal(wahl.displayName, 'John Wahl')
+    assert.deepEqual(wahl.departments, ['CS', 'MATH'])
+    const skiadas = users.find((u) => u.username === 'cskiadas@hanover.edu')
+    assert.deepEqual(skiadas.departments, ['CS'])
+    assert.ok(!users.some((u) => u.username === 'broken'))
+  } finally {
+    srv.close()
+    database.close()
+  }
+})
+
+test('directory CSV import is admin-only and rejects an empty file', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({ database, services: ['schedule'], adminUsernames: new Set(['registrar']) })
+  const srv = await startTestServer(app)
+  try {
+    const alice = srv.newClient()
+    await alice.post('/api/auth/login', { username: 'alice' })
+    const forbidden = await alice.postRaw('/api/admin/users/import', 'wahl,John Wahl,CS\n')
+    assert.equal(forbidden.status, 403)
+    const registrar = srv.newClient()
+    await registrar.post('/api/auth/login', { username: 'registrar' })
+    const empty = await registrar.postRaw('/api/admin/users/import', '   \n')
+    assert.equal(empty.status, 400)
+    assert.equal(empty.json.error, 'empty_csv')
+  } finally {
+    srv.close()
+    database.close()
+  }
+})
+
 test('suggestion exports name proposers by display name, then short username', async () => {
   const database = await openDb(':memory:')
   const app = createApp({ database, services: ['schedule'], adminUsernames: new Set(['registrar']) })

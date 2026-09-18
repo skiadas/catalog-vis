@@ -13,6 +13,7 @@ import express from 'express'
 import * as db from './db.js'
 import { createOidcProvider } from './auth/oidc.js'
 import { canonicalUsername, shortUsername } from './names.js'
+import { parseDirectoryCsv } from './directory-import.js'
 import { applyOperations, diffOfferings, describeChange } from '@major-vis/schedule-core/diff'
 
 const TERMS = ['F', 'W', 'S']
@@ -284,6 +285,35 @@ export function createApp({
     if (!entry) return res.status(404).json({ error: 'not_found' })
     res.json({ user: entry })
   })
+
+  // Bulk-imports the directory from an uploaded CSV (format in
+  // directory-import.js). Upserts by canonical username: unknown accounts are
+  // pre-created, known ones get their display name + departments replaced. The
+  // import is authoritative for the rows it carries; per-row problems come back
+  // in `errors` and never block the rest of the file.
+  app.post(
+    '/api/admin/users/import',
+    requireAdmin,
+    express.text({ type: ['text/csv', 'text/plain'], limit: '2mb' }),
+    (req, res) => {
+      const text = typeof req.body === 'string' ? req.body : ''
+      if (!text.trim()) return res.status(400).json({ error: 'empty_csv' })
+      const { rows, errors } = parseDirectoryCsv(text, authDomain)
+      let added = 0
+      let updated = 0
+      for (const row of rows) {
+        const existed = Boolean(db.userByUsername(database, row.username))
+        const user = db.ensureUser(database, row.username)
+        db.setUserDirectory(database, user.id, {
+          displayName: row.displayName,
+          departments: row.departments,
+        })
+        if (existed) updated += 1
+        else added += 1
+      }
+      res.json({ added, updated, errors })
+    },
+  )
 
   // Username autocomplete for the access dialogs: any signed-in user can look
   // up accounts in the directory by username or display name (names only —

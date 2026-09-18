@@ -1118,37 +1118,54 @@ test('admins maintain the user directory; access lists autocomplete from it', as
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page) // registrar is an admin (ADMIN_USERNAMES in the webServer env)
 
-  // The Directory button is visible to the admin.
-  await page.getByRole('button', { name: 'Directory' }).click()
-  const dir = page.locator('.modal[aria-labelledby="directory-title"]')
-  await dir.waitFor({ state: 'visible', timeout: 5000 })
+  // The Directory link is visible to the admin and opens the admin page.
+  await page.getByRole('link', { name: 'Directory' }).click()
+  const admin = page.locator('.admin-page')
+  await admin.waitFor({ state: 'visible', timeout: 5000 })
+  expect(page.url()).toContain('#/admin')
 
   // Add an account with a real name, then give it a department.
-  await dir.getByLabel('Directory username').fill('wahl')
-  await dir.getByLabel('Directory display name').fill('John Wahl')
-  await dir.locator('.directory-add').getByRole('button', { name: 'Add' }).click()
-  await expect(dir.getByText('Account added.')).toBeVisible()
-  const row = dir.locator('.directory-row', { hasText: 'wahl' })
+  await admin.getByLabel('Directory username').fill('wahl')
+  await admin.getByLabel('Directory display name').fill('John Wahl')
+  await admin.locator('.directory-add').getByRole('button', { name: 'Add' }).click()
+  await expect(admin.getByText('Account added.')).toBeVisible()
+  const row = admin.locator('.directory-row', { hasText: 'wahl' })
   await row.waitFor({ state: 'visible', timeout: 5000 })
   await row.getByRole('button', { name: 'Add department for John Wahl' }).click()
-  await dir.getByLabel('Department prefix').fill('CS')
-  await dir.locator('.directory-dept-editor').getByRole('button', { name: 'Add' }).click()
+  await admin.getByLabel('Department prefix').fill('CS')
+  await admin.locator('.directory-dept-editor').getByRole('button', { name: 'Add' }).click()
   await expect(row.locator('.directory-dept', { hasText: 'CS' })).toBeVisible()
-  await expect(dir.getByText('Saved.')).toBeVisible()
+  await expect(admin.getByText('Saved.')).toBeVisible()
 
-  // The dialog scans clean and its new controls meet the 24px target size.
+  // Bulk import: a new account (departments in one quoted cell) and one bad row.
+  await admin.locator('#admin-import-file').setInputFiles({
+    name: 'directory.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('username,displayName,departments\nskia,Charilaos Skiadas,"CS, MATH"\n,No Name,CS\n'),
+  })
+  await expect(admin.getByText('Imported 1 new account and updated 0.')).toBeVisible()
+  await expect(admin.getByText('Row 2: missing username')).toBeVisible()
+  await expect(admin.locator('.directory-row', { hasText: 'skia' })).toBeVisible()
+
+  // The filter narrows the list to matching accounts.
+  await admin.getByLabel('Filter').fill('skia')
+  await expect(admin.locator('.directory-row')).toHaveCount(1)
+  await admin.getByLabel('Filter').fill('')
+
+  // The page scans clean and its small controls meet the 24px target size.
   await settle(page)
-  const dirViolations = await seriousViolations(page, '.modal[aria-labelledby="directory-title"]')
-  expect(brief(dirViolations), 'directory dialog').toEqual([])
+  const adminViolations = await seriousViolations(page, '.admin-page')
+  expect(brief(adminViolations), 'admin page').toEqual([])
   await assertTargetSize(
     page,
-    ['.directory-dept-remove', '.directory-dept-add', '.directory-name-edit'],
-    'directory dialog',
+    ['.directory-dept-remove', '.directory-dept-add', '.directory-name-edit', '.admin-file-label'],
+    'admin page',
   )
-  await dir.locator('.controls').getByRole('button', { name: 'Close' }).click()
-  await dir.waitFor({ state: 'detached', timeout: 5000 })
 
-  // The access dialog's list inputs autocomplete from the directory.
+  // Back to the schedules, where the access dialog autocompletes from the
+  // directory we just populated.
+  await admin.getByRole('link', { name: '← Schedules' }).click()
+  await page.getByRole('button', { name: /Your schedules/ }).waitFor({ timeout: 5000 })
   await createSchedule(page, 'Directory schedule')
   await page.getByRole('button', { name: /Your schedules/ }).click()
   await page.getByRole('button', { name: 'Access for Directory schedule' }).click()
@@ -1162,5 +1179,17 @@ test('admins maintain the user directory; access lists autocomplete from it', as
   await access.getByRole('button', { name: 'Cancel' }).click()
   await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } }) // close manage
 
+  assertClean(errors)
+})
+
+test('non-admins cannot open the admin page', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'alice')
+  // The header has no admin link, and a direct visit shows the denial state.
+  await expect(page.getByRole('link', { name: 'Directory' })).toHaveCount(0)
+  await page.goto('/#/admin')
+  await expect(page.locator('.admin-denied')).toBeVisible()
+  await expect(page.getByText('Only administrators can manage the user directory.')).toBeVisible()
   assertClean(errors)
 })

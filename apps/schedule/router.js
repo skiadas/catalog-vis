@@ -5,10 +5,16 @@
 // links unchanged.
 import { createRouter, createWebHashHistory } from 'vue-router'
 import ScheduleApp from './components/ScheduleApp.vue'
+import AdminPage from './components/AdminPage.vue'
 
 /** @type {import('vue-router').RouteRecordRaw[]} */
 const routes = [
   { path: '/', name: 'schedule-grid', component: ScheduleApp, meta: { scheduleView: 'grid' } },
+  {
+    path: '/admin',
+    name: 'admin',
+    component: AdminPage,
+  },
   { path: '/day/:day', name: 'schedule-day', component: ScheduleApp, meta: { scheduleView: 'day' } },
   {
     path: '/slot/:day/:time',

@@ -14,17 +14,17 @@ export async function startTestServer(app) {
   const base = `http://127.0.0.1:${port}`
 
   function makeClient(cookies = {}) {
-    async function request(method, path, body) {
+    async function request(method, path, body, contentType) {
       const headers = /** @type {Record<string, string>} */ ({})
       const jar = Object.entries(cookies)
         .map(([k, v]) => `${k}=${v}`)
         .join('; ')
       if (jar) headers.Cookie = jar
-      if (body !== undefined) headers['Content-Type'] = 'application/json'
+      if (body !== undefined) headers['Content-Type'] = contentType || 'application/json'
       const res = await fetch(base + path, {
         method,
         headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
+        body: body !== undefined ? (contentType ? String(body) : JSON.stringify(body)) : undefined,
       })
       const setCookies = res.headers.getSetCookie ? res.headers.getSetCookie() : []
       for (const sc of setCookies) {
@@ -47,6 +47,7 @@ export async function startTestServer(app) {
       put: (p, b) => request('PUT', p, b),
       patch: (p, b) => request('PATCH', p, b),
       del: (p) => request('DELETE', p),
+      postRaw: (p, text, type = 'text/csv') => request('POST', p, text, type),
     }
   }
 

@@ -336,6 +336,22 @@ export async function updateAdminUser(id, payload) {
   }
 }
 
+// Bulk-imports the directory from a CSV's text (format documented in the admin
+// page). Returns `{ added, updated, errors }` or null when the request failed.
+export async function importDirectory(csv) {
+  try {
+    const res = await fetch(`${apiBase}/admin/users/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/csv' },
+      body: String(csv ?? ''),
+    })
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
 // Username autocomplete over the directory: `q` matches username or display
 // name. Returns [{ username, displayName }] or [].
 export async function searchUsers(q) {
