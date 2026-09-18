@@ -36,3 +36,7 @@ catalog_issues.html
 
 # Server runtime DB
 server/data/
+
+# Scraped user-directory import (tools/catalog-pipeline/scrape_faculty.py) —
+# personal contact data, loaded through the admin page, never committed
+directory.csv
