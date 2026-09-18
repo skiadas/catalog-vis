@@ -373,15 +373,9 @@
               placeholder="username"
               aria-label="Add viewer"
               v-model="accessViewerDraft"
-              @keydown.enter.prevent="addAccessName(accessViewers, accessViewerDraft)"
+              @keydown.enter.prevent="addViewer"
             />
-            <button
-              class="filter-btn"
-              :disabled="!accessViewerDraft.trim()"
-              @click="addAccessName(accessViewers, accessViewerDraft)"
-            >
-              Add
-            </button>
+            <button class="filter-btn" :disabled="!accessViewerDraft.trim()" @click="addViewer">Add</button>
           </div>
         </div>
         <div class="field">
@@ -415,13 +409,9 @@
               placeholder="username"
               aria-label="Add suggester"
               v-model="accessSuggesterDraft"
-              @keydown.enter.prevent="addAccessName(accessSuggesters, accessSuggesterDraft)"
+              @keydown.enter.prevent="addSuggester"
             />
-            <button
-              class="filter-btn"
-              :disabled="!accessSuggesterDraft.trim()"
-              @click="addAccessName(accessSuggesters, accessSuggesterDraft)"
-            >
+            <button class="filter-btn" :disabled="!accessSuggesterDraft.trim()" @click="addSuggester">
               Add
             </button>
           </div>
@@ -477,7 +467,7 @@ import { useModalFocus } from '../src/modalFocus.js'
 import { displayName } from '../src/names.js'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 export default {
   name: 'ScheduleManage',
@@ -690,12 +680,23 @@ export default {
     }
     // Adds the draft name to a list editor (trimmed + lowercased; the server
     // does the full canonicalization on save).
-    const addAccessName = (list, draft) => {
-      const raw = draft.value.trim()
+    const addViewer = () => {
+      const raw = accessViewerDraft.value.trim()
       if (!raw) return
       const canonical = raw.toLowerCase()
-      if (!list.value.includes(canonical)) list.value = [...list.value, canonical]
-      draft.value = ''
+      if (!accessViewers.value.includes(canonical)) {
+        accessViewers.value = [...accessViewers.value, canonical]
+      }
+      accessViewerDraft.value = ''
+    }
+    const addSuggester = () => {
+      const raw = accessSuggesterDraft.value.trim()
+      if (!raw) return
+      const canonical = raw.toLowerCase()
+      if (!accessSuggesters.value.includes(canonical)) {
+        accessSuggesters.value = [...accessSuggesters.value, canonical]
+      }
+      accessSuggesterDraft.value = ''
     }
     const saveAccess = async () => {
       if (savingAccess.value || !accessSchedule.value) return
@@ -748,9 +749,9 @@ export default {
 
     const close = () => emit('close')
 
-    // The manage list, the create form, and the access dialog are all
-    // dialogs; gate each focus trap off while a child dialog is on top so
-    // only one trap listens at a time.
+    // The manage list and the create form it opens are all dialogs; gate
+    // each focus trap off while a child dialog is on top so only one trap
+    // listens at a time.
     const manageEl = ref(null)
     const createEl = ref(null)
     const accessEl = ref(null)
@@ -759,6 +760,21 @@ export default {
       showCreate.value = false
     })
     useModalFocus(showAccess, accessEl, closeAccess)
+    // The component stays mounted while the modal is closed (only the overlay
+    // is v-if'd), so instance state would otherwise leak across opens — most
+    // visibly the shared-section toggle and the open mode menu surviving a
+    // sign-out into the next user's session. Reset on close so every open
+    // starts from the documented defaults (own schedules first, shared one
+    // toggle away, no menu open).
+    watch(
+      () => props.isOpen,
+      (open) => {
+        if (!open) {
+          showShared.value = false
+          menuFor.value = null
+        }
+      },
+    )
 
     return {
       props,
@@ -812,7 +828,8 @@ export default {
       savingAccess,
       openAccess,
       closeAccess,
-      addAccessName,
+      addViewer,
+      addSuggester,
       saveAccess,
       accessBadge,
       accessTitle,

@@ -94,6 +94,17 @@ test('sign-in and schedule creation', async ({ page }) => {
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page)
   await createSchedule(page, 'Smoke schedule')
+  // Make it public so the sibling tests can treat it as a shared schedule
+  // (schedules are private by default; the Access dialog is the owner's
+  // control surface for opening one up).
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: 'Access for Smoke schedule' }).click()
+  const access = page.locator('.modal[aria-labelledby="schedule-access-title"]')
+  await access.waitFor({ state: 'visible', timeout: 5000 })
+  await access.locator('#access-visibility').selectOption('public')
+  await access.getByRole('button', { name: 'Save' }).click()
+  await access.waitFor({ state: 'detached', timeout: 5000 })
+  await page.keyboard.press('Escape') // close the manage modal
   assertClean(errors)
 })
 
@@ -664,6 +675,17 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await settle(page)
   const manageViolations = await seriousViolations(page)
   expect(brief(manageViolations), 'manage dialog').toEqual([])
+
+  // The access dialog (owner-only visibility/suggester controls) opens on top
+  // of the manage list.
+  await page.getByRole('button', { name: 'Access for Axe schedule' }).click()
+  await settle(page)
+  const accessViolations = await seriousViolations(page, '.modal[aria-labelledby="schedule-access-title"]')
+  expect(brief(accessViolations), 'access dialog').toEqual([])
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await page
+    .locator('.modal[aria-labelledby="schedule-access-title"]')
+    .waitFor({ state: 'detached', timeout: 5000 })
   // Own schedules come first: only this user's row is listed (with a delete
   // button), and the shared section is hidden by default.
   await expect(page.locator('.schedule-manage-owner', { hasText: 'You' })).toHaveCount(1)
@@ -697,6 +719,9 @@ test('main views and dialogs have no serious/critical accessibility violations',
     page.locator('.schedule-pill', { hasText: 'Smoke schedule' }).locator('.schedule-pill-owner'),
   ).toHaveText('(by registrar)')
   await page.getByRole('button', { name: /Your schedules/ }).click()
+  // The shared section starts hidden on every open (it resets when the modal
+  // closes), so reveal it again before touching the shared rows.
+  await page.getByRole('button', { name: 'Show shared' }).click()
   await page
     .locator('.schedule-manage-row', { hasText: 'Smoke schedule' })
     .getByRole('button', { name: 'Hide Smoke schedule' })
@@ -954,10 +979,7 @@ test('edit mode drags a course by its row onto an empty slot; the pencil never d
   await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
 
   // Edit mode on THAT schedule (the collection holds other schedules too).
-  await page
-    .locator('.schedule-pill', { hasText: 'Drag test' })
-    .locator('.schedule-pill-edit')
-    .click()
+  await page.locator('.schedule-pill', { hasText: 'Drag test' }).locator('.schedule-pill-edit').click()
   const menu = page.locator('.mode-menu')
   await menu.waitFor({ state: 'visible', timeout: 5000 })
   await menu.getByRole('button', { name: 'Edit schedule' }).click()
@@ -989,6 +1011,80 @@ test('edit mode drags a course by its row onto an empty slot; the pencil never d
   await dropzones.first().dispatchEvent('drop', { dataTransfer })
   await settle(page)
   await expect(block.locator('.filter-offering-code', { hasText: course })).toHaveCount(0)
+
+  assertClean(errors)
+})
+
+test('access: a shared schedule admits listed viewers; suggest gating follows the suggesters list', async ({
+  page,
+}) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'alice')
+  await createSchedule(page, 'Access schedule')
+
+  // Alice opens the Access dialog on her row: shared visibility with bob +
+  // carol as viewers, and only bob as a suggester.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: 'Access for Access schedule' }).click()
+  const access = page.locator('.modal[aria-labelledby="schedule-access-title"]')
+  await access.waitFor({ state: 'visible', timeout: 5000 })
+  await access.locator('#access-visibility').selectOption('shared')
+  await access.getByLabel('Add viewer').fill('bob')
+  await access.locator('.access-add').first().getByRole('button', { name: 'Add' }).click()
+  await access.getByLabel('Add viewer').fill('carol')
+  await access.locator('.access-add').first().getByRole('button', { name: 'Add' }).click()
+  await access.locator('#access-suggest').selectOption('shared')
+  await access.getByLabel('Add suggester').fill('bob')
+  await access.locator('.access-add').last().getByRole('button', { name: 'Add' }).click()
+  await access.getByRole('button', { name: 'Save' }).click()
+  await access.waitFor({ state: 'detached', timeout: 5000 })
+  // The saved row is the server's answer: shared visibility, bob + carol as
+  // viewers, bob as suggester — the row badge summarizes it.
+  const saved = await page.evaluate(() => fetch('../../api/schedules').then((r) => r.json()))
+  const mine = saved.schedules.find((s) => s.name === 'Access schedule')
+  expect(mine.visibility).toBe('shared')
+  expect(mine.viewers).toEqual(['bob', 'carol'])
+  expect(mine.suggesters).toEqual(['bob'])
+  await expect(
+    page.locator('.schedule-manage-row', { hasText: 'Access schedule' }).locator('.schedule-manage-access'),
+  ).toHaveText('shared · 2 viewers')
+  // The manage modal stays open underneath, shared section hidden by default.
+  await page.getByRole('button', { name: 'Show shared' }).click()
+  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } }) // close the manage modal
+
+  // Bob: sees the schedule under shared; can suggest but not edit directly.
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  const cluster = page.locator('.schedule-auth-cluster')
+  await cluster.getByLabel('Username').fill('bob')
+  await cluster.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByText('Signed in as bob').waitFor({ timeout: 10000 })
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: 'Show shared' }).click()
+  const row = page.locator('.schedule-manage-row', { hasText: 'Access schedule' })
+  await row.waitFor({ state: 'visible', timeout: 5000 })
+  await row.getByRole('button', { name: 'Edit or suggest changes for Access schedule' }).click()
+  const menu = page.locator('.mode-menu')
+  await menu.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(menu.getByRole('button', { name: 'Edit schedule' })).toBeDisabled()
+  await expect(menu.getByRole('button', { name: 'Suggest changes' })).toBeEnabled()
+  await page.keyboard.press('Escape') // closes the menu and the manage modal
+
+  // Carol: a viewer but not a suggester — both actions are gated.
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await cluster.getByLabel('Username').fill('carol')
+  await cluster.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByText('Signed in as carol').waitFor({ timeout: 10000 })
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: 'Show shared' }).click()
+  const carolRow = page.locator('.schedule-manage-row', { hasText: 'Access schedule' })
+  await carolRow.waitFor({ state: 'visible', timeout: 5000 })
+  await carolRow.getByRole('button', { name: 'Edit or suggest changes for Access schedule' }).click()
+  const carolMenu = page.locator('.mode-menu')
+  await carolMenu.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(carolMenu.getByRole('button', { name: 'Edit schedule' })).toBeDisabled()
+  await expect(carolMenu.getByRole('button', { name: 'Suggest changes' })).toBeDisabled()
+  await page.keyboard.press('Escape')
 
   assertClean(errors)
 })
