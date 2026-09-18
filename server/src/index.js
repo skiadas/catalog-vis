@@ -43,6 +43,7 @@ export async function buildServer(env = process.env) {
     services: config.services,
     sessionCookie: config.sessionCookie,
     auth: config.auth,
+    authDomain: config.authDomain,
   })
 
   // Compress everything — the catalog artifacts are the big transfers.

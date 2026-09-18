@@ -1229,3 +1229,80 @@ test('history: rows expose editability and jump-to-edit opens the course editor'
     store.closeCourseEdit()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Access control (visibility + suggesters) in the store
+// ---------------------------------------------------------------------------
+
+test('updateScheduleAccess patches access server-side and replaces the row', async () => {
+  await withRemote(async ({ srv, store }) => {
+    await srv.post('/api/auth/login', { username: 'registrar' })
+    await store.signIn('registrar')
+    const id = await store.addSchedule('Access', '2026-27', [])
+
+    const saved = await store.updateScheduleAccess(id, {
+      visibility: 'shared',
+      suggestMode: 'shared',
+      viewers: ['Bob', 'bob'],
+      suggesters: ['bob'],
+    })
+    assert.ok(saved)
+    assert.equal(saved.visibility, 'shared')
+    assert.equal(saved.suggestMode, 'shared')
+    assert.deepEqual(saved.viewers, ['bob'], 'server canonicalizes + dedupes')
+    assert.deepEqual(saved.suggesters, ['bob'])
+
+    // The local row mirrors the server response.
+    const row = store.scheduleById(id)
+    assert.equal(row.visibility, 'shared')
+    assert.deepEqual(row.suggesters, ['bob'])
+
+    // A non-owner's attempt is refused and the row is untouched. (Alice isn't
+    // in the viewers list, so she doesn't even see the schedule locally.)
+    const alice = srv.newClient()
+    await alice.post('/api/auth/login', { username: 'alice' })
+    await store.signIn('alice')
+    assert.equal(store.scheduleById(id), null, 'shared list without alice hides the schedule')
+    const refused = await store.updateScheduleAccess(id, { visibility: 'public' })
+    assert.equal(refused, null)
+    await store.signIn('registrar')
+    assert.equal(store.scheduleById(id).visibility, 'shared')
+  })
+})
+
+test('canSuggest mirrors the server permission rules', async () => {
+  await withRemote(async ({ srv, store }) => {
+    const registrar = srv.newClient()
+    await registrar.post('/api/auth/login', { username: 'registrar' })
+    const created = (await registrar.post('/api/schedules', { name: 'Access' })).json.schedule
+    // Public so alice sees it; suggestions stay owner-only.
+    await registrar.patch(`/api/schedules/${created.id}`, { visibility: 'public' })
+
+    await store.signIn('alice')
+    const s = () => store.scheduleById(created.id)
+    assert.ok(s(), 'public visibility admits alice')
+    assert.equal(store.canSuggest(s()), false, 'owner-only suggest mode excludes alice')
+
+    // Shared mode with alice listed lets her propose.
+    await registrar.patch(`/api/schedules/${created.id}`, {
+      suggestMode: 'shared',
+      suggesters: ['alice'],
+    })
+    await store.signIn('alice')
+    assert.equal(store.canSuggest(s()), true, 'listed suggester can propose')
+
+    // Public suggest mode admits everyone.
+    await registrar.patch(`/api/schedules/${created.id}`, { suggestMode: 'public' })
+    await store.signIn('alice')
+    assert.equal(store.canSuggest(s()), true)
+
+    // Owners always can, even on a locked-down schedule.
+    await registrar.patch(`/api/schedules/${created.id}`, { visibility: 'private', suggestMode: 'owner' })
+    await store.signIn('registrar')
+    assert.equal(store.canSuggest(store.scheduleById(created.id)), true)
+
+    // Offline: everything is owned, so everything is suggestable.
+    store.setRemote(false)
+    assert.equal(store.canSuggest(store.scheduleById(created.id)), true)
+  })
+})

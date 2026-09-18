@@ -571,7 +571,13 @@ test('schedules list carries full term payloads', async () => {
     assert.equal(list.length, 1)
     const offering = list[0].terms.F.offerings[0]
     assert.deepEqual(
-      { prefix: offering.prefix, number: offering.number, section: offering.section, days: offering.days, time: offering.time },
+      {
+        prefix: offering.prefix,
+        number: offering.number,
+        section: offering.section,
+        days: offering.days,
+        time: offering.time,
+      },
       { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' },
     )
     assert.ok(offering.id, 'the server fills the content id for split-meeting rows')
@@ -722,10 +728,7 @@ test('new schedules are private by default: owner-only list, 404s for others', a
     assert.equal((await bob.get(`/api/schedules/${schedule.id}`)).status, 404)
     assert.equal((await bob.get(`/api/schedules/${schedule.id}/terms/F`)).status, 404)
     assert.equal((await bob.get(`/api/schedules/${schedule.id}/suggestions`)).status, 404)
-    assert.equal(
-      (await bob.get(`/api/schedules/${schedule.id}/suggestions/export?fmt=md`)).status,
-      404,
-    )
+    assert.equal((await bob.get(`/api/schedules/${schedule.id}/suggestions/export?fmt=md`)).status, 404)
 
     // Bob cannot propose either (same 404, not a 403).
     const sug = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
@@ -829,10 +832,7 @@ test('public visibility + suggest_mode open the schedule to every signed-in user
     assert.equal(sug.status, 201)
 
     // …but she cannot write terms directly (ownership is unchanged).
-    assert.equal(
-      (await carol.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [] })).status,
-      403,
-    )
+    assert.equal((await carol.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [] })).status, 403)
   } finally {
     srv.close()
     db.close()
@@ -843,28 +843,13 @@ test('access fields are owner-only and validated', async () => {
   const { srv, db, alice, bob, schedule } = await accessFixture()
   try {
     // Non-owner cannot touch access fields.
-    assert.equal(
-      (await bob.patch(`/api/schedules/${schedule.id}`, { visibility: 'public' })).status,
-      403,
-    )
+    assert.equal((await bob.patch(`/api/schedules/${schedule.id}`, { visibility: 'public' })).status, 403)
 
     // Bad enums and bad lists are refused.
-    assert.equal(
-      (await alice.patch(`/api/schedules/${schedule.id}`, { visibility: 'nope' })).status,
-      400,
-    )
-    assert.equal(
-      (await alice.patch(`/api/schedules/${schedule.id}`, { suggestMode: 'nope' })).status,
-      400,
-    )
-    assert.equal(
-      (await alice.patch(`/api/schedules/${schedule.id}`, { viewers: 'bob' })).status,
-      400,
-    )
-    assert.equal(
-      (await alice.patch(`/api/schedules/${schedule.id}`, { suggesters: [''] })).status,
-      400,
-    )
+    assert.equal((await alice.patch(`/api/schedules/${schedule.id}`, { visibility: 'nope' })).status, 400)
+    assert.equal((await alice.patch(`/api/schedules/${schedule.id}`, { suggestMode: 'nope' })).status, 400)
+    assert.equal((await alice.patch(`/api/schedules/${schedule.id}`, { viewers: 'bob' })).status, 400)
+    assert.equal((await alice.patch(`/api/schedules/${schedule.id}`, { suggesters: [''] })).status, 400)
     assert.equal(
       (await alice.patch(`/api/schedules/${schedule.id}`, { suggesters: ['x'.repeat(121)] })).status,
       400,
@@ -896,5 +881,75 @@ test('access fields are owner-only and validated', async () => {
   } finally {
     srv.close()
     db.close()
+  }
+})
+
+// ---- Username canonicalization (AUTH_DOMAIN) ----------------------------
+
+test('login canonicalizes bare usernames when a default domain is configured', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({
+    database,
+    services: ['schedule'],
+    authDomain: 'hanover.edu',
+  })
+  const srv = await startTestServer(app)
+  try {
+    // Bare and full forms resolve to the same account (lowercased).
+    const a = await srv.post('/api/auth/login', { username: 'CSkiadas' })
+    assert.equal(a.status, 200)
+    assert.equal(a.json.user.username, 'cskiadas@hanover.edu')
+    const b = await srv.post('/api/auth/login', { username: 'cskiadas@hanover.edu' })
+    assert.equal(b.status, 200)
+    assert.equal(b.json.user.username, 'cskiadas@hanover.edu')
+    const users = database.prepare('SELECT COUNT(*) AS n FROM users').get()
+    assert.equal(users.n, 1, 'one account for both spellings')
+
+    // An explicit different domain stays as typed.
+    const c = await srv.post('/api/auth/login', { username: 'wahl@elsewhere.org' })
+    assert.equal(c.status, 200)
+    assert.equal(c.json.user.username, 'wahl@elsewhere.org')
+
+    // Blank input is still refused.
+    assert.equal((await srv.post('/api/auth/login', { username: '  ' })).status, 400)
+  } finally {
+    srv.close()
+    database.close()
+  }
+})
+
+test('access lists canonicalize bare usernames with a default domain', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({
+    database,
+    services: ['schedule'],
+    authDomain: 'hanover.edu',
+  })
+  const srv = await startTestServer(app)
+  try {
+    const alice = srv.newClient()
+    const bob = srv.newClient()
+    assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
+    // Bob signs in with the full address the domain default produces.
+    assert.equal((await bob.post('/api/auth/login', { username: 'bob@hanover.edu' })).status, 200)
+    const { schedule } = (await alice.post('/api/schedules', { name: 'Canon' })).json
+
+    // "bob" in the list canonicalizes to bob@hanover.edu, which matches the
+    // signed-in identity.
+    const patched = await alice.patch(`/api/schedules/${schedule.id}`, {
+      visibility: 'shared',
+      suggestMode: 'shared',
+      viewers: ['bob'],
+      suggesters: ['BOB'],
+    })
+    assert.equal(patched.status, 200)
+    assert.deepEqual(patched.json.schedule.viewers, ['bob@hanover.edu'])
+    assert.deepEqual(patched.json.schedule.suggesters, ['bob@hanover.edu'])
+
+    // Bob therefore sees the schedule and can propose.
+    assert.equal((await bob.get(`/api/schedules/${schedule.id}`)).status, 200)
+  } finally {
+    srv.close()
+    database.close()
   }
 })

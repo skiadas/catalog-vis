@@ -122,5 +122,22 @@ export function loadConfig(env = process.env) {
     dbPath: path.resolve(env.DB_PATH || path.join(repoRoot, 'server', 'data', 'major-vis.db')),
     sessionCookie: env.SESSION_COOKIE || 'mjv_sid',
     auth: parseAuth(env),
+    // The default email domain (e.g. 'hanover.edu'): bare usernames typed at
+    // sign-in or in access lists are canonicalized to name@domain when set.
+    // Empty = no domain default; names are used exactly as typed (the username
+    // provider is the common case).
+    authDomain: parseAuthDomain(env.AUTH_DOMAIN),
   }
+}
+
+// Validates the AUTH_DOMAIN env: a bare domain (no scheme, no path, no @), or
+// empty when unset. Anything malformed fails fast at boot — a typo'd domain
+// would silently corrupt identity resolution.
+export function parseAuthDomain(raw) {
+  const value = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+  if (!value) return ''
+  if (/^[a-z0-9.-]+\.[a-z]{2,}$/.test(value) && !value.includes('@') && !value.includes('/')) return value
+  throw new Error('AUTH_DOMAIN must be a bare domain like "hanover.edu" (no scheme, path, or @)')
 }

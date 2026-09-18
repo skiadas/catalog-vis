@@ -16,7 +16,9 @@ npm run build && npm run serve
 # env: PORT (8080), HOST (0.0.0.0), DB_PATH (server/data/major-vis.db),
 #      SERVICES (comma list: program|schedule|planner; default schedule),
 #      STATIC_DIR (built static layout; defaults to the repo root),
-#      AUTH_PROVIDER (username | oidc; default username)
+#      AUTH_PROVIDER (username | oidc; default username),
+#      AUTH_DOMAIN (optional bare domain, e.g. hanover.edu: bare usernames
+#        typed at sign-in or in access lists canonicalize to name@domain)
 # oidc provider additionally requires: OIDC_ISSUER, OIDC_CLIENT_ID,
 #      OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI, and (recommended) PUBLIC_ORIGIN,
 #      COOKIE_SECURE=true — the server refuses to boot with any missing
@@ -136,9 +138,10 @@ or `public` (everyone proposes). Both default to the most restrictive option
 rows in a deployed DB pick up the same defaults on migration. A listed
 suggester can always view the schedule too, whatever the visibility mode — you
 must see a schedule to propose against it. `viewers`/`suggesters` are arrays of
-canonical usernames (trimmed + lowercased server-side; a full email and its
-bare local part are distinct entries until a default domain is configured).
-The list endpoints enforce all of this: `GET /api/schedules` returns only
+canonical usernames: trimmed + lowercased server-side, and when `AUTH_DOMAIN`
+is configured a bare name (`bob`) canonicalizes to `bob@hanover.edu` — the
+same canonicalization the username-provider login applies, so one spelling
+always refers to one account. The list endpoints enforce all of this: `GET /api/schedules` returns only
 viewable schedules, schedule/term/suggestion/export reads 404 for non-viewers
 (a private schedule never leaks its existence), suggestion POSTs 403
 `not_suggester` for viewers who may not propose, and the PATCH fields are

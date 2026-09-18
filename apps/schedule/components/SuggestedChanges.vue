@@ -46,7 +46,9 @@
           {{
             owned
               ? 'Pending changes from the departments are live: approve or reject each change individually; the trail keeps everything that happened.'
-              : `You don't own this schedule${ownerName ? ` (${ownerName} does)` : ''}. Proposals here are suggestions for the owner — make your changes via 'Suggest changes'.`
+              : canSuggestFor
+                ? `You don't own this schedule${ownerName ? ` (${displayName(ownerName)} does)` : ''}. Proposals here are suggestions for the owner — make your changes via 'Suggest changes'.`
+                : `You can view this schedule${ownerName ? ` (${displayName(ownerName)} owns it)` : ''}, but you aren't listed as a suggester — ask the owner to add you if you need to propose changes.`
           }}
         </p>
 
@@ -57,7 +59,7 @@
               <div class="suggested-head">
                 <span class="suggested-pill">{{ TERM_LABELS[s.term] || s.term }}</span>
                 <span class="suggested-who"
-                  >#{{ s.id }} · {{ s.proposer }}{{ isMine(s) ? ' (yours)' : '' }}</span
+                  >#{{ s.id }} · {{ displayName(s.proposer) }}{{ isMine(s) ? ' (yours)' : '' }}</span
                 >
                 <span class="suggested-status">{{ rowLabel(s) }}</span>
               </div>
@@ -122,6 +124,7 @@ import {
   proposeDraft,
   draftOperations,
   isOwner,
+  canSuggest,
   isSuggestSessionFor,
   scheduleById,
   currentUser,
@@ -131,6 +134,7 @@ import {
 import { TERM_LABELS } from '@major-vis/schedule-core'
 import { renderChanges, describeChange } from '@major-vis/schedule-core/diff'
 import { useModalFocus } from '../src/modalFocus.js'
+import { displayName } from '../src/names.js'
 
 import { ref, computed, watch } from 'vue'
 
@@ -150,6 +154,7 @@ export default {
     )
     const schedule = computed(() => (props.scheduleId ? scheduleById(props.scheduleId) : null))
     const owned = computed(() => isOwner(schedule.value))
+    const canSuggestFor = computed(() => canSuggest(schedule.value))
     const ownerName = computed(() => (schedule.value && schedule.value.owner) || '')
     const suggesting = computed(() => isSuggestSessionFor(props.scheduleId))
     const noteDraft = ref('')
@@ -246,6 +251,7 @@ export default {
       schedule,
       modalEl,
       owned,
+      canSuggestFor,
       ownerName,
       suggesting,
       suggestions,
@@ -255,6 +261,7 @@ export default {
       draftOps,
       changeText,
       describeChange,
+      displayName,
       opStatus,
       hasPending,
       rowLabel,

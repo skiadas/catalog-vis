@@ -12,6 +12,7 @@ import crypto from 'node:crypto'
 import express from 'express'
 import * as db from './db.js'
 import { createOidcProvider } from './auth/oidc.js'
+import { canonicalUsername } from './names.js'
 import { applyOperations, diffOfferings, describeChange } from '@major-vis/schedule-core/diff'
 
 const TERMS = ['F', 'W', 'S']
@@ -72,6 +73,7 @@ function hashToken(token) {
  *   services: string[],
  *   sessionCookie?: string,
  *   auth?: import('./config.js').AuthConfig,
+ *   authDomain?: string,
  * }} options
  */
 export function createApp({
@@ -79,6 +81,7 @@ export function createApp({
   services,
   sessionCookie = 'mjv_sid',
   auth = { provider: 'username', cookieSecure: false },
+  authDomain = '',
 }) {
   const app = express()
   const authProvider = auth.provider || 'username'
@@ -172,10 +175,8 @@ export function createApp({
     app.get('/api/auth/callback', oidc.callbackHandler)
   } else {
     app.post('/api/auth/login', (req, res) => {
-      const username = String((req.body && req.body.username) || '').trim()
-      if (!username || username.length > 120) {
-        return res.status(400).json({ error: 'username_required' })
-      }
+      const username = canonicalUsername(req.body && req.body.username, authDomain)
+      if (!username) return res.status(400).json({ error: 'username_required' })
       const user = db.ensureUser(database, username)
       startSession(res, user)
       res.json({ user: { id: user.id, username: user.username } })
@@ -229,9 +230,13 @@ export function createApp({
     if (suggestMode !== undefined && !['owner', 'shared', 'public'].includes(suggestMode))
       return res.status(400).json({ error: 'bad_suggest_mode' })
     const viewers =
-      req.body && req.body.viewers !== undefined ? db.normalizeNameList(req.body.viewers) : undefined
+      req.body && req.body.viewers !== undefined
+        ? db.normalizeNameList(req.body.viewers, authDomain)
+        : undefined
     const suggesters =
-      req.body && req.body.suggesters !== undefined ? db.normalizeNameList(req.body.suggesters) : undefined
+      req.body && req.body.suggesters !== undefined
+        ? db.normalizeNameList(req.body.suggesters, authDomain)
+        : undefined
     if (req.body && req.body.viewers !== undefined && !viewers)
       return res.status(400).json({ error: 'bad_viewers' })
     if (req.body && req.body.suggesters !== undefined && !suggesters)

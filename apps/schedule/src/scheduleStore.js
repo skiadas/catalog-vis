@@ -326,6 +326,44 @@ export function ownedSchedules() {
   return schedules.value.filter((s) => isOwner(s))
 }
 
+// Whether the current user may propose suggestions for `schedule` — the
+// client-side mirror of the server's rule: owners always can; 'public' opens
+// it to everyone; 'shared' only to the listed suggesters (matching by
+// canonical username). Offline everything is owned.
+export function canSuggest(schedule) {
+  if (!schedule) return false
+  if (isOwner(schedule)) return true
+  if (!remote.value || !currentUser.value) return false
+  if (schedule.suggestMode === 'public') return true
+  if (schedule.suggestMode === 'shared') {
+    const me = String(currentUser.value.username || '').toLowerCase()
+    return (schedule.suggesters || []).some((u) => String(u).toLowerCase() === me)
+  }
+  return false
+}
+
+// Updates a schedule's access settings (owner only): visibility/suggestMode
+// modes and the viewer/suggester username lists. The server canonicalizes the
+// lists and returns the stored schedule; the local row is replaced from that
+// response so the UI always mirrors what the server actually kept. Returns the
+// updated schedule or null when the server refused.
+/**
+ * @param {string} id
+ * @param {{
+ *   visibility?: 'private' | 'shared' | 'public';
+ *   suggestMode?: 'owner' | 'shared' | 'public';
+ *   viewers?: string[];
+ *   suggesters?: string[];
+ * }} [access]
+ */
+export async function updateScheduleAccess(id, { visibility, suggestMode, viewers, suggesters } = {}) {
+  if (!remote.value || typeof window === 'undefined') return null
+  const saved = await backend.updateScheduleMeta(id, { visibility, suggestMode, viewers, suggesters })
+  if (!saved) return null
+  schedules.value = schedules.value.map((s) => (s.id === id ? saved : s))
+  return saved
+}
+
 // Visible suggestions per schedule id (the server's visibility rule: everyone
 // sees pending from all proposers, plus their own history; the owner sees all).
 // Offline this mirrors the localStorage trail (single proposer: everything).

@@ -35,7 +35,7 @@
       </div>
       <div v-else-if="remote && currentUser" class="schedule-auth-cluster">
         <span class="schedule-auth-label" aria-live="polite"
-          >Signed in as <strong>{{ currentUser.username }}</strong></span
+          >Signed in as <strong>{{ displayName(currentUser.username) }}</strong></span
         >
         <button class="filter-btn" @click="doSignOut">Sign out</button>
       </div>
@@ -71,6 +71,7 @@ import {
 } from './src/scheduleStore.js'
 import ScheduleHelp from './components/ScheduleHelp.vue'
 import AuthPrompt from './components/AuthPrompt.vue'
+import { displayName } from './src/names.js'
 
 import { computed, ref } from 'vue'
 
@@ -114,6 +115,7 @@ export default {
       authError,
       doSignIn,
       doSignOut,
+      displayName,
       showHelp,
       toggleHelp,
     }

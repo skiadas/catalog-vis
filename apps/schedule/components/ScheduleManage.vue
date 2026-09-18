@@ -79,8 +79,31 @@
                     }}
                   </span>
                   <span class="schedule-manage-owner">{{ ownerLabel(s) }}</span>
+                  <span class="schedule-manage-access" :title="accessTitle(s)">{{ accessBadge(s) }}</span>
                 </div>
               </div>
+              <button
+                v-if="isOwner(s)"
+                class="schedule-manage-icon"
+                :aria-label="'Access for ' + s.name"
+                :title="'Who can see and suggest changes for ' + s.name"
+                @click="openAccess(s)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </button>
               <button
                 class="schedule-manage-eye"
                 :aria-label="(selectedScheduleIds.includes(s.id) ? 'Hide' : 'Show') + ' ' + s.name"
@@ -311,6 +334,112 @@
       </div>
     </div>
   </div>
+  <div v-if="showAccess" class="modal-overlay" @click.self="closeAccess">
+    <div ref="accessEl" class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-access-title">
+      <div class="modal-head">
+        <h3 id="schedule-access-title">Access — {{ accessSchedule && accessSchedule.name }}</h3>
+        <button class="modal-close" @click="closeAccess" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <p v-if="accessFeedback" class="suggested-feedback" role="status">{{ accessFeedback }}</p>
+        <div class="field">
+          <label for="access-visibility">Who can see this schedule?</label>
+          <select id="access-visibility" class="search-input" v-model="accessVisibility">
+            <option value="private">Only you</option>
+            <option value="shared">Listed users</option>
+            <option value="public">Everyone</option>
+          </select>
+        </div>
+        <div v-if="accessVisibility === 'shared'" class="field">
+          <span class="field-label">Viewers</span>
+          <div v-if="accessViewers.length" class="access-list">
+            <div v-for="u in accessViewers" :key="u" class="access-list-row">
+              <span>{{ displayName(u) }}</span>
+              <button
+                class="access-list-remove"
+                :aria-label="'Remove ' + displayName(u)"
+                title="Remove"
+                @click="accessViewers.splice(accessViewers.indexOf(u), 1)"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <div v-else class="access-list-empty">No viewers yet — the schedule stays private to you.</div>
+          <div class="access-add">
+            <input
+              class="search-input"
+              type="text"
+              placeholder="username"
+              aria-label="Add viewer"
+              v-model="accessViewerDraft"
+              @keydown.enter.prevent="addAccessName(accessViewers, accessViewerDraft)"
+            />
+            <button
+              class="filter-btn"
+              :disabled="!accessViewerDraft.trim()"
+              @click="addAccessName(accessViewers, accessViewerDraft)"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="access-suggest">Who can suggest changes?</label>
+          <select id="access-suggest" class="search-input" v-model="accessSuggestMode">
+            <option value="owner">Only you</option>
+            <option value="shared">Listed users</option>
+            <option value="public">Everyone</option>
+          </select>
+        </div>
+        <div v-if="accessSuggestMode === 'shared'" class="field">
+          <span class="field-label">Suggesters</span>
+          <div v-if="accessSuggesters.length" class="access-list">
+            <div v-for="u in accessSuggesters" :key="u" class="access-list-row">
+              <span>{{ displayName(u) }}</span>
+              <button
+                class="access-list-remove"
+                :aria-label="'Remove ' + displayName(u)"
+                title="Remove"
+                @click="accessSuggesters.splice(accessSuggesters.indexOf(u), 1)"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <div v-else class="access-list-empty">No suggesters yet — only you can propose changes.</div>
+          <div class="access-add">
+            <input
+              class="search-input"
+              type="text"
+              placeholder="username"
+              aria-label="Add suggester"
+              v-model="accessSuggesterDraft"
+              @keydown.enter.prevent="addAccessName(accessSuggesters, accessSuggesterDraft)"
+            />
+            <button
+              class="filter-btn"
+              :disabled="!accessSuggesterDraft.trim()"
+              @click="addAccessName(accessSuggesters, accessSuggesterDraft)"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+        <p class="modal-intro">
+          A listed suggester can always see the schedule too. Everyone signed in can see and propose on public
+          schedules.
+        </p>
+        <div class="controls">
+          <span class="controls-spacer"></span>
+          <button class="filter-btn" @click="closeAccess">Cancel</button>
+          <button class="filter-btn primary" :disabled="savingAccess" @click="saveAccess">
+            {{ savingAccess ? 'Saving…' : 'Save' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
   <input
     ref="csvInput"
     type="file"
@@ -340,10 +469,12 @@ import {
   viewOfferings,
   remote,
   isOwner,
+  updateScheduleAccess,
 } from '../src/scheduleStore.js'
 import { allCourses } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS, parseCsv } from '@major-vis/schedule-core'
 import { useModalFocus } from '../src/modalFocus.js'
+import { displayName } from '../src/names.js'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
 import { ref, computed } from 'vue'
@@ -376,11 +507,11 @@ export default {
       return schedules.value.filter((s) => {
         if (yr && s.year !== yr) return false
         if (!q) return true
+        const owner = String(s.owner || '')
         return (
           s.name.toLowerCase().includes(q) ||
-          String(s.owner || '')
-            .toLowerCase()
-            .includes(q)
+          owner.toLowerCase().includes(q) ||
+          displayName(owner).toLowerCase().includes(q)
         )
       })
     })
@@ -519,9 +650,85 @@ export default {
     }
 
     const removeSchedule = (id) => deleteSchedule(id)
-    // "You" for owned schedules, the owner's username otherwise (the server
-    // joins it into every row); offline everything is the single local user.
-    const ownerLabel = (s) => (isOwner(s) ? 'You' : s.owner ? `by ${s.owner}` : '')
+    // "You" for owned schedules, the owner's short username otherwise (the server
+    // joins the full identity into every row; humans see it without the
+    // domain). Offline everything is the single local user.
+    const ownerLabel = (s) => (isOwner(s) ? 'You' : s.owner ? `by ${displayName(s.owner)}` : '')
+
+    // ---- Access dialog (owner-only) --------------------------------------
+    // Who can see (visibility) and propose (suggestMode) for a schedule, with
+    // the viewer/suggester username lists when the mode is 'shared'. The
+    // dialog edits local copies and saves once; the server canonicalizes the
+    // lists and the response replaces the row, so the UI echoes stored truth.
+    const showAccess = ref(false)
+    const accessSchedule = ref(null)
+    /** @type {import('vue').Ref<'private' | 'shared' | 'public'>} */
+    const accessVisibility = ref('private')
+    /** @type {import('vue').Ref<'owner' | 'shared' | 'public'>} */
+    const accessSuggestMode = ref('owner')
+    const accessViewers = ref([])
+    const accessSuggesters = ref([])
+    const accessViewerDraft = ref('')
+    const accessSuggesterDraft = ref('')
+    const accessFeedback = ref('')
+    const savingAccess = ref(false)
+    const openAccess = (s) => {
+      if (editing.value) return
+      accessSchedule.value = s
+      accessVisibility.value = s.visibility || 'private'
+      accessSuggestMode.value = s.suggestMode || 'owner'
+      accessViewers.value = [...(s.viewers || [])]
+      accessSuggesters.value = [...(s.suggesters || [])]
+      accessViewerDraft.value = ''
+      accessSuggesterDraft.value = ''
+      accessFeedback.value = ''
+      showAccess.value = true
+    }
+    const closeAccess = () => {
+      showAccess.value = false
+      accessFeedback.value = ''
+    }
+    // Adds the draft name to a list editor (trimmed + lowercased; the server
+    // does the full canonicalization on save).
+    const addAccessName = (list, draft) => {
+      const raw = draft.value.trim()
+      if (!raw) return
+      const canonical = raw.toLowerCase()
+      if (!list.value.includes(canonical)) list.value = [...list.value, canonical]
+      draft.value = ''
+    }
+    const saveAccess = async () => {
+      if (savingAccess.value || !accessSchedule.value) return
+      savingAccess.value = true
+      accessFeedback.value = ''
+      const saved = await updateScheduleAccess(accessSchedule.value.id, {
+        visibility: accessVisibility.value,
+        suggestMode: accessSuggestMode.value,
+        viewers: accessViewers.value,
+        suggesters: accessSuggesters.value,
+      })
+      savingAccess.value = false
+      if (saved) {
+        closeAccess()
+        return
+      }
+      accessFeedback.value = 'Could not save — check the usernames and that you own this schedule.'
+    }
+    // The row badge + tooltip: a one-word summary for owners/others to read at
+    // a glance, full detail on hover.
+    const VIS_LABEL = { private: 'private', shared: 'shared', public: 'public' }
+    const SUGGEST_LABEL = { owner: 'only you', shared: 'listed users', public: 'everyone' }
+    const accessBadge = (s) => {
+      if (!s || !s.visibility) return ''
+      if (s.visibility === 'shared') {
+        return `${VIS_LABEL[s.visibility]} · ${(s.viewers || []).length} viewer${s.viewers.length === 1 ? '' : 's'}`
+      }
+      return VIS_LABEL[s.visibility] || ''
+    }
+    const accessTitle = (s) => {
+      if (!s) return ''
+      return `Visible to ${VIS_LABEL[s.visibility] || s.visibility}; suggestions: ${SUGGEST_LABEL[s.suggestMode] || s.suggestMode}`
+    }
     // Deleting is owner-only server-side; a hidden button beats a delete that
     // silently resurrects on the next refresh. Offline: everything is owned.
     const canDelete = (s) => !remote.value || isOwner(s)
@@ -541,15 +748,17 @@ export default {
 
     const close = () => emit('close')
 
-    // The manage list and the create form it opens are both dialogs; gate the
-    // list's focus trap off while the create form is on top so only one trap
-    // listens at a time.
+    // The manage list, the create form, and the access dialog are all
+    // dialogs; gate each focus trap off while a child dialog is on top so
+    // only one trap listens at a time.
     const manageEl = ref(null)
     const createEl = ref(null)
-    useModalFocus(() => props.isOpen && !showCreate.value, manageEl, close)
+    const accessEl = ref(null)
+    useModalFocus(() => props.isOpen && !showCreate.value && !showAccess.value, manageEl, close)
     useModalFocus(showCreate, createEl, () => {
       showCreate.value = false
     })
+    useModalFocus(showAccess, accessEl, closeAccess)
 
     return {
       props,
@@ -586,8 +795,27 @@ export default {
       removeSchedule,
       ownerLabel,
       canDelete,
+      displayName,
+      isOwner,
       remote,
       duplicateAndEdit,
+      showAccess,
+      accessSchedule,
+      accessEl,
+      accessVisibility,
+      accessSuggestMode,
+      accessViewers,
+      accessSuggesters,
+      accessViewerDraft,
+      accessSuggesterDraft,
+      accessFeedback,
+      savingAccess,
+      openAccess,
+      closeAccess,
+      addAccessName,
+      saveAccess,
+      accessBadge,
+      accessTitle,
       schedules,
       selectedScheduleIds,
       toggleSchedule,

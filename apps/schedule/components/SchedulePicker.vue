@@ -152,6 +152,7 @@ import {
   offeringSectionLabel,
 } from '@major-vis/schedule-core'
 import { onKeyActivate } from '../src/keyboardNav.js'
+import { displayName } from '../src/names.js'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
@@ -170,7 +171,7 @@ export default {
     const menuFor = ref(null)
     // Owner hint for a schedule: " (by registrar)" on shared rows, nothing for
     // the user's own ("You" everywhere would just be noise on the pills).
-    const ownerSuffix = (s) => (isOwner(s) ? '' : s.owner ? ` (by ${s.owner})` : '')
+    const ownerSuffix = (s) => (isOwner(s) ? '' : s.owner ? ` (by ${displayName(s.owner)})` : '')
 
     // CSV action menu: a single "CSV ▾" button in the picker's right cluster.
     // Clicking anywhere else on the page closes it.

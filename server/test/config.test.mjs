@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { loadConfig, parseAuth } from '../src/config.js'
+import { loadConfig, parseAuth, parseAuthDomain } from '../src/config.js'
 
 test('parseAuth defaults to username self-identify with insecure cookies off', () => {
   assert.deepEqual(parseAuth({}), { provider: 'username', cookieSecure: false })
@@ -35,7 +35,10 @@ test('parseAuth requires the oidc coordinates and validates their URLs', () => {
     () => parseAuth({ ...complete, OIDC_REDIRECT_URI: 'not a url' }),
     /OIDC_REDIRECT_URI must be a valid URL/,
   )
-  assert.throws(() => parseAuth({ ...complete, PUBLIC_ORIGIN: 'not a url' }), /PUBLIC_ORIGIN must be a valid URL/)
+  assert.throws(
+    () => parseAuth({ ...complete, PUBLIC_ORIGIN: 'not a url' }),
+    /PUBLIC_ORIGIN must be a valid URL/,
+  )
 })
 
 test('parseAuth allows a loopback http issuer only outside production', () => {
@@ -55,4 +58,19 @@ test('loadConfig exposes the auth slice', () => {
   const config = loadConfig({})
   assert.equal(config.auth.provider, 'username')
   assert.equal(config.auth.cookieSecure, false)
+})
+
+test('parseAuthDomain accepts a bare domain and rejects malformed ones', () => {
+  assert.equal(parseAuthDomain(undefined), '')
+  assert.equal(parseAuthDomain(''), '')
+  assert.equal(parseAuthDomain('  HANOVER.EDU '), 'hanover.edu')
+  assert.equal(parseAuthDomain('sub.example.org'), 'sub.example.org')
+  for (const bad of ['https://hanover.edu', 'hanover.edu/path', '@hanover.edu', 'no-dot', 'a b']) {
+    assert.throws(() => parseAuthDomain(bad), /AUTH_DOMAIN must be a bare domain/)
+  }
+})
+
+test('loadConfig exposes authDomain', () => {
+  assert.equal(loadConfig({}).authDomain, '')
+  assert.equal(loadConfig({ AUTH_DOMAIN: 'Hanover.edu' }).authDomain, 'hanover.edu')
 })

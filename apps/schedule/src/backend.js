@@ -88,18 +88,27 @@ export async function fetchTerm(id, term) {
   }
 }
 
-// Replaces a schedule's metadata (name/status) server-side. Both fields are
-// optional; a missing field is left untouched on the server.
+// Replaces a schedule's metadata (name/status/access) server-side. All fields
+// are optional; a missing field is left untouched on the server. `viewers` /
+// `suggesters` are username lists; the server canonicalizes them and returns
+// the stored form in the schedule row.
 /**
  * @param {string} id
- * @param {{ name?: string; status?: string }} meta
+ * @param {{
+ *   name?: string;
+ *   status?: string;
+ *   visibility?: 'private' | 'shared' | 'public';
+ *   suggestMode?: 'owner' | 'shared' | 'public';
+ *   viewers?: string[];
+ *   suggesters?: string[];
+ * }} meta
  */
-export async function updateScheduleMeta(id, { name, status }) {
+export async function updateScheduleMeta(id, { name, status, visibility, suggestMode, viewers, suggesters }) {
   try {
     const res = await fetch(`${apiBase}/schedules/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, status }),
+      body: JSON.stringify({ name, status, visibility, suggestMode, viewers, suggesters }),
     })
     if (!res.ok) return null
     const data = await res.json()

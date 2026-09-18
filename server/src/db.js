@@ -388,18 +388,20 @@ function storedNameList(str) {
 }
 
 // Canonicalizes + validates a username list for storage: each entry trimmed +
-// lowercased (canonicalUsername), deduped, non-empty, length-bounded. Returns
-// the list, or null when the input isn't a valid name list.
+// lowercased (canonicalUsername, with `domain` as the default when configured),
+// deduped, non-empty, length-bounded. Returns the list, or null when the input
+// isn't a valid name list.
 /**
  * @param {unknown} list
+ * @param {string} [domain]
  * @returns {string[] | null}
  */
-export function normalizeNameList(list) {
+export function normalizeNameList(list, domain = '') {
   if (!Array.isArray(list)) return null
   const out = []
   const seen = new Set()
   for (const raw of list) {
-    const name = canonicalUsername(String(raw))
+    const name = canonicalUsername(String(raw), domain)
     if (!name) return null
     if (!seen.has(name)) {
       seen.add(name)
