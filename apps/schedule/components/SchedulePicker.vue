@@ -1,7 +1,7 @@
 <template>
   <div class="schedule-picker">
     <div class="schedule-picker-left">
-      <button class="filter-btn" :class="{ active: props.active }" @click="manage">
+      <button class="filter-btn" @click="manage">
         Your schedules <span class="schedule-picker-count">{{ selectedScheduleIds.length }}</span>
       </button>
       <span
@@ -160,11 +160,8 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 export default {
   name: 'SchedulePicker',
   components: { ScheduleModeMenu },
-  props: {
-    active: { type: Boolean, default: false },
-  },
   emits: ['edit', 'manage', 'createterm'],
-  setup(props, { emit }) {
+  setup(_, { emit }) {
     const visibleSchedules = computed(() =>
       schedules.value.filter((s) => selectedScheduleIds.value.includes(s.id)),
     )
@@ -280,7 +277,6 @@ export default {
     const manage = () => emit('manage')
 
     return {
-      props,
       visibleSchedules,
       ownerSuffix,
       selectedScheduleIds,

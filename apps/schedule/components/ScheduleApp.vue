@@ -1,6 +1,6 @@
 <template>
   <div v-if="schedule">
-    <SchedulePicker :active="isManagePage" @edit="enterEdit" @manage="goManage()" />
+    <SchedulePicker v-if="!isManagePage" @edit="enterEdit" @manage="goManage()" />
 
     <div class="schedule-toolbar" v-if="!isManagePage">
       <div class="seg" role="group" aria-label="View">

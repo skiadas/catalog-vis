@@ -6,14 +6,6 @@
         <button class="filter-btn" @click="close">← Back</button>
       </div>
       <div class="modal-body">
-        <p class="modal-intro" v-if="remote">
-          Your schedules come first. Shared ones are one search away — find them by name or owner, then toggle
-          them on to see them. Only owners can edit or delete a schedule; the rest accept suggested changes.
-        </p>
-        <p class="modal-intro" v-else>
-          These schedules live in this browser. Toggle which ones are displayed, generate new ones, or delete
-          schedules you no longer need.
-        </p>
         <div class="schedule-manage-tools">
           <input
             class="search-input schedule-manage-search"
@@ -791,7 +783,6 @@ export default {
       canDelete,
       displayName,
       isOwner,
-      remote,
       duplicateAndEdit,
       showAccess,
       accessSchedule,
