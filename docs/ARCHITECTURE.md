@@ -100,9 +100,12 @@ The schedule app also treats its own internal surfaces as deep links (hash
 history, `apps/schedule/router.js`): the grid (`#/`), day/slot/course/
 instructor views, the `#/schedules` management page, `#/schedule/<id>/access`
 (an overlay route over the manage page or the grid), and `#/admin`. The
-route-redesign plan (`docs/ROUTE_REDESIGN_PLAN.md`) extends this deliberately:
-a navigational hub is a page, a surface that operates on the grid's content is
-an overlay route.
+edit/suggest session is orthogonal to the view, so it rides in the query
+(`#/day/M?mode=edit&id=<id>`) rather than the path — the view routes keep
+their own params and the session survives view switches. The route-redesign
+plan (`docs/ROUTE_REDESIGN_PLAN.md`) extends this deliberately: a navigational
+hub is a page, a surface that operates on the grid's content is an overlay
+route.
 
 ## What each piece needs from the contract
 

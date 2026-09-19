@@ -1,7 +1,7 @@
 <template>
   <span
     class="slot-pill"
-    :class="{ 'filter-colored': filterActive, editable, proposed, removed }"
+    :class="{ 'filter-colored': filterActive, editable, proposed, removed, reference }"
     :style="filterActive ? { backgroundColor: color } : {}"
     :draggable="draggable"
     :title="pillTitle"
@@ -75,6 +75,7 @@ import {
   offeringSectionLabel,
 } from '@major-vis/schedule-core'
 import { onKeyActivate } from '../src/keyboardNav.js'
+import { isReferenceItem } from '../src/scheduleStore.js'
 import { setDragGhost } from '../scheduleDrag.js'
 
 import { computed } from 'vue'
@@ -93,6 +94,7 @@ export default {
   },
   emits: ['edit'],
   setup(props, { emit }) {
+    const reference = computed(() => isReferenceItem(props.item))
     const courseName = computed(() => catalogCourseName(props.item.code))
     // Registrar-shaped identifiers (BIO 166 / BIO 166L, section A / A2) —
     // labs carry the L in the course number, no separate marker.
@@ -121,6 +123,7 @@ export default {
       sectionLabel,
       hasOthers,
       pillTitle,
+      reference,
       onKeyActivate,
       onDragStart,
       onEdit,

@@ -5,9 +5,15 @@
 // links unchanged. `meta.page` turns the shell into a standalone page
 // (`/schedules` is the "Your schedules" management surface, a page rather
 // than the modal it grew out of).
+//
+// The edit/suggest *session* rides in the query (`?mode=edit&id=3`) rather
+// than the path: it is orthogonal to the view, so every view route keeps its
+// own params and the session survives switching grid/day/slot/… — and stays
+// deep-linkable.
 import { createRouter, createWebHashHistory } from 'vue-router'
 import ScheduleApp from './components/ScheduleApp.vue'
 import AdminPage from './components/AdminPage.vue'
+import { editingDraft, editingScheduleId, clearDraft, activeTerm } from './src/scheduleStore.js'
 
 /** @type {import('vue-router').RouteRecordRaw[]} */
 const routes = [
@@ -56,23 +62,36 @@ export const router = createRouter({
   routes,
 })
 
+// The active session's `{ mode, id }`, or null. While one is active, in-app
+// view navigation carries it along and *replaces* the current history entry —
+// so the browser back button leaves the session (rather than walking back
+// through the views you visited while editing).
+function modeQuery() {
+  const q = router.currentRoute.value.query
+  return (q.mode === 'edit' || q.mode === 'suggest') && q.id != null ? { mode: q.mode, id: q.id } : null
+}
+function go(location) {
+  const mode = modeQuery()
+  if (mode) router.replace({ ...location, query: { ...location.query, ...mode } })
+  else router.push(location)
+}
 export function goSchedule() {
-  router.push({ name: 'schedule-grid' })
+  go({ name: 'schedule-grid' })
 }
 export function goScheduleGrid() {
-  router.push({ name: 'schedule-grid' })
+  go({ name: 'schedule-grid' })
 }
 export function goScheduleDay(day) {
-  router.push({ name: 'schedule-day', params: { day } })
+  go({ name: 'schedule-day', params: { day } })
 }
 export function goScheduleSlot(day, time) {
-  if (time) router.push({ name: 'schedule-slot', params: { day, time } })
+  if (time) go({ name: 'schedule-slot', params: { day, time } })
 }
 export function goScheduleCourse(code) {
-  router.push({ name: 'schedule-course', params: { code } })
+  go({ name: 'schedule-course', params: { code } })
 }
 export function goScheduleInstructor(name) {
-  router.push({ name: 'schedule-instructor', params: { instructor: name } })
+  go({ name: 'schedule-instructor', params: { instructor: name } })
 }
 export function goManage() {
   // Already there (the picker button stays visible on the page): a duplicate
@@ -83,6 +102,22 @@ export function goManage() {
 export function goAccess(id) {
   router.push({ name: 'schedule-access', params: { id: String(id) } })
 }
+// Enters an edit/suggest session. From a schedule view the view is kept (you
+// edit the day/grid you were looking at); from a page or overlay it starts on
+// the grid.
+export function goMode(id, role = 'edit') {
+  const cur = router.currentRoute.value
+  const onView = cur.meta.scheduleView && !cur.meta.page && !cur.meta.overlay
+  const base = onView ? { name: cur.name, params: { ...cur.params } } : { name: 'schedule-grid' }
+  router.push({ ...base, query: { mode: role === 'suggest' ? 'suggest' : 'edit', id: String(id) } })
+}
+// Leaves the session, staying on the current view (strips the mode query).
+export function exitMode() {
+  const q = { ...router.currentRoute.value.query }
+  delete q.mode
+  delete q.id
+  router.replace({ query: q })
+}
 // Leaves a full-page or overlay route (e.g. `/schedules`, `.../access`):
 // browser history is the intended close, but a deep link has nothing to go
 // back to in-app, so fall back to the grid rather than leaving the app.
@@ -90,3 +125,18 @@ export function goBackOrGrid() {
   if (window.history.state && window.history.state.back) router.back()
   else router.push({ name: 'schedule-grid' })
 }
+
+// Leaving a session with an unsaved suggest draft always asks first — however
+// you leave (Done, browser back, a header link). A clean session just ends;
+// the draft itself persists in the store, so a declined exit keeps you put.
+router.beforeEach((to, from) => {
+  const mode = from.query.mode
+  const leavingMode = (mode === 'edit' || mode === 'suggest') && to.query.mode !== mode
+  if (!leavingMode) return true
+  const draft = editingDraft.value
+  if (draft && draft.dirty) {
+    if (!window.confirm('Discard your unsaved draft changes?')) return false
+    clearDraft(editingScheduleId.value, activeTerm.value)
+  }
+  return true
+})

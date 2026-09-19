@@ -197,6 +197,11 @@ When a task touches a specific piece, read its README (map above) plus:
   it unmounts on leave, so its instance state (`menuFor`) cannot leak. The
   access dialog is an **overlay route** (`#/schedule/:id/access`): the shell
   renders it over the last non-overlay surface (remembered in `underlay`), so
-  that surface stays mounted underneath. The remaining dialogs (add-course,
-  suggestions, history) still use the `isOpen` prop pattern; the course editor
-  is mounted by store state (`courseEditTarget && editingId`).
+  that surface stays mounted underneath. The edit/suggest session is neither:
+  it rides in the query (`?mode=edit|suggest&id=<id>`) on the current view,
+  scopes the app to that schedule (other selected schedules render as dimmed
+  read-only references via `isReferenceItem`), and is entered/left by the route
+  watcher in `ScheduleApp` (the store mirrors it; a `router.beforeEach` guards
+  the unsaved suggest draft). The remaining dialogs (add-course, suggestions,
+  history) still use the `isOpen` prop pattern; the course editor is mounted by
+  store state (`courseEditTarget && editingId`).

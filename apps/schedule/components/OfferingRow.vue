@@ -1,7 +1,7 @@
 <template>
   <span
     class="filter-offering"
-    :class="{ proposed, removed }"
+    :class="{ proposed, removed, reference }"
     :style="{ backgroundColor: color }"
     :draggable="draggable"
     tabindex="0"
@@ -61,6 +61,9 @@
 import { goScheduleCourse } from '../router.js'
 import { instructorChip, offeringCodeLabel, offeringSectionLabel } from '@major-vis/schedule-core'
 import { onKeyActivate } from '../src/keyboardNav.js'
+import { isReferenceItem } from '../src/scheduleStore.js'
+
+import { computed } from 'vue'
 
 export default {
   name: 'OfferingRow',
@@ -74,8 +77,16 @@ export default {
     title: { type: String, default: '' },
   },
   emits: ['edit', 'dragstart'],
-  setup() {
-    return { goScheduleCourse, onKeyActivate, offeringCodeLabel, offeringSectionLabel, instructorChip }
+  setup(props) {
+    const reference = computed(() => isReferenceItem(props.item))
+    return {
+      goScheduleCourse,
+      onKeyActivate,
+      offeringCodeLabel,
+      offeringSectionLabel,
+      instructorChip,
+      reference,
+    }
   },
 }
 </script>

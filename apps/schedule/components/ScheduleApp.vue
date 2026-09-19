@@ -198,7 +198,7 @@
     <ScheduleFilters v-if="!isManagePage" :view="view" />
 
     <ScheduleManage v-if="isManagePage" @close="goBackOrGrid" @edit="enterEdit" @access="goAccess" />
-    <div v-else-if="!selectedScheduleIds.length" class="empty-state">
+    <div v-else-if="!selectedScheduleIds.length && !editingId" class="empty-state">
       <p v-if="schedules.length">
         {{ schedules.length }} schedule{{ schedules.length !== 1 ? 's' : '' }} available but none selected.
         <span v-if="remote"
@@ -254,6 +254,8 @@ import {
   goManage,
   goAccess,
   goBackOrGrid,
+  goMode,
+  exitMode,
 } from '../router.js'
 import { courseName } from '@major-vis/catalog-client'
 import {
@@ -264,6 +266,8 @@ import {
   schedule,
   schedules,
   selectedScheduleIds,
+  toggleSchedule,
+  collectionReady,
   editingScheduleId,
   editingRole,
   editingSchedule,
@@ -414,17 +418,45 @@ export default {
       () => editingScheduleId.value || selectedScheduleIds.value[0] || null,
     )
 
-    // Edit bar.
+    // Edit bar. The route's `?mode=edit|suggest&id=<id>` is canonical for
+    // entering/leaving a session; the store mirrors it (views read the store
+    // for edit affordances, and the session's schedule is what they edit).
     const editingId = editingScheduleId
     const editingName = computed(() => (editingSchedule.value ? editingSchedule.value.name : ''))
     const nameDraft = ref('')
-    const enterEdit = (id, role = 'edit') => {
-      setEditingSchedule(id, role)
-      nameDraft.value = editingSchedule.value ? editingSchedule.value.name : ''
-      // Editing from the manage page leaves it for the active view; the picker
-      // menu is already over a view, so it stays put.
-      if (isManagePage.value) goBackOrGrid()
-    }
+    const enterEdit = (id, role = 'edit') => goMode(id, role)
+    // Route params are strings; remote schedule ids are numbers. Match loosely.
+    const resolveScheduleId = (routeId) =>
+      schedules.value.find((s) => String(s.id) === String(routeId))?.id ?? null
+    // Route ↔ session sync. Entering ensures the target exists and joins the
+    // view (its references are whatever else is selected), then starts the
+    // session; the store refuses a non-owner edit deep link, which bounces out.
+    // `collectionReady` is a dependency so a deep link waits for the schedules
+    // to load (and for a sign-in) before deciding its target is missing.
+    watch(
+      () => [route.query.mode, route.query.id, collectionReady.value],
+      ([mode, routeId]) => {
+        if (mode !== 'edit' && mode !== 'suggest') {
+          if (editingScheduleId.value != null) setEditingSchedule(null)
+          return
+        }
+        const id = resolveScheduleId(routeId)
+        if (id == null) {
+          // Before the collection loads, don't call a deep link "missing".
+          if (!collectionReady.value) return
+          exitMode()
+          return
+        }
+        if (editingScheduleId.value === id && editingRole.value === mode) return
+        if (!selectedScheduleIds.value.includes(id)) toggleSchedule(id)
+        const entered = setEditingSchedule(id, mode)
+        nameDraft.value = editingSchedule.value ? editingSchedule.value.name : ''
+        Promise.resolve(entered).then((ok) => {
+          if (!ok) exitMode()
+        })
+      },
+      { immediate: true },
+    )
     const exitEdit = () => {
       // Leaving a suggest session with unsaved draft changes asks first.
       const draft = editingDraft.value
@@ -432,7 +464,7 @@ export default {
         if (!window.confirm('Discard your unsaved draft changes?')) return
         clearDraft(editingScheduleId.value, activeTerm.value)
       }
-      setEditingSchedule(null)
+      exitMode()
     }
 
     // Renames the edited schedule from the inline input (on Enter or blur).

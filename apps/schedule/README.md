@@ -117,6 +117,18 @@ one coherent proposal — never redundant intermediate moves — and re-enter a
 suggestion session by replaying their own pending ops onto the freshest
 published state.
 
+**A session is a focused mode, not a floating one.** The session rides in the
+URL query (`?mode=edit|suggest&id=<id>`) on top of whatever view you are on, so
+it is deep-linkable and survives switching grid/day/slot. Entering it scopes the
+app to that schedule: the edited schedule's courses are live, the **other
+selected schedules stay visible as dimmed, read-only references** (your current
+selection is the reference set — a CS/ENGR/MATH comparison carries straight
+into editing CS), the picker reduces to the schedule pills (the edited one
+tagged *Editing*, references removable with their eye), and manage/CSV/color
+are out of reach. Leaving — Done, browser back, or a header link — ends the
+session; an unsaved suggest draft asks before discarding. A deep link to edit a
+schedule you don't own (or that no longer exists) bounces back to the view.
+
 **Suggestions are department-scoped.** A non-owner's session only lets them
 touch courses in the departments their directory entry lists (no pencil, no
 drag for the rest), and the server refuses any proposal operation touching
@@ -248,6 +260,9 @@ button, and all mutating actions behave identically in both modes.
 - `#/schedules` — "Your schedules" management page
 - `#/schedule/:id/access` — owner-only access dialog (overlay)
 - `#/admin` — user directory (admins only)
+
+Any view can carry a session query: `?mode=edit&id=<id>` or
+`?mode=suggest&id=<id>` (e.g. `#/day/M?mode=edit&id=3`).
 
 ## Cross-app links
 

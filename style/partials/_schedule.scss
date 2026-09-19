@@ -657,6 +657,13 @@
   // gives it a couple pixels of breathing room instead of a knife-edge fit.
   min-height: 28px;
 }
+// Edit-session context: offerings from schedules other than the one being
+// edited render read-only and dimmed, so the live schedule is unmistakable.
+.filter-offering.reference,
+.slot-pill.reference {
+  opacity: 0.55;
+  filter: grayscale(0.85);
+}
 .filter-offering-main {
   display: flex;
   flex-direction: row;
@@ -1001,6 +1008,26 @@
 .schedule-pill .schedule-pill-owner {
   font-size: var(--font-xs);
   margin-left: 3px;
+}
+// Edit-session strip: the edited schedule is ringed and tagged; the other
+// selected schedules are dimmed references (their eye still removes them).
+.schedule-pill.editing {
+  outline: 2px solid var(--text-inverse);
+  outline-offset: 1px;
+}
+.schedule-pill.reference {
+  opacity: 0.55;
+  filter: grayscale(0.85);
+}
+.schedule-pill-editing {
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--overlay-hover);
+  color: var(--text-inverse);
 }
 .schedule-pill-hide {
   @include icon-btn(24px);

@@ -1,8 +1,8 @@
 # UX redesign — modal → route plan
 
-Status: **in progress** — phases 1 (manage → `#/schedules`) and 2 (access →
-`#/schedule/<id>/access`) have shipped; phases 3–4 remain. The docs-site plan
-is paused behind this.
+Status: **in progress** — phases 1 (manage → `#/schedules`), 2 (access →
+`#/schedule/<id>/access`), and 3 (mode → `?mode=edit|suggest&id=<id>`) have
+shipped; phase 4 remains. The docs-site plan is paused behind this.
 
 Motivation: the current schedule UX is overwhelming — nested dialogs, mode
 toggles, and controls stacked on top of each other. Routing is one lever to
@@ -32,7 +32,7 @@ genuinely sequential walkthroughs.
 | Manage list (search, year filter, 3 sections) | `ScheduleManage.vue` | a page in dialog clothing | `#/schedules` (done — **full page**, not overlay) |
 | Access dialog | `ScheduleAccess.vue` | stable, referential | `#/schedule/<id>/access` (done — overlay route) |
 | Create form / CSV import | `ScheduleManage.vue` | transient form state | surface may route; form state stays component-local |
-| Edit vs. suggest mode | store (`editingId`/`editingRole`) | stable, referential | `#/schedule/<id>/edit` / `…/suggest` |
+| Edit vs. suggest mode | store (`editingId`/`editingRole`) | stable, referential | `?mode=edit`/`?mode=suggest&id=<id>` (done — focused session) |
 | Suggested changes panel | `SuggestedChanges.vue` | referential | `#/schedule/<id>/proposals` |
 | Course editor | `ScheduleCourseEdit.vue` | referential, needs grid context | overlay route `#/schedule/<id>/course/<code>/edit` |
 | Add course | `ScheduleAddCourse.vue` | transient, contextual | keep modal (or fold into the editor) |
@@ -62,7 +62,17 @@ modal.
    instance state survive. First use of the shell's `meta.overlay` +
    underlay-memory mechanism, which phases 3–4 reuse. Non-owners reaching the
    URL directly get a denial state (the manage row button is owner-only).
-3. **Mode into the URL** — `edit`/`suggest` as a path segment or query.
+3. **Mode into the URL** (**done** — `?mode=edit|suggest&id=<id>`, a **focused
+   session** rather than a plain route). Mode is orthogonal to the view, so it
+   rides in the query and every view route keeps its params — the session
+   survives grid/day/slot switches and stays deep-linkable. Entering scopes the
+   app to the session: the edited schedule is live, the other selected
+   schedules are dimmed read-only **references** (the selection *is* the
+   reference set, so an existing comparison carries straight into editing),
+   the picker reduces to the pills, manage is unreachable, and leaving (Done,
+   back, a header link) ends the session — with a discard confirm on an
+   unsaved suggest draft. View navigation during a session replaces the entry,
+   so back leaves the session rather than walking its view history.
 4. **`#/schedule/<id>/proposals`** and the **course editor** as overlay routes.
 
 Order is by value; each step is independently shippable.

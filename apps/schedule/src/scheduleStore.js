@@ -62,6 +62,10 @@ export const remote = ref(false)
 // not the user signed in (or chose offline mode). Drives the auth-prompt
 // dialog and the offline badge in the top nav.
 export const serverDetected = ref(false)
+// True once the collection has been initialized — seeded offline, or loaded
+// from the backend after a session. A deep-linked edit/suggest session waits
+// for this before deciding its target is missing.
+export const collectionReady = ref(false)
 
 // Whether the auth-prompt dialog is open (server present, no session yet, or
 // the user is leaving offline mode).
@@ -330,6 +334,7 @@ async function loadServerState() {
   editingRole.value = null
   pendingDrafts.value = {}
   refreshAllSuggestions()
+  collectionReady.value = true
   return true
 }
 
@@ -1315,6 +1320,18 @@ export function setEditingSchedule(id, role = 'edit') {
     .then(() => true)
 }
 
+// An item shown only as read-only context while a different schedule is being
+// edited (a "reference"): a real offering that belongs to another schedule in
+// the current view. Proposed-overlay items (`prop:…`) belong to the session
+// itself, never a reference.
+export function isReferenceItem(item) {
+  const editing = editingScheduleId.value
+  if (editing == null || !item || item.sid == null) return false
+  const sid = item.sid
+  if (typeof sid === 'string' && sid.startsWith('prop:')) return false
+  return sid !== editing
+}
+
 // Reschedules a single offering of `scheduleId`'s active term into a standard
 // slot. The `move` context is `{ fromDay, toDay, group, time }` (see
 // `rescheduleDays`). `lab`/`labSeq` disambiguate a lab row from the lecture
@@ -1623,6 +1640,7 @@ export async function initScheduleCollection() {
   if (!config || localStorage.getItem(LS_OFFLINE) === '1') {
     setRemote(false)
     seedSampleSchedule()
+    collectionReady.value = true
     return
   }
   setRemote(true)

@@ -96,6 +96,19 @@ async function createSchedule(page, name, year = '') {
   await closeManage(page)
 }
 
+// Creates a populated schedule ("All departments") and leaves the manage page.
+// Used where the grid needs real rows rather than an empty schedule.
+async function createPopulatedSchedule(page, name) {
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.locator('#schedule-create-name').fill(name)
+  await page.getByRole('button', { name: 'All departments' }).click()
+  await page.getByRole('button', { name: 'Generate' }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await page.getByText(name).first().waitFor({ timeout: 10000 })
+  await closeManage(page)
+}
+
 test('sign-in and schedule creation', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
@@ -259,16 +272,143 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   await page.waitForURL(/#\/day\/M/, { timeout: 5000 })
   await settle(page)
 
-  // Entering edit mode from the day view stays on the day view: no grid
-  // redirect, the timeline's edit pencils appear, and the old
-  // "switch to the grid" hint is gone.
+  // Entering edit mode from the day view stays on the day view (the session
+  // rides in the query): no grid redirect, the timeline's edit pencils appear,
+  // and the old "switch to the grid" hint is gone.
   await page.locator('.schedule-pill-edit').first().click()
   await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
   await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
-  await expect(page).toHaveURL(/#\/day\/M/)
+  await expect(page).toHaveURL(/#\/day\/M\?.*mode=edit/)
   await expect(page.locator('.day-timeline .filter-offering-edit').first()).toBeVisible()
   await expect(page.getByText('Switch to the grid view')).toHaveCount(0)
 
+  assertClean(errors)
+})
+
+// The edit/suggest session is a focused mode: the edited schedule is live, the
+// other selected schedules are dimmed read-only references, manage is
+// unreachable, and leaving (Done, back, header link) ends the session.
+test('edit session: dimmed references, reduced strip, and leaving ends the session', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  // Its own account so the shared collection's schedules do not become
+  // references and break the row assertions.
+  await signIn(page, 'edit-session-user')
+  await createPopulatedSchedule(page, 'Session A')
+  await createPopulatedSchedule(page, 'Session B')
+
+  // Make sure both are shown (creating B may have changed the selection).
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  for (const name of ['Session A', 'Session B']) {
+    const show = page
+      .locator('.schedule-manage-row', { hasText: name })
+      .getByRole('button', { name: `Show ${name}` })
+    if (await show.count()) await show.click()
+  }
+  await closeManage(page)
+
+  // Enter edit on Session A from its pill.
+  const pillA = page.locator('.schedule-pill', { hasText: 'Session A' })
+  await pillA.locator('.schedule-pill-edit').click()
+  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await expect(page).toHaveURL(/\?mode=edit&id=/)
+  const editUrl = page.url()
+  // The strip tags the edited pill and demotes Session B to a reference.
+  await expect(pillA.locator('.schedule-pill-editing')).toHaveText('Editing')
+  await expect(page.locator('.schedule-pill', { hasText: 'Session B' })).toHaveClass(/reference/)
+  // Manage is unreachable while editing.
+  await expect(page.getByRole('button', { name: /Your schedules/ })).toHaveCount(0)
+  // Reference rows are dimmed and have no edit pencil; Session A's are live.
+  await expect(page.locator('.filter-offering.reference').first()).toBeVisible()
+  await expect(page.locator('.filter-offering.reference .filter-offering-edit')).toHaveCount(0)
+  await expect(page.locator('.filter-offering:not(.reference) .filter-offering-edit').first()).toBeVisible()
+  // The reference's eye drops it from the view (and its dimmed rows vanish).
+  await page.locator('.schedule-pill', { hasText: 'Session B' }).locator('.schedule-pill-hide').click()
+  await expect(page.locator('.schedule-pill', { hasText: 'Session B' })).toHaveCount(0)
+  await expect(page.locator('.filter-offering.reference')).toHaveCount(0)
+
+  // Done leaves the session (query stripped) but stays on the view.
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page).not.toHaveURL(/mode=edit/)
+  await expect(page.getByRole('button', { name: /Your schedules/ })).toBeVisible()
+
+  // The session is deep-linkable: reloading that URL resumes it.
+  await page.goto(editUrl, { waitUntil: 'networkidle' })
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await expect(page).toHaveURL(/\?mode=edit&id=/)
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page).not.toHaveURL(/mode=edit/)
+
+  // Clean up this account's schedules for later tests.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  for (const name of ['Session A', 'Session B']) {
+    await page
+      .locator('.schedule-manage-row', { hasText: name })
+      .getByRole('button', { name: `Delete ${name}` })
+      .click()
+  }
+  await closeManage(page)
+  assertClean(errors)
+})
+
+test('suggest session: leaving with an unsaved draft asks first', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'suggest-exit-user')
+  await createPopulatedSchedule(page, 'Suggest exit')
+
+  await page.locator('.schedule-pill-edit').first().click()
+  await page.locator('.mode-menu').getByRole('button', { name: 'Suggest changes' }).click()
+  await page.getByText('Suggestion mode:').first().waitFor({ timeout: 5000 })
+
+  // Make a change: it lands in the draft, not the schedule.
+  await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await em.locator('#course-edit-instructor').fill('Draft Person')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(page.getByRole('button', { name: /Propose changes/ })).toContainText('●')
+
+  // Declining the discard confirm keeps the session put.
+  page.once('dialog', (d) => d.dismiss())
+  await page.goBack()
+  await page.waitForTimeout(200)
+  await expect(page).toHaveURL(/mode=suggest/)
+  await expect(page.getByText('Suggestion mode:')).toBeVisible()
+
+  // Accepting discards the draft and leaves the session.
+  page.once('dialog', (d) => d.accept())
+  await page.goBack()
+  await expect(page).not.toHaveURL(/mode=/)
+  await expect(page.getByText('Suggestion mode:')).toHaveCount(0)
+
+  // Clean up this account's schedule.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Suggest exit' })
+    .getByRole('button', { name: 'Delete Suggest exit' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
+test('edit session guard: deep links you cannot edit bounce back to the view', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'guard-user')
+  // A missing schedule id leaves the mode.
+  await page.goto('/#/?mode=edit&id=does-not-exist', { waitUntil: 'networkidle' })
+  await expect(page).not.toHaveURL(/mode=/)
+  await expect(page.getByText('Edit mode:')).toHaveCount(0)
+  // A schedule this user does not own refuses the direct edit deep link (the
+  // registrar's public 'Smoke schedule' from the earlier test).
+  const all = await page.evaluate(() => fetch('../../api/schedules').then((r) => r.json()))
+  const smoke = all.schedules.find((s) => s.name === 'Smoke schedule')
+  await page.goto(`/#/?mode=edit&id=${smoke.id}`, { waitUntil: 'networkidle' })
+  await expect(page).not.toHaveURL(/mode=/)
+  await expect(page.getByText('Edit mode:')).toHaveCount(0)
   assertClean(errors)
 })
 

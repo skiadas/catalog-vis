@@ -1,25 +1,30 @@
 <template>
   <div class="schedule-picker">
     <div class="schedule-picker-left">
-      <button class="filter-btn" @click="manage">
+      <button v-if="!editMode" class="filter-btn" @click="manage">
         Your schedules <span class="schedule-picker-count">{{ selectedScheduleIds.length }}</span>
       </button>
       <span
         v-for="s in visibleSchedules"
         :key="s.id"
         class="schedule-pill"
-        :class="{ 'menu-open': menuFor === s.id }"
+        :class="{
+          'menu-open': menuFor === s.id,
+          editing: editMode && s.id === editingId,
+          reference: editMode && s.id !== editingId,
+        }"
         :style="{ backgroundColor: colorForSchedule(s.id) }"
-        :title="'Hide ' + s.name + ownerSuffix(s)"
+        :title="editMode && s.id === editingId ? s.name : 'Hide ' + s.name + ownerSuffix(s)"
         tabindex="0"
-        @click="toggleSchedule(s.id)"
-        @keydown="onKeyActivate($event, () => toggleSchedule(s.id))"
+        @click="onPill(s)"
+        @keydown="onKeyActivate($event, () => onPill(s))"
       >
         <span class="schedule-pill-label"
           >{{ s.name
           }}<span v-if="ownerSuffix(s)" class="schedule-pill-owner">{{ ownerSuffix(s) }}</span></span
         >
-        <span class="mode-menu-wrap">
+        <span v-if="editMode && s.id === editingId" class="schedule-pill-editing">Editing</span>
+        <span v-if="!editMode" class="mode-menu-wrap">
           <button
             class="schedule-pill-edit"
             :class="{ active: menuFor === s.id }"
@@ -44,6 +49,7 @@
           <ScheduleModeMenu :schedule="s" :open="menuFor === s.id" @mode="edit" @close="menuFor = null" />
         </span>
         <button
+          v-if="!editMode || s.id !== editingId"
           class="schedule-pill-hide"
           :title="'Hide ' + s.name"
           aria-label="Hide schedule"
@@ -67,12 +73,12 @@
           </svg>
         </button>
       </span>
-      <button v-if="!selectedScheduleIds.length" class="filter-clear" @click="manage">
+      <button v-if="!editMode && !selectedScheduleIds.length" class="filter-clear" @click="manage">
         No schedule selected — pick one
       </button>
     </div>
 
-    <div class="schedule-picker-right">
+    <div v-if="!editMode" class="schedule-picker-right">
       <button
         v-if="selectedScheduleIds.length"
         class="filter-btn schedule-color-toggle"
@@ -143,6 +149,7 @@ import {
   viewOfferings,
   publishedOfferings,
   isOwner,
+  editingScheduleId,
 } from '../src/scheduleStore.js'
 import {
   colorForSchedule,
@@ -166,6 +173,17 @@ export default {
       schedules.value.filter((s) => selectedScheduleIds.value.includes(s.id)),
     )
     const menuFor = ref(null)
+    // While a session is active the strip is reduced: the edited schedule's
+    // pill is marked "Editing" (and can't be hidden), the other selected
+    // schedules are dimmed read-only references (the eye still removes one
+    // from the view), and the manage/CSV/color/mode controls are gone — the
+    // only exits are Done and leaving.
+    const editingId = editingScheduleId
+    const editMode = computed(() => editingScheduleId.value != null)
+    const onPill = (s) => {
+      if (editMode.value && s.id === editingId.value) return
+      toggleSchedule(s.id)
+    }
     // Owner hint for a schedule: " (by registrar)" on shared rows, nothing for
     // the user's own ("You" everywhere would just be noise on the pills).
     const ownerSuffix = (s) => (isOwner(s) ? '' : s.owner ? ` (by ${displayName(s.owner)})` : '')
@@ -280,6 +298,9 @@ export default {
       visibleSchedules,
       ownerSuffix,
       selectedScheduleIds,
+      editingId,
+      editMode,
+      onPill,
       scheduleColorApplicable,
       filterActive,
       colorSchedules,
