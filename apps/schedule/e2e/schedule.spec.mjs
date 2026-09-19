@@ -1509,6 +1509,76 @@ test('admins maintain the user directory; access lists autocomplete from it', as
   assertClean(errors)
 })
 
+test('add-course dialog scopes to directory departments, with an all-courses escape hatch', async ({
+  page,
+}) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page) // registrar, the admin
+
+  // Seed a directory entry giving a regular user the MAT department.
+  await page.getByRole('link', { name: 'Directory' }).click()
+  const admin = page.locator('.admin-page')
+  await admin.waitFor({ state: 'visible', timeout: 5000 })
+  await admin.getByLabel('Directory username').fill('deptonly')
+  await admin.getByLabel('Directory display name').fill('Dept Only')
+  await admin.locator('.directory-add').getByRole('button', { name: 'Add' }).click()
+  const row = admin.locator('.directory-row', { hasText: 'deptonly' })
+  await row.waitFor({ state: 'visible', timeout: 5000 })
+  await row.getByRole('button', { name: 'Add department for Dept Only' }).click()
+  await admin.getByLabel('Department prefix').fill('MAT')
+  await admin.locator('.directory-dept-editor').getByRole('button', { name: 'Add' }).click()
+  await expect(row.locator('.directory-dept', { hasText: 'MAT' })).toBeVisible()
+
+  // Sign in as that user and start editing a schedule.
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  const cluster = page.locator('.schedule-auth-cluster')
+  await cluster.getByLabel('Username').fill('deptonly')
+  await cluster.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByText('Signed in as deptonly').waitFor({ timeout: 10000 })
+  // We signed in from the admin route; leave it for the schedules view.
+  await page.getByRole('link', { name: '← Schedules' }).click()
+  await page.getByRole('button', { name: /Your schedules/ }).waitFor({ timeout: 10000 })
+  await createPopulatedSchedule(page, 'Dept scope schedule')
+  await page.locator('.schedule-pill-edit').first().click()
+  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+
+  // The add dialog lists MAT courses only, with the scope note and toggle.
+  await page.getByRole('button', { name: '＋ Add course' }).click()
+  const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
+  await addm.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(addm.getByText('Your departments: MAT.')).toBeVisible()
+  const codes = await addm.locator('.schedule-add-option .planner-pick-code').allInnerTexts()
+  expect(codes.length).toBeGreaterThan(0)
+  expect(codes.every((c) => c.startsWith('MAT '))).toBe(true)
+  // Search narrows within the scope: a CS code query finds no MAT course.
+  await addm.getByPlaceholder('Search code or name…').fill('CS 1')
+  await expect(addm.locator('.schedule-add-option')).toHaveCount(0)
+
+  // The escape hatch exposes the whole catalog, then limits again.
+  await addm.getByRole('button', { name: 'Show all catalog courses' }).click()
+  await expect(addm.getByText('Showing every catalog course.')).toBeVisible()
+  await expect(addm.locator('.schedule-add-option .planner-pick-code').first()).not.toContainText('MAT ')
+  const allCodes = await addm.locator('.schedule-add-option .planner-pick-code').allInnerTexts()
+  expect(allCodes.some((c) => c.startsWith('CS '))).toBe(true)
+  await addm.getByRole('button', { name: 'Limit to my departments' }).click()
+  await expect(addm.getByText('Your departments: MAT.')).toBeVisible()
+
+  await addm.getByRole('button', { name: 'Close' }).click()
+  await addm.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Clean up: leave the session and delete the schedule.
+  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Dept scope schedule' })
+    .getByRole('button', { name: 'Delete Dept scope schedule' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
 test('non-admins cannot open the admin page', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })

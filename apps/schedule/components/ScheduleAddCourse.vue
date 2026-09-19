@@ -26,6 +26,13 @@
           aria-label="Search courses"
           v-model="addCourseQuery"
         />
+        <p v-if="deptFiltered" class="field-hint schedule-add-scope">
+          <template v-if="showAllCourses">Showing every catalog course.</template>
+          <template v-else>Your departments: {{ deptListLabel }}.</template>
+          <button type="button" class="schedule-add-scope-toggle" @click="showAllCourses = !showAllCourses">
+            {{ showAllCourses ? 'Limit to my departments' : 'Show all catalog courses' }}
+          </button>
+        </p>
         <div class="schedule-add-list">
           <button
             v-for="code in addCourseResults"
@@ -54,6 +61,7 @@ import {
   editingRole,
   addCourseToSchedule,
   openCourseEdit,
+  myDepartments,
 } from '../src/scheduleStore.js'
 import { allCourses, courseName } from '@major-vis/catalog-client'
 import { compareCodes } from '@major-vis/schedule-core'
@@ -70,10 +78,20 @@ export default {
   setup(props, { emit }) {
     const addCourseQuery = ref('')
     const allCatalogCourses = computed(() => Object.keys(allCourses.value).sort(compareCodes))
+    // Users with directory departments see only their departments' courses by
+    // default (departments are the code's leading prefix), with an escape hatch
+    // to browse the whole catalog for cross-listed courses. Users without a
+    // directory entry are unrestricted, exactly as before.
+    const deptFiltered = computed(() => myDepartments.value.length > 0)
+    const deptListLabel = computed(() => myDepartments.value.join(', '))
+    const showAllCourses = ref(false)
     const addCourseResults = computed(() => {
       const q = addCourseQuery.value.trim().toLowerCase()
       const qn = q.replace(/\s+/g, '')
       let list = allCatalogCourses.value
+      if (deptFiltered.value && !showAllCourses.value) {
+        list = list.filter((code) => myDepartments.value.includes(code.split(' ')[0]))
+      }
       if (q) {
         list = list.filter(
           (code) =>
@@ -84,14 +102,19 @@ export default {
     })
     const editingName = computed(() => (editingSchedule.value ? editingSchedule.value.name : ''))
 
-    const close = () => emit('close')
+    // The modal stays mounted between opens, so reset its transient scope/search
+    // state on close rather than leaking it into the next open.
+    const close = () => {
+      addCourseQuery.value = ''
+      showAllCourses.value = false
+      emit('close')
+    }
     const modalEl = ref(null)
     useModalFocus(() => props.isOpen, modalEl, close)
     // Adds the picked catalog course to the edited schedule on its default slot,
     // then opens its course editor for further customization.
     const addCourse = (code) => {
       const item = addCourseToSchedule(editingScheduleId.value, code)
-      addCourseQuery.value = ''
       if (item) openCourseEdit(item)
       close()
     }
@@ -104,6 +127,9 @@ export default {
       editingRole,
       addCourseQuery,
       addCourseResults,
+      deptFiltered,
+      deptListLabel,
+      showAllCourses,
       addCourse,
       courseName,
     }

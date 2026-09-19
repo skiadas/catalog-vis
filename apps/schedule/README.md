@@ -147,6 +147,11 @@ instead of the generic "nothing to propose". Owners and offline users may touch
 anything, and a user with no departments can propose nothing until an admin
 adds them (the panel says that too).
 
+**The add-course picker is department-scoped too.** When your directory entry
+lists departments, "＋ Add course" shows only their courses (the code's leading
+prefix), with a "Show all catalog courses" toggle for cross-listed courses;
+users without a directory entry see the whole catalog as before.
+
 In edit mode a course's row/pill is draggable, with a **drag grip** (a dotted
 handle at the left edge, grab cursor) as the visual affordance; the pencil is
 click-only (a drag starting on it is cancelled), so hover never confuses drag
