@@ -156,43 +156,35 @@
     </div>
 
     <div class="schedule-edit-bar" v-if="editingId && !isManagePage">
-      <span class="schedule-edit-label"
-        >{{ editingRole === 'suggest' ? 'Suggestion mode:' : 'Edit mode:' }}
-        <input
-          class="schedule-edit-name"
-          v-model="nameDraft"
-          @blur="commitRename"
-          @keydown.enter="commitRename"
-          aria-label="Schedule name"
-        />
-      </span>
-      <button class="filter-btn primary" @click="showAddCourse = true">＋ Add course</button>
-      <span class="schedule-edit-hint" v-if="editingRole === 'suggest'"
-        >Changes are collected into a proposal for the owner to approve — nothing is written to the schedule
-        until then.</span
-      >
-      <span class="schedule-edit-hint" v-else
-        >Click a course's edit icon to change its settings, or drag it by its grip onto a time slot to move
-        it.</span
-      >
-      <button
-        class="filter-btn schedule-history-btn"
-        :class="{ active: showHistory }"
-        :aria-pressed="showHistory"
-        @click="showHistory = true"
-      >
-        History{{ historyEntries.length ? ` (${historyEntries.length})` : '' }}
-      </button>
-      <button
-        v-if="editingRole === 'suggest'"
-        class="filter-btn schedule-suggestions-btn"
-        :class="{ active: overlay === 'proposals' }"
-        :aria-pressed="overlay === 'proposals'"
-        @click="goProposals(editingId)"
-      >
-        {{ editingDraft && editingDraft.dirty ? 'Propose changes ●' : 'Propose changes' }}
-      </button>
-      <button class="filter-btn" @click="exitEdit">Done</button>
+      <span class="schedule-edit-chip">{{ editingRole === 'suggest' ? 'Suggesting' : 'Editing' }}</span>
+      <input
+        class="schedule-edit-name"
+        v-model="nameDraft"
+        @blur="commitRename"
+        @keydown.enter="commitRename"
+        aria-label="Schedule name"
+      />
+      <div class="schedule-edit-actions">
+        <button class="filter-btn primary" @click="showAddCourse = true">＋ Add course</button>
+        <button
+          class="filter-btn schedule-history-btn"
+          :class="{ active: showHistory }"
+          :aria-pressed="showHistory"
+          @click="showHistory = true"
+        >
+          History{{ historyEntries.length ? ` (${historyEntries.length})` : '' }}
+        </button>
+        <button
+          v-if="editingRole === 'suggest'"
+          class="filter-btn schedule-suggestions-btn"
+          :class="{ active: overlay === 'proposals' }"
+          :aria-pressed="overlay === 'proposals'"
+          @click="goProposals(editingId)"
+        >
+          {{ editingDraft && editingDraft.dirty ? 'Propose changes ●' : 'Propose changes' }}
+        </button>
+        <button class="filter-btn" @click="exitEdit">Done</button>
+      </div>
     </div>
 
     <div class="course-picker" v-if="view === 'course'">

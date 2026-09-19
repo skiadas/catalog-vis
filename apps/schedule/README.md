@@ -115,19 +115,22 @@ seed 42) into the Fall part unless schedules already exist.
 
 ## Edit and suggest modes
 
-Every schedule's pencil button opens a mode picker: **Edit** writes the schedule
-directly and **Suggest changes** collects edits into a draft, shown live on the
-calendar (the draft stands in for the published term while the session is
-active). Both are offered to owners and offline users; in remote mode a
-non-owner is only offered Suggest (direct writes require ownership, enforced
-server-side), and Suggest is disabled unless the schedule's suggest permission
-admits the user (owner only / listed suggesters / everyone — see the access
-settings below). Proposing diffs the draft against the server's current term and
-upserts the proposer's own pending suggestion (create, or replace the ops of
-their existing pending one), so a department's edits always consolidate into
-one coherent proposal — never redundant intermediate moves — and re-enter a
-suggestion session by replaying their own pending ops onto the freshest
-published state.
+Every schedule's pencil button **starts the default mode directly** — **Edit**
+for owners (and offline), which writes the schedule directly, or **Suggest
+changes** for a non-owner who may propose — and a small **chevron** beside it
+opens the mode picker for the other choice (e.g. an owner who wants to suggest);
+a viewer with neither option gets the picker from the pencil, so the disabled
+choices explain themselves. **Suggest** collects edits into a draft, shown live
+on the calendar (the draft stands in for the published term while the session is
+active). In remote mode a non-owner is only offered Suggest (direct writes
+require ownership, enforced server-side), and Suggest is disabled unless the
+schedule's suggest permission admits the user (owner only / listed suggesters /
+everyone — see the access settings below). Proposing diffs the draft against the
+server's current term and upserts the proposer's own pending suggestion (create,
+or replace the ops of their existing pending one), so a department's edits always
+consolidate into one coherent proposal — never redundant intermediate moves —
+and re-enter a suggestion session by replaying their own pending ops onto the
+freshest published state.
 
 **A session is a focused mode, not a floating one.** The session rides in the
 URL query (`?mode=edit|suggest&id=<id>`) on top of whatever view you are on, so
@@ -137,9 +140,12 @@ selected schedules stay visible as dimmed, read-only references** (your current
 selection is the reference set — a CS/ENGR/MATH comparison carries straight
 into editing CS), the picker reduces to the schedule pills (the edited one
 tagged *Editing*, references removable with their eye), and manage/CSV/color
-are out of reach. Leaving — Done, browser back, or a header link — ends the
-session; an unsaved suggest draft asks before discarding. A deep link to edit a
-schedule you don't own (or that no longer exists) bounces back to the view.
+are out of reach. The session bar carries an **Editing**/**Suggesting** chip, the
+schedule's rename field, and the session's actions right-aligned (Add course ·
+History · Propose changes · Done). Leaving — Done, browser back, or a header link
+— ends the session; an unsaved suggest draft asks before discarding. A deep link
+to edit a schedule you don't own (or that no longer exists) bounces back to the
+view.
 
 **The course editor and the proposals panel are overlay routes**, so they are
 deep-linkable and back closes them without leaving the session. The editor is

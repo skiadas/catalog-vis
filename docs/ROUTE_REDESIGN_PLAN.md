@@ -110,11 +110,13 @@ All four phases shipped; each step was independently shippable.
 ## Beyond routing
 
 Routing was one lever on "overwhelming", and it is now spent. The remaining
-simplification work is UI, deferred out of this pass by decision: the per-row
-mode menu plus the edit bar, and whether the course editor's single-section
-form should become a true multi-section view (the switcher is the interim; a
-per-section form extraction would be its own redesign). (To be scoped
-separately.)
+simplification work is UI: the per-row mode menu became a **split button** (the
+pencil starts the default mode; a chevron opens the picker for the other
+choice) and the edit bar dropped its prose down to an Editing/Suggesting chip
+plus a right-aligned action cluster. Still open: whether the course editor's
+single-section form should become a true multi-section view (the switcher is the
+interim; a per-section form extraction would be its own redesign). (To be
+scoped separately.)
 
 ## Decisions (were open questions)
 

@@ -115,9 +115,9 @@
                 <button
                   class="schedule-manage-icon"
                   :class="{ active: menuFor === s.id || editingScheduleId === s.id }"
-                  :aria-label="'Edit or suggest changes for ' + s.name"
-                  :title="'Edit or suggest changes for ' + s.name"
-                  @click="menuFor = menuFor === s.id ? null : s.id"
+                  :aria-label="modeLabel(s)"
+                  :title="modeTitle(s)"
+                  @click="enterDefault(s)"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -133,11 +133,33 @@
                     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
                   </svg>
                 </button>
+                <button
+                  class="schedule-manage-more"
+                  type="button"
+                  :title="'More edit or suggest options for ' + s.name"
+                  :aria-label="'More edit or suggest options for ' + s.name"
+                  :aria-expanded="menuFor === s.id"
+                  @click="toggleModeMenu(s.id)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
                 <ScheduleModeMenu
                   :schedule="s"
                   :open="menuFor === s.id"
                   @mode="editSchedule"
-                  @close="menuFor = null"
+                  @close="closeModeMenu"
                 />
               </span>
               <button
@@ -331,10 +353,12 @@ import {
   activeTerm,
   remote,
   isOwner,
+  defaultModeFor,
 } from '../src/scheduleStore.js'
 import { allCourses } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS, parseCsv } from '@major-vis/schedule-core'
 import { useModalFocus } from '../src/modalFocus.js'
+import { useModeMenu } from '../src/useModeMenu.js'
 import { displayName } from '../src/names.js'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
@@ -346,7 +370,23 @@ export default {
   emits: ['close', 'edit', 'access'],
   setup(_, { emit }) {
     const manageQuery = ref('')
-    const menuFor = ref(null)
+    const { menuFor, toggle: toggleModeMenu, close: closeModeMenu } = useModeMenu()
+    const enterDefault = (s) => {
+      const mode = defaultModeFor(s)
+      if (mode) editSchedule(s.id, mode)
+      else toggleModeMenu(s.id)
+    }
+    const modeLabel = (s) => {
+      const mode = defaultModeFor(s)
+      if (mode === 'suggest') return `Suggest changes for ${s.name}`
+      if (mode) return `Edit schedule ${s.name}`
+      return `Edit or suggest changes for ${s.name}`
+    }
+    const modeTitle = (s) => {
+      const mode = defaultModeFor(s)
+      if (mode === 'suggest') return 'Propose changes collected for the owner to approve'
+      return 'Edit this schedule directly'
+    }
     // Year filter: '' is "All years"; the dropdown lists the years present.
     const yearFilter = ref('')
     const yearOptions = computed(() => {
@@ -608,6 +648,11 @@ export default {
       editingScheduleId,
       editSchedule,
       menuFor,
+      enterDefault,
+      modeLabel,
+      modeTitle,
+      toggleModeMenu,
+      closeModeMenu,
       colorForSchedule,
       activeTerm,
       TERM_KEYS,

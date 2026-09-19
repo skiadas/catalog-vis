@@ -385,6 +385,17 @@ export function canSuggest(schedule) {
   return false
 }
 
+// The action a schedule's pencil should take directly: Edit when the user may
+// write (owners; offline), else Suggest when they may propose, else null (a
+// viewer-only schedule, where the pencil opens the picker so the disabled
+// choices can explain themselves). The picker stays reachable via the split
+// button's chevron for the cross cases (e.g. an owner who wants to suggest).
+export function defaultModeFor(schedule) {
+  if (!schedule) return null
+  if (!remote.value || isOwner(schedule)) return 'edit'
+  return canSuggest(schedule) ? 'suggest' : null
+}
+
 // Updates a schedule's access settings (owner only): visibility/suggestMode
 // modes and the viewer/suggester username lists. The server canonicalizes the
 // lists and returns the stored schedule; the local row is replaced from that

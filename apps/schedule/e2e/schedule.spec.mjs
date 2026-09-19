@@ -153,27 +153,25 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   await signIn(page)
   await createSchedule(page, 'Patterns schedule')
 
-  // --- Edit mode via the pencil menu ---
+  // --- The pencil enters the default mode directly (owner => edit) ---
   await page.locator('.schedule-pill-edit').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+
+  // --- The split chevron still opens the picker; Suggest is the odd choice ---
+  await page.locator('.schedule-pill-more').first().click()
   const menu = page.locator('.mode-menu')
   await menu.waitFor({ state: 'visible', timeout: 5000 })
   await expect(menu).toBeVisible()
   const box = await menu.boundingBox()
   expect(box && box.height >= 20, 'mode-menu actually visible').toBe(true)
-  await menu.getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
-  await page.getByRole('button', { name: 'Done' }).click()
-
-  // --- Suggest mode via the pencil menu ---
-  await page.locator('.schedule-pill-edit').first().click()
   await menu.getByRole('button', { name: 'Suggest changes' }).click()
-  await page.getByText('Suggestion mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: 'Done' }).click()
 
   // --- Edit mode: the TR->MWF guard ---
   await page.locator('.schedule-pill-edit').first().click()
-  await menu.getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
 
   // Add a course: its editor opens immediately, pre-slotted MWF 8:00-9:10.
   // The add modal and the editor are both `.modal`, so scope each by its
@@ -276,8 +274,7 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   // rides in the query): no grid redirect, the timeline's edit pencils appear,
   // and the old "switch to the grid" hint is gone.
   await page.locator('.schedule-pill-edit').first().click()
-  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   await expect(page).toHaveURL(/#\/day\/M\?.*mode=edit/)
   await expect(page.locator('.day-timeline .filter-offering-edit').first()).toBeVisible()
   await expect(page.getByText('Switch to the grid view')).toHaveCount(0)
@@ -310,12 +307,16 @@ test('edit session: dimmed references, reduced strip, and leaving ends the sessi
   // Enter edit on Session A from its pill.
   const pillA = page.locator('.schedule-pill', { hasText: 'Session A' })
   await pillA.locator('.schedule-pill-edit').click()
-  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   await expect(page).toHaveURL(/\?mode=edit&id=/)
   const editUrl = page.url()
   // The strip tags the edited pill and demotes Session B to a reference.
   await expect(pillA.locator('.schedule-pill-editing')).toHaveText('Editing')
+  // The editing pill is the same height as a reference pill (it carries the
+  // chip where the others carry an icon button).
+  const pillBox = await pillA.boundingBox()
+  const refBox = await page.locator('.schedule-pill', { hasText: 'Session B' }).boundingBox()
+  expect(Math.abs(pillBox.height - refBox.height), 'editing pill matches reference height').toBeLessThan(1)
   await expect(page.locator('.schedule-pill', { hasText: 'Session B' })).toHaveClass(/reference/)
   // Manage is unreachable while editing.
   await expect(page.getByRole('button', { name: /Your schedules/ })).toHaveCount(0)
@@ -335,7 +336,7 @@ test('edit session: dimmed references, reduced strip, and leaving ends the sessi
 
   // The session is deep-linkable: reloading that URL resumes it.
   await page.goto(editUrl, { waitUntil: 'networkidle' })
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   await expect(page).toHaveURL(/\?mode=edit&id=/)
   await page.getByRole('button', { name: 'Done' }).click()
   await expect(page).not.toHaveURL(/mode=edit/)
@@ -358,9 +359,10 @@ test('suggest session: leaving with an unsaved draft asks first', async ({ page 
   await signIn(page, 'suggest-exit-user')
   await createPopulatedSchedule(page, 'Suggest exit')
 
-  await page.locator('.schedule-pill-edit').first().click()
+  // The owner's pencil defaults to Edit; the chevron reaches Suggest.
+  await page.locator('.schedule-pill-more').first().click()
   await page.locator('.mode-menu').getByRole('button', { name: 'Suggest changes' }).click()
-  await page.getByText('Suggestion mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
 
   // Make a change: it lands in the draft, not the schedule.
   await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
@@ -376,13 +378,13 @@ test('suggest session: leaving with an unsaved draft asks first', async ({ page 
   await page.goBack()
   await page.waitForTimeout(200)
   await expect(page).toHaveURL(/mode=suggest/)
-  await expect(page.getByText('Suggestion mode:')).toBeVisible()
+  await expect(page.locator('.schedule-edit-chip', { hasText: 'Suggesting' })).toBeVisible()
 
   // Accepting discards the draft and leaves the session.
   page.once('dialog', (d) => d.accept())
   await page.goBack()
   await expect(page).not.toHaveURL(/mode=/)
-  await expect(page.getByText('Suggestion mode:')).toHaveCount(0)
+  await expect(page.locator('.schedule-edit-chip', { hasText: 'Suggesting' })).toHaveCount(0)
 
   // Clean up this account's schedule.
   await page.getByRole('button', { name: /Your schedules/ }).click()
@@ -401,14 +403,14 @@ test('edit session guard: deep links you cannot edit bounce back to the view', a
   // A missing schedule id leaves the mode.
   await page.goto('/#/?mode=edit&id=does-not-exist', { waitUntil: 'networkidle' })
   await expect(page).not.toHaveURL(/mode=/)
-  await expect(page.getByText('Edit mode:')).toHaveCount(0)
+  await expect(page.locator('.schedule-edit-chip', { hasText: 'Editing' })).toHaveCount(0)
   // A schedule this user does not own refuses the direct edit deep link (the
   // registrar's public 'Smoke schedule' from the earlier test).
   const all = await page.evaluate(() => fetch('../../api/schedules').then((r) => r.json()))
   const smoke = all.schedules.find((s) => s.name === 'Smoke schedule')
   await page.goto(`/#/?mode=edit&id=${smoke.id}`, { waitUntil: 'networkidle' })
   await expect(page).not.toHaveURL(/mode=/)
-  await expect(page.getByText('Edit mode:')).toHaveCount(0)
+  await expect(page.locator('.schedule-edit-chip', { hasText: 'Editing' })).toHaveCount(0)
   assertClean(errors)
 })
 
@@ -458,8 +460,7 @@ test('course editor overlay route: section switcher saves the section you leave'
 
   // Enter edit mode and open the editor on the first offering row.
   await page.locator('.schedule-pill-edit').first().click()
-  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
   const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
   await em.waitFor({ state: 'visible', timeout: 5000 })
@@ -493,7 +494,7 @@ test('course editor overlay route: section switcher saves the section you leave'
   await page.getByRole('button', { name: 'Cancel' }).click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
   await expect(page).not.toHaveURL(/course\/.*\/edit/)
-  await expect(page.getByText('Edit mode:')).toBeVisible()
+  await expect(page.locator('.schedule-edit-chip', { hasText: 'Editing' })).toBeVisible()
 
   // The editor URL is referential: a fresh visit auto-starts the session and
   // opens the editor (checked in a new page so it is a real document load).
@@ -527,10 +528,7 @@ test('history panel lists session edits; Cancel removes one change, Restore brin
 
   // Enter edit mode.
   await page.locator('.schedule-pill-edit').first().click()
-  const menu = page.locator('.mode-menu')
-  await menu.waitFor({ state: 'visible', timeout: 5000 })
-  await menu.getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
 
   // A fresh session's History panel is empty.
   await page.getByRole('button', { name: /History/ }).click()
@@ -609,10 +607,7 @@ test('course editor guards unsaved changes, pins its actions, and completes inst
     .locator('.schedule-pill-edit')
     .first()
     .click()
-  const menu = page.locator('.mode-menu')
-  await menu.waitFor({ state: 'visible', timeout: 5000 })
-  await menu.getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   await page.locator('.cal-block:not(.off-pattern) .cal-block-time').first().click()
   const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
   await page.locator('.filter-offering-edit').first().click()
@@ -710,8 +705,7 @@ test('instructor combobox suggests catalog faculty on a fresh schedule and accep
     .locator('.schedule-pill-edit')
     .first()
     .click()
-  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: '＋ Add course' }).click()
   const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
   await addm.waitFor({ state: 'visible', timeout: 5000 })
@@ -764,10 +758,7 @@ test('lab sections: add lab from the editor (auto-close), strip lab chip, schedu
 
   // Edit mode, then add a course — its editor opens pre-slotted.
   await page.locator('.schedule-pill-edit').first().click()
-  const menu = page.locator('.mode-menu')
-  await menu.waitFor({ state: 'visible', timeout: 5000 })
-  await menu.getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: '＋ Add course' }).click()
   const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
   await addm.waitFor({ state: 'visible', timeout: 5000 })
@@ -849,10 +840,7 @@ test('no-meeting strip keys a lecture and its labs apart and survives filter tog
   // Edit mode; add ANTH 160 (pre-slotted) with a lab (auto-close lands the
   // unscheduled lab in the strip), then a second department's course.
   await page.locator('.schedule-pill-edit').first().click()
-  const menu = page.locator('.mode-menu')
-  await menu.waitFor({ state: 'visible', timeout: 5000 })
-  await menu.getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   const addCourse = async (code) => {
     await page.getByRole('button', { name: '＋ Add course' }).click()
     const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
@@ -939,7 +927,11 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await settle(page)
   const gridViolations = await seriousViolations(page)
   expect(brief(gridViolations), 'grid view').toEqual([])
-  await assertTargetSize(page, ['.schedule-pill-edit', '.schedule-pill-hide'], 'grid view')
+  await assertTargetSize(
+    page,
+    ['.schedule-pill-edit', '.schedule-pill-more', '.schedule-pill-hide'],
+    'grid view',
+  )
 
   // The manage page and the create dialog it opens.
   await page.getByRole('button', { name: /Your schedules/ }).click()
@@ -1018,15 +1010,14 @@ test('main views and dialogs have no serious/critical accessibility violations',
   // Edit mode surfaces the small inline edit pencils on offering rows; open a
   // block so they render, scan their target sizes, then close both. Use this
   // user's own (populated) schedule — the shared collection's other pills
-  // aren't owned, so their "Edit schedule" is disabled, and the empty
-  // "Axe schedule" has no rows to size.
+  // aren't owned, so their pencil defaults to Suggest rather than Edit, and the
+  // empty "Axe schedule" has no rows to size.
   await page
     .locator('.schedule-pill', { hasText: 'Axe create' })
     .locator('.schedule-pill-edit')
     .first()
     .click()
-  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   const blockTime = page.locator('.cal-block:not(.off-pattern) .cal-block-time').first()
   await blockTime.click()
   await settle(page)
@@ -1342,10 +1333,7 @@ test('edit mode drags a course by its row onto an empty slot; the pencil never d
 
   // Edit mode on THAT schedule (the collection holds other schedules too).
   await page.locator('.schedule-pill', { hasText: 'Drag test' }).locator('.schedule-pill-edit').click()
-  const menu = page.locator('.mode-menu')
-  await menu.waitFor({ state: 'visible', timeout: 5000 })
-  await menu.getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   const block = page.locator('.cal-block:not(.off-pattern):not(.cal-dropzone)').first()
   await block.waitFor({ timeout: 10000 })
   await block.locator('.cal-block-time').click()
@@ -1436,17 +1424,19 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await expect(page.locator('.schedule-manage-section-title', { hasText: 'Shared with you' })).toBeVisible()
   const row = page.locator('.schedule-manage-row', { hasText: 'Access schedule' })
   await row.waitFor({ state: 'visible', timeout: 5000 })
-  await row.getByRole('button', { name: 'Edit or suggest changes for Access schedule' }).click()
+  // The split chevron opens the picker: Edit is disabled for a non-owner,
+  // Suggest is enabled.
+  await row.getByRole('button', { name: 'More edit or suggest options for Access schedule' }).click()
   const menu = page.locator('.mode-menu')
   await menu.waitFor({ state: 'visible', timeout: 5000 })
   await expect(menu.getByRole('button', { name: 'Edit schedule' })).toBeDisabled()
   await expect(menu.getByRole('button', { name: 'Suggest changes' })).toBeEnabled()
 
   // Bob is a suggester but has no directory departments, so entering a suggest
-  // session leaves every course uneditable (no pencils) and the panel explains
-  // the department limit.
-  await menu.getByRole('button', { name: 'Suggest changes' }).click()
-  await page.getByText('Suggestion mode:').first().waitFor({ timeout: 5000 })
+  // session (the pencil's default for him) leaves every course uneditable (no
+  // pencils) and the panel explains the department limit.
+  await row.getByRole('button', { name: 'Suggest changes for Access schedule' }).click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
   await expect(page.locator('.filter-offering-edit')).toHaveCount(0)
   await page.getByRole('button', { name: 'Suggested changes' }).click()
   const panel = page.locator('.modal[aria-labelledby="suggested-title"]')
@@ -1455,7 +1445,8 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Done' }).click() // leave suggest mode
 
-  // Carol: a viewer but not a suggester — both actions are gated.
+  // Carol: a viewer but not a suggester — no default action, so the pencil
+  // opens the picker with both actions gated.
   await page.getByRole('button', { name: 'Sign out' }).click()
   await cluster.getByLabel('Username').fill('carol')
   await cluster.getByRole('button', { name: 'Sign in' }).click()
@@ -1629,8 +1620,7 @@ test('add-course dialog scopes to directory departments, with an all-courses esc
   await page.getByRole('button', { name: /Your schedules/ }).waitFor({ timeout: 10000 })
   await createPopulatedSchedule(page, 'Dept scope schedule')
   await page.locator('.schedule-pill-edit').first().click()
-  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
-  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
 
   // The add dialog lists MAT courses only, with the scope note and toggle.
   await page.getByRole('button', { name: '＋ Add course' }).click()

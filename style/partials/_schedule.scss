@@ -918,14 +918,23 @@
   border: 1px solid var(--accent);
   border-radius: var(--radius);
 }
-.schedule-edit-label {
-  font-size: var(--font-md);
-  color: var(--text);
+.schedule-edit-chip {
+  @include text-caption;
+  padding: 3px 9px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
-.schedule-edit-hint {
-  font-size: var(--font-sm);
-  color: var(--text-muted);
-  margin-right: auto;
+/* The session's actions sit as one right-aligned cluster, so the bar reads as
+   "what this session is" on the left and "what you can do" on the right. */
+.schedule-edit-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 .schedule-edit-bar .filter-btn {
   padding: 6px 14px;
@@ -1031,6 +1040,9 @@
   align-items: center;
   gap: 6px;
   max-width: 220px;
+  /* One height in every state: pills with the 24px action buttons and the
+     editing pill (chip only) must not differ in size. */
+  min-height: 30px;
   overflow: hidden;
   color: var(--text-inverse);
   padding: 3px 6px 3px 9px;
@@ -1105,6 +1117,19 @@
 }
 .schedule-pill-edit:hover {
   background: var(--overlay-subtle);
+}
+/* The split-button's chevron: a quiet companion to the pencil that opens the
+   mode picker when the default action isn't the mode you want. */
+.schedule-pill-more {
+  @include icon-btn(24px);
+  background: transparent;
+  color: var(--text-inverse);
+  opacity: 0.75;
+  margin: 0 1px;
+}
+.schedule-pill-more:hover {
+  background: var(--overlay-hover);
+  opacity: 1;
 }
 .schedule-pill-hide:hover {
   background: var(--overlay-subtle);
@@ -1206,6 +1231,17 @@
     transition:
       background 0.15s,
       color 0.15s;
+  }
+
+  &-more {
+    @include icon-btn;
+    color: var(--text-muted);
+    background: transparent;
+
+    &:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
   }
 
   &-icon {
@@ -1567,16 +1603,6 @@
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow, 0 4px 14px rgba(0, 0, 0, 0.14));
-}
-.mode-menu-schedule {
-  @include text-caption;
-  padding: 2px 6px 6px;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .mode-menu-item {
   @include text-label;

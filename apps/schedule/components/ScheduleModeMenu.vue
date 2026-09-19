@@ -1,6 +1,5 @@
 <template>
   <div v-if="open && schedule" class="mode-menu" @click.stop @keydown.esc="$emit('close')">
-    <span class="mode-menu-schedule">{{ schedule.name }}</span>
     <button
       class="mode-menu-item"
       :disabled="!canEdit"

@@ -28,9 +28,9 @@
           <button
             class="schedule-pill-edit"
             :class="{ active: menuFor === s.id }"
-            :title="'Edit or suggest changes for ' + s.name"
-            aria-label="Edit schedule"
-            @click.stop="menuFor = menuFor === s.id ? null : s.id"
+            :title="modeTitle(s)"
+            :aria-label="modeLabel(s)"
+            @click.stop="enterDefault(s)"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -46,7 +46,29 @@
               <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
             </svg>
           </button>
-          <ScheduleModeMenu :schedule="s" :open="menuFor === s.id" @mode="edit" @close="menuFor = null" />
+          <button
+            class="schedule-pill-more"
+            type="button"
+            :title="'More edit or suggest options for ' + s.name"
+            :aria-label="'More edit or suggest options for ' + s.name"
+            :aria-expanded="menuFor === s.id"
+            @click.stop="toggleModeMenu(s.id)"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          <ScheduleModeMenu :schedule="s" :open="menuFor === s.id" @mode="edit" @close="closeModeMenu" />
         </span>
         <button
           v-if="!editMode || s.id !== editingId"
@@ -150,6 +172,7 @@ import {
   publishedOfferings,
   isOwner,
   editingScheduleId,
+  defaultModeFor,
 } from '../src/scheduleStore.js'
 import {
   colorForSchedule,
@@ -159,6 +182,7 @@ import {
   offeringSectionLabel,
 } from '@major-vis/schedule-core'
 import { onKeyActivate } from '../src/keyboardNav.js'
+import { useModeMenu } from '../src/useModeMenu.js'
 import { displayName } from '../src/names.js'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
@@ -172,7 +196,27 @@ export default {
     const visibleSchedules = computed(() =>
       schedules.value.filter((s) => selectedScheduleIds.value.includes(s.id)),
     )
-    const menuFor = ref(null)
+    // The pencil enters the default mode directly (edit for owners, suggest for
+    // eligible non-owners); its split chevron opens the picker for the other
+    // choice, and a viewer-only schedule opens the picker from the pencil (both
+    // disabled choices explain why).
+    const { menuFor, toggle: toggleModeMenu, close: closeModeMenu } = useModeMenu()
+    const enterDefault = (s) => {
+      const mode = defaultModeFor(s)
+      if (mode) edit(s.id, mode)
+      else toggleModeMenu(s.id)
+    }
+    const modeLabel = (s) => {
+      const mode = defaultModeFor(s)
+      if (mode === 'suggest') return `Suggest changes for ${s.name}`
+      if (mode) return `Edit schedule ${s.name}`
+      return `Edit or suggest changes for ${s.name}`
+    }
+    const modeTitle = (s) => {
+      const mode = defaultModeFor(s)
+      if (mode === 'suggest') return 'Propose changes collected for the owner to approve'
+      return 'Edit this schedule directly'
+    }
     // While a session is active the strip is reduced: the edited schedule's
     // pill is marked "Editing" (and can't be hidden), the other selected
     // schedules are dimmed read-only references (the eye still removes one
@@ -313,6 +357,11 @@ export default {
       edit,
       manage,
       menuFor,
+      enterDefault,
+      modeLabel,
+      modeTitle,
+      toggleModeMenu,
+      closeModeMenu,
       csvOpen,
       closeCsv,
     }
