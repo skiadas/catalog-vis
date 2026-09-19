@@ -10,8 +10,8 @@
           <input
             class="search-input schedule-manage-search"
             type="search"
-            placeholder="Search name or owner…"
-            aria-label="Search schedules"
+            placeholder="Filter by name or owner…"
+            aria-label="Filter schedules"
             v-model="manageQuery"
           />
           <select
