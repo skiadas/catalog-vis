@@ -195,6 +195,8 @@ When a task touches a specific piece, read its README (map above) plus:
   external OIDC SSO in production (`AUTH_PROVIDER=oidc`).
 - The schedule manage surface is a **route/page** (`#/schedules`), not a modal:
   it unmounts on leave, so its instance state (`menuFor`) cannot leak. The
-  other dialogs (add-course, suggestions, history, course editor) still use the
-  `isOpen` prop pattern; the course editor is the one mounted by store state
-  (`courseEditTarget && editingId`) rather than an `isOpen` prop.
+  access dialog is an **overlay route** (`#/schedule/:id/access`): the shell
+  renders it over the last non-overlay surface (remembered in `underlay`), so
+  that surface stays mounted underneath. The remaining dialogs (add-course,
+  suggestions, history) still use the `isOpen` prop pattern; the course editor
+  is mounted by store state (`courseEditTarget && editingId`).

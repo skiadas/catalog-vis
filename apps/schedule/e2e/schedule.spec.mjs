@@ -113,14 +113,17 @@ test('sign-in and schedule creation', async ({ page }) => {
   await page.goto('/#/schedules', { waitUntil: 'networkidle' })
   await expect(page.locator('.schedule-manage-page')).toBeVisible()
   // Make it public so the sibling tests can treat it as a shared schedule
-  // (schedules are private by default; the Access dialog is the owner's
+  // (schedules are private by default; the Access overlay route is the owner's
   // control surface for opening one up).
   await page.getByRole('button', { name: 'Access for Smoke schedule' }).click()
+  await expect(page).toHaveURL(/#\/schedule\/[^/]+\/access$/)
   const access = page.locator('.modal[aria-labelledby="schedule-access-title"]')
   await access.waitFor({ state: 'visible', timeout: 5000 })
   await access.locator('#access-visibility').selectOption('public')
   await access.getByRole('button', { name: 'Save' }).click()
   await access.waitFor({ state: 'detached', timeout: 5000 })
+  // Save closes the overlay, returning to the manage page it floated over.
+  await expect(page).toHaveURL(/#\/schedules$/)
   await closeManage(page)
   assertClean(errors)
 })
@@ -1118,6 +1121,61 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await expect(carolMenu.getByRole('button', { name: 'Edit schedule' })).toBeDisabled()
   await expect(carolMenu.getByRole('button', { name: 'Suggest changes' })).toBeDisabled()
   await page.keyboard.press('Escape')
+
+  assertClean(errors)
+})
+
+// The access dialog is an overlay route now: it floats over the surface it was
+// opened from, is deep-linkable, and closing returns there. A non-owner (or a
+// deleted schedule) gets the denial state instead of a form that cannot save.
+test('access overlay route: deep links over the grid, floats over manage, denies non-owners', async ({
+  page,
+}) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'alice')
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.locator('#schedule-create-name').fill('Overlay schedule')
+  await page.getByRole('button', { name: 'Generate' }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+
+  // Capture the schedule id from the access URL, then deep-link straight to it
+  // (no prior in-app view): the dialog renders over the grid.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: 'Access for Overlay schedule' }).click()
+  await expect(page).toHaveURL(/#\/schedule\/[^/]+\/access$/)
+  const accessUrl = page.url()
+  const dialog = page.locator('.modal[aria-labelledby="schedule-access-title"]')
+  await dialog.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(dialog.getByText('Access — Overlay schedule')).toBeVisible()
+  // The manage page it opened from stays mounted underneath (its state, here
+  // the row, survives the overlay navigation).
+  await expect(page.locator('.schedule-manage-page')).toBeVisible()
+  await page.goBack()
+  await expect(page).toHaveURL(/#\/schedules$/)
+  await closeManage(page)
+
+  await page.goto(accessUrl, { waitUntil: 'networkidle' })
+  await dialog.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(page.locator('.schedule-manage-page')).toHaveCount(0)
+  // Closing a deep-linked overlay falls back to the grid (no in-app history).
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(page).toHaveURL(/#\/$/)
+
+  // A non-owner sees the denial, not the form.
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  const cluster = page.locator('.schedule-auth-cluster')
+  await cluster.getByLabel('Username').fill('bob')
+  await cluster.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByText('Signed in as bob').waitFor({ timeout: 10000 })
+  await page.goto(accessUrl, { waitUntil: 'networkidle' })
+  await dialog.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(dialog.getByText('Only the owner can change access for this schedule.')).toBeVisible()
+  await expect(dialog.locator('#access-visibility')).toHaveCount(0)
+  await dialog.locator('.filter-btn', { hasText: 'Close' }).click()
+  await expect(page).toHaveURL(/#\/$/)
 
   assertClean(errors)
 })

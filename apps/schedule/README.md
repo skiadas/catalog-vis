@@ -131,12 +131,14 @@ click-only (a drag starting on it is cancelled), so hover never confuses drag
 with click.
 
 **Owners control their schedule's access.** Each of your rows carries an
-**Access** button opening a dialog that sets who can see the schedule
-(*only you* / *listed users* / *everyone*) and who can suggest changes (the
-same three choices), with per-user lists whose username inputs autocomplete
-from the user directory. New schedules start private (only the owner) with
-owner-only suggestions. A row badge summarizes the current visibility
-(`private` / `shared · n viewers` / `public`).
+**Access** button opening the `#/schedule/<id>/access` overlay route, which
+floats over the manage page and sets who can see the schedule (*only you* /
+*listed users* / *everyone*) and who can suggest changes (the same three
+choices), with per-user lists whose username inputs autocomplete from the user
+directory. New schedules start private (only the owner) with owner-only
+suggestions. A row badge summarizes the current visibility (`private` /
+`shared · n viewers` / `public`). Reaching the URL for a schedule you don't own
+shows a denial state instead of the form.
 
 **The manage page (`#/schedules`, reached from "Your schedules") lists the
 collection in three sections: your own schedules, then *Shared with you* (the
@@ -242,6 +244,7 @@ button, and all mutating actions behave identically in both modes.
 - `#/` — grid
 - `#/day/:day`, `#/slot/:day/:time`, `#/course/:code`, `#/instructor/:name`
 - `#/schedules` — "Your schedules" management page
+- `#/schedule/:id/access` — owner-only access dialog (overlay)
 - `#/admin` — user directory (admins only)
 
 ## Cross-app links

@@ -197,7 +197,7 @@
 
     <ScheduleFilters v-if="!isManagePage" :view="view" />
 
-    <ScheduleManage v-if="isManagePage" @close="goBackOrSchedule" @edit="enterEdit" />
+    <ScheduleManage v-if="isManagePage" @close="goBackOrGrid" @edit="enterEdit" @access="goAccess" />
     <div v-else-if="!selectedScheduleIds.length" class="empty-state">
       <p v-if="schedules.length">
         {{ schedules.length }} schedule{{ schedules.length !== 1 ? 's' : '' }} available but none selected.
@@ -225,6 +225,8 @@
       :offering="courseEditTarget"
       @close="closeCourseEdit"
     />
+
+    <ScheduleAccess v-if="overlay === 'access'" :schedule-id="accessScheduleId" @close="goBackOrGrid" />
   </div>
   <div v-else class="loading" role="status">Loading schedule...</div>
 
@@ -250,7 +252,8 @@ import {
   goScheduleCourse,
   goScheduleInstructor,
   goManage,
-  goBackOrSchedule,
+  goAccess,
+  goBackOrGrid,
 } from '../router.js'
 import { courseName } from '@major-vis/catalog-client'
 import {
@@ -292,11 +295,12 @@ import ScheduleCourseEdit from './ScheduleCourseEdit.vue'
 import SchedulePicker from './SchedulePicker.vue'
 import ScheduleFilters from './ScheduleFilters.vue'
 import ScheduleManage from './ScheduleManage.vue'
+import ScheduleAccess from './ScheduleAccess.vue'
 import ScheduleAddCourse from './ScheduleAddCourse.vue'
 import SuggestedChanges from './SuggestedChanges.vue'
 import ScheduleHistory from './ScheduleHistory.vue'
 
-import { computed, ref, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onBeforeUnmount } from 'vue'
 
 export default {
   name: 'ScheduleApp',
@@ -310,21 +314,46 @@ export default {
     SchedulePicker,
     ScheduleFilters,
     ScheduleManage,
+    ScheduleAccess,
     ScheduleAddCourse,
     SuggestedChanges,
     ScheduleHistory,
   },
   setup() {
     const route = useRoute()
-    const view = computed(() => String(route.meta.scheduleView || 'grid'))
+    // Overlay routes (`.../access`, and later mode/proposals/editor) render
+    // their dialog on top of the surface the user came from, so context (and
+    // instance state like the manage search) survives. Remember that surface
+    // while a non-overlay route is active; fall back to the grid on a deep
+    // link into an overlay.
+    const overlay = computed(() => String(route.meta.overlay || ''))
+    const underlay = ref({ page: '', scheduleView: '' })
+    watch(
+      () => [route.meta.overlay, route.meta.page, route.meta.scheduleView],
+      ([overlayNow, page, scheduleView]) => {
+        if (!overlayNow) {
+          underlay.value = { page: String(page || ''), scheduleView: String(scheduleView || '') }
+        }
+      },
+      { immediate: true },
+    )
+    const view = computed(() =>
+      overlay.value
+        ? String(underlay.value.scheduleView || 'grid')
+        : String(route.meta.scheduleView || 'grid'),
+    )
     // "/schedules" is a page (not a dialog): the shell renders it as the body
-    // in place of the active sub-view, like the /admin route does.
-    const isManagePage = computed(() => route.meta.page === 'manage')
+    // in place of the active sub-view, like the /admin route does. While an
+    // overlay is open it stays the underlay, so the page remains mounted.
+    const isManagePage = computed(() =>
+      overlay.value ? underlay.value.page === 'manage' : route.meta.page === 'manage',
+    )
     const sortedCourses = computed(() => {
       if (!schedule.value) return []
       return Object.keys(schedule.value.byCourse).sort()
     })
     const selectedCode = computed(() => String(route.params.code || ''))
+    const accessScheduleId = computed(() => String(route.params.id || ''))
     const showFilter = computed(() => ['grid', 'day', 'slot'].includes(view.value))
 
     // Filter mode buttons: clicking the active mode collapses the chips panel
@@ -394,7 +423,7 @@ export default {
       nameDraft.value = editingSchedule.value ? editingSchedule.value.name : ''
       // Editing from the manage page leaves it for the active view; the picker
       // menu is already over a view, so it stays put.
-      if (isManagePage.value) goBackOrSchedule()
+      if (isManagePage.value) goBackOrGrid()
     }
     const exitEdit = () => {
       // Leaving a suggest session with unsaved draft changes asks first.
@@ -461,9 +490,12 @@ export default {
       schedule,
       schedules,
       selectedScheduleIds,
+      overlay,
+      accessScheduleId,
       isManagePage,
       goManage,
-      goBackOrSchedule,
+      goAccess,
+      goBackOrGrid,
       showAddCourse,
       showSuggestions,
       showHistory,

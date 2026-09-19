@@ -19,6 +19,12 @@ const routes = [
     meta: { page: 'manage' },
   },
   {
+    path: '/schedule/:id/access',
+    name: 'schedule-access',
+    component: ScheduleApp,
+    meta: { overlay: 'access' },
+  },
+  {
     path: '/admin',
     name: 'admin',
     component: AdminPage,
@@ -74,10 +80,13 @@ export function goManage() {
   if (router.currentRoute.value.name === 'schedule-manage') return
   router.push({ name: 'schedule-manage' })
 }
-// Leaves a full-page route (e.g. `/schedules`): browser history is the
-// intended close, but a deep link has nothing to go back to in-app, so fall
-// back to the grid rather than leaving the app.
-export function goBackOrSchedule() {
+export function goAccess(id) {
+  router.push({ name: 'schedule-access', params: { id: String(id) } })
+}
+// Leaves a full-page or overlay route (e.g. `/schedules`, `.../access`):
+// browser history is the intended close, but a deep link has nothing to go
+// back to in-app, so fall back to the grid rather than leaving the app.
+export function goBackOrGrid() {
   if (window.history.state && window.history.state.back) router.back()
   else router.push({ name: 'schedule-grid' })
 }

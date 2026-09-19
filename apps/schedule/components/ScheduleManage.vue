@@ -60,7 +60,7 @@
                 class="schedule-manage-icon"
                 :aria-label="'Access for ' + s.name"
                 :title="'Who can see and suggest changes for ' + s.name"
-                @click="openAccess(s)"
+                @click="openAccess(s.id)"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -307,108 +307,6 @@
       </div>
     </div>
   </div>
-  <div v-if="showAccess" class="modal-overlay" @click.self="closeAccess">
-    <div ref="accessEl" class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-access-title">
-      <div class="modal-head">
-        <h3 id="schedule-access-title">Access — {{ accessSchedule && accessSchedule.name }}</h3>
-        <button class="modal-close" @click="closeAccess" aria-label="Close">×</button>
-      </div>
-      <div class="modal-body">
-        <p v-if="accessFeedback" class="suggested-feedback" role="status">{{ accessFeedback }}</p>
-        <div class="field">
-          <label for="access-visibility">Who can see this schedule?</label>
-          <select id="access-visibility" class="search-input" v-model="accessVisibility">
-            <option value="private">Only you</option>
-            <option value="shared">Listed users</option>
-            <option value="public">Everyone</option>
-          </select>
-        </div>
-        <div v-if="accessVisibility === 'shared'" class="field">
-          <span class="field-label">Viewers</span>
-          <div v-if="accessViewers.length" class="access-list">
-            <div v-for="u in accessViewers" :key="u" class="access-list-row">
-              <span>{{ displayName(u) }}</span>
-              <button
-                class="access-list-remove"
-                :aria-label="'Remove ' + displayName(u)"
-                title="Remove"
-                @click="accessViewers.splice(accessViewers.indexOf(u), 1)"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-          <div v-else class="access-list-empty">No viewers yet — the schedule stays private to you.</div>
-          <div class="access-add">
-            <input
-              class="search-input"
-              type="text"
-              placeholder="username"
-              aria-label="Add viewer"
-              list="access-user-names"
-              v-model="accessViewerDraft"
-              @keydown.enter.prevent="addViewer"
-            />
-            <button class="filter-btn" :disabled="!accessViewerDraft.trim()" @click="addViewer">Add</button>
-          </div>
-        </div>
-        <div class="field">
-          <label for="access-suggest">Who can suggest changes?</label>
-          <select id="access-suggest" class="search-input" v-model="accessSuggestMode">
-            <option value="owner">Only you</option>
-            <option value="shared">Listed users</option>
-            <option value="public">Everyone</option>
-          </select>
-        </div>
-        <div v-if="accessSuggestMode === 'shared'" class="field">
-          <span class="field-label">Suggesters</span>
-          <div v-if="accessSuggesters.length" class="access-list">
-            <div v-for="u in accessSuggesters" :key="u" class="access-list-row">
-              <span>{{ displayName(u) }}</span>
-              <button
-                class="access-list-remove"
-                :aria-label="'Remove ' + displayName(u)"
-                title="Remove"
-                @click="accessSuggesters.splice(accessSuggesters.indexOf(u), 1)"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-          <div v-else class="access-list-empty">No suggesters yet — only you can propose changes.</div>
-          <div class="access-add">
-            <input
-              class="search-input"
-              type="text"
-              placeholder="username"
-              aria-label="Add suggester"
-              v-model="accessSuggesterDraft"
-              @keydown.enter.prevent="addSuggester"
-            />
-            <button class="filter-btn" :disabled="!accessSuggesterDraft.trim()" @click="addSuggester">
-              Add
-            </button>
-          </div>
-        </div>
-        <datalist id="access-user-names">
-          <option v-for="u in nameSuggestions" :key="u.username" :value="u.username">
-            {{ displayName(u.displayName || u.username) }}
-          </option>
-        </datalist>
-        <p class="modal-intro">
-          A listed suggester can always see the schedule too. Everyone signed in can see and propose on public
-          schedules.
-        </p>
-        <div class="controls">
-          <span class="controls-spacer"></span>
-          <button class="filter-btn" @click="closeAccess">Cancel</button>
-          <button class="filter-btn primary" :disabled="savingAccess" @click="saveAccess">
-            {{ savingAccess ? 'Saving…' : 'Save' }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
   <input
     ref="csvInput"
     type="file"
@@ -421,9 +319,10 @@
 
 <script>
 // "Your schedules" management page (route `/schedules`) plus the "New
-// schedule" creation dialog and the owner-only Access dialog it opens.
-// Read/writes the schedule collection via the module store directly; the
-// parent closes the page by navigating back (the `close` event).
+// schedule" creation dialog it opens. Read/writes the schedule collection via
+// the module store directly; the parent closes the page by navigating back
+// (the `close` event), and the row Access button is handed up as `access` so
+// the shell can open the access overlay route.
 
 import {
   schedules,
@@ -439,21 +338,19 @@ import {
   viewOfferings,
   remote,
   isOwner,
-  updateScheduleAccess,
 } from '../src/scheduleStore.js'
 import { allCourses } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS, parseCsv } from '@major-vis/schedule-core'
 import { useModalFocus } from '../src/modalFocus.js'
 import { displayName } from '../src/names.js'
-import * as backend from '../src/backend.js'
 import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 
 export default {
   name: 'ScheduleManage',
   components: { ScheduleModeMenu },
-  emits: ['close', 'edit'],
+  emits: ['close', 'edit', 'access'],
   setup(_, { emit }) {
     const manageQuery = ref('')
     const menuFor = ref(null)
@@ -620,91 +517,11 @@ export default {
     // domain). Offline everything is the single local user.
     const ownerLabel = (s) => (isOwner(s) ? 'You' : s.owner ? `by ${displayName(s.owner)}` : '')
 
-    // ---- Access dialog (owner-only) --------------------------------------
-    // Who can see (visibility) and propose (suggestMode) for a schedule, with
-    // the viewer/suggester username lists when the mode is 'shared'. The
-    // dialog edits local copies and saves once; the server canonicalizes the
-    // lists and the response replaces the row, so the UI echoes stored truth.
-    const showAccess = ref(false)
-    const accessSchedule = ref(null)
-    /** @type {import('vue').Ref<'private' | 'shared' | 'public'>} */
-    const accessVisibility = ref('private')
-    /** @type {import('vue').Ref<'owner' | 'shared' | 'public'>} */
-    const accessSuggestMode = ref('owner')
-    const accessViewers = ref([])
-    const accessSuggesters = ref([])
-    const accessViewerDraft = ref('')
-    const accessSuggesterDraft = ref('')
-    const accessFeedback = ref('')
-    const savingAccess = ref(false)
-    // Directory autocomplete for the access lists: as either draft is typed,
-    // search the directory for matching accounts (debounced) and offer them
-    // through the shared datalist.
-    const nameSuggestions = ref([])
-    let nameSearchTimer = null
-    watch([accessViewerDraft, accessSuggesterDraft], ([viewer, suggester]) => {
-      clearTimeout(nameSearchTimer)
-      const q = String(viewer || suggester || '').trim()
-      if (!q) {
-        nameSuggestions.value = []
-        return
-      }
-      nameSearchTimer = setTimeout(async () => {
-        nameSuggestions.value = await backend.searchUsers(q)
-      }, 150)
-    })
-    const openAccess = (s) => {
+    // Access is its own overlay route (`#/schedule/<id>/access`); the row's
+    // Access button just hands the id up to the shell, which navigates there.
+    const openAccess = (id) => {
       if (editing.value) return
-      accessSchedule.value = s
-      accessVisibility.value = s.visibility || 'private'
-      accessSuggestMode.value = s.suggestMode || 'owner'
-      accessViewers.value = [...(s.viewers || [])]
-      accessSuggesters.value = [...(s.suggesters || [])]
-      accessViewerDraft.value = ''
-      accessSuggesterDraft.value = ''
-      accessFeedback.value = ''
-      showAccess.value = true
-    }
-    const closeAccess = () => {
-      showAccess.value = false
-      accessFeedback.value = ''
-    }
-    // Adds the draft name to a list editor (trimmed + lowercased; the server
-    // does the full canonicalization on save).
-    const addViewer = () => {
-      const raw = accessViewerDraft.value.trim()
-      if (!raw) return
-      const canonical = raw.toLowerCase()
-      if (!accessViewers.value.includes(canonical)) {
-        accessViewers.value = [...accessViewers.value, canonical]
-      }
-      accessViewerDraft.value = ''
-    }
-    const addSuggester = () => {
-      const raw = accessSuggesterDraft.value.trim()
-      if (!raw) return
-      const canonical = raw.toLowerCase()
-      if (!accessSuggesters.value.includes(canonical)) {
-        accessSuggesters.value = [...accessSuggesters.value, canonical]
-      }
-      accessSuggesterDraft.value = ''
-    }
-    const saveAccess = async () => {
-      if (savingAccess.value || !accessSchedule.value) return
-      savingAccess.value = true
-      accessFeedback.value = ''
-      const saved = await updateScheduleAccess(accessSchedule.value.id, {
-        visibility: accessVisibility.value,
-        suggestMode: accessSuggestMode.value,
-        viewers: accessViewers.value,
-        suggesters: accessSuggesters.value,
-      })
-      savingAccess.value = false
-      if (saved) {
-        closeAccess()
-        return
-      }
-      accessFeedback.value = 'Could not save — check the usernames and that you own this schedule.'
+      emit('access', id)
     }
     // The row badge + tooltip: a one-word summary for owners/others to read at
     // a glance, full detail on hover.
@@ -744,11 +561,9 @@ export default {
     // form it opens is a dialog; its trap is gated on the child being open so
     // only one listens at a time.
     const createEl = ref(null)
-    const accessEl = ref(null)
     useModalFocus(showCreate, createEl, () => {
       showCreate.value = false
     })
-    useModalFocus(showAccess, accessEl, closeAccess)
 
     return {
       close,
@@ -784,25 +599,9 @@ export default {
       displayName,
       isOwner,
       duplicateAndEdit,
-      showAccess,
-      accessSchedule,
-      accessEl,
-      accessVisibility,
-      accessSuggestMode,
-      accessViewers,
-      accessSuggesters,
-      accessViewerDraft,
-      accessSuggesterDraft,
-      accessFeedback,
-      savingAccess,
       openAccess,
-      closeAccess,
-      addViewer,
-      addSuggester,
-      saveAccess,
       accessBadge,
       accessTitle,
-      nameSuggestions,
       schedules,
       selectedScheduleIds,
       toggleSchedule,

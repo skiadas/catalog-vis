@@ -55,13 +55,12 @@ regeneration is one command and the mapping is reviewable.
 
 ```js
 {
-  file: 'manage-page.png',            // stable name the docs reference
+  file: 'schedule-access.png',        // stable name the docs reference
   app: 'schedule',                    // launcher | schedule | browse | planner
   as: 'registrar',                    // demo identity that signs in
-  route: '/#/schedules',              // starting point (the manage page is a route now)
+  route: '/#/schedule/<id>/access',   // the access dialog is its own route now
   seed: 'populated-schedule',         // named DATA fixture (API-level)
   steps: [                            // declarative UI state (not in the URL)
-    { act: 'click', role: 'button', name: 'Access for Demo schedule' },
     { act: 'settle' },
     { act: 'assert', role: 'dialog', name: 'Access' },
   ],
@@ -73,8 +72,9 @@ regeneration is one command and the mapping is reviewable.
 - **Why steps exist**: many states are *not* URL-addressable today (dialogs,
   mode toggles, filters). The manifest records them explicitly. The route
   redesign has already turned the manage surface into a route (`/#/schedules`)
-  and is expected to shrink the rest to the genuinely sequential/transient
-  cases; walkthroughs stay step-based regardless.
+  and the access dialog into an overlay route (`/#/schedule/<id>/access`), and
+  is expected to shrink the rest to the genuinely sequential/transient cases;
+  walkthroughs stay step-based regardless.
 - **DSL** (`capture.mjs`, a small executor): `goto`, `signin`, `click`
   (accessible role/name — the app is a11y-gated), `fill`, `select`, `key`,
   `settle`, `assert`, plus a rare `custom` escape hatch. Settle after every

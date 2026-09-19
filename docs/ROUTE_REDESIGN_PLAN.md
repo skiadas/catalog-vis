@@ -1,7 +1,8 @@
 # UX redesign — modal → route plan
 
-Status: **in progress** — phase 1 (manage → `#/schedules`) has shipped; phases
-2–4 below remain. The docs-site plan is paused behind this.
+Status: **in progress** — phases 1 (manage → `#/schedules`) and 2 (access →
+`#/schedule/<id>/access`) have shipped; phases 3–4 remain. The docs-site plan
+is paused behind this.
 
 Motivation: the current schedule UX is overwhelming — nested dialogs, mode
 toggles, and controls stacked on top of each other. Routing is one lever to
@@ -29,7 +30,7 @@ genuinely sequential walkthroughs.
 | Surface | Component | Nature | Proposal |
 | --- | --- | --- | --- |
 | Manage list (search, year filter, 3 sections) | `ScheduleManage.vue` | a page in dialog clothing | `#/schedules` (done — **full page**, not overlay) |
-| Access dialog | `ScheduleManage.vue` | stable, referential | `#/schedule/<id>/access` |
+| Access dialog | `ScheduleAccess.vue` | stable, referential | `#/schedule/<id>/access` (done — overlay route) |
 | Create form / CSV import | `ScheduleManage.vue` | transient form state | surface may route; form state stays component-local |
 | Edit vs. suggest mode | store (`editingId`/`editingRole`) | stable, referential | `#/schedule/<id>/edit` / `…/suggest` |
 | Suggested changes panel | `SuggestedChanges.vue` | referential | `#/schedule/<id>/proposals` |
@@ -54,8 +55,13 @@ modal.
    simpler (no scrim, no focus trap, no mounted-while-closed state). Overlay
    routes are reserved for the context-dependent surfaces (access, mode,
    proposals, course editor) in the phases below.
-2. **Access → `#/schedule/<id>/access`** (overlay route on top of manage or the
-   grid).
+2. **Access → `#/schedule/<id>/access`** (**done** — overlay route). The dialog
+   moved out of `ScheduleManage.vue` into its own `ScheduleAccess.vue`; the
+   shell renders it over the surface it was opened from (the manage page, or
+   the grid on a deep link) and keeps that surface mounted, so context and
+   instance state survive. First use of the shell's `meta.overlay` +
+   underlay-memory mechanism, which phases 3–4 reuse. Non-owners reaching the
+   URL directly get a denial state (the manage row button is owner-only).
 3. **Mode into the URL** — `edit`/`suggest` as a path segment or query.
 4. **`#/schedule/<id>/proposals`** and the **course editor** as overlay routes.
 
