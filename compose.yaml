@@ -21,6 +21,11 @@ services:
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
       OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
+      # Directory + identity defaults (deploy/.env.example documents them):
+      # AUTH_DOMAIN canonicalizes bare usernames, ADMIN_USERNAMES names the
+      # directory administrators.
+      AUTH_DOMAIN: ${AUTH_DOMAIN:-}
+      ADMIN_USERNAMES: ${ADMIN_USERNAMES:-}
     volumes:
       - major-vis-data:/data
 

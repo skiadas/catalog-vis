@@ -1,6 +1,75 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { loadConfig, parseAuth, parseAuthDomain, parseAdminUsernames } from '../src/config.js'
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
+
+// The env vars config.js reads that are deliberately NOT container settings:
+// STATIC_DIR and SESSION_COOKIE are dev-only overrides, and NODE_ENV is set by
+// nothing at runtime (the image is the production build). Every other env
+// loadConfig reads must reach the container through compose.yaml and be
+// documented in deploy/.env.example — the deploy seam that a unit-testable
+// config() alone cannot protect.
+const CONFIG_INTERNAL_ONLY = new Set(['STATIC_DIR', 'SESSION_COOKIE', 'NODE_ENV'])
+
+// The env names loadConfig actually reads, captured by handing it a recording
+// proxy (once per auth provider, since the OIDC vars are only touched in that
+// branch) — so a new config env is caught without hand-maintaining a list.
+function configEnvNames() {
+  const names = new Set()
+  const values = {
+    PORT: '8080',
+    HOST: '0.0.0.0',
+    SERVICES: 'schedule',
+    STATIC_DIR: '/srv',
+    DB_PATH: '/data/major-vis.db',
+    SESSION_COOKIE: 'mjv_sid',
+    AUTH_PROVIDER: 'oidc',
+    COOKIE_SECURE: 'true',
+    OIDC_ISSUER: 'https://sso.example.org',
+    OIDC_CLIENT_ID: 'major-vis',
+    OIDC_CLIENT_SECRET: 'secret',
+    OIDC_REDIRECT_URI: 'https://app.example.org/api/auth/callback',
+    PUBLIC_ORIGIN: 'https://app.example.org',
+    NODE_ENV: 'production',
+    AUTH_DOMAIN: 'hanover.edu',
+    ADMIN_USERNAMES: 'admin',
+  }
+  const env = (provider) =>
+    new Proxy(
+      { ...values, AUTH_PROVIDER: provider },
+      {
+        get(target, prop) {
+          if (typeof prop !== 'string') return undefined
+          names.add(prop)
+          return prop in target ? target[prop] : ''
+        },
+      },
+    )
+  loadConfig(env('username'))
+  loadConfig(env('oidc'))
+  return names
+}
+
+test('every operator env config.js reads is passed through compose and documented', () => {
+  const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8')
+  const example = fs.readFileSync(path.join(ROOT, 'deploy', '.env.example'), 'utf8')
+  const operatorEnvs = [...configEnvNames()].filter((name) => !CONFIG_INTERNAL_ONLY.has(name))
+  assert.ok(operatorEnvs.length > 5, 'sanity: the env contract was captured')
+  const missingFromCompose = operatorEnvs.filter((name) => !new RegExp(`^\\s+${name}:`, 'm').test(compose))
+  assert.deepEqual(missingFromCompose, [], 'compose.yaml must pass these into the container')
+  // Of those, the ones compose sources from .env (`${NAME}`) are operator
+  // settings and must be documented in deploy/.env.example. The container
+  // wiring compose sets itself (PORT, HOST, DB_PATH) is not operator-facing.
+  const fromEnvFile = new Set([...compose.matchAll(/\$\{([A-Z_][A-Z0-9_]*)/g)].map((m) => m[1]))
+  const missingFromExample = operatorEnvs.filter(
+    (name) => fromEnvFile.has(name) && !new RegExp(`^#?\\s*${name}=`, 'm').test(example),
+  )
+  assert.deepEqual(missingFromExample, [], 'deploy/.env.example must document these')
+})
 
 test('parseAuth defaults to username self-identify with insecure cookies off', () => {
   assert.deepEqual(parseAuth({}), { provider: 'username', cookieSecure: false })
