@@ -63,6 +63,22 @@ Two ways run the apps, and they show different things:
 `npm run build` is also what a deployment needs; `dist/` is gitignored and is
 rebuilt on demand, so you never commit bundles.
 
+To exercise the **admin flows** locally (the user directory that carries each
+user's display name and departments), name the admins with the
+`ADMIN_USERNAMES` env var — a comma-separated list of canonical usernames
+(`AUTH_DOMAIN` canonicalizes bare names, so `haris` may become
+`haris@your.domain`):
+
+```sh
+ADMIN_USERNAMES=haris npm run dev:serve   # or prefix `npm run serve`
+```
+
+Sign in with that username: a **Directory** link appears in the header (at
+`#/admin`), while everyone else is a regular user. The directory is what gives
+a user their **departments**, which scope the add-course picker and non-owner
+suggest edits. Unset means no admins and the directory API is inert. The full
+env contract is in `server/README.md`.
+
 ## Data pipeline
 
 | Step                               | Script                                                                                                 | Output                                    |
