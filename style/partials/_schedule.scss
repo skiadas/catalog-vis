@@ -1047,11 +1047,7 @@
   color: var(--text-inverse);
   padding: 3px 6px 3px 9px;
   border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: opacity var(--duration-fast);
-}
-.schedule-pill:hover {
-  opacity: 0.85;
+  cursor: default;
 }
 .schedule-color-toggle {
   @include text-caption;

@@ -13,10 +13,7 @@
           reference: editMode && s.id !== editingId,
         }"
         :style="{ backgroundColor: colorForSchedule(s.id) }"
-        :title="editMode && s.id === editingId ? s.name : 'Hide ' + s.name + ownerSuffix(s)"
-        tabindex="0"
-        @click="onPill(s)"
-        @keydown="onKeyActivate($event, () => onPill(s))"
+        :title="s.name + ownerSuffix(s)"
       >
         <span class="schedule-pill-label"
           >{{ s.name
@@ -145,7 +142,6 @@ import {
   courseNumberLabel,
   offeringSectionLabel,
 } from '@major-vis/schedule-core'
-import { onKeyActivate } from '../src/keyboardNav.js'
 import { displayName } from '../src/names.js'
 
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
@@ -169,10 +165,6 @@ export default {
     // exits are Done and leaving.
     const editingId = editingScheduleId
     const editMode = computed(() => editingScheduleId.value != null)
-    const onPill = (s) => {
-      if (editMode.value && s.id === editingId.value) return
-      toggleSchedule(s.id)
-    }
     // Owner hint for a schedule: " (by registrar)" on shared rows, nothing for
     // the user's own ("You" everywhere would just be noise on the pills).
     const ownerSuffix = (s) => (isOwner(s) ? '' : s.owner ? ` (by ${displayName(s.owner)})` : '')
@@ -287,14 +279,12 @@ export default {
       editingId,
       editMode,
       editingRole,
-      onPill,
       canEdit,
       canSuggest,
       scheduleColorApplicable,
       filterActive,
       colorSchedules,
       setColorSchedules,
-      onKeyActivate,
       downloadSummaryCsv,
       downloadRegistrarCsv,
       toggleSchedule,
