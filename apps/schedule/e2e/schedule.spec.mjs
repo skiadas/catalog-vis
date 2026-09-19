@@ -75,9 +75,16 @@ async function signIn(page, username = 'registrar') {
   await page.getByText(`Signed in as ${username}`).waitFor({ timeout: 10000 })
 }
 
-// Creates a named schedule and closes the manage modal (backdrop click) so
-// the header pills are reachable. An optional year exercises the manage
-// dialog's year filter.
+// Leaves the "/schedules" management page. It is a route now (not a modal),
+// so closing means navigating back to whatever view opened it.
+async function closeManage(page) {
+  await page.getByRole('button', { name: '← Back' }).click()
+  await page.locator('.schedule-manage-page').waitFor({ state: 'detached', timeout: 5000 })
+  await expect(page).not.toHaveURL(/#\/schedules/)
+}
+
+// Creates a named schedule and leaves the manage page so the header pills are
+// reachable. An optional year exercises the manage page's year filter.
 async function createSchedule(page, name, year = '') {
   await page.getByRole('button', { name: /Your schedules/ }).click()
   await page.getByRole('button', { name: '＋ New schedule' }).click()
@@ -86,7 +93,7 @@ async function createSchedule(page, name, year = '') {
   await page.getByRole('button', { name: 'Generate' }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
   await page.getByText(name).first().waitFor({ timeout: 10000 })
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
 }
 
 test('sign-in and schedule creation', async ({ page }) => {
@@ -94,17 +101,27 @@ test('sign-in and schedule creation', async ({ page }) => {
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page)
   await createSchedule(page, 'Smoke schedule')
+  // Manage is a route now: opening "Your schedules" lands on /#/schedules and
+  // the browser back button closes it (deep-linkable, like the other views).
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await expect(page).toHaveURL(/#\/schedules$/)
+  await expect(page.locator('.schedule-manage-page')).toBeVisible()
+  await page.goBack()
+  await expect(page).toHaveURL(/#\/$/)
+  await expect(page.locator('.schedule-manage-page')).toHaveCount(0)
+  // A direct visit opens the same page without a prior view.
+  await page.goto('/#/schedules', { waitUntil: 'networkidle' })
+  await expect(page.locator('.schedule-manage-page')).toBeVisible()
   // Make it public so the sibling tests can treat it as a shared schedule
   // (schedules are private by default; the Access dialog is the owner's
   // control surface for opening one up).
-  await page.getByRole('button', { name: /Your schedules/ }).click()
   await page.getByRole('button', { name: 'Access for Smoke schedule' }).click()
   const access = page.locator('.modal[aria-labelledby="schedule-access-title"]')
   await access.waitFor({ state: 'visible', timeout: 5000 })
   await access.locator('#access-visibility').selectOption('public')
   await access.getByRole('button', { name: 'Save' }).click()
   await access.waitFor({ state: 'detached', timeout: 5000 })
-  await page.keyboard.press('Escape') // close the manage modal
+  await closeManage(page)
   assertClean(errors)
 })
 
@@ -329,7 +346,7 @@ test('course editor guards unsaved changes, pins its actions, and completes inst
   await page.locator('#schedule-create-name').fill('Editor roster')
   await page.getByRole('button', { name: 'Import', exact: true }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
   await page.locator('.schedule-pill', { hasText: 'Editor roster' }).first().waitFor({ timeout: 10000 })
 
   // Enter edit mode and open the course editor on the first offering row.
@@ -412,7 +429,7 @@ test('course editor guards unsaved changes, pins its actions, and completes inst
     .locator('.schedule-manage-row', { hasText: 'Editor roster' })
     .getByRole('button', { name: 'Delete Editor roster' })
     .click()
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
   assertClean(errors)
 })
 
@@ -430,7 +447,7 @@ test('instructor combobox suggests catalog faculty on a fresh schedule and accep
   await page.locator('#schedule-create-name').fill('Fresh roster')
   await page.getByRole('button', { name: 'Generate' }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
   await page.locator('.schedule-pill', { hasText: 'Fresh roster' }).first().waitFor({ timeout: 10000 })
 
   // Edit mode, add BIO 161 — the editor opens on it directly.
@@ -479,7 +496,7 @@ test('instructor combobox suggests catalog faculty on a fresh schedule and accep
     .locator('.schedule-manage-row', { hasText: 'Fresh roster' })
     .getByRole('button', { name: 'Delete Fresh roster' })
     .click()
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
   assertClean(errors)
 })
 
@@ -661,7 +678,7 @@ test('main views and dialogs have no serious/critical accessibility violations',
   // pollute the shared 'registrar' collection and break sibling tests' slot
   // assertions.
   await signIn(page, 'axe-user')
-  // Give this schedule a year so the manage dialog's year filter has options.
+  // Give this schedule a year so the manage page's year filter has options.
   await createSchedule(page, 'Axe schedule', '2026-27')
 
   // The grid with a generated schedule: colored blocks, pills, and filters.
@@ -670,11 +687,11 @@ test('main views and dialogs have no serious/critical accessibility violations',
   expect(brief(gridViolations), 'grid view').toEqual([])
   await assertTargetSize(page, ['.schedule-pill-edit', '.schedule-pill-hide'], 'grid view')
 
-  // The manage dialog and the create dialog it opens.
+  // The manage page and the create dialog it opens.
   await page.getByRole('button', { name: /Your schedules/ }).click()
   await settle(page)
   const manageViolations = await seriousViolations(page)
-  expect(brief(manageViolations), 'manage dialog').toEqual([])
+  expect(brief(manageViolations), 'manage page').toEqual([])
 
   // The access dialog (owner-only visibility/suggester controls) opens on top
   // of the manage list.
@@ -711,7 +728,7 @@ test('main views and dialogs have no serious/critical accessibility violations',
     .locator('.schedule-manage-row', { hasText: 'Smoke schedule' })
     .getByRole('button', { name: 'Show Smoke schedule' })
     .click()
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
   await settle(page)
   await expect(
     page.locator('.schedule-pill', { hasText: 'Smoke schedule' }).locator('.schedule-pill-owner'),
@@ -731,7 +748,7 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await page.locator('#schedule-create-name').fill('Axe create')
   await page.getByRole('button', { name: 'Generate' }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
   await settle(page)
   // The freshly generated schedule is auto-selected, so the grid now shows
   // populated count blocks — scan it: the collapsed-block text must stay AA
@@ -805,7 +822,7 @@ test('main views and dialogs have no serious/critical accessibility violations',
       .click()
     await page.waitForTimeout(250)
   }
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
 
   assertClean(errors)
 })
@@ -856,7 +873,7 @@ test('import registrar CSV creates a new schedule and routes rows by term', asyn
   const row = page.locator('.schedule-manage-row', { hasText: 'import' })
   await row.waitFor({ timeout: 10000 })
   await expect(row).toContainText('Fall: 4, Winter: 2, Spring: 3')
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
 
   // The new schedule is auto-selected as a header pill.
   await page.locator('.schedule-pill', { hasText: 'import' }).first().waitFor({ timeout: 10000 })
@@ -935,7 +952,7 @@ test('grid block click expands the course list in place; View slot navigates', a
   await page.getByRole('button', { name: 'All departments' }).click()
   await page.getByRole('button', { name: 'Generate' }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
 
   const block = page.locator('.cal-block:not(.off-pattern)').first()
   await block.waitFor({ timeout: 10000 })
@@ -970,7 +987,7 @@ test('edit mode drags a course by its row onto an empty slot; the pencil never d
   await page.getByRole('button', { name: 'Single department' }).click()
   await page.getByRole('button', { name: 'Generate' }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
 
   // Edit mode on THAT schedule (the collection holds other schedules too).
   await page.locator('.schedule-pill', { hasText: 'Drag test' }).locator('.schedule-pill-edit').click()
@@ -1027,7 +1044,7 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await page.getByRole('button', { name: 'Single department' }).click()
   await page.getByRole('button', { name: 'Generate' }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } })
+  await closeManage(page)
 
   // Alice opens the Access dialog on her row: shared visibility with bob +
   // carol as viewers, and only bob as a suggester.
@@ -1055,7 +1072,7 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await expect(
     page.locator('.schedule-manage-row', { hasText: 'Access schedule' }).locator('.schedule-manage-access'),
   ).toHaveText('shared · 2 viewers')
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } }) // close the manage modal
+  await closeManage(page)
 
   // Bob: sees the schedule under "Shared with you"; can suggest but not edit
   // directly.
@@ -1169,7 +1186,7 @@ test('admins maintain the user directory; access lists autocomplete from it', as
   await expect(options.first()).toHaveAttribute('value', 'wahl')
   await expect(options.first()).toContainText('John Wahl')
   await access.getByRole('button', { name: 'Cancel' }).click()
-  await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } }) // close manage
+  await closeManage(page)
 
   assertClean(errors)
 })

@@ -1,15 +1,9 @@
 <template>
-  <div v-if="props.isOpen" class="modal-overlay" @click.self="close">
-    <div
-      ref="manageEl"
-      class="modal modal-wide"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="schedule-manage-title"
-    >
+  <section class="schedule-manage-page" aria-labelledby="schedule-manage-title">
+    <div class="modal modal-wide">
       <div class="modal-head">
         <h3 id="schedule-manage-title">Your schedules</h3>
-        <button class="modal-close" @click="close" aria-label="Close">×</button>
+        <button class="filter-btn" @click="close">← Back</button>
       </div>
       <div class="modal-body">
         <p class="modal-intro" v-if="remote">
@@ -220,7 +214,7 @@
         </button>
       </div>
     </div>
-  </div>
+  </section>
 
   <div v-if="showCreate" class="modal-overlay" @click.self="showCreate = false">
     <div ref="createEl" class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-create-title">
@@ -434,9 +428,10 @@
 </template>
 
 <script>
-// "Your schedules" management modal plus the "New schedule" creation modal it
-// opens. Read/writes the schedule collection via the module store directly;
-// the caller controls visibility through the `isOpen` prop.
+// "Your schedules" management page (route `/schedules`) plus the "New
+// schedule" creation dialog and the owner-only Access dialog it opens.
+// Read/writes the schedule collection via the module store directly; the
+// parent closes the page by navigating back (the `close` event).
 
 import {
   schedules,
@@ -466,11 +461,8 @@ import { ref, computed, watch } from 'vue'
 export default {
   name: 'ScheduleManage',
   components: { ScheduleModeMenu },
-  props: {
-    isOpen: { type: Boolean, default: false },
-  },
   emits: ['close', 'edit'],
-  setup(props, { emit }) {
+  setup(_, { emit }) {
     const manageQuery = ref('')
     const menuFor = ref(null)
     // Year filter: '' is "All years"; the dropdown lists the years present.
@@ -756,35 +748,18 @@ export default {
 
     const close = () => emit('close')
 
-    // The manage list and the create form it opens are all dialogs; gate
-    // each focus trap off while a child dialog is on top so only one trap
-    // listens at a time.
-    const manageEl = ref(null)
+    // The page itself is not a dialog, so it does not trap focus. The create
+    // form it opens is a dialog; its trap is gated on the child being open so
+    // only one listens at a time.
     const createEl = ref(null)
     const accessEl = ref(null)
-    useModalFocus(() => props.isOpen && !showCreate.value && !showAccess.value, manageEl, close)
     useModalFocus(showCreate, createEl, () => {
       showCreate.value = false
     })
     useModalFocus(showAccess, accessEl, closeAccess)
-    // The component stays mounted while the modal is closed (only the overlay
-    // is v-if'd), so instance state would otherwise leak across opens — most
-    // visibly an open mode menu surviving a sign-out into the next user's
-    // session. Reset on close so every open starts from the documented
-    // defaults (no menu open).
-    watch(
-      () => props.isOpen,
-      (open) => {
-        if (!open) {
-          menuFor.value = null
-        }
-      },
-    )
 
     return {
-      props,
       close,
-      manageEl,
       createEl,
       manageQuery,
       yearFilter,

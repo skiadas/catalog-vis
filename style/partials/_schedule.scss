@@ -1164,6 +1164,40 @@
       color: var(--text-inverse);
     }
   }
+}
+
+/* "/schedules" page: the manage list as a standalone route rather than a
+ * dialog. Same content and classes; the modal chrome (scrim, max-height,
+ * shadow, sticky head) is dropped so the page scrolls as a whole. */
+.schedule-manage-page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3) var(--space-6);
+
+  .modal {
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .modal-head {
+    position: static;
+    padding: 0 0 var(--space-3);
+    background: none;
+  }
+
+  .modal-body {
+    padding: 0;
+  }
+
+  .schedule-manage-list {
+    max-height: none;
+    overflow: visible;
+  }
 } /* Schedule help pop-up */
 
 .schedule-help-toggle {

@@ -193,6 +193,8 @@ When a task touches a specific piece, read its README (map above) plus:
   step. Schedules live in the backend DB when `SERVICES` enables the backend
   and the app detects it; identity is username self-identify (dev/tests) or an
   external OIDC SSO in production (`AUTH_PROVIDER=oidc`).
-- The schedule manage modal stays **mounted while closed** (only its overlay
-  is `v-if`'d) and resets `menuFor` when it closes — keep that watcher when
-  adding instance state, or the state leaks across opens and sign-outs.
+- The schedule manage surface is a **route/page** (`#/schedules`), not a modal:
+  it unmounts on leave, so its instance state (`menuFor`) cannot leak. The
+  other dialogs (add-course, suggestions, history, course editor) still use the
+  `isOpen` prop pattern; the course editor is the one mounted by store state
+  (`courseEditTarget && editingId`) rather than an `isOpen` prop.

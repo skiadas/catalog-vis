@@ -1,8 +1,8 @@
 <template>
   <div v-if="schedule">
-    <SchedulePicker :active="showSchedules" @edit="enterEdit" @manage="showSchedules = true" />
+    <SchedulePicker :active="isManagePage" @edit="enterEdit" @manage="goManage()" />
 
-    <div class="schedule-toolbar">
+    <div class="schedule-toolbar" v-if="!isManagePage">
       <div class="seg" role="group" aria-label="View">
         <button
           class="seg-btn"
@@ -124,7 +124,7 @@
       </div>
     </div>
 
-    <div class="schedule-edit-bar" v-if="editingId">
+    <div class="schedule-edit-bar" v-if="editingId && !isManagePage">
       <span class="schedule-edit-label"
         >{{ editingRole === 'suggest' ? 'Suggestion mode:' : 'Edit mode:' }}
         <input
@@ -195,9 +195,10 @@
       </div>
     </div>
 
-    <ScheduleFilters :view="view" />
+    <ScheduleFilters v-if="!isManagePage" :view="view" />
 
-    <div v-if="!selectedScheduleIds.length" class="empty-state">
+    <ScheduleManage v-if="isManagePage" @close="goBackOrSchedule" @edit="enterEdit" />
+    <div v-else-if="!selectedScheduleIds.length" class="empty-state">
       <p v-if="schedules.length">
         {{ schedules.length }} schedule{{ schedules.length !== 1 ? 's' : '' }} available but none selected.
         <span v-if="remote"
@@ -227,7 +228,6 @@
   </div>
   <div v-else class="loading" role="status">Loading schedule...</div>
 
-  <ScheduleManage :is-open="showSchedules" @close="showSchedules = false" @edit="enterEdit" />
   <ScheduleAddCourse :is-open="showAddCourse" @close="showAddCourse = false" />
   <SuggestedChanges
     :is-open="showSuggestions"
@@ -245,7 +245,13 @@
 // view state they need as props.
 
 import { useRoute } from 'vue-router'
-import { goScheduleGrid, goScheduleCourse, goScheduleInstructor } from '../router.js'
+import {
+  goScheduleGrid,
+  goScheduleCourse,
+  goScheduleInstructor,
+  goManage,
+  goBackOrSchedule,
+} from '../router.js'
 import { courseName } from '@major-vis/catalog-client'
 import {
   filterMode,
@@ -311,6 +317,9 @@ export default {
   setup() {
     const route = useRoute()
     const view = computed(() => String(route.meta.scheduleView || 'grid'))
+    // "/schedules" is a page (not a dialog): the shell renders it as the body
+    // in place of the active sub-view, like the /admin route does.
+    const isManagePage = computed(() => route.meta.page === 'manage')
     const sortedCourses = computed(() => {
       if (!schedule.value) return []
       return Object.keys(schedule.value.byCourse).sort()
@@ -365,8 +374,7 @@ export default {
     }
 
     // Modal visibility. The modals own their internal state; these refs only
-    // gate whether each is open.
-    const showSchedules = ref(false)
+    // gate whether each is open. (Manage is a route now, not a modal.)
     const showAddCourse = ref(false)
     const showSuggestions = ref(false)
     const showHistory = ref(false)
@@ -384,7 +392,9 @@ export default {
     const enterEdit = (id, role = 'edit') => {
       setEditingSchedule(id, role)
       nameDraft.value = editingSchedule.value ? editingSchedule.value.name : ''
-      showSchedules.value = false
+      // Editing from the manage page leaves it for the active view; the picker
+      // menu is already over a view, so it stays put.
+      if (isManagePage.value) goBackOrSchedule()
     }
     const exitEdit = () => {
       // Leaving a suggest session with unsaved draft changes asks first.
@@ -451,7 +461,9 @@ export default {
       schedule,
       schedules,
       selectedScheduleIds,
-      showSchedules,
+      isManagePage,
+      goManage,
+      goBackOrSchedule,
       showAddCourse,
       showSuggestions,
       showHistory,

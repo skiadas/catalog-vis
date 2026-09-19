@@ -96,6 +96,13 @@ state. They talk through deep links (see `docs/GLOSSARY.md` → "join keys"):
 
 `trackKey` is a stable slug of a parsed requirement's label.
 
+The schedule app also treats its own internal surfaces as deep links (hash
+history, `apps/schedule/router.js`): the grid (`#/`), day/slot/course/
+instructor views, the `#/schedules` management page, and `#/admin`. The
+route-redesign plan (`docs/ROUTE_REDESIGN_PLAN.md`) extends this deliberately:
+a navigational hub is a page, a surface that operates on the grid's content is
+an overlay route.
+
 ## What each piece needs from the contract
 
 See the consumer-needs matrix in `packages/catalog-contract/README.md`. In short:
