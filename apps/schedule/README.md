@@ -129,6 +129,14 @@ are out of reach. Leaving — Done, browser back, or a header link — ends the
 session; an unsaved suggest draft asks before discarding. A deep link to edit a
 schedule you don't own (or that no longer exists) bounces back to the view.
 
+**The course editor and the proposals panel are overlay routes**, so they are
+deep-linkable and back closes them without leaving the session. The editor is
+named by the course (`#/schedule/<id>/course/<code>/edit`) and its header
+switches between that course's sections and labs; switching with unsaved
+changes asks before discarding, and the same ask guards closing the editor.
+Opening the editor from a pencil, from add-course, or from the history panel
+all navigate the same way.
+
 **Suggestions are department-scoped.** A non-owner's session only lets them
 touch courses in the departments their directory entry lists (no pencil, no
 drag for the rest), and the server refuses any proposal operation touching
@@ -259,10 +267,14 @@ button, and all mutating actions behave identically in both modes.
 - `#/day/:day`, `#/slot/:day/:time`, `#/course/:code`, `#/instructor/:name`
 - `#/schedules` — "Your schedules" management page
 - `#/schedule/:id/access` — owner-only access dialog (overlay)
+- `#/schedule/:id/proposals` — suggested-changes panel (overlay)
+- `#/schedule/:id/course/:offeringCode/edit` — course editor (overlay)
 - `#/admin` — user directory (admins only)
 
 Any view can carry a session query: `?mode=edit&id=<id>` or
-`?mode=suggest&id=<id>` (e.g. `#/day/M?mode=edit&id=3`).
+`?mode=suggest&id=<id>` (e.g. `#/day/M?mode=edit&id=3`). The three overlay
+routes are session-transparent: opening one keeps the session (and its draft),
+and closing returns to the view you came from.
 
 ## Cross-app links
 

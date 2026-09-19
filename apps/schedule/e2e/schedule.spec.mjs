@@ -412,6 +412,114 @@ test('edit session guard: deep links you cannot edit bounce back to the view', a
   assertClean(errors)
 })
 
+// The suggested-changes panel is its own overlay route: openable from the
+// toolbar (pending review) and deep-linkable; back closes it.
+test('proposals overlay route: opens from the toolbar, back closes, deep links', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'proposals-route-user')
+  await createPopulatedSchedule(page, 'Proposals route')
+
+  await page.getByRole('button', { name: 'Suggested changes' }).click()
+  const panel = page.locator('.modal[aria-labelledby="suggested-title"]')
+  await panel.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(page).toHaveURL(/#\/schedule\/[^/]+\/proposals$/)
+  const proposalsUrl = page.url()
+  await expect(panel.getByText('Suggested changes — Proposals route')).toBeVisible()
+  await page.goBack()
+  await panel.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(page).not.toHaveURL(/proposals/)
+
+  // A direct visit opens the same panel (pending review, no session needed).
+  await page.goto(proposalsUrl, { waitUntil: 'networkidle' })
+  await panel.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(panel.getByText('No suggestions yet.')).toBeVisible()
+  await panel.getByLabel('Close').click()
+  await panel.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Clean up.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Proposals route' })
+    .getByRole('button', { name: 'Delete Proposals route' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
+// The course editor is its own overlay route named by the course code; its
+// header switches between the course's sections and labs, and switching with
+// unsaved changes asks before discarding.
+test('course editor overlay route: section switcher and switch guard', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'editor-route-user')
+  await createPopulatedSchedule(page, 'Editor route')
+
+  // Enter edit mode and open the editor on the first offering row.
+  await page.locator('.schedule-pill-edit').first().click()
+  await page.locator('.mode-menu').getByRole('button', { name: 'Edit schedule' }).click()
+  await page.getByText('Edit mode:').first().waitFor({ timeout: 5000 })
+  await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(page).toHaveURL(/#\/schedule\/[^/]+\/course\/[^/]+\/edit$/)
+  const editorUrl = page.url()
+  const lectureTitle = await em.locator('#course-edit-title').innerText()
+  // A single-section course has no switcher yet.
+  await expect(em.locator('select[aria-label="Section"]')).toHaveCount(0)
+
+  // Add a lab (the editor closes itself when nothing else was edited), then
+  // reopen: the course now has two sections and the header offers a switcher.
+  await em.getByRole('button', { name: 'Add lab section' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  const switcher = em.locator('select[aria-label="Section"]')
+  await expect(switcher).toBeVisible()
+  await expect(switcher.locator('option')).toHaveCount(2)
+
+  // Editing a field then switching asks first; Keep editing reverts the select
+  // and stays put.
+  await em.locator('#course-edit-instructor').fill('Section Person')
+  await switcher.selectOption({ index: 1 })
+  await expect(em.getByText('Discard your unsaved changes?')).toBeVisible()
+  await em.getByRole('button', { name: 'Keep editing' }).click()
+  await expect(em.getByText('Discard your unsaved changes?')).toHaveCount(0)
+  await expect(em.locator('#course-edit-title')).toHaveText(lectureTitle)
+  // Discarding the change switches to the other section.
+  await switcher.selectOption({ index: 1 })
+  await em.getByRole('button', { name: 'Discard' }).click()
+  await expect(em.locator('#course-edit-title')).not.toHaveText(lectureTitle)
+
+  // Closing returns to the session view (the overlay is session-transparent).
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(page).not.toHaveURL(/course\/.*\/edit/)
+  await expect(page.getByText('Edit mode:')).toBeVisible()
+
+  // The editor URL is referential: a fresh visit auto-starts the session and
+  // opens the editor (checked in a new page so it is a real document load).
+  const deep = await page.context().newPage()
+  await deep.goto(editorUrl, { waitUntil: 'networkidle' })
+  const deepEditor = deep.locator('.modal[aria-labelledby="course-edit-title"]')
+  await deepEditor.waitFor({ state: 'visible', timeout: 5000 })
+  await deep.getByRole('button', { name: 'Cancel' }).click()
+  await deepEditor.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(deep).not.toHaveURL(/course\/.*\/edit/)
+  await deep.close()
+
+  // Clean up: leave the session and delete the schedule.
+  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Editor route' })
+    .getByRole('button', { name: 'Delete Editor route' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
 test('history panel lists session edits; Cancel removes one change, Restore brings it back, Edit jumps', async ({
   page,
 }) => {

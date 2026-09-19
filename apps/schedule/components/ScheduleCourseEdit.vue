@@ -9,6 +9,17 @@
     >
       <div class="modal-head">
         <h3 id="course-edit-title">Edit {{ codeLabel }} {{ sectionLabel }}</h3>
+        <select
+          v-if="sections.length > 1"
+          class="search-input course-edit-section-select"
+          aria-label="Section"
+          :value="offeringKey"
+          @change="onSwitch"
+        >
+          <option v-for="s in sections" :key="offeringItemKey(s)" :value="offeringItemKey(s)">
+            {{ sectionOptionLabel(s) }}
+          </option>
+        </select>
         <button class="modal-close" @click="close" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
@@ -290,6 +301,7 @@ import {
   normalizeBand,
   offeringCodeLabel,
   offeringSectionLabel,
+  offeringItemKey,
 } from '@major-vis/schedule-core'
 import {
   scheduleById,
@@ -316,8 +328,12 @@ export default {
   props: {
     scheduleId: { type: String, required: true },
     offering: { type: Object, required: true },
+    // Every section/lab of this course (merged `{ o, code, sid }` items) — the
+    // header turns into a switcher when there is more than one. Switching with
+    // unsaved changes asks first (the same discard flow as closing).
+    sections: { type: Array, default: () => [] },
   },
-  emits: ['close'],
+  emits: ['close', 'switch'],
   setup(props, { emit }) {
     const o = props.offering.o
 
@@ -326,13 +342,35 @@ export default {
     const modalEl = ref(null)
     const instructorEl = ref(null)
 
+    // --- Section switcher ------------------------------------------------
+    const offeringKey = computed(() => offeringItemKey(props.offering))
+    const sectionOptionLabel = (s) => `${offeringCodeLabel(s.o)} · ${offeringSectionLabel(s.o)}`
+    // The section a confirmed discard should switch to; null means "close".
+    const discardTarget = ref(null)
+    const onSwitch = (e) => {
+      const target = props.sections.find((s) => offeringItemKey(s) === e.target.value)
+      if (!target) return
+      if (hasPendingChanges.value) {
+        // Never discard silently: ask first, and keep the header showing the
+        // section actually being edited until then.
+        e.target.value = offeringKey.value
+        discardTarget.value = target
+        confirmDiscard.value = true
+        nextTick(() => {
+          if (keepEditEl.value) keepEditEl.value.focus()
+        })
+        return
+      }
+      emit('switch', target)
+    }
+
     // --- Guarded dismissal ---------------------------------------------
     // Closing the editor with unsaved changes (outside click, ×, Escape) asks
     // before discarding: the foot swaps to "Discard your unsaved changes?"
     // with Keep editing / Discard. Keep editing returns to the form (the lead
     // instructor field); Escape while confirming also keeps editing. Cancel,
     // Save, Remove course, and the lab auto-close are deliberate exits and
-    // close directly.
+    // close directly. A section switch while dirty reuses the same ask.
     const confirmDiscard = ref(false)
     const keepEditEl = ref(null)
     const close = () => {
@@ -341,6 +379,7 @@ export default {
         return
       }
       if (hasPendingChanges.value) {
+        discardTarget.value = null
         confirmDiscard.value = true
         nextTick(() => {
           if (keepEditEl.value) keepEditEl.value.focus()
@@ -349,8 +388,17 @@ export default {
       }
       emit('close')
     }
-    const discard = () => emit('close')
+    const discard = () => {
+      if (discardTarget.value) {
+        const target = discardTarget.value
+        discardTarget.value = null
+        emit('switch', target)
+        return
+      }
+      emit('close')
+    }
     const keepEditing = () => {
+      discardTarget.value = null
       confirmDiscard.value = false
       nextTick(() => {
         if (instructorEl.value) instructorEl.value.focus()
@@ -733,6 +781,10 @@ export default {
       schedule,
       showAll,
       modalEl,
+      offeringKey,
+      sectionOptionLabel,
+      onSwitch,
+      offeringItemKey,
       instructorSel,
       instructorSuggestOpen,
       instructorSuggestEl,

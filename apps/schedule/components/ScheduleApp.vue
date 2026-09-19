@@ -117,7 +117,7 @@
         <button
           v-if="suggestionsScheduleId"
           class="filter-btn schedule-suggestions-btn"
-          @click="showSuggestions = true"
+          @click="goProposals(suggestionsScheduleId)"
         >
           Suggested changes
         </button>
@@ -155,9 +155,9 @@
       <button
         v-if="editingRole === 'suggest'"
         class="filter-btn schedule-suggestions-btn"
-        :class="{ active: showSuggestions }"
-        :aria-pressed="showSuggestions"
-        @click="showSuggestions = true"
+        :class="{ active: overlay === 'proposals' }"
+        :aria-pressed="overlay === 'proposals'"
+        @click="goProposals(editingId)"
       >
         {{ editingDraft && editingDraft.dirty ? 'Propose changes ●' : 'Propose changes' }}
       </button>
@@ -220,10 +220,13 @@
     </template>
 
     <ScheduleCourseEdit
-      v-if="courseEditTarget && editingId"
+      v-if="overlay === 'course-edit' && courseEditTarget && editingId"
+      :key="offeringItemKey(courseEditTarget)"
       :schedule-id="editingId"
       :offering="courseEditTarget"
-      @close="closeCourseEdit"
+      :sections="editorSections"
+      @switch="openCourseEdit"
+      @close="onCourseEditClose"
     />
 
     <ScheduleAccess v-if="overlay === 'access'" :schedule-id="accessScheduleId" @close="goBackOrGrid" />
@@ -231,11 +234,7 @@
   <div v-else class="loading" role="status">Loading schedule...</div>
 
   <ScheduleAddCourse :is-open="showAddCourse" @close="showAddCourse = false" />
-  <SuggestedChanges
-    :is-open="showSuggestions"
-    :schedule-id="suggestionsScheduleId"
-    @close="showSuggestions = false"
-  />
+  <SuggestedChanges v-if="overlay === 'proposals'" :schedule-id="proposalsScheduleId" @close="goBackOrGrid" />
   <ScheduleHistory :is-open="showHistory" @close="showHistory = false" @edit-course="onEditCourse" />
 </template>
 
@@ -253,6 +252,8 @@ import {
   goScheduleInstructor,
   goManage,
   goAccess,
+  goProposals,
+  goCourseEdit,
   goBackOrGrid,
   goMode,
   exitMode,
@@ -283,13 +284,15 @@ import {
   blockMode,
   setBlockMode,
   courseEditTarget,
+  openCourseEdit,
   closeCourseEdit,
+  courseSections,
   historyEntries,
   cancelLatest,
   jumpToEdit,
   remote,
 } from '../src/scheduleStore.js'
-import { TERM_KEYS, TERM_LABELS } from '@major-vis/schedule-core'
+import { TERM_KEYS, TERM_LABELS, offeringItemKey } from '@major-vis/schedule-core'
 import ScheduleGrid from './ScheduleGrid.vue'
 import ScheduleDay from './ScheduleDay.vue'
 import ScheduleSlot from './ScheduleSlot.vue'
@@ -358,6 +361,12 @@ export default {
     })
     const selectedCode = computed(() => String(route.params.code || ''))
     const accessScheduleId = computed(() => String(route.params.id || ''))
+    // Route params are strings; remote schedule ids are numbers. Match loosely.
+    const resolveScheduleId = (routeId) =>
+      schedules.value.find((s) => String(s.id) === String(routeId))?.id ?? null
+    // The proposals overlay acts on the route's schedule (loose-resolved, since
+    // the panel's store lookups are strict).
+    const proposalsScheduleId = computed(() => resolveScheduleId(String(route.params.id || '')))
     const showFilter = computed(() => ['grid', 'day', 'slot'].includes(view.value))
 
     // Filter mode buttons: clicking the active mode collapses the chips panel
@@ -407,9 +416,9 @@ export default {
     }
 
     // Modal visibility. The modals own their internal state; these refs only
-    // gate whether each is open. (Manage is a route now, not a modal.)
+    // gate whether each is open. (Manage, access, proposals, and the course
+    // editor are routes now, not modals.)
     const showAddCourse = ref(false)
-    const showSuggestions = ref(false)
     const showHistory = ref(false)
 
     // The schedule the suggestions panel acts on: the one being edited, else the
@@ -425,19 +434,18 @@ export default {
     const editingName = computed(() => (editingSchedule.value ? editingSchedule.value.name : ''))
     const nameDraft = ref('')
     const enterEdit = (id, role = 'edit') => goMode(id, role)
-    // Route params are strings; remote schedule ids are numbers. Match loosely.
-    const resolveScheduleId = (routeId) =>
-      schedules.value.find((s) => String(s.id) === String(routeId))?.id ?? null
     // Route ↔ session sync. Entering ensures the target exists and joins the
     // view (its references are whatever else is selected), then starts the
     // session; the store refuses a non-owner edit deep link, which bounces out.
     // `collectionReady` is a dependency so a deep link waits for the schedules
     // to load (and for a sign-in) before deciding its target is missing.
+    // Overlays are session-transparent: opening the proposals panel or the
+    // course editor from a session must not end it.
     watch(
-      () => [route.query.mode, route.query.id, collectionReady.value],
-      ([mode, routeId]) => {
+      () => [route.query.mode, route.query.id, collectionReady.value, route.meta.overlay],
+      ([mode, routeId, , overlayNow]) => {
         if (mode !== 'edit' && mode !== 'suggest') {
-          if (editingScheduleId.value != null) setEditingSchedule(null)
+          if (editingScheduleId.value != null && !overlayNow) setEditingSchedule(null)
           return
         }
         const id = resolveScheduleId(routeId)
@@ -465,6 +473,62 @@ export default {
         clearDraft(editingScheduleId.value, activeTerm.value)
       }
       exitMode()
+    }
+
+    // --- Course editor overlay -------------------------------------------
+    // The store's `courseEditTarget` stays the single "editor is open on this
+    // offering" signal; the route mirrors it. Setting the target (grid pencils,
+    // add-course, history's Edit) navigates to the editor route; the editor
+    // itself is keyed on the offering so a section switch remounts it cleanly.
+    watch(courseEditTarget, (target) => {
+      if (target && overlay.value !== 'course-edit') goCourseEdit(target.sid, target.code)
+    })
+    const editorSections = computed(() =>
+      overlay.value === 'course-edit' && editingId.value
+        ? courseSections(editingId.value, route.params.offeringCode)
+        : [],
+    )
+    // Route → store: on the editor route, ensure a session on the schedule
+    // (a deep link enters edit mode) and resolve the offering from the route's
+    // course code. Anything unresolvable or refused bounces back.
+    watch(
+      () => [overlay.value, route.params.id, route.params.offeringCode, collectionReady.value],
+      ([overlayNow, routeId, code]) => {
+        if (overlayNow !== 'course-edit') {
+          if (courseEditTarget.value) closeCourseEdit()
+          return
+        }
+        const id = resolveScheduleId(routeId)
+        if (id == null) {
+          if (!collectionReady.value) return
+          goBackOrGrid()
+          return
+        }
+        if (!selectedScheduleIds.value.includes(id)) toggleSchedule(id)
+        if (editingScheduleId.value !== id) {
+          Promise.resolve(setEditingSchedule(id, 'edit')).then((ok) => {
+            if (!ok) goBackOrGrid()
+            else nameDraft.value = editingSchedule.value ? editingSchedule.value.name : ''
+          })
+        }
+        const current = courseEditTarget.value
+        const sameCode =
+          current &&
+          String(current.sid) === String(id) &&
+          String(current.code).replace(/L$/i, '') === String(code || '').replace(/L$/i, '')
+        if (!sameCode) {
+          const first = courseSections(id, code)[0]
+          if (!first) {
+            goBackOrGrid()
+            return
+          }
+          openCourseEdit(first)
+        }
+      },
+    )
+    const onCourseEditClose = () => {
+      closeCourseEdit()
+      goBackOrGrid()
     }
 
     // Renames the edited schedule from the inline input (on Enter or blur).
@@ -524,12 +588,14 @@ export default {
       selectedScheduleIds,
       overlay,
       accessScheduleId,
+      proposalsScheduleId,
       isManagePage,
       goManage,
       goAccess,
+      goProposals,
+      goCourseEdit,
       goBackOrGrid,
       showAddCourse,
-      showSuggestions,
       showHistory,
       suggestionsScheduleId,
       editingId,
@@ -550,6 +616,10 @@ export default {
       TERM_KEYS,
       TERM_LABELS,
       courseEditTarget,
+      editorSections,
+      offeringItemKey,
+      openCourseEdit,
+      onCourseEditClose,
       closeCourseEdit,
       historyEntries,
       onEditCourse,

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isOpen" class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay" @click.self="$emit('close')">
     <div
       ref="modalEl"
       class="modal modal-wide"
@@ -146,17 +146,14 @@ import { ref, computed, watch } from 'vue'
 export default {
   name: 'SuggestedChanges',
   props: {
-    isOpen: { type: Boolean, default: false },
     scheduleId: { type: [String, Number], default: null },
   },
   emits: ['close'],
   setup(props, { emit }) {
+    // The overlay only exists while its route is active, so the trap is always
+    // on for its lifetime (the caller gates it with `v-if`).
     const modalEl = ref(null)
-    useModalFocus(
-      () => props.isOpen,
-      modalEl,
-      () => emit('close'),
-    )
+    useModalFocus(ref(true), modalEl, () => emit('close'))
     const schedule = computed(() => (props.scheduleId ? scheduleById(props.scheduleId) : null))
     const owned = computed(() => isOwner(schedule.value))
     const canSuggestFor = computed(() => canSuggest(schedule.value))
@@ -177,17 +174,12 @@ export default {
     )
     const draftText = computed(() => renderChanges(draftOps.value, 'text') || '(no changes yet)')
 
-    // Refresh suggestions each time the modal opens.
+    // Refresh suggestions on mount and whenever the panel's schedule changes.
     const load = async () => {
       feedback.value = ''
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
-    watch(
-      () => props.isOpen,
-      (isOpenNow) => {
-        if (isOpenNow) load()
-      },
-    )
+    watch(() => props.scheduleId, load, { immediate: true })
 
     const opStatus = (e) => (e && e.resolution && e.resolution.status) || 'pending'
     const hasPending = (s) => (s.operations || []).some((e) => opStatus(e) === 'pending')

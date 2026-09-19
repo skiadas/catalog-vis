@@ -31,6 +31,21 @@ const routes = [
     meta: { overlay: 'access' },
   },
   {
+    path: '/schedule/:id/proposals',
+    name: 'schedule-proposals',
+    component: ScheduleApp,
+    meta: { overlay: 'proposals' },
+  },
+  {
+    // `:offeringCode`, not `:code`: the course *view* route already owns
+    // `route.params.code`, and the underlay it renders while this overlay is
+    // open must keep reading its own course.
+    path: '/schedule/:id/course/:offeringCode/edit',
+    name: 'schedule-course-edit',
+    component: ScheduleApp,
+    meta: { overlay: 'course-edit' },
+  },
+  {
     path: '/admin',
     name: 'admin',
     component: AdminPage,
@@ -102,6 +117,14 @@ export function goManage() {
 export function goAccess(id) {
   router.push({ name: 'schedule-access', params: { id: String(id) } })
 }
+export function goProposals(id) {
+  router.push({ name: 'schedule-proposals', params: { id: String(id) } })
+}
+// Opens the course editor overlay. The route names the course (its base code);
+// the editor's section switcher covers the rest of the sections and labs.
+export function goCourseEdit(id, code) {
+  router.push({ name: 'schedule-course-edit', params: { id: String(id), offeringCode: String(code) } })
+}
 // Enters an edit/suggest session. From a schedule view the view is kept (you
 // edit the day/grid you were looking at); from a page or overlay it starts on
 // the grid.
@@ -129,9 +152,11 @@ export function goBackOrGrid() {
 // Leaving a session with an unsaved suggest draft always asks first — however
 // you leave (Done, browser back, a header link). A clean session just ends;
 // the draft itself persists in the store, so a declined exit keeps you put.
+// Overlay routes (access/proposals/course editor) are session-transparent:
+// opening one is not leaving, so it never asks.
 router.beforeEach((to, from) => {
   const mode = from.query.mode
-  const leavingMode = (mode === 'edit' || mode === 'suggest') && to.query.mode !== mode
+  const leavingMode = (mode === 'edit' || mode === 'suggest') && to.query.mode !== mode && !to.meta.overlay
   if (!leavingMode) return true
   const draft = editingDraft.value
   if (draft && draft.dirty) {

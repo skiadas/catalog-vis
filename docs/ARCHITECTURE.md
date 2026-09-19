@@ -98,14 +98,17 @@ state. They talk through deep links (see `docs/GLOSSARY.md` → "join keys"):
 
 The schedule app also treats its own internal surfaces as deep links (hash
 history, `apps/schedule/router.js`): the grid (`#/`), day/slot/course/
-instructor views, the `#/schedules` management page, `#/schedule/<id>/access`
-(an overlay route over the manage page or the grid), and `#/admin`. The
-edit/suggest session is orthogonal to the view, so it rides in the query
-(`#/day/M?mode=edit&id=<id>`) rather than the path — the view routes keep
-their own params and the session survives view switches. The route-redesign
-plan (`docs/ROUTE_REDESIGN_PLAN.md`) extends this deliberately: a navigational
-hub is a page, a surface that operates on the grid's content is an overlay
-route.
+instructor views, the `#/schedules` management page, and `#/admin`, plus three
+**overlay** routes that render over the surface you came from —
+`#/schedule/<id>/access`, `#/schedule/<id>/proposals`, and the course editor
+`#/schedule/<id>/course/<code>/edit`. The edit/suggest session is orthogonal
+to the view, so it rides in the query (`#/day/M?mode=edit&id=<id>`) rather
+than the path — the view routes keep their own params and the session survives
+view switches. Overlays are **session-transparent**: they neither end nor are
+ended by a session, so the proposals panel keeps a suggest session's draft
+available. The route-redesign plan (`docs/ROUTE_REDESIGN_PLAN.md`) extends
+this deliberately: a navigational hub is a page, a surface that operates on
+the grid's content is an overlay route.
 
 ## What each piece needs from the contract
 

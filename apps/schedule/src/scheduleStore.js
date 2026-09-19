@@ -23,6 +23,8 @@ import {
   TERM_KEYS,
   offeringIdFor,
   assignOfferingIds,
+  offeringCodeLabel,
+  offeringSectionLabel,
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
 import { programs, allCourses } from '@major-vis/catalog-client'
@@ -1121,6 +1123,31 @@ export function viewPart(schedule, term = activeTerm.value) {
 export function viewOfferings(schedule, term = activeTerm.value) {
   const part = viewPart(schedule, term)
   return part ? part.offerings : []
+}
+
+// Every offering of a course in `scheduleId`'s active term that shares the
+// route's base code — its sections and labs (`BIO 166` also matches `BIO
+// 166L`) — as merged `{ o, code, sid }` items, ordered by section label. Drives
+// the course editor's section switcher and its deep-link resolution.
+export function courseSections(scheduleId, code) {
+  const schedule = scheduleById(scheduleId)
+  if (!schedule) return []
+  const base = String(code || '')
+    .trim()
+    .replace(/L$/i, '')
+  if (!base) return []
+  const out = []
+  for (const o of viewOfferings(schedule, activeTerm.value)) {
+    const label = offeringCodeLabel(o)
+    if (label.replace(/L$/i, '') !== base) continue
+    out.push({ o, code: label, sid: schedule.id })
+  }
+  out.sort((a, b) =>
+    `${offeringSectionLabel(a.o)}`.localeCompare(`${offeringSectionLabel(b.o)}`, undefined, {
+      numeric: true,
+    }),
+  )
+  return out
 }
 
 // Adds a schedule, creating its three empty term parts. `offerings` (optional)

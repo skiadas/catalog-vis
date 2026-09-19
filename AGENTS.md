@@ -195,13 +195,16 @@ When a task touches a specific piece, read its README (map above) plus:
   external OIDC SSO in production (`AUTH_PROVIDER=oidc`).
 - The schedule manage surface is a **route/page** (`#/schedules`), not a modal:
   it unmounts on leave, so its instance state (`menuFor`) cannot leak. The
-  access dialog is an **overlay route** (`#/schedule/:id/access`): the shell
-  renders it over the last non-overlay surface (remembered in `underlay`), so
-  that surface stays mounted underneath. The edit/suggest session is neither:
-  it rides in the query (`?mode=edit|suggest&id=<id>`) on the current view,
-  scopes the app to that schedule (other selected schedules render as dimmed
-  read-only references via `isReferenceItem`), and is entered/left by the route
-  watcher in `ScheduleApp` (the store mirrors it; a `router.beforeEach` guards
-  the unsaved suggest draft). The remaining dialogs (add-course, suggestions,
-  history) still use the `isOpen` prop pattern; the course editor is mounted by
-  store state (`courseEditTarget && editingId`).
+  access dialog, the proposals panel, and the course editor are **overlay
+  routes** (`#/schedule/:id/access`, `.../proposals`, `.../course/:offeringCode/edit`):
+  the shell renders them over the last non-overlay surface (remembered in
+  `underlay`), so that surface stays mounted underneath. The edit/suggest
+  session is neither: it rides in the query (`?mode=edit|suggest&id=<id>`) on
+  the current view, scopes the app to that schedule (other selected schedules
+  render as dimmed read-only references via `isReferenceItem`), and is
+  entered/left by the route watcher in `ScheduleApp` (the store mirrors it; a
+  `router.beforeEach` guards the unsaved suggest draft). **Overlays are
+  session-transparent** — they neither end nor are ended by a session; the
+  course editor syncs `courseEditTarget` ↔ its route and auto-enters a session
+  on a deep link. The remaining dialogs (add-course, history) still use the
+  `isOpen` prop pattern.

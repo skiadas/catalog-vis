@@ -1,8 +1,8 @@
 # UX redesign — modal → route plan
 
-Status: **in progress** — phases 1 (manage → `#/schedules`), 2 (access →
-`#/schedule/<id>/access`), and 3 (mode → `?mode=edit|suggest&id=<id>`) have
-shipped; phase 4 remains. The docs-site plan is paused behind this.
+Status: **complete** — all four phases shipped (manage page, access overlay,
+focused edit/suggest session, proposals + course editor overlays). The
+docs-site plan can resume.
 
 Motivation: the current schedule UX is overwhelming — nested dialogs, mode
 toggles, and controls stacked on top of each other. Routing is one lever to
@@ -33,8 +33,8 @@ genuinely sequential walkthroughs.
 | Access dialog | `ScheduleAccess.vue` | stable, referential | `#/schedule/<id>/access` (done — overlay route) |
 | Create form / CSV import | `ScheduleManage.vue` | transient form state | surface may route; form state stays component-local |
 | Edit vs. suggest mode | store (`editingId`/`editingRole`) | stable, referential | `?mode=edit`/`?mode=suggest&id=<id>` (done — focused session) |
-| Suggested changes panel | `SuggestedChanges.vue` | referential | `#/schedule/<id>/proposals` |
-| Course editor | `ScheduleCourseEdit.vue` | referential, needs grid context | overlay route `#/schedule/<id>/course/<code>/edit` |
+| Suggested changes panel | `SuggestedChanges.vue` | referential | `#/schedule/<id>/proposals` (done — overlay route) |
+| Course editor | `ScheduleCourseEdit.vue` | referential, needs grid context | overlay route `#/schedule/<id>/course/<code>/edit` (done — with a section/lab switcher) |
 | Add course | `ScheduleAddCourse.vue` | transient, contextual | keep modal (or fold into the editor) |
 | History panel | `ScheduleHistory.vue` | session-local undo context | keep modal |
 | Help | `ScheduleHelp.vue` | docs-ish | `#/help` (low priority) |
@@ -73,9 +73,20 @@ modal.
    back, a header link) ends the session — with a discard confirm on an
    unsaved suggest draft. View navigation during a session replaces the entry,
    so back leaves the session rather than walking its view history.
-4. **`#/schedule/<id>/proposals`** and the **course editor** as overlay routes.
+4. **`#/schedule/<id>/proposals`** and the **course editor**
+   (`#/schedule/<id>/course/<code>/edit`) as overlay routes (**done**).
+   Overlays are **session-transparent**: they neither end nor are ended by the
+   session, so the proposals panel keeps a suggest session's draft available and
+   closing returns to the session view. The course editor route names the
+   course (base code); its header switches between that course's sections and
+   labs, remounting the form per section, and a switch with unsaved changes
+   asks first (never a silent discard). A deep link to the editor implies
+   editing: it auto-enters the session on the schedule (bouncing if the user
+   may not edit). Entering the overlay from the store side (`courseEditTarget`)
+   is what drives navigation, so every existing opener (grid pencils,
+   add-course, history's Edit) works unchanged.
 
-Order is by value; each step is independently shippable.
+All four phases shipped; each step was independently shippable.
 
 ## Non-goals (stay as they are)
 
@@ -98,17 +109,19 @@ Order is by value; each step is independently shippable.
 
 ## Beyond routing
 
-Routing is one lever on "overwhelming". Worth examining in the same redesign
-pass: the nested dialog stack (manage → create/access), the per-row mode menu
-plus the edit bar, and whether some controls can be demoted, merged, or moved
-behind the routes above. (To be scoped when the redesign starts.)
+Routing was one lever on "overwhelming", and it is now spent. The remaining
+simplification work is UI, deferred out of this pass by decision: the per-row
+mode menu plus the edit bar, and whether the course editor's single-section
+form should become a true multi-section view (the switcher is the interim; a
+per-section form extraction would be its own redesign). (To be scoped
+separately.)
 
-## Open questions
+## Decisions (were open questions)
 
-- ~~Manage as a **full page** vs an **overlay route**.~~ **Decided: full page.**
-  The rule that falls out of it: a navigational hub is a page; a surface that
-  operates on the grid's content is an overlay route.
-- Is mode (edit/suggest) part of the first slice, or a second round? (Lean:
-  second round — it adds a second source of truth with the store's
-  `editingId`/`editingRole`, so it wants its own guard work.)
-- How much of the broader "simplify" work happens alongside routing vs after.
+- **Manage is a full page** — the rule that fell out: a navigational hub is a
+  page; a surface that operates on the grid's content is an overlay route.
+- **Mode is a second round** — as expected, it carried the guard work (a
+  second source of truth with `editingId`/`editingRole`); it landed as a
+  focused session, not just a URL.
+- **Broader simplification stays out of the routing pass** — the routes are the
+  foundation; the visual/control cleanup is a separate effort.
