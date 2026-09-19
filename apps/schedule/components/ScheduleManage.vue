@@ -38,20 +38,7 @@
             <option value="">All years</option>
             <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
           </select>
-          <button
-            v-if="remote"
-            class="filter-btn schedule-manage-shared-toggle"
-            :class="{ active: showShared }"
-            :aria-pressed="showShared"
-            @click="showShared = !showShared"
-          >
-            {{ showShared ? 'Hide shared' : 'Show shared' }}
-          </button>
         </div>
-        <p v-if="sharedHint" class="schedule-manage-hint">
-          {{ sharedHint }} shared schedule{{ sharedHint === 1 ? '' : 's' }} match
-          <button class="filter-btn" @click="showShared = true">Show shared</button>
-        </p>
         <div class="schedule-manage-list">
           <template v-for="group in listGroups" :key="group.label">
             <div v-if="group.rows.length" class="schedule-manage-section-title">
@@ -486,9 +473,6 @@ export default {
   setup(props, { emit }) {
     const manageQuery = ref('')
     const menuFor = ref(null)
-    // The shared-schedules section starts hidden: your own schedules come
-    // first, and a search (by name OR owner) or the toggle reveals the rest.
-    const showShared = ref(false)
     // Year filter: '' is "All years"; the dropdown lists the years present.
     const yearFilter = ref('')
     const yearOptions = computed(() => {
@@ -513,24 +497,24 @@ export default {
       })
     })
     const ownedRows = computed(() => filteredSchedules.value.filter((s) => isOwner(s)))
-    const sharedRows = computed(() => filteredSchedules.value.filter((s) => !isOwner(s)))
-    // The list renders as sections (own first, then shared when shown) so the
-    // row markup lives in one place.
+    // Schedules the user may view but does not own, split into the ones shared
+    // with them specifically (named in viewers/suggesters — a suggester on a
+    // still-private schedule counts) and the ones everyone can see.
+    const sharedRows = computed(() =>
+      filteredSchedules.value.filter((s) => !isOwner(s) && s.visibility !== 'public'),
+    )
+    const publicRows = computed(() =>
+      filteredSchedules.value.filter((s) => !isOwner(s) && s.visibility === 'public'),
+    )
+    // The list renders as sections (your own first, then what is shared with
+    // you, then public schedules) so the row markup lives in one place.
     const listGroups = computed(() => {
       const groups = []
       if (ownedRows.value.length) groups.push({ label: 'Your schedules', rows: ownedRows.value })
-      if (remote.value && showShared.value && sharedRows.value.length)
-        groups.push({ label: 'Shared schedules', rows: sharedRows.value })
+      if (remote.value && sharedRows.value.length)
+        groups.push({ label: 'Shared with you', rows: sharedRows.value })
+      if (remote.value && publicRows.value.length) groups.push({ label: 'Public', rows: publicRows.value })
       return groups
-    })
-    // While the shared section is hidden, a search that finds only shared
-    // rows surfaces a hint instead of a dead "no matches" line. An empty
-    // query shows nothing — the toggle is the way to browse shared schedules.
-    const sharedHint = computed(() => {
-      if (!remote.value || showShared.value) return 0
-      const q = manageQuery.value.trim()
-      if (!q || ownedRows.value.length) return 0
-      return sharedRows.value.length
     })
     const noRows = computed(() => !listGroups.value.length)
 
@@ -785,15 +769,13 @@ export default {
     useModalFocus(showAccess, accessEl, closeAccess)
     // The component stays mounted while the modal is closed (only the overlay
     // is v-if'd), so instance state would otherwise leak across opens — most
-    // visibly the shared-section toggle and the open mode menu surviving a
-    // sign-out into the next user's session. Reset on close so every open
-    // starts from the documented defaults (own schedules first, shared one
-    // toggle away, no menu open).
+    // visibly an open mode menu surviving a sign-out into the next user's
+    // session. Reset on close so every open starts from the documented
+    // defaults (no menu open).
     watch(
       () => props.isOpen,
       (open) => {
         if (!open) {
-          showShared.value = false
           menuFor.value = null
         }
       },
@@ -805,11 +787,9 @@ export default {
       manageEl,
       createEl,
       manageQuery,
-      showShared,
       yearFilter,
       yearOptions,
       listGroups,
-      sharedHint,
       noRows,
       editing,
       showCreate,

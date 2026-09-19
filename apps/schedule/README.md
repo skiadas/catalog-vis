@@ -138,12 +138,13 @@ from the user directory. New schedules start private (only the owner) with
 owner-only suggestions. A row badge summarizes the current visibility
 (`private` / `shared · n viewers` / `public`).
 
-**The manage dialog shows your own schedules first.** The visible collection
-loads in full (a private schedule simply isn't in it), but the list defaults to
-owned rows; shared schedules are revealed by a toggle or by searching by name
-_or owner username_, and a year filter narrows both sections. The selection
-defaults to the first owned schedule (nothing when the user owns none), so a
-stranger's schedule is never auto-selected.
+**The manage dialog lists the collection in three sections: your own
+schedules, then *Shared with you* (the ones naming you in their viewers or
+suggesters), then *Public* (visible to every signed-in user).** The visible
+collection loads in full (a schedule shared with nobody else simply isn't in
+it), a search matches name _or owner username_, and a year filter narrows all
+sections. The selection defaults to the first owned schedule (nothing when the
+user owns none), so a stranger's schedule is never auto-selected.
 
 **Labs**: the course editor's "Add lab section" (lecture rows only) creates a
 lab that mirrors the lecture's section letter, copies its instructors (lead

@@ -686,22 +686,20 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await page
     .locator('.modal[aria-labelledby="schedule-access-title"]')
     .waitFor({ state: 'detached', timeout: 5000 })
-  // Own schedules come first: only this user's row is listed (with a delete
-  // button), and the shared section is hidden by default.
+  // Own schedules come first, then what is shared. This account owns one row
+  // (with a delete button); the registrar's public schedule shows up in its
+  // own section, with no delete button.
   await expect(page.locator('.schedule-manage-owner', { hasText: 'You' })).toHaveCount(1)
   await expect(page.locator('.schedule-manage-del')).toHaveCount(1)
-  await expect(page.locator('.schedule-manage-section-title', { hasText: 'Shared' })).toHaveCount(0)
-  // Search matches the OWNER's username, not just schedule names: typing
-  // 'registrar' matches only shared rows, surfacing the reveal hint.
-  await page.locator('.schedule-manage-search').fill('registrar')
-  await expect(page.getByText(/shared schedules? match/)).toBeVisible()
-  await page.locator('.schedule-manage-search').fill('')
-  // Reveal the shared section: rows label the owner and offer no delete
-  // button (a delete the server rejects would resurrect on the next refresh).
-  await page.getByRole('button', { name: 'Show shared' }).click()
+  await expect(page.locator('.schedule-manage-section-title', { hasText: 'Public' })).toHaveCount(1)
   await expect(page.locator('.schedule-manage-owner', { hasText: 'by registrar' }).first()).toBeVisible()
-  await expect(page.locator('.schedule-manage-del')).toHaveCount(1)
-  // The year filter narrows both sections: the registrar's schedules have no
+  // Search matches the OWNER's username, not just schedule names: typing
+  // 'registrar' leaves only the public row.
+  await page.locator('.schedule-manage-search').fill('registrar')
+  await expect(page.locator('.schedule-manage-row', { hasText: 'Axe schedule' })).toHaveCount(0)
+  await expect(page.locator('.schedule-manage-row', { hasText: 'Smoke schedule' })).toHaveCount(1)
+  await page.locator('.schedule-manage-search').fill('')
+  // The year filter narrows the sections: the registrar's schedule has no
   // year, so selecting 2026-27 leaves only this user's row.
   await page.locator('#schedule-manage-year').selectOption('2026-27')
   await expect(page.locator('.schedule-manage-row', { hasText: 'Smoke schedule' })).toHaveCount(0)
@@ -719,14 +717,10 @@ test('main views and dialogs have no serious/critical accessibility violations',
     page.locator('.schedule-pill', { hasText: 'Smoke schedule' }).locator('.schedule-pill-owner'),
   ).toHaveText('(by registrar)')
   await page.getByRole('button', { name: /Your schedules/ }).click()
-  // The shared section starts hidden on every open (it resets when the modal
-  // closes), so reveal it again before touching the shared rows.
-  await page.getByRole('button', { name: 'Show shared' }).click()
   await page
     .locator('.schedule-manage-row', { hasText: 'Smoke schedule' })
     .getByRole('button', { name: 'Hide Smoke schedule' })
     .click()
-  await page.getByRole('button', { name: 'Hide shared' }).click()
   await page.getByRole('button', { name: '＋ New schedule' }).click()
   await settle(page)
   const createViolations = await seriousViolations(page)
@@ -1061,18 +1055,17 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await expect(
     page.locator('.schedule-manage-row', { hasText: 'Access schedule' }).locator('.schedule-manage-access'),
   ).toHaveText('shared · 2 viewers')
-  // The manage modal stays open underneath, shared section hidden by default.
-  await page.getByRole('button', { name: 'Show shared' }).click()
   await page.locator('.modal-overlay').click({ position: { x: 8, y: 8 } }) // close the manage modal
 
-  // Bob: sees the schedule under shared; can suggest but not edit directly.
+  // Bob: sees the schedule under "Shared with you"; can suggest but not edit
+  // directly.
   await page.getByRole('button', { name: 'Sign out' }).click()
   const cluster = page.locator('.schedule-auth-cluster')
   await cluster.getByLabel('Username').fill('bob')
   await cluster.getByRole('button', { name: 'Sign in' }).click()
   await page.getByText('Signed in as bob').waitFor({ timeout: 10000 })
   await page.getByRole('button', { name: /Your schedules/ }).click()
-  await page.getByRole('button', { name: 'Show shared' }).click()
+  await expect(page.locator('.schedule-manage-section-title', { hasText: 'Shared with you' })).toBeVisible()
   const row = page.locator('.schedule-manage-row', { hasText: 'Access schedule' })
   await row.waitFor({ state: 'visible', timeout: 5000 })
   await row.getByRole('button', { name: 'Edit or suggest changes for Access schedule' }).click()
@@ -1100,7 +1093,6 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await cluster.getByRole('button', { name: 'Sign in' }).click()
   await page.getByText('Signed in as carol').waitFor({ timeout: 10000 })
   await page.getByRole('button', { name: /Your schedules/ }).click()
-  await page.getByRole('button', { name: 'Show shared' }).click()
   const carolRow = page.locator('.schedule-manage-row', { hasText: 'Access schedule' })
   await carolRow.waitFor({ state: 'visible', timeout: 5000 })
   await carolRow.getByRole('button', { name: 'Edit or suggest changes for Access schedule' }).click()

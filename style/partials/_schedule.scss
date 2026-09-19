@@ -1060,22 +1060,6 @@
       width: auto;
       flex: 0 0 auto;
     }
-
-    .schedule-manage-shared-toggle {
-      flex: 0 0 auto;
-      align-self: center;
-      white-space: nowrap;
-    }
-  }
-
-  &-hint {
-    font-size: var(--font-sm);
-    color: var(--text-muted);
-    margin: 0 0 12px;
-
-    .filter-btn {
-      margin-left: 6px;
-    }
   }
 
   &-section-title {

@@ -194,6 +194,5 @@ When a task touches a specific piece, read its README (map above) plus:
   and the app detects it; identity is username self-identify (dev/tests) or an
   external OIDC SSO in production (`AUTH_PROVIDER=oidc`).
 - The schedule manage modal stays **mounted while closed** (only its overlay
-  is `v-if`'d) and resets `showShared`/`menuFor` when it closes — keep that
-  watcher when adding instance state, or the state leaks across opens and
-  sign-outs.
+  is `v-if`'d) and resets `menuFor` when it closes — keep that watcher when
+  adding instance state, or the state leaks across opens and sign-outs.
