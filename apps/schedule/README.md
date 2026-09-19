@@ -11,6 +11,11 @@ generation). `main.js` calls `loadCatalog({ baseUrl: '../../' })` (the
 repo-root JSON when co-deployed); override that `baseUrl` for a
 college-hosted source.
 
+**Icons** are [lucide](https://lucide.dev) components (`lucide-vue-next`, a
+Vite-bundled dev dependency) registered globally as `Icon<Name>` in `main.js`
+(e.g. `<IconPencil/>`, `<IconMessageSquarePlus/>`); only the icons imported
+there are bundled. No icon font or runtime CDN.
+
 ## Persistence (localStorage)
 
 - `major-vis.schedules` — `[{ id, name, year, terms: { F: { offerings, version }, W: ..., S: ... } }]`
@@ -115,22 +120,20 @@ seed 42) into the Fall part unless schedules already exist.
 
 ## Edit and suggest modes
 
-Every schedule's pencil button **starts the default mode directly** — **Edit**
-for owners (and offline), which writes the schedule directly, or **Suggest
-changes** for a non-owner who may propose — and a small **chevron** beside it
-opens the mode picker for the other choice (e.g. an owner who wants to suggest);
-a viewer with neither option gets the picker from the pencil, so the disabled
-choices explain themselves. **Suggest** collects edits into a draft, shown live
-on the calendar (the draft stands in for the published term while the session is
-active). In remote mode a non-owner is only offered Suggest (direct writes
-require ownership, enforced server-side), and Suggest is disabled unless the
-schedule's suggest permission admits the user (owner only / listed suggesters /
-everyone — see the access settings below). Proposing diffs the draft against the
-server's current term and upserts the proposer's own pending suggestion (create,
-or replace the ops of their existing pending one), so a department's edits always
-consolidate into one coherent proposal — never redundant intermediate moves —
-and re-enter a suggestion session by replaying their own pending ops onto the
-freshest published state.
+Each schedule's row/pill offers **directly whichever modes the user may start**:
+an **Edit** pencil for owners (and offline), which writes the schedule directly,
+and a **Suggest** bubble for anyone the schedule's suggest permission admits
+(owner only / listed suggesters / everyone — see the access settings below); a
+viewer with neither right simply sees neither icon. (The pill adds a third,
+the eye that removes it from the view.) **Suggest** collects edits into a draft,
+shown live on the calendar (the draft stands in for the published term while the
+session is active). In remote mode a non-owner is only offered Suggest (direct
+writes require ownership, enforced server-side). Proposing diffs the draft
+against the server's current term and upserts the proposer's own pending
+suggestion (create, or replace the ops of their existing pending one), so a
+department's edits always consolidate into one coherent proposal — never
+redundant intermediate moves — and re-enter a suggestion session by replaying
+their own pending ops onto the freshest published state.
 
 **A session is a focused mode, not a floating one.** The session rides in the
 URL query (`?mode=edit|suggest&id=<id>`) on top of whatever view you are on, so
@@ -139,8 +142,8 @@ app to that schedule: the edited schedule's courses are live, the **other
 selected schedules stay visible as dimmed, read-only references** (your current
 selection is the reference set — a CS/ENGR/MATH comparison carries straight
 into editing CS), the picker reduces to the schedule pills (the edited one
-tagged *Editing*, references removable with their eye), and manage/CSV/color
-are out of reach. The session bar carries an **Editing**/**Suggesting** chip, the
+tagged *Editing* or *Suggesting*, references removable with their eye), and
+manage/CSV/color are out of reach. The session bar carries an **Editing**/**Suggesting** chip, the
 schedule's rename field, and the session's actions right-aligned (Add course ·
 History · Propose changes · Done). Leaving — Done, browser back, or a header link
 — ends the session; an unsaved suggest draft asks before discarding. A deep link

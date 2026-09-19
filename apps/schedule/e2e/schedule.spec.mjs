@@ -153,19 +153,12 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   await signIn(page)
   await createSchedule(page, 'Patterns schedule')
 
-  // --- The pencil enters the default mode directly (owner => edit) ---
+  // --- The pencil enters Edit directly (owner); the suggest bubble is next to it ---
   await page.locator('.schedule-pill-edit').first().click()
   await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: 'Done' }).click()
 
-  // --- The split chevron still opens the picker; Suggest is the odd choice ---
-  await page.locator('.schedule-pill-more').first().click()
-  const menu = page.locator('.mode-menu')
-  await menu.waitFor({ state: 'visible', timeout: 5000 })
-  await expect(menu).toBeVisible()
-  const box = await menu.boundingBox()
-  expect(box && box.height >= 20, 'mode-menu actually visible').toBe(true)
-  await menu.getByRole('button', { name: 'Suggest changes' }).click()
+  await page.locator('.schedule-pill-suggest').first().click()
   await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: 'Done' }).click()
 
@@ -359,10 +352,11 @@ test('suggest session: leaving with an unsaved draft asks first', async ({ page 
   await signIn(page, 'suggest-exit-user')
   await createPopulatedSchedule(page, 'Suggest exit')
 
-  // The owner's pencil defaults to Edit; the chevron reaches Suggest.
-  await page.locator('.schedule-pill-more').first().click()
-  await page.locator('.mode-menu').getByRole('button', { name: 'Suggest changes' }).click()
+  // The owner's pill shows both actions; the bubble starts a suggest session,
+  // and its pill tag reads "Suggesting".
+  await page.locator('.schedule-pill-suggest').first().click()
   await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
+  await expect(page.locator('.schedule-pill-editing')).toHaveText('Suggesting')
 
   // Make a change: it lands in the draft, not the schedule.
   await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
@@ -929,7 +923,7 @@ test('main views and dialogs have no serious/critical accessibility violations',
   expect(brief(gridViolations), 'grid view').toEqual([])
   await assertTargetSize(
     page,
-    ['.schedule-pill-edit', '.schedule-pill-more', '.schedule-pill-hide'],
+    ['.schedule-pill-edit', '.schedule-pill-suggest', '.schedule-pill-hide'],
     'grid view',
   )
 
@@ -1424,17 +1418,13 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await expect(page.locator('.schedule-manage-section-title', { hasText: 'Shared with you' })).toBeVisible()
   const row = page.locator('.schedule-manage-row', { hasText: 'Access schedule' })
   await row.waitFor({ state: 'visible', timeout: 5000 })
-  // The split chevron opens the picker: Edit is disabled for a non-owner,
-  // Suggest is enabled.
-  await row.getByRole('button', { name: 'More edit or suggest options for Access schedule' }).click()
-  const menu = page.locator('.mode-menu')
-  await menu.waitFor({ state: 'visible', timeout: 5000 })
-  await expect(menu.getByRole('button', { name: 'Edit schedule' })).toBeDisabled()
-  await expect(menu.getByRole('button', { name: 'Suggest changes' })).toBeEnabled()
+  // Bob may suggest, not edit: only the Suggest bubble renders.
+  await expect(row.getByRole('button', { name: 'Suggest changes for Access schedule' })).toBeVisible()
+  await expect(row.getByRole('button', { name: 'Edit Access schedule' })).toHaveCount(0)
 
   // Bob is a suggester but has no directory departments, so entering a suggest
-  // session (the pencil's default for him) leaves every course uneditable (no
-  // pencils) and the panel explains the department limit.
+  // session leaves every course uneditable (no pencils) and the panel explains
+  // the department limit.
   await row.getByRole('button', { name: 'Suggest changes for Access schedule' }).click()
   await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
   await expect(page.locator('.filter-offering-edit')).toHaveCount(0)
@@ -1445,8 +1435,7 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Done' }).click() // leave suggest mode
 
-  // Carol: a viewer but not a suggester — no default action, so the pencil
-  // opens the picker with both actions gated.
+  // Carol: a viewer but not a suggester — neither action renders on her row.
   await page.getByRole('button', { name: 'Sign out' }).click()
   await cluster.getByLabel('Username').fill('carol')
   await cluster.getByRole('button', { name: 'Sign in' }).click()
@@ -1454,12 +1443,8 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await page.getByRole('button', { name: /Your schedules/ }).click()
   const carolRow = page.locator('.schedule-manage-row', { hasText: 'Access schedule' })
   await carolRow.waitFor({ state: 'visible', timeout: 5000 })
-  await carolRow.getByRole('button', { name: 'Edit or suggest changes for Access schedule' }).click()
-  const carolMenu = page.locator('.mode-menu')
-  await carolMenu.waitFor({ state: 'visible', timeout: 5000 })
-  await expect(carolMenu.getByRole('button', { name: 'Edit schedule' })).toBeDisabled()
-  await expect(carolMenu.getByRole('button', { name: 'Suggest changes' })).toBeDisabled()
-  await page.keyboard.press('Escape')
+  await expect(carolRow.getByRole('button', { name: 'Edit Access schedule' })).toHaveCount(0)
+  await expect(carolRow.getByRole('button', { name: 'Suggest changes for Access schedule' })).toHaveCount(0)
 
   assertClean(errors)
 })

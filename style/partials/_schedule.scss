@@ -1053,16 +1053,6 @@
 .schedule-pill:hover {
   opacity: 0.85;
 }
-// An open mode-menu (edit/suggest picker) overflows the pill; the pill's
-// overflow:hidden clips the absolutely-positioned dropdown otherwise.
-.schedule-pill.menu-open {
-  overflow: visible;
-  z-index: 50;
-}
-.schedule-manage-row.menu-open {
-  position: relative;
-  z-index: 60;
-}
 .schedule-color-toggle {
   @include text-caption;
   align-self: center;
@@ -1107,7 +1097,8 @@
   background: var(--overlay-hover);
   margin: 0 1px;
 }
-.schedule-pill-edit {
+.schedule-pill-edit,
+.schedule-pill-suggest {
   @include icon-btn(24px);
   font-size: var(--font-xs);
   line-height: var(--leading-none);
@@ -1115,21 +1106,9 @@
   background: var(--overlay-hover);
   margin: 0 1px;
 }
-.schedule-pill-edit:hover {
+.schedule-pill-edit:hover,
+.schedule-pill-suggest:hover {
   background: var(--overlay-subtle);
-}
-/* The split-button's chevron: a quiet companion to the pencil that opens the
-   mode picker when the default action isn't the mode you want. */
-.schedule-pill-more {
-  @include icon-btn(24px);
-  background: transparent;
-  color: var(--text-inverse);
-  opacity: 0.75;
-  margin: 0 1px;
-}
-.schedule-pill-more:hover {
-  background: var(--overlay-hover);
-  opacity: 1;
 }
 .schedule-pill-hide:hover {
   background: var(--overlay-subtle);
@@ -1231,17 +1210,6 @@
     transition:
       background 0.15s,
       color 0.15s;
-  }
-
-  &-more {
-    @include icon-btn;
-    color: var(--text-muted);
-    background: transparent;
-
-    &:hover {
-      background: var(--primary-light);
-      color: var(--primary);
-    }
   }
 
   &-icon {
@@ -1581,13 +1549,8 @@
   color: var(--danger);
 }
 
-/* Edit/suggest mode picker (pencil menu) */
+/* Dropdown popover (the CSV action menu) */
 
-.mode-menu-wrap {
-  position: relative;
-  display: inline-flex;
-  flex: 0 0 auto;
-}
 .mode-menu {
   position: absolute;
   top: 100%;

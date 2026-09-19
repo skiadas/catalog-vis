@@ -9,7 +9,6 @@
         :key="s.id"
         class="schedule-pill"
         :class="{
-          'menu-open': menuFor === s.id,
           editing: editMode && s.id === editingId,
           reference: editMode && s.id !== editingId,
         }"
@@ -23,53 +22,31 @@
           >{{ s.name
           }}<span v-if="ownerSuffix(s)" class="schedule-pill-owner">{{ ownerSuffix(s) }}</span></span
         >
-        <span v-if="editMode && s.id === editingId" class="schedule-pill-editing">Editing</span>
-        <span v-if="!editMode" class="mode-menu-wrap">
+        <span v-if="editMode && s.id === editingId" class="schedule-pill-editing">{{
+          editingRole === 'suggest' ? 'Suggesting' : 'Editing'
+        }}</span>
+        <template v-if="!editMode">
           <button
+            v-if="canEdit(s)"
             class="schedule-pill-edit"
-            :class="{ active: menuFor === s.id }"
-            :title="modeTitle(s)"
-            :aria-label="modeLabel(s)"
-            @click.stop="enterDefault(s)"
+            type="button"
+            title="Edit this schedule directly"
+            :aria-label="'Edit ' + s.name"
+            @click.stop="edit(s.id, 'edit')"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-            </svg>
+            <IconPencil :size="13" :stroke-width="2.2" />
           </button>
           <button
-            class="schedule-pill-more"
+            v-if="canSuggest(s)"
+            class="schedule-pill-suggest"
             type="button"
-            :title="'More edit or suggest options for ' + s.name"
-            :aria-label="'More edit or suggest options for ' + s.name"
-            :aria-expanded="menuFor === s.id"
-            @click.stop="toggleModeMenu(s.id)"
+            title="Propose changes collected for the owner to approve"
+            :aria-label="'Suggest changes for ' + s.name"
+            @click.stop="edit(s.id, 'suggest')"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="10"
-              height="10"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
+            <IconMessageSquarePlus :size="13" :stroke-width="2.2" />
           </button>
-          <ScheduleModeMenu :schedule="s" :open="menuFor === s.id" @mode="edit" @close="closeModeMenu" />
-        </span>
+        </template>
         <button
           v-if="!editMode || s.id !== editingId"
           class="schedule-pill-hide"
@@ -77,22 +54,7 @@
           aria-label="Hide schedule"
           @click.stop="toggleSchedule(s.id)"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-            <path d="M14.12 14.12A3 3 0 1 1 9.88 9.88" />
-            <line x1="1" y1="1" x2="23" y2="23" />
-          </svg>
+          <IconEye :size="13" :stroke-width="2.2" />
         </button>
       </span>
       <button v-if="!editMode && !selectedScheduleIds.length" class="filter-clear" @click="manage">
@@ -171,8 +133,10 @@ import {
   viewOfferings,
   publishedOfferings,
   isOwner,
+  canSuggest,
+  remote,
   editingScheduleId,
-  defaultModeFor,
+  editingRole,
 } from '../src/scheduleStore.js'
 import {
   colorForSchedule,
@@ -182,46 +146,27 @@ import {
   offeringSectionLabel,
 } from '@major-vis/schedule-core'
 import { onKeyActivate } from '../src/keyboardNav.js'
-import { useModeMenu } from '../src/useModeMenu.js'
 import { displayName } from '../src/names.js'
-import ScheduleModeMenu from './ScheduleModeMenu.vue'
 
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 
 export default {
   name: 'SchedulePicker',
-  components: { ScheduleModeMenu },
   emits: ['edit', 'manage', 'createterm'],
   setup(_, { emit }) {
     const visibleSchedules = computed(() =>
       schedules.value.filter((s) => selectedScheduleIds.value.includes(s.id)),
     )
-    // The pencil enters the default mode directly (edit for owners, suggest for
-    // eligible non-owners); its split chevron opens the picker for the other
-    // choice, and a viewer-only schedule opens the picker from the pencil (both
-    // disabled choices explain why).
-    const { menuFor, toggle: toggleModeMenu, close: closeModeMenu } = useModeMenu()
-    const enterDefault = (s) => {
-      const mode = defaultModeFor(s)
-      if (mode) edit(s.id, mode)
-      else toggleModeMenu(s.id)
-    }
-    const modeLabel = (s) => {
-      const mode = defaultModeFor(s)
-      if (mode === 'suggest') return `Suggest changes for ${s.name}`
-      if (mode) return `Edit schedule ${s.name}`
-      return `Edit or suggest changes for ${s.name}`
-    }
-    const modeTitle = (s) => {
-      const mode = defaultModeFor(s)
-      if (mode === 'suggest') return 'Propose changes collected for the owner to approve'
-      return 'Edit this schedule directly'
-    }
+    // The pill offers each mode the user may actually start: an Edit pencil for
+    // owners/offline and a Suggest bubble when the schedule's suggest
+    // permission admits them. A viewer-only schedule shows neither (the manage
+    // row's access summary explains why).
+    const canEdit = (s) => !remote.value || isOwner(s)
     // While a session is active the strip is reduced: the edited schedule's
-    // pill is marked "Editing" (and can't be hidden), the other selected
-    // schedules are dimmed read-only references (the eye still removes one
-    // from the view), and the manage/CSV/color/mode controls are gone — the
-    // only exits are Done and leaving.
+    // pill is marked "Editing"/"Suggesting" (and can't be hidden), the other
+    // selected schedules are dimmed read-only references (the eye still removes
+    // one from the view), and the manage/CSV/color controls are gone — the only
+    // exits are Done and leaving.
     const editingId = editingScheduleId
     const editMode = computed(() => editingScheduleId.value != null)
     const onPill = (s) => {
@@ -332,10 +277,7 @@ export default {
       URL.revokeObjectURL(url)
     }
 
-    const edit = (id, role = 'edit') => {
-      menuFor.value = null
-      emit('edit', id, role)
-    }
+    const edit = (id, role = 'edit') => emit('edit', id, role)
     const manage = () => emit('manage')
 
     return {
@@ -344,7 +286,10 @@ export default {
       selectedScheduleIds,
       editingId,
       editMode,
+      editingRole,
       onPill,
+      canEdit,
+      canSuggest,
       scheduleColorApplicable,
       filterActive,
       colorSchedules,
@@ -356,12 +301,6 @@ export default {
       colorForSchedule,
       edit,
       manage,
-      menuFor,
-      enterDefault,
-      modeLabel,
-      modeTitle,
-      toggleModeMenu,
-      closeModeMenu,
       csvOpen,
       closeCsv,
     }
