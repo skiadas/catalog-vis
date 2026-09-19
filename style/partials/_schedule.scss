@@ -813,9 +813,10 @@
   padding: 2px 6px;
   flex: 0 0 auto;
 }
-/* The day card's courses lay out as 2-3 side-by-side pills (up to three per
-   row, wrapping beyond), so a crowded slot uses the column's width instead of
-   stacking full-width rows down a mostly empty card. */
+/* The day card's courses lay out as side-by-side pills (1-3 per row, wrapping
+   beyond): the band sets `--tl-cols` so each pill is exactly one column wide,
+   and a remainder row keeps that width instead of stretching its last pill.
+   Rows scroll inside the band when there are more than fit (head stays put). */
 .day-tl-items {
   display: flex;
   flex-wrap: wrap;
@@ -823,11 +824,12 @@
   gap: 4px;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .day-tl-item {
   display: flex;
-  flex: 1 1 calc((100% - 8px) / 3);
+  flex: 0 1 calc((100% - (var(--tl-cols, 3) - 1) * 4px) / var(--tl-cols, 3));
   min-width: 0;
 }
 .day-tl-item .filter-offering {

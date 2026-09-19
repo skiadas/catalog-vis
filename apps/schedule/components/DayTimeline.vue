@@ -63,7 +63,7 @@
                   View slot
                 </button>
               </div>
-              <div class="day-tl-items">
+              <div class="day-tl-items" :style="{ '--tl-cols': colsFor(b.items.length) }">
                 <div v-for="it in b.items" :key="offeringItemKey(it)" class="day-tl-item">
                   <OfferingRow
                     :item="it"
@@ -280,6 +280,11 @@ export default {
     // schedule color (inactive visuals never leave rows white-on-white).
     const rowColor = (it) => (filter.value.active ? filter.value.color(it) : colorForSchedule(it.sid))
 
+    // How many pills share a row in a band: a lone course keeps the full width,
+    // two split it evenly, and three or more use thirds (a remainder row keeps
+    // those same widths instead of stretching its last pill).
+    const colsFor = (n) => (n <= 1 ? 1 : n === 2 ? 2 : 3)
+
     const proposalFor = (it) => (it.o && it.o.$prop) || null
     const removalFor = (it) => overlay.value.removalsByKey.get(`${it.code} ${it.o.section}`) || null
     const itemTitle = (it) => {
@@ -324,6 +329,7 @@ export default {
       formatTime,
       goScheduleSlot,
       rowColor,
+      colsFor,
       offeringItemKey,
       isEditable,
       proposalFor,

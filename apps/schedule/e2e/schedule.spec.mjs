@@ -1208,9 +1208,10 @@ test('day view: a crowded slot lays courses side by side and the scale control r
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page)
 
-  // Import a Fall schedule whose Monday 9:20-10:30 band holds four courses, so
+  // Import a Fall schedule whose Monday 9:20-10:30 band holds seven courses, so
   // both the side-by-side layout and the crowding heuristic have something to
-  // act on. (The imported schedule is auto-selected as the header pill.)
+  // act on (and 1x leaves more rows than the band fits). The imported schedule
+  // is auto-selected as the header pill.
   await page.getByRole('button', { name: /Your schedules/ }).click()
   await page.getByRole('button', { name: '＋ New schedule' }).click()
   await page.getByRole('button', { name: 'Import CSV…' }).click()
@@ -1222,7 +1223,10 @@ test('day view: a crowded slot lays courses side by side and the scale control r
         'CS,220,A,Wahl,,MWF,9:20-10:30,F\n' +
         'MAT,131,A,Aydogan,,MWF,9:20-10:30,F\n' +
         'BIO,161,A,Patterson,,MWF,9:20-10:30,F\n' +
-        'ENG,111,A,Poole,,MWF,9:20-10:30,F\n',
+        'ENG,111,A,Poole,,MWF,9:20-10:30,F\n' +
+        'CS,101,A,Vosmeier,,MWF,9:20-10:30,F\n' +
+        'BIO,166,A,Patterson,,MWF,9:20-10:30,F\n' +
+        'MUS,001,A,Smith,,MWF,9:20-10:30,F\n',
     ),
   })
   await page.getByRole('button', { name: 'Import', exact: true }).click()
@@ -1237,26 +1241,39 @@ test('day view: a crowded slot lays courses side by side and the scale control r
   await day.waitFor({ state: 'visible', timeout: 5000 })
   const calHeight = () => day.evaluate((el) => el.style.getPropertyValue('--cal-height'))
 
-  // Auto: the four-course band doubles the whole axis.
+  // Auto: the seven-course band doubles the whole axis.
   await expect.poll(calHeight).toBe('1440px')
 
-  // The band's four courses render as pills side by side (up to three a row),
+  // The band's courses render as pills side by side (three a row, wrapping),
   // not as full-width rows stacked down the card.
   const block = day.locator('.day-tl-block').filter({ hasText: 'CS 220' })
-  await expect(block.locator('.day-tl-item')).toHaveCount(4)
+  await expect(block.locator('.day-tl-item')).toHaveCount(7)
   const boxes = await block.locator('.day-tl-item').evaluateAll((els) =>
     els.map((el) => {
       const r = el.getBoundingClientRect()
-      return { x: r.x, y: r.y }
+      return { x: r.x, y: r.y, w: r.width }
     }),
   )
   expect(Math.abs(boxes[0].y - boxes[1].y), 'first two pills share a row').toBeLessThan(2)
   expect(boxes[1].x, 'second pill sits to the right of the first').toBeGreaterThan(boxes[0].x)
+  // The wrapped remainder keeps the same column width as its predecessors (no
+  // full-width last pill).
+  expect(boxes[3].y, 'fourth pill wraps to a second row').toBeGreaterThan(boxes[0].y)
+  expect(Math.abs(boxes[6].w - boxes[0].w), 'remainder pill is one column wide').toBeLessThan(1)
+  // A crowded band scrolls instead of clipping (overflow hidden would swallow
+  // courses past the band's height); at the base scale the seven pills outgrow
+  // the band, so the content is genuinely taller than the visible area.
+  const items = block.locator('.day-tl-items')
+  await expect(items).toHaveCSS('overflow-y', 'auto')
 
   // The control overrides the heuristic, then Auto restores it.
   const scaleGroup = page.getByRole('group', { name: 'Calendar height' })
   await scaleGroup.getByRole('button', { name: '1×' }).click()
   await expect.poll(calHeight).toBe('720px')
+  expect(
+    await items.evaluate((el) => el.scrollHeight > el.clientHeight),
+    'crowded band overflows at 1x',
+  ).toBe(true)
   await scaleGroup.getByRole('button', { name: '2×' }).click()
   await expect.poll(calHeight).toBe('1440px')
   await scaleGroup.getByRole('button', { name: 'Auto' }).click()
