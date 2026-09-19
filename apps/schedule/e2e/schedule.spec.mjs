@@ -112,10 +112,16 @@ test('sign-in and schedule creation', async ({ page }) => {
   // A direct visit opens the same page without a prior view.
   await page.goto('/#/schedules', { waitUntil: 'networkidle' })
   await expect(page.locator('.schedule-manage-page')).toBeVisible()
+  // A freshly created schedule is private with owner-only suggestions; the row
+  // leads with the owner and spells out the two share statuses.
+  const smokeRow = page.locator('.schedule-manage-row', { hasText: 'Smoke schedule' })
+  await expect(smokeRow.locator('.schedule-manage-owner')).toHaveText('You')
+  await expect(smokeRow.locator('.schedule-manage-access')).toHaveText('private')
+  await expect(smokeRow.locator('.schedule-manage-suggest')).toHaveText('can suggest: only you')
   // Make it public so the sibling tests can treat it as a shared schedule
   // (schedules are private by default; the Access overlay route is the owner's
   // control surface for opening one up).
-  await page.getByRole('button', { name: 'Access for Smoke schedule' }).click()
+  await page.getByRole('button', { name: 'Control access to Smoke schedule' }).click()
   await expect(page).toHaveURL(/#\/schedule\/[^/]+\/access$/)
   const access = page.locator('.modal[aria-labelledby="schedule-access-title"]')
   await access.waitFor({ state: 'visible', timeout: 5000 })
@@ -698,7 +704,7 @@ test('main views and dialogs have no serious/critical accessibility violations',
 
   // The access dialog (owner-only visibility/suggester controls) opens on top
   // of the manage list.
-  await page.getByRole('button', { name: 'Access for Axe schedule' }).click()
+  await page.getByRole('button', { name: 'Control access to Axe schedule' }).click()
   await settle(page)
   const accessViolations = await seriousViolations(page, '.modal[aria-labelledby="schedule-access-title"]')
   expect(brief(accessViolations), 'access dialog').toEqual([])
@@ -713,6 +719,11 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await expect(page.locator('.schedule-manage-del')).toHaveCount(1)
   await expect(page.locator('.schedule-manage-section-title', { hasText: 'Public' })).toHaveCount(1)
   await expect(page.locator('.schedule-manage-owner', { hasText: 'by registrar' }).first()).toBeVisible()
+  // The registrar's public schedule allows only the owner to suggest, phrased
+  // for this non-owner reader.
+  await expect(
+    page.locator('.schedule-manage-row', { hasText: 'Smoke schedule' }).locator('.schedule-manage-suggest'),
+  ).toHaveText('can suggest: the owner')
   // Search matches the OWNER's username, not just schedule names: typing
   // 'registrar' leaves only the public row.
   await page.locator('.schedule-manage-search').fill('registrar')
@@ -870,12 +881,16 @@ test('import registrar CSV creates a new schedule and routes rows by term', asyn
   await page.getByRole('button', { name: 'Import', exact: true }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
 
-  // The manage list shows the per-term counts the import routed (F: 4 = the
+  // The import routed rows into the schedule's term parts (asserted through
+  // the API — the manage row no longer prints per-term counts): F: 4 = the
   // two original rows + the split-meeting pair, W: 2, S: 3 = lectures + lab +
-  // unscheduled row).
-  const row = page.locator('.schedule-manage-row', { hasText: 'import' })
-  await row.waitFor({ timeout: 10000 })
-  await expect(row).toContainText('Fall: 4, Winter: 2, Spring: 3')
+  // unscheduled row.
+  await page.locator('.schedule-manage-row', { hasText: 'import' }).waitFor({ timeout: 10000 })
+  const imported = await page.evaluate(() => fetch('../../api/schedules').then((r) => r.json()))
+  const importedSchedule = imported.schedules.find((s) => s.name === 'import')
+  expect(importedSchedule.terms.F.offerings.length).toBe(4)
+  expect(importedSchedule.terms.W.offerings.length).toBe(2)
+  expect(importedSchedule.terms.S.offerings.length).toBe(3)
   await closeManage(page)
 
   // The new schedule is auto-selected as a header pill.
@@ -1052,7 +1067,7 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   // Alice opens the Access dialog on her row: shared visibility with bob +
   // carol as viewers, and only bob as a suggester.
   await page.getByRole('button', { name: /Your schedules/ }).click()
-  await page.getByRole('button', { name: 'Access for Access schedule' }).click()
+  await page.getByRole('button', { name: 'Control access to Access schedule' }).click()
   const access = page.locator('.modal[aria-labelledby="schedule-access-title"]')
   await access.waitFor({ state: 'visible', timeout: 5000 })
   await access.locator('#access-visibility').selectOption('shared')
@@ -1072,9 +1087,9 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   expect(mine.visibility).toBe('shared')
   expect(mine.viewers).toEqual(['bob', 'carol'])
   expect(mine.suggesters).toEqual(['bob'])
-  await expect(
-    page.locator('.schedule-manage-row', { hasText: 'Access schedule' }).locator('.schedule-manage-access'),
-  ).toHaveText('shared · 2 viewers')
+  const accessRow = page.locator('.schedule-manage-row', { hasText: 'Access schedule' })
+  await expect(accessRow.locator('.schedule-manage-access')).toHaveText('shared · 2 viewers')
+  await expect(accessRow.locator('.schedule-manage-suggest')).toHaveText('can suggest: listed (1)')
   await closeManage(page)
 
   // Bob: sees the schedule under "Shared with you"; can suggest but not edit
@@ -1144,7 +1159,7 @@ test('access overlay route: deep links over the grid, floats over manage, denies
   // Capture the schedule id from the access URL, then deep-link straight to it
   // (no prior in-app view): the dialog renders over the grid.
   await page.getByRole('button', { name: /Your schedules/ }).click()
-  await page.getByRole('button', { name: 'Access for Overlay schedule' }).click()
+  await page.getByRole('button', { name: 'Control access to Overlay schedule' }).click()
   await expect(page).toHaveURL(/#\/schedule\/[^/]+\/access$/)
   const accessUrl = page.url()
   const dialog = page.locator('.modal[aria-labelledby="schedule-access-title"]')
@@ -1235,7 +1250,7 @@ test('admins maintain the user directory; access lists autocomplete from it', as
   await page.getByRole('button', { name: /Your schedules/ }).waitFor({ timeout: 5000 })
   await createSchedule(page, 'Directory schedule')
   await page.getByRole('button', { name: /Your schedules/ }).click()
-  await page.getByRole('button', { name: 'Access for Directory schedule' }).click()
+  await page.getByRole('button', { name: 'Control access to Directory schedule' }).click()
   const access = page.locator('.modal[aria-labelledby="schedule-access-title"]')
   await access.waitFor({ state: 'visible', timeout: 5000 })
   await access.locator('#access-visibility').selectOption('shared')

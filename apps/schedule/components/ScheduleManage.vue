@@ -40,26 +40,20 @@
               <div class="schedule-manage-main">
                 <div class="schedule-manage-name">{{ s.name }}</div>
                 <div class="schedule-manage-meta">
-                  {{ s.year || '—' }} · {{ viewOfferings(s).length }} offerings this term
-                  <span v-if="TERM_KEYS.some((t) => viewOfferings(s, t).length)">
-                    ·
-                    {{
-                      TERM_KEYS.map((t) =>
-                        viewOfferings(s, t).length ? TERM_LABELS[t] + ': ' + viewOfferings(s, t).length : '',
-                      )
-                        .filter(Boolean)
-                        .join(', ')
-                    }}
-                  </span>
                   <span class="schedule-manage-owner">{{ ownerLabel(s) }}</span>
-                  <span class="schedule-manage-access" :title="accessTitle(s)">{{ accessBadge(s) }}</span>
+                  <template v-if="s.year"> · {{ s.year }}</template>
+                  <template v-if="s.visibility">
+                    ·
+                    <span class="schedule-manage-access" :title="accessTitle(s)">{{ accessBadge(s) }}</span>
+                    · <span class="schedule-manage-suggest">can suggest: {{ suggestBadge(s) }}</span>
+                  </template>
                 </div>
               </div>
               <button
                 v-if="isOwner(s)"
                 class="schedule-manage-icon"
-                :aria-label="'Access for ' + s.name"
-                :title="'Who can see and suggest changes for ' + s.name"
+                :aria-label="'Control access to ' + s.name"
+                :title="'Control access to this schedule'"
                 @click="openAccess(s.id)"
               >
                 <svg
@@ -335,7 +329,6 @@ import {
   importCsvRows,
   editingScheduleId,
   activeTerm,
-  viewOfferings,
   remote,
   isOwner,
 } from '../src/scheduleStore.js'
@@ -523,10 +516,10 @@ export default {
       if (editing.value) return
       emit('access', id)
     }
-    // The row badge + tooltip: a one-word summary for owners/others to read at
-    // a glance, full detail on hover.
+    // The row's share summary: who can see it and who can suggest changes.
+    // Phrased for the reader — "only you" on your own schedule, "the owner"
+    // on someone else's.
     const VIS_LABEL = { private: 'private', shared: 'shared', public: 'public' }
-    const SUGGEST_LABEL = { owner: 'only you', shared: 'listed users', public: 'everyone' }
     const accessBadge = (s) => {
       if (!s || !s.visibility) return ''
       if (s.visibility === 'shared') {
@@ -534,9 +527,15 @@ export default {
       }
       return VIS_LABEL[s.visibility] || ''
     }
+    const suggestBadge = (s) => {
+      if (!s || !s.suggestMode) return ''
+      if (s.suggestMode === 'shared') return `listed (${(s.suggesters || []).length})`
+      if (s.suggestMode === 'public') return 'everyone'
+      return isOwner(s) ? 'only you' : 'the owner'
+    }
     const accessTitle = (s) => {
-      if (!s) return ''
-      return `Visible to ${VIS_LABEL[s.visibility] || s.visibility}; suggestions: ${SUGGEST_LABEL[s.suggestMode] || s.suggestMode}`
+      if (!s || !s.visibility) return ''
+      return `Visible to ${VIS_LABEL[s.visibility] || s.visibility}; can suggest: ${suggestBadge(s)}`
     }
     // Deleting is owner-only server-side; a hidden button beats a delete that
     // silently resurrects on the next refresh. Offline: everything is owned.
@@ -602,6 +601,7 @@ export default {
       openAccess,
       accessBadge,
       accessTitle,
+      suggestBadge,
       schedules,
       selectedScheduleIds,
       toggleSchedule,
@@ -610,7 +610,6 @@ export default {
       menuFor,
       colorForSchedule,
       activeTerm,
-      viewOfferings,
       TERM_KEYS,
       TERM_LABELS,
     }

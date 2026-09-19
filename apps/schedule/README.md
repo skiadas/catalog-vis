@@ -136,9 +136,11 @@ floats over the manage page and sets who can see the schedule (*only you* /
 *listed users* / *everyone*) and who can suggest changes (the same three
 choices), with per-user lists whose username inputs autocomplete from the user
 directory. New schedules start private (only the owner) with owner-only
-suggestions. A row badge summarizes the current visibility (`private` /
-`shared · n viewers` / `public`). Reaching the URL for a schedule you don't own
-shows a denial state instead of the form.
+suggestions. Each row summarizes the sharing as owner · year · visibility
+(`private` / `shared · n viewers` / `public`) · who can suggest (`can suggest:
+only you` / `listed (n)` / `everyone`, phrased as "the owner" on rows you don't
+own). Reaching the URL for a schedule you don't own shows a denial state
+instead of the form.
 
 **The manage page (`#/schedules`, reached from "Your schedules") lists the
 collection in three sections: your own schedules, then *Shared with you* (the
