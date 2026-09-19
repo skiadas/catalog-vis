@@ -450,7 +450,7 @@ test('proposals overlay route: opens from the toolbar, back closes, deep links',
 // The course editor is its own overlay route named by the course code; its
 // header switches between the course's sections and labs, and switching with
 // unsaved changes asks before discarding.
-test('course editor overlay route: section switcher and switch guard', async ({ page }) => {
+test('course editor overlay route: section switcher saves the section you leave', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page, 'editor-route-user')
@@ -475,22 +475,19 @@ test('course editor overlay route: section switcher and switch guard', async ({ 
   await em.waitFor({ state: 'detached', timeout: 5000 })
   await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
   await em.waitFor({ state: 'visible', timeout: 5000 })
-  const switcher = em.locator('select[aria-label="Section"]')
-  await expect(switcher).toBeVisible()
-  await expect(switcher.locator('option')).toHaveCount(2)
+  await expect(em.locator('select[aria-label="Section"]')).toBeVisible()
+  await expect(em.locator('select[aria-label="Section"] option')).toHaveCount(2)
 
-  // Editing a field then switching asks first; Keep editing reverts the select
-  // and stays put.
+  // Edit a field, then switch: the switch commits the edit (no discard ask) and
+  // moves to the other section.
   await em.locator('#course-edit-instructor').fill('Section Person')
-  await switcher.selectOption({ index: 1 })
-  await expect(em.getByText('Discard your unsaved changes?')).toBeVisible()
-  await em.getByRole('button', { name: 'Keep editing' }).click()
+  await em.locator('select[aria-label="Section"]').selectOption({ index: 1 })
   await expect(em.getByText('Discard your unsaved changes?')).toHaveCount(0)
-  await expect(em.locator('#course-edit-title')).toHaveText(lectureTitle)
-  // Discarding the change switches to the other section.
-  await switcher.selectOption({ index: 1 })
-  await em.getByRole('button', { name: 'Discard' }).click()
   await expect(em.locator('#course-edit-title')).not.toHaveText(lectureTitle)
+  // Switching back shows the value that was saved on the way out.
+  await em.locator('select[aria-label="Section"]').selectOption({ index: 0 })
+  await expect(em.locator('#course-edit-title')).toHaveText(lectureTitle)
+  await expect(em.locator('#course-edit-instructor')).toHaveValue('Section Person')
 
   // Closing returns to the session view (the overlay is session-transparent).
   await page.getByRole('button', { name: 'Cancel' }).click()

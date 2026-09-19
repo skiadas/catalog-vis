@@ -132,10 +132,12 @@ schedule you don't own (or that no longer exists) bounces back to the view.
 **The course editor and the proposals panel are overlay routes**, so they are
 deep-linkable and back closes them without leaving the session. The editor is
 named by the course (`#/schedule/<id>/course/<code>/edit`) and its header
-switches between that course's sections and labs; switching with unsaved
-changes asks before discarding, and the same ask guards closing the editor.
-Opening the editor from a pencil, from add-course, or from the history panel
-all navigate the same way.
+switches between that course's sections and labs; switching **saves** the
+section you are leaving (an incomplete time pattern, which cannot be saved,
+falls back to a discard ask — the safe action is never the destructive one).
+Closing the editor still asks before discarding unsaved changes. Opening the
+editor from a pencil, from add-course, or from the history panel all navigate
+the same way.
 
 **Suggestions are department-scoped.** A non-owner's session only lets them
 touch courses in the departments their directory entry lists (no pencil, no

@@ -259,8 +259,8 @@
         <template v-if="confirmDiscard">
           <span class="field-hint">Discard your unsaved changes?</span>
           <span class="controls-spacer"></span>
-          <button ref="keepEditEl" class="filter-btn" @click="keepEditing">Keep editing</button>
-          <button class="filter-btn primary" @click="discard">Discard</button>
+          <button class="filter-btn danger" @click="discard">Discard</button>
+          <button ref="keepEditEl" class="filter-btn primary" @click="keepEditing">Keep editing</button>
         </template>
         <template v-else>
           <button class="filter-btn remove-course-btn" @click="removeCourse">
@@ -329,8 +329,9 @@ export default {
     scheduleId: { type: String, required: true },
     offering: { type: Object, required: true },
     // Every section/lab of this course (merged `{ o, code, sid }` items) — the
-    // header turns into a switcher when there is more than one. Switching with
-    // unsaved changes asks first (the same discard flow as closing).
+    // header turns into a switcher when there is more than one. Switching saves
+    // the section you are leaving (never discards it); an invalid form, which
+    // cannot be saved, falls back to the discard ask.
     sections: { type: Array, default: () => [] },
   },
   emits: ['close', 'switch'],
@@ -349,10 +350,17 @@ export default {
     const discardTarget = ref(null)
     const onSwitch = (e) => {
       const target = props.sections.find((s) => offeringItemKey(s) === e.target.value)
-      if (!target) return
+      if (!target || offeringItemKey(target) === offeringKey.value) return
       if (hasPendingChanges.value) {
-        // Never discard silently: ask first, and keep the header showing the
-        // section actually being edited until then.
+        // Leaving a section commits what you edited there — switching must
+        // never throw work away. Only a form that cannot be saved (an
+        // incomplete time pattern) falls back to the discard ask, and then the
+        // header keeps showing the section actually being edited.
+        if (canSave.value) {
+          commit()
+          emit('switch', target)
+          return
+        }
         e.target.value = offeringKey.value
         discardTarget.value = target
         confirmDiscard.value = true
@@ -370,7 +378,8 @@ export default {
     // with Keep editing / Discard. Keep editing returns to the form (the lead
     // instructor field); Escape while confirming also keeps editing. Cancel,
     // Save, Remove course, and the lab auto-close are deliberate exits and
-    // close directly. A section switch while dirty reuses the same ask.
+    // close directly. Switching sections does not discard — it commits; only
+    // an unsavable form falls back to this ask (see `onSwitch`).
     const confirmDiscard = ref(false)
     const keepEditEl = ref(null)
     const close = () => {
@@ -737,8 +746,9 @@ export default {
     const courseName = computed(() => catalogCourseName(props.offering.code))
     const termLabel = computed(() => termConfig(activeTerm.value).label)
 
-    const save = () => {
-      if (!canSave.value) return
+    // Writes the form's current values to the offering (directly, or into the
+    // suggest draft). Shared by Save and by switching sections.
+    const commit = () => {
       let days = o.days || ''
       let time = o.time || ''
       if (timeMode.value === 'none') {
@@ -762,6 +772,11 @@ export default {
           time,
         },
       )
+    }
+
+    const save = () => {
+      if (!canSave.value) return
+      commit()
       emit('close')
     }
 

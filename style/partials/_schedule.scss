@@ -261,6 +261,13 @@
 .remove-course-btn:hover {
   background: var(--danger-08);
 }
+.filter-btn.danger {
+  color: var(--danger);
+  border-color: var(--danger-50);
+}
+.filter-btn.danger:hover {
+  background: var(--danger-08);
+}
 .add-lab-row {
   margin: 0 0 var(--space-3);
 }
