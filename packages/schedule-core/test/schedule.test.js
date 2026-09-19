@@ -51,6 +51,8 @@ import {
   clipBand,
   assignLanes,
   dayTimelineRange,
+  verticalScaleFactor,
+  SCALE_CROWD_THRESHOLD,
   offeringCodeLabel,
   offeringSectionLabel,
   courseNumberLabel,
@@ -1670,4 +1672,27 @@ test('offeringCodeLabel / offeringSectionLabel: registrar shapes', () => {
   assert.equal(offeringCodeLabel(lab), 'BIO 166L')
   assert.equal(offeringSectionLabel(lab), 'A2')
   assert.equal(courseNumberLabel(lab), '166L')
+})
+
+// ---------------------------------------------------------------------------
+// Vertical calendar scale: the auto heuristic doubles a crowded view, and the
+// explicit modes override it
+// ---------------------------------------------------------------------------
+
+test('verticalScaleFactor: auto scales only past the crowd threshold', () => {
+  assert.equal(SCALE_CROWD_THRESHOLD, 3)
+  assert.equal(verticalScaleFactor(0, 'auto'), 1)
+  assert.equal(verticalScaleFactor(1, 'auto'), 1)
+  assert.equal(verticalScaleFactor(3, 'auto'), 1)
+  assert.equal(verticalScaleFactor(4, 'auto'), 2)
+  assert.equal(verticalScaleFactor(9, 'auto'), 2)
+  // Absent crowd defaults to the base scale.
+  assert.equal(verticalScaleFactor(undefined, 'auto'), 1)
+})
+
+test('verticalScaleFactor: compact and tall are unconditional overrides', () => {
+  assert.equal(verticalScaleFactor(0, 'compact'), 1)
+  assert.equal(verticalScaleFactor(20, 'compact'), 1)
+  assert.equal(verticalScaleFactor(0, 'tall'), 2)
+  assert.equal(verticalScaleFactor(20, 'tall'), 2)
 })

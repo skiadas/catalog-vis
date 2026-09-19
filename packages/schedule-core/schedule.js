@@ -852,6 +852,21 @@ export const DAY_START_MIN = 480 // 8:00
 export const DAY_END_MIN = 960 // 16:00
 export const PX_PER_MIN = 1.5
 
+// A time band holds more than this many courses before it stops fitting at the
+// base scale (stacked/lane-split rows crowd the row into unreadability).
+export const SCALE_CROWD_THRESHOLD = 3
+
+// The vertical-scale multiplier for a calendar view, shared by the week grid and
+// the day timeline. `'compact'` always keeps the base scale, `'tall'` always
+// doubles it, and `'auto'` doubles only when the most crowded time band holds
+// more than `SCALE_CROWD_THRESHOLD` courses. Time-proportionality is preserved
+// because callers multiply every top/height by the same factor.
+export function verticalScaleFactor(crowd = 0, mode = 'auto') {
+  if (mode === 'tall') return 2
+  if (mode === 'compact') return 1
+  return crowd > SCALE_CROWD_THRESHOLD ? 2 : 1
+}
+
 // The day range to render: anchored to the term's standard hours (Fall/Winter
 // 8:00-16:00, Spring 8:00-17:00) so an off-pattern early/late class never
 // stretches the whole grid or hides normal classes. Off-range parts of

@@ -82,6 +82,16 @@ Custom** toggle (persisted locally) restricts the grid to all blocks, only
 standard-slot bars, or only off-slot custom rails — hidden blocks stay
 reachable via their slot/course pages.
 
+The day view (reached by clicking a weekday header) draws the day as one
+column on the same time scale, with the day's courses as pills **side by side**
+— up to three per row, wrapping beyond — instead of full-width rows stacked
+down a mostly empty card. Both the week grid and the day column share a
+**calendar-height** control (Auto · 1× · 2×, persisted locally): `auto`
+doubles the whole axis only when the busiest time band holds more than three
+courses (the point where lane-split/stacked rows stop fitting), while `1×`/`2×`
+pin the base or doubled scale. Every top and height is multiplied by the same
+factor, so vertical size stays proportional to the clock.
+
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format
 (`dept_prefix,course_number,course_section,instructor,secondary_instr,days,times`

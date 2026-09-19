@@ -1,6 +1,6 @@
 <template>
   <div :class="{ 'drag-in-progress': dragging }">
-    <WeeklyCalendar :on-day-click="goScheduleDay" :striped="filter.active" :range="dayRange">
+    <WeeklyCalendar :on-day-click="goScheduleDay" :striped="filter.active" :range="dayRange" :scale="scale">
       <template #daycol="{ day }">
         <div
           v-for="z in dropZones(day)"
@@ -88,6 +88,8 @@ import {
   calendarDayRange,
   clipBand,
   PX_PER_MIN,
+  WEEKDAYS,
+  verticalScaleFactor,
   colorForSchedule,
   offeringItemKey,
 } from '@major-vis/schedule-core'
@@ -97,6 +99,7 @@ import {
   filterMode,
   activeTerm,
   blockMode,
+  verticalScale,
 } from '../src/scheduleStore.js'
 import {
   schedule,
@@ -228,13 +231,26 @@ export default {
     // band outside it entirely is dropped from the grid and picked up by the
     // no-meeting-times strip instead.
     const dayRange = computed(() => calendarDayRange(activeTerm.value))
-    // Position a band relative to the visible day range's start (1px/min),
-    // clamped at the range edges (clipped classes keep their in-range portion).
+
+    // How tall to draw the week: 'auto' doubles when any day's busiest band
+    // holds more courses than fits at the base scale, so time-proportional
+    // heights stay readable. The day timeline computes the same factor.
+    const scale = computed(() => {
+      let crowd = 0
+      for (const day of WEEKDAYS) {
+        for (const b of dayBlocks(day)) crowd = Math.max(crowd, b.items.length)
+      }
+      return verticalScaleFactor(crowd, verticalScale.value)
+    })
+    const px = (minutes) => minutes * PX_PER_MIN * scale.value
+
+    // Position a band relative to the visible day range's start, clamped at the
+    // range edges (clipped classes keep their in-range portion).
     const blockStyleFor = (band) => {
       const clipped = clipBand(band, dayRange.value)
       return {
-        top: (clipped.start - dayRange.value.start) * PX_PER_MIN + 'px',
-        height: (clipped.end - clipped.start) * PX_PER_MIN + 'px',
+        top: px(clipped.start - dayRange.value.start) + 'px',
+        height: px(clipped.end - clipped.start) + 'px',
         clippedTop: clipped.clippedTop,
         clippedBottom: clipped.clippedBottom,
       }
@@ -248,8 +264,8 @@ export default {
           key: blockKey(day, slot),
           slot,
           style: {
-            top: (clip.start - dayRange.value.start) * PX_PER_MIN + 'px',
-            height: (clip.end - clip.start) * PX_PER_MIN + 'px',
+            top: px(clip.start - dayRange.value.start) + 'px',
+            height: px(clip.end - clip.start) + 'px',
           },
           // Off-pattern blocks (custom times, or a band belonging to another
           // day group) render as right-anchored rails so normal courses keep
@@ -312,6 +328,7 @@ export default {
       formatTime,
       shownIndex,
       dayRange,
+      scale,
       blocksInDay,
       onKeyActivate,
       isOpen,

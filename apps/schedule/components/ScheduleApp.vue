@@ -75,6 +75,37 @@
             </button>
           </div>
         </div>
+        <div class="filter-mode" v-if="view === 'grid' || view === 'day'">
+          <div class="seg" role="group" aria-label="Calendar height">
+            <button
+              class="seg-btn"
+              :class="{ active: verticalScale === 'auto' }"
+              :aria-pressed="verticalScale === 'auto'"
+              title="Grow taller only when a time slot is crowded"
+              @click="setVerticalScale('auto')"
+            >
+              Auto
+            </button>
+            <button
+              class="seg-btn"
+              :class="{ active: verticalScale === 'compact' }"
+              :aria-pressed="verticalScale === 'compact'"
+              title="Keep the base height"
+              @click="setVerticalScale('compact')"
+            >
+              1×
+            </button>
+            <button
+              class="seg-btn"
+              :class="{ active: verticalScale === 'tall' }"
+              :aria-pressed="verticalScale === 'tall'"
+              title="Double the calendar height"
+              @click="setVerticalScale('tall')"
+            >
+              2×
+            </button>
+          </div>
+        </div>
         <div class="filter-mode" v-if="showFilter">
           <div class="seg" role="group" aria-label="Filter by">
             <button
@@ -283,6 +314,8 @@ import {
   pendingSuggestionsForTerm,
   blockMode,
   setBlockMode,
+  verticalScale,
+  setVerticalScale,
   courseEditTarget,
   openCourseEdit,
   closeCourseEdit,
@@ -613,6 +646,8 @@ export default {
       pendingSuggestionsForTerm,
       blockMode,
       setBlockMode,
+      verticalScale,
+      setVerticalScale,
       TERM_KEYS,
       TERM_LABELS,
       courseEditTarget,

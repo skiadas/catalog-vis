@@ -21,7 +21,7 @@
               v-for="z in stdZones"
               :key="z.time"
               class="tl-stdzone"
-              :style="{ top: topOffset(z.start), height: (z.end - z.start) * PX_PER_MIN + 'px' }"
+              :style="{ top: topOffset(z.start), height: px(z.end - z.start) + 'px' }"
             ></div>
             <!-- Unoccupied standard slots accept a dragged course (edit mode). -->
             <div
@@ -63,19 +63,19 @@
                   View slot
                 </button>
               </div>
-              <div class="cal-block-depts">
-                <OfferingRow
-                  v-for="it in b.items"
-                  :key="offeringItemKey(it)"
-                  :item="it"
-                  :color="rowColor(it)"
-                  :editable="isEditable(it)"
-                  :draggable="isEditable(it)"
-                  :proposed="proposalFor(it) ? itemTitle(it) : ''"
-                  :removed="removalFor(it) ? itemTitle(it) : ''"
-                  @edit="openCourseEdit(it)"
-                  @dragstart="onDragStart($event, it, day)"
-                />
+              <div class="day-tl-items">
+                <div v-for="it in b.items" :key="offeringItemKey(it)" class="day-tl-item">
+                  <OfferingRow
+                    :item="it"
+                    :color="rowColor(it)"
+                    :editable="isEditable(it)"
+                    :draggable="isEditable(it)"
+                    :proposed="proposalFor(it) ? itemTitle(it) : ''"
+                    :removed="removalFor(it) ? itemTitle(it) : ''"
+                    @edit="openCourseEdit(it)"
+                    @dragstart="onDragStart($event, it, day)"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -104,6 +104,7 @@ import {
   daySlotBlocks,
   dayTimelineRange,
   assignLanes,
+  verticalScaleFactor,
   offeringItemKey,
 } from '@major-vis/schedule-core'
 import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
@@ -118,6 +119,7 @@ import {
   pendingSuggestionsForTerm,
   moveOffering,
   openCourseEdit,
+  verticalScale,
 } from '../src/scheduleStore.js'
 import { goScheduleSlot } from '../router.js'
 import { useScheduleDrag } from '../scheduleDrag.js'
@@ -192,10 +194,10 @@ export default {
     // custom classes render in full instead of clipping.
     const dayRange = computed(() => dayTimelineRange(activeTerm.value, shownIndex.value, day.value))
     const hours = computed(() => hourMarks(dayRange.value.start, dayRange.value.end))
-    const topOffset = (min) => (min - dayRange.value.start) * PX_PER_MIN + 'px'
-    const hourHeight = computed(() => 60 * PX_PER_MIN + 'px')
+    const topOffset = (min) => px(min - dayRange.value.start) + 'px'
+    const hourHeight = computed(() => px(60) + 'px')
     const calStyle = computed(() => ({
-      '--cal-height': (dayRange.value.end - dayRange.value.start) * PX_PER_MIN + 'px',
+      '--cal-height': px(dayRange.value.end - dayRange.value.start) + 'px',
     }))
 
     // The day's standard bands, painted as pale zones behind everything.
@@ -224,6 +226,16 @@ export default {
       return assignLanes(blocks)
     })
 
+    // The vertical scale: 'auto' doubles the whole axis when a time band holds
+    // more courses than fits at the base scale (the same rule the week grid
+    // uses), so lane-split/stacked rows stay readable while every height stays
+    // proportional to the clock.
+    const scale = computed(() => {
+      const crowd = visibleBlocks.value.reduce((m, b) => Math.max(m, b.items.length), 0)
+      return verticalScaleFactor(crowd, verticalScale.value)
+    })
+    const px = (minutes) => minutes * PX_PER_MIN * scale.value
+
     // Lane geometry: each block takes an equal share with a 4px seam between
     // lanes; the first lane sits at the grid's 4px inset so a single block
     // spans the column exactly like a grid bar.
@@ -231,8 +243,8 @@ export default {
       const seam = 4
       const span = `calc((100% - ${8 + (b.laneCount - 1) * seam}px) / ${b.laneCount})`
       return {
-        top: (b.start - dayRange.value.start) * PX_PER_MIN + 'px',
-        height: (b.end - b.start) * PX_PER_MIN + 'px',
+        top: px(b.start - dayRange.value.start) + 'px',
+        height: px(b.end - b.start) + 'px',
         left: `calc(${b.lane} * (${span} + ${seam}px) + 4px)`,
         width: span,
       }
@@ -258,8 +270,8 @@ export default {
           days: dayGroup(day.value),
           time: s.time,
           style: {
-            top: (s.start - dayRange.value.start) * PX_PER_MIN + 'px',
-            height: (s.end - s.start) * PX_PER_MIN + 'px',
+            top: px(s.start - dayRange.value.start) + 'px',
+            height: px(s.end - s.start) + 'px',
           },
         }))
     })
@@ -308,7 +320,7 @@ export default {
       blocks,
       zoneKey,
       zoneFor,
-      PX_PER_MIN,
+      px,
       formatTime,
       goScheduleSlot,
       rowColor,

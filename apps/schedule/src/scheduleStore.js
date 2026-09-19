@@ -96,6 +96,11 @@ export const colorSchedules = ref(false)
 // (bars only), or 'custom' (rails only). Persisted locally.
 export const blockMode = ref('all')
 
+// How tall the calendar is drawn: 'auto' (double when a slot is crowded),
+// 'compact' (base scale), or 'tall' (always double). Shared by the week grid
+// and the day timeline. Persisted locally.
+export const verticalScale = ref('auto')
+
 // The schedule currently being edited, or null. In edit mode the schedule's
 // active-term courses can be dragged onto the grid's standard time slots to be
 // rescheduled. Editing pairs with `editingRole`: 'edit' writes the term part
@@ -134,6 +139,7 @@ const LS_SCHEDULES = 'major-vis.schedules'
 const LS_SELECTED = 'major-vis.schedule.selected'
 const LS_COLOR = 'major-vis.schedule.color'
 const LS_MODE = 'major-vis.schedule.blockMode'
+const LS_SCALE = 'major-vis.schedule.verticalScale'
 const LS_TERM = 'major-vis.schedule.term'
 const LS_PENDING = 'major-vis.schedule.pending'
 const LS_TRAIL = 'major-vis.schedule.suggestions'
@@ -149,6 +155,13 @@ export function setBlockMode(mode) {
   if (!['all', 'normal', 'custom'].includes(mode)) return
   blockMode.value = mode
   if (typeof window !== 'undefined') localStorage.setItem(LS_MODE, mode)
+}
+
+// How tall to draw the calendar ('auto' | 'compact' | 'tall'). Persisted.
+export function setVerticalScale(mode) {
+  if (!['auto', 'compact', 'tall'].includes(mode)) return
+  verticalScale.value = mode
+  if (typeof window !== 'undefined') localStorage.setItem(LS_SCALE, mode)
 }
 
 // Show/hide the pending-suggestions overlay on the calendar views.
@@ -1648,6 +1661,8 @@ function seedSchedules(seedList) {
     if (p !== null) showPendingSuggestions.value = p === '1'
     const m = localStorage.getItem(LS_MODE)
     if (m && ['all', 'normal', 'custom'].includes(m)) blockMode.value = m
+    const sc = localStorage.getItem(LS_SCALE)
+    if (sc && ['auto', 'compact', 'tall'].includes(sc)) verticalScale.value = sc
   }
   if (!remote.value) refreshAllSuggestions()
 }
@@ -1689,6 +1704,8 @@ function restoreAux() {
   if (p !== null) showPendingSuggestions.value = p === '1'
   const m = localStorage.getItem(LS_MODE)
   if (m && ['all', 'normal', 'custom'].includes(m)) blockMode.value = m
+  const sc = localStorage.getItem(LS_SCALE)
+  if (sc && ['auto', 'compact', 'tall'].includes(sc)) verticalScale.value = sc
 }
 
 // Bootstraps the collection with the deterministic "Fall sample schedule"

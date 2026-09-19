@@ -813,6 +813,26 @@
   padding: 2px 6px;
   flex: 0 0 auto;
 }
+/* The day card's courses lay out as 2-3 side-by-side pills (up to three per
+   row, wrapping beyond), so a crowded slot uses the column's width instead of
+   stacking full-width rows down a mostly empty card. */
+.day-tl-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.day-tl-item {
+  display: flex;
+  flex: 1 1 calc((100% - 8px) / 3);
+  min-width: 0;
+}
+.day-tl-item .filter-offering {
+  flex: 1;
+}
 /* The instructor chip inside colored offering rows renders at full strength:
    the 90% white would drop below WCAG AA on the row's color. It never shrinks
    — the code label takes the truncation. */

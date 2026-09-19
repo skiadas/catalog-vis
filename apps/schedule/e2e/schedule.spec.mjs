@@ -1201,6 +1201,77 @@ test('import registrar CSV creates a new schedule and routes rows by term', asyn
   assertClean(errors)
 })
 
+test('day view: a crowded slot lays courses side by side and the scale control resizes the axis', async ({
+  page,
+}) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+
+  // Import a Fall schedule whose Monday 9:20-10:30 band holds four courses, so
+  // both the side-by-side layout and the crowding heuristic have something to
+  // act on. (The imported schedule is auto-selected as the header pill.)
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', {
+    name: 'crowd.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,term\n' +
+        'CS,220,A,Wahl,,MWF,9:20-10:30,F\n' +
+        'MAT,131,A,Aydogan,,MWF,9:20-10:30,F\n' +
+        'BIO,161,A,Patterson,,MWF,9:20-10:30,F\n' +
+        'ENG,111,A,Poole,,MWF,9:20-10:30,F\n',
+    ),
+  })
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await page.locator('.schedule-manage-row', { hasText: 'crowd' }).waitFor({ timeout: 10000 })
+  await closeManage(page)
+
+  // Into Monday's day view (Fall, 8:00-16:00 => 480min at 1.5px/min = 720px).
+  await page.locator('.cal-dayhead').first().click()
+  await expect(page).toHaveURL(/#\/day\/M$/)
+  const day = page.locator('.day-timeline')
+  await day.waitFor({ state: 'visible', timeout: 5000 })
+  const calHeight = () => day.evaluate((el) => el.style.getPropertyValue('--cal-height'))
+
+  // Auto: the four-course band doubles the whole axis.
+  await expect.poll(calHeight).toBe('1440px')
+
+  // The band's four courses render as pills side by side (up to three a row),
+  // not as full-width rows stacked down the card.
+  const block = day.locator('.day-tl-block').filter({ hasText: 'CS 220' })
+  await expect(block.locator('.day-tl-item')).toHaveCount(4)
+  const boxes = await block.locator('.day-tl-item').evaluateAll((els) =>
+    els.map((el) => {
+      const r = el.getBoundingClientRect()
+      return { x: r.x, y: r.y }
+    }),
+  )
+  expect(Math.abs(boxes[0].y - boxes[1].y), 'first two pills share a row').toBeLessThan(2)
+  expect(boxes[1].x, 'second pill sits to the right of the first').toBeGreaterThan(boxes[0].x)
+
+  // The control overrides the heuristic, then Auto restores it.
+  const scaleGroup = page.getByRole('group', { name: 'Calendar height' })
+  await scaleGroup.getByRole('button', { name: '1×' }).click()
+  await expect.poll(calHeight).toBe('720px')
+  await scaleGroup.getByRole('button', { name: '2×' }).click()
+  await expect.poll(calHeight).toBe('1440px')
+  await scaleGroup.getByRole('button', { name: 'Auto' }).click()
+  await expect.poll(calHeight).toBe('1440px')
+
+  // Clean up the imported schedule.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'crowd' })
+    .getByRole('button', { name: 'Delete crowd' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
 // Grid blocks expand in place on click (no navigation away); the expanded
 // block shows its course list, click-again collapses, and the "View slot"
 // link still reaches the slot page.
