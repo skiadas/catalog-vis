@@ -344,16 +344,14 @@ export function normalizePrefixList(list) {
 }
 
 // The full directory: every account with its display name and departments,
-// sorted by display name then username (null display names sort as the
-// username).
+// sorted by username (the email local part, typically the surname), which reads
+// better than sorting on the display name's first name.
 /**
  * @param {DB} db
  * @returns {DirectoryUserRow[]}
  */
 export function listUsers(db) {
-  const rows = /** @type {UserRow[]} */ (
-    db.prepare('SELECT * FROM users ORDER BY display_name IS NULL, display_name, username').all()
-  )
+  const rows = /** @type {UserRow[]} */ (db.prepare('SELECT * FROM users ORDER BY username').all())
   return rows.map((r) => ({
     id: r.id,
     username: r.username,
