@@ -1,7 +1,9 @@
 # User-guide docs site — plan
 
-Status: **paused** — this resumes after the UX route redesign
-(`docs/ROUTE_REDESIGN_PLAN.md`). Recorded so the design work is not lost.
+Status: **in progress** — scaffold + screenshot harness shipped
+(`docs-site/`, `npm run docs:shots`), and the schedule walkthrough content is
+written (`docs-site/guide/schedule/`). Remaining: the deploy seams (Dockerfile,
+pages.yml, gate/CI) and real content for the admin guide.
 
 Goal: user-facing walkthroughs of the apps (starting with schedule + admin),
 generated as a static site and deployed **alongside the app in both places** —
@@ -100,18 +102,19 @@ regeneration is one command and the mapping is reviewable.
   exist in the manifest, and every manifest entry must have a file on disk.
   A stale name fails the docs build instead of embedding a dead image.
 
-## Content scope (first pass)
+## Content scope
 
 - `docs-site/index.md` — landing.
-- `docs-site/guide/schedule.md` — walkthrough skeleton (getting around; your
-  schedules + sharing; editing vs suggesting; proposals).
-- `docs-site/guide/admin.md` — directory + CSV import skeleton.
-- Content is written after the UX redesign settles; the manifest is the bridge.
+- `docs-site/guide/schedule/` — the walkthroughs, aimed at non-technical
+  readers (plain language, exact UI labels in bold): getting around; your
+  schedules; sharing; the views; conflicts; where a course can hide;
+  editing vs suggesting; adding a course; changing a course; adding a lab;
+  submitting changes; downloading a CSV; a glossary.
+- `docs-site/guide/admin.md` — directory + CSV import (still a skeleton).
 
 ## Open questions
 
 - Default Vitepress theme (fine for now) vs a custom theme.
 - Whether to add a "Guide" link to the root `index.html` launcher.
-- Manifest as `.mjs` (recommended; carries metadata and references fixtures) vs
-  `.json` + sidecar.
-- `assert` in the first slice (recommended) vs later.
+- ~~Manifest as `.mjs` vs `.json`~~ — `.mjs`, done.
+- ~~`assert` in the first slice vs later~~ — in the first slice, done.

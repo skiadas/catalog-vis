@@ -8,6 +8,6 @@ manifest, so they cannot drift from the app.
 
 ## Guides
 
-- [Schedule](/guide/schedule) — getting around, sharing, editing vs suggesting,
-  proposals.
+- [Schedule](/guide/schedule/) — getting around, sharing, editing vs
+  suggesting, proposals.
 - [Admin](/guide/admin) — the directory and course-list import.

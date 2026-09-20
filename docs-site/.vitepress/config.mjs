@@ -14,16 +14,31 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Schedule', link: '/guide/schedule' },
+      { text: 'Schedule', link: '/guide/schedule/' },
       { text: 'Admin', link: '/guide/admin' },
     ],
     sidebar: [
       {
-        text: 'Guide',
+        text: 'Schedule guide',
         items: [
-          { text: 'Schedule', link: '/guide/schedule' },
-          { text: 'Admin', link: '/guide/admin' },
+          { text: 'Getting around', link: '/guide/schedule/' },
+          { text: 'Your schedules', link: '/guide/schedule/your-schedules' },
+          { text: 'Sharing a schedule', link: '/guide/schedule/sharing' },
+          { text: 'The views at a glance', link: '/guide/schedule/views' },
+          { text: 'Checking for conflicts', link: '/guide/schedule/conflicts' },
+          { text: 'Where a course can hide', link: '/guide/schedule/hiding' },
+          { text: 'Editing vs suggesting', link: '/guide/schedule/edit-vs-suggest' },
+          { text: 'Adding a course', link: '/guide/schedule/add-course' },
+          { text: 'Changing a course', link: '/guide/schedule/edit-course' },
+          { text: 'Adding a lab', link: '/guide/schedule/labs' },
+          { text: 'Submitting changes', link: '/guide/schedule/proposals' },
+          { text: 'Downloading a CSV', link: '/guide/schedule/csv' },
+          { text: 'Words used in this app', link: '/guide/schedule/glossary' },
         ],
+      },
+      {
+        text: 'Admin',
+        items: [{ text: 'Admin guide', link: '/guide/admin' }],
       },
     ],
   },
