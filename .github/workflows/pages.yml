@@ -35,6 +35,9 @@ jobs:
       - name: Build apps
         run: npm run build
 
+      - name: Build docs
+        run: npm run build:docs
+
       - name: Configure Pages
         uses: actions/configure-pages@v6
 
@@ -42,6 +45,7 @@ jobs:
         run: |
           mkdir -p _site/apps
           cp -r dist/browse dist/planner dist/schedule _site/apps/
+          cp -r docs-site/.vitepress/dist _site/docs
           cp index.html config.json majors.json requirements_parsed.json core_requirements.json _site/
           touch _site/.nojekyll
 

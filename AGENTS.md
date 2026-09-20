@@ -92,15 +92,18 @@ checks CI runs, all must pass _before_ you commit:
 - `npm test` (workspaces: degree-audit, schedule-core, catalog-contract)
 - `npm run typecheck` (vue-tsc: checkJs across apps/packages/server + SFC template bindings)
 - `npm run build` (Vite bundles each app; fails on bad imports/exports)
+- `npm run build:docs` (Vitepress builds the guide; also enforces the
+  screenshot manifest ↔ `<Shot>` binding)
 - `npm run validate:catalog` (contract schemas)
 - `npm run test:data` (Python data-integrity)
 - `npm run lint` (eslint)
 - `python3 -m black .` then `python3 -m compileall -q -x "node_modules|/\.git/" .`
 
 When a slice is committed and the work is done, run `npm run build` **once
-more** so the deployment output (`dist/`, gitignored) is fresh before handing
-back to the user — the E2E suite, local `npm run serve` runs, and the
-container all consume the built bundles, not sources.
+more** (and `npm run build:docs` if the guide changed) so the deployment
+output (`dist/` and `docs-site/.vitepress/dist/`, both gitignored) is fresh
+before handing back to the user — the E2E suite, local `npm run serve` runs,
+and the container all consume the built bundles, not sources.
 
 **Definition of done for a change to app/store logic or UI** — passing the
 checks above proves the build stays green, not that a feature works:
@@ -138,6 +141,9 @@ e2e suite is the only net for them. Rules learned the hard way:
   existing test fixtures.** Grep the suite for the old assumption before
   running: private-by-default silently broke every test that relied on
   everyone seeing everyone's schedules.
+- **A UI change invalidates the walkthrough screenshots.** The guide's PNGs
+  are committed and manifest-bound; re-run `npm run docs:shots` when a change
+  alters what they show, or the guide silently depicts the old app.
 - **Instrument before theorizing.** A failing interaction that contradicts
   your mental model gets a DOM dump first (`page.evaluate(() =>
   document.body.innerText)` / the dialog's `outerHTML`) — guessing at

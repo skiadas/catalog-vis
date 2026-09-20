@@ -1,6 +1,7 @@
 # Build stage: install the full toolchain (dev deps included) and produce the
-# three built apps. Vite compiles the SCSS (style/*.scss) and bundles each app
-# into dist/<name>/.
+# three built apps plus the user guide. Vite compiles the SCSS (style/*.scss)
+# and bundles each app into dist/<name>/; Vitepress builds docs-site/ into
+# docs-site/.vitepress/dist.
 FROM node:26-slim AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
@@ -8,8 +9,9 @@ COPY packages packages
 COPY apps apps
 COPY server server
 COPY style style
+COPY docs-site docs-site
 COPY vite.apps.mjs ./
-RUN npm ci && npm run build
+RUN npm ci && npm run build && npm run build:docs
 
 # Prod-deps stage: the runtime install (npm ci --omit=dev) so build-only
 # tooling — vite, sass, typescript, eslint, playwright, vue … — never enters
@@ -31,6 +33,7 @@ RUN npm ci --omit=dev
 #   index.html + config.json          — the root launcher + service config
 #   majors.json + the other artifacts — the catalog (also via the /catalog API)
 #   apps/<name>/                      — the built apps, from dist/<name>/
+#   docs/                             — the user guide, from docs-site/.vitepress/dist/
 # The apps' relative seams (loadCatalog's baseUrl '../../', the schedule API
 # base '../../api') resolve to that root, so the layout mirrors the repo-root
 # deployment shape. `packages/` is copied so the workspace symlinks in
@@ -51,6 +54,7 @@ COPY index.html config.json majors.json requirements_parsed.json core_requiremen
 COPY --from=build /src/dist/browse /srv/static/apps/browse
 COPY --from=build /src/dist/schedule /srv/static/apps/schedule
 COPY --from=build /src/dist/planner /srv/static/apps/planner
+COPY --from=build /src/docs-site/.vitepress/dist /srv/static/docs
 # Persistent schedules/suggestions DB (see DB_PATH above).
 VOLUME ["/data"]
 EXPOSE 8080

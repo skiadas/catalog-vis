@@ -36,6 +36,9 @@ jobs:
       - name: Build apps
         run: npm run build
 
+      - name: Build docs
+        run: npm run build:docs
+
       - name: Set up Python
         uses: actions/setup-python@v7
         with:

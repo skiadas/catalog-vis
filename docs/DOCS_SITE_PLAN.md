@@ -1,9 +1,9 @@
 # User-guide docs site — plan
 
-Status: **in progress** — scaffold + screenshot harness shipped
-(`docs-site/`, `npm run docs:shots`), and the schedule walkthrough content is
-written (`docs-site/guide/schedule/`). Remaining: the deploy seams (Dockerfile,
-pages.yml, gate/CI) and real content for the admin guide.
+Status: **shipped** — scaffold, screenshot harness (`npm run docs:shots`),
+the schedule walkthroughs (`docs-site/guide/schedule/`), the schedule app's
+guide link, and both deploy seams (container `Dockerfile` + Pages, with
+`build:docs` in CI/gate). Remaining: real content for the admin guide.
 
 Goal: user-facing walkthroughs of the apps (starting with schedule + admin),
 generated as a static site and deployed **alongside the app in both places** —

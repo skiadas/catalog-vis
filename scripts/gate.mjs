@@ -10,6 +10,7 @@ const CHECKS = [
   ['prettier', 'npx', ['prettier@3.3.3', '--check', '**/*.{js,html,css,scss,vue}']],
   ['test', 'npm', ['test']],
   ['typecheck', 'npm', ['run', 'typecheck']],
+  ['docs', 'npm', ['run', 'build:docs']],
   ['lint', 'npm', ['run', 'lint']],
   ['validate:catalog', 'npm', ['run', 'validate:catalog']],
   ['test:data', 'npm', ['run', 'test:data']],

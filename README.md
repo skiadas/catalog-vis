@@ -140,7 +140,8 @@ approval, which need the backend). The relative seams (`../../`) resolve
 identically in both layouts, so no app code differs between the two.
 
 The deployment is a **single container** (`Dockerfile`): a build stage
-installs the toolchain and builds the apps (`npm ci && npm run build`), a
+installs the toolchain and builds the apps and the user guide
+(`npm ci && npm run build && npm run build:docs`), a
 deps stage installs only production dependencies (`npm ci --omit=dev` —
 ~17 MB vs the ~130 MB full tree), and the runtime stage runs the Express
 server on **Alpine** (musl — `node:26-alpine`), which serves the assembled
@@ -157,7 +158,9 @@ build:
   `/catalog.json` manifest, always public;
 - the **backend API** (`/api/*`: auth — username self-identify or OIDC SSO —
   yearly schedules/terms, suggested changes) backed by SQLite via the built-in
-  `node:sqlite` module — no native dependencies.
+  `node:sqlite` module — no native dependencies;
+- the **user guide** — the built walkthrough site under `/docs/` (from
+  `docs-site/`, linked from the schedule app's top nav).
 
 To run it on a server, copy `compose.yaml` anywhere on the box and start the
 stack — Compose creates the `major-vis-data` named volume (the SQLite DB lives

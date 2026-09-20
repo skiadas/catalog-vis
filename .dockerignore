@@ -5,6 +5,10 @@ dist/
 tools/
 docs/
 server/data/
+# Vitepress output/cache — rebuilt in the build stage (the theme/config sources
+# stay, so docs-site/ itself is not ignored).
+docs-site/.vitepress/dist/
+docs-site/.vitepress/cache/
 __pycache__/
 *.pyc
 .env
