@@ -26,13 +26,24 @@ export function mountLocalBuiltApps(app, repoRoot) {
   return app
 }
 
+// The docs build (docs-site/.vitepress/dist) is the other artifact that lives
+// outside the served tree: the container copies it to /srv/static/docs, so
+// locally it takes the same /docs/ slot. A no-op when the build is missing.
+export function mountLocalDocs(app, repoRoot) {
+  const docsDir = path.join(repoRoot, 'docs-site', '.vitepress', 'dist')
+  if (!existsSync(path.join(docsDir, 'index.html'))) return app
+  app.use('/docs', express.static(docsDir))
+  return app
+}
+
 // The local-layout branch: only when the static dir IS the repo root do the
-// built bundles take the /apps/<name>/ slots (an assembled container layout
-// already holds built apps there). Tested as its own unit so the branch can't
-// silently regress.
+// built bundles take the /apps/<name>/ slots and the docs build the /docs/
+// slot (an assembled container layout already holds both). Tested as its own
+// unit so the branch can't silently regress.
 export function mountLocalLayout(app, config) {
   if (config.staticDir !== config.repoRoot) return app
-  return mountLocalBuiltApps(app, config.repoRoot)
+  mountLocalBuiltApps(app, config.repoRoot)
+  return mountLocalDocs(app, config.repoRoot)
 }
 
 export async function buildServer(env = process.env) {
@@ -67,8 +78,8 @@ export async function buildServer(env = process.env) {
   app.use(catalogRouter(config.staticDir))
 
   // Local repo-root serving: the built apps take the /apps/<name>/ slots the
-  // container assembles (runs before the generic static so the source tree's
-  // dev index.html never wins).
+  // container assembles and the docs build takes /docs/ (runs before the
+  // generic static so the source tree's dev index.html never wins).
   mountLocalLayout(app, config)
 
   // Static: the serving layout (`staticDir`) holds the root launcher

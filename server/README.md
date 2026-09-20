@@ -27,13 +27,16 @@ npm run build && npm run serve
 ```
 
 The container sets `STATIC_DIR=/srv/static` to an **assembled layout**: the
-root launcher (`index.html`, `config.json`), the three catalog artifacts, and
-the built apps under `apps/<name>/` (copied from `dist/<name>/`). Locally
+root launcher (`index.html`, `config.json`), the three catalog artifacts, the
+built apps under `apps/<name>/` (copied from `dist/<name>/`), and the user
+guide under `docs/` (copied from `docs-site/.vitepress/dist/`). Locally
 (`STATIC_DIR` unset = repo root), the same layout is mirrored: the built
-bundles under `dist/<name>/` are mounted at `/apps/<name>/` automatically, so
-run `npm run build` first — the source tree's dev-only `apps/<name>/index.html`
-is never served. (`npm run dev` is the Vite UI-iteration path: apps only,
-offline — no `/api`, so no ownership/suggestions.)
+bundles under `dist/<name>/` are mounted at `/apps/<name>/` and the docs build
+under `docs-site/.vitepress/dist/` at `/docs/`, so run `npm run build` (and
+`npm run build:docs` for the guide) first — the source tree's dev-only
+`apps/<name>/index.html` is never served. (`npm run dev` is the Vite
+UI-iteration path: apps only, offline — no `/api`, so no
+ownership/suggestions.)
 The apps'
 relative seams (`loadCatalog`'s `baseUrl: '../../'`, the schedule API base
 `../../api`) resolve against that root — the source-tree `apps/` is never
