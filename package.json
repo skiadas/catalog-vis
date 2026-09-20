@@ -29,6 +29,7 @@
     "dev:serve": "npm run build && npm run serve",
     "build": "vite build apps/schedule && vite build apps/browse && vite build apps/planner",
     "build:docs": "vitepress build docs-site",
+    "docs:shots": "node docs-site/screenshots/capture.mjs",
     "typecheck": "vue-tsc -p tsconfig.json",
     "check:apps": "npm run build && npm run typecheck"
   },

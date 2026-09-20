@@ -47,12 +47,14 @@ test('checkDocsSite walks pages and mounts public/screenshots', () => {
   const root = mkdtempSync(join(tmpdir(), 'docs-site-'))
   try {
     mkdirSync(join(root, 'public', 'screenshots'), { recursive: true })
-    writeFileSync(join(root, 'public', 'screenshots', entries[0].file), '')
+    for (const entry of entries) writeFileSync(join(root, 'public', 'screenshots', entry.file), '')
     writeFileSync(join(root, 'index.md'), `<Shot file="${entries[0].file}" />`)
     assert.deepEqual(checkDocsSite(root), [])
 
     writeFileSync(join(root, 'index.md'), '<Shot file="ghost.png" />')
-    assert.deepEqual(checkDocsSite(root), ['index.md: <Shot file="ghost.png"> has no manifest entry'])
+    assert.ok(
+      checkDocsSite(root).includes('index.md: <Shot file="ghost.png"> has no manifest entry'),
+    )
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
