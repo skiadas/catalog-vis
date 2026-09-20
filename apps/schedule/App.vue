@@ -15,6 +15,10 @@
       >
         ?
       </button>
+      <!-- The user guide is deployed alongside every app at /docs/ (the same
+           layout seam as apiBase's '../../api'); a new tab keeps the schedule
+           open behind it. -->
+      <a class="filter-btn" href="../../docs/" target="_blank" rel="noopener">Guide</a>
       <div v-if="offlineMode" class="schedule-auth-cluster">
         <span class="schedule-offline-badge">ⓘ Offline — testing only · work stays in this browser</span>
         <button class="filter-btn" @click="openAuthPrompt()">Go online</button>

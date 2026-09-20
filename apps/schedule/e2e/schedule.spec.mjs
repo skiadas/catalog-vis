@@ -113,6 +113,10 @@ test('sign-in and schedule creation', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page)
+  // The top nav links out to the user guide (co-deployed at /docs/).
+  const guide = page.getByRole('link', { name: 'Guide' })
+  await expect(guide).toBeVisible()
+  await expect(guide).toHaveAttribute('href', '../../docs/')
   await createSchedule(page, 'Smoke schedule')
   // Manage is a route now: opening "Your schedules" lands on /#/schedules and
   // the browser back button closes it (deep-linkable, like the other views).
