@@ -83,8 +83,8 @@ regeneration is one command and the mapping is reviewable.
   taken if the declared state is actually present.
 - **Fixtures** (`fixtures.mjs`) are named, UI-independent data seeding routines
   (create schedules/terms/directory users via the API), reusable by future e2e.
-- Output: `docs-site/.vitepress/public/screenshots/<file>` (Vitepress public
-  dir), referenced from markdown as `/docs/screenshots/<file>`. Demo data only
+- Output: `docs-site/public/screenshots/<file>` (Vitepress public dir),
+  referenced from markdown as `/docs/screenshots/<file>`. Demo data only
   — fictional users; never real directory names or the live DB.
 - Fresh scratch DB per run; fixed viewport/scale; username auth — same recipe
   as `playwright.config.js`.

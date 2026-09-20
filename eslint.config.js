@@ -6,7 +6,7 @@ import vueParser from 'vue-eslint-parser'
 import vueAccessibility from 'eslint-plugin-vuejs-accessibility'
 
 export default [
-  { ignores: ['node_modules/', 'dist/'] },
+  { ignores: ['node_modules/', 'dist/', 'docs-site/.vitepress/dist/', 'docs-site/.vitepress/cache/'] },
   js.configs.recommended,
   {
     // SFC accessibility rules for the schedule app (the app under the a11y

@@ -4,6 +4,10 @@ node_modules/
 # Built app bundles (npm run build / vite) — dist/ is deployment output
 dist/
 
+# Vitepress build output + cache (docs-site/ is the user-guide root)
+docs-site/.vitepress/dist/
+docs-site/.vitepress/cache/
+
 # Playwright artifacts (failed-test traces, HTML report)
 test-results/
 playwright-report/
