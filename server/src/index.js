@@ -97,8 +97,12 @@ export async function buildServer(env = process.env) {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
   const { app, config } = await buildServer()
-  app.listen(config.port, config.host, () => {
-    console.log(`major-vis server listening on http://${config.host}:${config.port}`)
+  const server = app.listen(config.port, config.host, () => {
+    // Log the actually bound port: `PORT=0` binds an ephemeral port, and the
+    // configured value (0) would otherwise be misleading. Scripts (e.g.
+    // scripts/verify-app.mjs) read this line to learn where to connect.
+    const { port } = server.address()
+    console.log(`major-vis server listening on http://${config.host}:${port}`)
     console.log(`services: ${config.services.join(', ')}`)
     console.log(`auth: ${config.auth.provider}`)
   })

@@ -106,6 +106,7 @@ npm install              # tooling + workspace packages (incl. the server)
 npm test                 # unit tests (degree-audit, schedule-core, catalog-contract, server)
 npm run typecheck        # tsc checkJs across apps/packages/server
 npm run build            # Vite bundles the three apps into dist/<name>/
+npm run probe            # boot each built bundle headlessly (spawns + kills its own server)
 npm run dev              # schedule app dev server at http://localhost:5173
 npm run serve            # run the backend (Express + SQLite) at http://localhost:8080
 npm run test:e2e         # Playwright E2E (bundled Chromium; one-time `npx playwright install chromium`)

@@ -164,6 +164,25 @@ e2e suite is the only net for them. Rules learned the hard way:
   Predicates/consumers write against the shaped row; the reshape happens
   once at the repository boundary.
 
+**Local servers and processes** — the user may be running `npm run serve` /
+`npm run dev` while you work; assume any running process is theirs unless this
+session spawned it, and never `pkill` / `killall` by name pattern —
+`pkill -f "node server/src/index.js"` also matches the user's server, because
+`npm run serve` runs exactly that. You should not need to manage servers at
+all:
+
+- To check that the built bundles boot, run **`npm run probe`**
+  (`scripts/verify-app.mjs`): it spawns the server on an ephemeral port with a
+  scratch DB, loads each app headlessly, and kills its own child on exit — so
+  there is nothing left to clean up.
+- For real user flows, run **`npm run test:e2e`**; its Playwright webServer
+  manages its own server lifecycle.
+- Never background a server from the Bash tool to test against: the shell
+  persists across calls, so it would outlive the call that started it. If a
+  background process is ever unavoidable, capture its PID at spawn (`$!`) and
+  kill that exact PID; confirm port ownership with `lsof -nP -iTCP:<port>`
+  before freeing a port, and kill the PID, never a name pattern.
+
 **Common tasks** — run the Python pipeline from the repo root (scripts anchor
 data to the root via `ROOT`): `python3 tools/catalog-pipeline/scrape_catalog.py`
 re-scrapes; the full regeneration workflow and the serve command are in

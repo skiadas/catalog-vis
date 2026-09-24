@@ -22,6 +22,7 @@
     "format": "prettier --write \"**/*.{js,html,css,scss,vue}\"",
     "format:check": "prettier --check \"**/*.{js,html,css,scss,vue}\"",
     "gate": "node scripts/gate.mjs",
+    "probe": "node scripts/verify-app.mjs",
     "dev": "vite apps/schedule",
     "dev:browse": "vite apps/browse",
     "dev:planner": "vite apps/planner",
