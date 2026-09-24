@@ -16,6 +16,7 @@ import {
   moveOfferingSmart,
   updateOfferingInSchedule,
   DEFAULT_SLOT,
+  DEFAULT_SEATS,
   nextSectionLetter,
   nextLabSeq,
   addOfferingToSchedule,
@@ -1453,6 +1454,7 @@ export function addCourseToSchedule(id, code) {
     instructor: '',
     secondaryInstructors: [],
     ...DEFAULT_SLOT,
+    seats: DEFAULT_SEATS,
     id: '',
   }
   offering.id = offeringIdFor(offering)
@@ -1506,6 +1508,7 @@ export function addLabSection(id, cur) {
     labSeq: nextLabSeq(offerings, parent.prefix, parent.number, parent.section),
     days: '',
     time: '',
+    seats: DEFAULT_SEATS,
     id: '',
   }
   lab.id = offeringIdFor(lab)

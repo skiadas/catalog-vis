@@ -207,6 +207,12 @@ export function daySlotTimes(day) {
 // 3. CSV parsing + derived index
 // ---------------------------------------------------------------------------
 
+// The requested seat count for an offering when none is given: a section's
+// `seats` cell is optional, and every producer (import, add-course, add-lab,
+// the generator) falls back to this value. Each offering row carries its own
+// count — a lab has its own limit, independent of the lecture it mirrors.
+export const DEFAULT_SEATS = 24
+
 // Tokenize one CSV line into fields, honoring double-quoted fields (with
 // "" escapes). A trailing-backslash/newline inside a quoted field is not
 // supported (registrar feeds are single-line per record).
@@ -248,6 +254,15 @@ function cellValue(v) {
   return !s || /^null$/i.test(s) ? '' : s
 }
 
+// The requested seat count from a `seats` cell: a positive integer, defaulting
+// to DEFAULT_SEATS when the column is absent, blank/NULL, or not a positive
+// integer. (The registrar's seat limit is optional — an unspecified section
+// gets the default.)
+function seatCount(cell) {
+  const n = Number.parseInt(cellValue(cell), 10)
+  return Number.isInteger(n) && n > 0 ? n : DEFAULT_SEATS
+}
+
 // Split a comma-separated instructor cell into distinct names: whitespace
 // tolerated around commas, trimmed, empties dropped, duplicates removed. A
 // blank/NULL cell (or NULL token inside a list) is "no instructor". The
@@ -279,17 +294,18 @@ export function instructorsOf(o) {
 
 // Parse a schedule CSV into offering records. The header is the round-trip /
 // registrar form `dept_prefix,course_number,course_section,instructor,
-// secondary_instr,days,times` (optionally an extra `term` column, `F|W|S`) or
-// use alternate synonyms for the time column (`time`). The optional
+// secondary_instr,days,times` (optionally extra `seats` and `term` columns,
+// `F|W|S`) or use alternate synonyms for the time column (`time`). The optional
 // `secondary_instr` column is a comma-separated list (quoted by the registrar)
 // of additional instructors; it becomes the `secondaryInstructors` array.
-// Blank/NULL `days`/`times` mark an unscheduled offering.
+// The optional `seats` column is the requested seat count (a positive integer,
+// default 24). Blank/NULL `days`/`times` mark an unscheduled offering.
 // A trailing `L` on the course number marks a lab section of that course
 // (`166L` is a lab of 166); the lab's sequence is part of the section cell
 // (`A2` = section A, lab 2). A lab row with a plain-letter section gets
 // labSeq 1; colliding rows (identical `A1` rows serving one lecture) are
 // renumbered 1..n in first-seen order so every record stays distinct.
-/** @returns {Array<{ id?: string; prefix: string; number: string; section: string; instructor: string; secondaryInstructors: string[]; days: string; time: string; term?: string; lab?: boolean; labSeq?: number }>} */
+/** @returns {Array<{ id?: string; prefix: string; number: string; section: string; instructor: string; secondaryInstructors: string[]; days: string; time: string; seats: number; term?: string; lab?: boolean; labSeq?: number }>} */
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/)
   const header = csvFields(lines[0])
@@ -323,6 +339,7 @@ export function parseCsv(text) {
       secondaryInstructors: instructorList(rec['secondary_instr']),
       days,
       time,
+      seats: seatCount(rec['seats']),
     }
     // `166L` / `166l` -> number `166`, lab. The L is the only lab marker in
     // the course number (the sequence lives in the section cell); anything
@@ -394,8 +411,9 @@ export function offeringSectionLabel(o) {
 // Serialize offerings back to the importable CSV form (an exact round-trip of
 // `parseCsv`). `rows` are offering records; an optional `term` per row is written
 // when the caller provides it. Header is `dept_prefix,course_number,
-// course_section,instructor,secondary_instr,days,times` plus `term` when any
-// non-empty term is present.
+// course_section,instructor,secondary_instr,days,times,seats` plus `term` when
+// any non-empty term is present. A row without a `seats` value writes a blank
+// cell (re-import defaults it to `DEFAULT_SEATS`).
 export function renderCsv(offerings) {
   const includesTerm = offerings.some((o) => o.term != null && o.term !== '')
   const header = [
@@ -406,6 +424,7 @@ export function renderCsv(offerings) {
     'secondary_instr',
     'days',
     'times',
+    'seats',
   ]
   if (includesTerm) header.push('term')
   const quote = (v) => {
@@ -423,6 +442,7 @@ export function renderCsv(offerings) {
       (o.secondaryInstructors || []).join(', '),
       o.days,
       isTime,
+      o.seats != null && o.seats !== '' ? o.seats : '',
     ]
     if (includesTerm) rec.push(o.term || '')
     lines.push(rec.map(quote).join(','))

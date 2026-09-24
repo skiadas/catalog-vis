@@ -94,6 +94,19 @@
               placeholder="A"
             />
           </div>
+
+          <div class="field field-fit">
+            <label for="course-edit-seats">Seats</label>
+            <input
+              id="course-edit-seats"
+              class="search-input"
+              type="number"
+              min="1"
+              step="1"
+              v-model.number="seatsSel"
+              placeholder="24"
+            />
+          </div>
         </div>
 
         <div class="field">
@@ -271,6 +284,7 @@ import {
   offeringCodeLabel,
   offeringSectionLabel,
   offeringItemKey,
+  DEFAULT_SEATS,
 } from '@major-vis/schedule-core'
 import {
   scheduleById,
@@ -432,6 +446,13 @@ export default {
 
     const instructorSel = ref(o.instructor || '')
     const sectionSel = ref(o.section || '')
+    // The requested seat count for this offering (each row — lecture or lab —
+    // carries its own). Blank/invalid input falls back to the model default.
+    const seatsSel = ref(o.seats ?? DEFAULT_SEATS)
+    const seatsValue = computed(() => {
+      const n = Number.parseInt(seatsSel.value, 10)
+      return Number.isInteger(n) && n > 0 ? n : DEFAULT_SEATS
+    })
 
     // The lead-instructor combobox: free text (any name is legal — new hires,
     // adjuncts), with suggestions from the department pool (catalog roster +
@@ -563,7 +584,8 @@ export default {
         listKey(secondaryNames.value) !== listKey(o.secondaryInstructors) ||
         (sectionSel.value.trim() || o.section) !== o.section ||
         days !== (o.days || '') ||
-        time !== normalizeBand(o.time || '')
+        time !== normalizeBand(o.time || '') ||
+        seatsValue.value !== (o.seats ?? DEFAULT_SEATS)
       )
     })
 
@@ -739,6 +761,7 @@ export default {
           section: sectionSel.value.trim() || o.section,
           days,
           time,
+          seats: seatsValue.value,
         },
       )
     }
@@ -784,6 +807,7 @@ export default {
       onSecondaryBlur,
       pickSecondary,
       sectionSel,
+      seatsSel,
       isLab,
       codeLabel,
       sectionLabel,

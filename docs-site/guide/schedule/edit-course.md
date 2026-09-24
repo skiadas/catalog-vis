@@ -9,6 +9,8 @@ setting for one section lives.
 ## What you can change
 
 - **Section** — the letter that identifies this class (A, B, …).
+- **Seats** — the requested number of seats for this section (defaults to 24).
+  Each row has its own count, so a lab's limit is separate from its lecture's.
 - **Instructor** — start from **Department** or **All instructors**, then pick a
   name, or type one.
 - **Other instructors** — anyone who co-teaches, separated by commas. Leave it

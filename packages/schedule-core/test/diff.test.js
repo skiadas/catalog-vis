@@ -219,6 +219,35 @@ test('diffOfferings leaves secondaryInstructors alone when unchanged in content'
   assert.equal(sameList.length, 0)
 })
 
+test('diffOfferings diffs seats as a number and applies it', () => {
+  const before = [OFF(1, { number: '101', seats: 24 })]
+  const after = [OFF(1, { number: '101', seats: 30 })]
+  const ops = diffOfferings(before, after)
+  assert.equal(ops.length, 1)
+  assert.deepEqual(ops[0].changes, { seats: 30 })
+  assert.deepEqual(ops[0].diff, [{ field: 'seats', from: 24, to: 30 }])
+  const applied = applyOperations(before, ops)
+  assert.equal(applied[0].seats, 30)
+})
+
+test('diffOfferings ignores an unchanged seats value but flags gaining one', () => {
+  assert.equal(diffOfferings([OFF(1, { number: '101' })], [OFF(1, { number: '101' })]).length, 0)
+  const ops = diffOfferings([OFF(1, { number: '101' })], [OFF(1, { number: '101', seats: 24 })])
+  assert.equal(ops.length, 1)
+  assert.deepEqual(ops[0].diff, [{ field: 'seats', from: '', to: 24 }])
+})
+
+test('describeChange reads a seats change naturally', () => {
+  assert.equal(
+    describeChange({
+      kind: 'update',
+      cur: { prefix: 'CS', number: '101', section: 'A' },
+      diff: [{ field: 'seats', from: 24, to: 30 }],
+    }),
+    'CS 101 A: seats from 24 to 30',
+  )
+})
+
 test('split-meeting rows diff cleanly and apply to the exact row', () => {
   // MUS 001 A meets MW 16:00-16:50 and R 16:10-17:00: two rows sharing the
   // section tuple. Before content ids, every diff invented "days from R to MW"

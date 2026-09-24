@@ -11,7 +11,7 @@ Two entry points: `.` (domain model) and `./generate` (schedule generation).
 An **offering** is the primitive record, in the shape `parseCsv` produces:
 
 ```js
-{ id: 'ok16mz2', prefix: 'BIO', number: '161', section: 'A', instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'], days: 'MWF', time: '8:00-9:10' }
+{ id: 'ok16mz2', prefix: 'BIO', number: '161', section: 'A', instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'], days: 'MWF', time: '8:00-9:10', seats: 24 }
 ```
 
 `instructor` is the single **lead** instructor (0-or-1, mirroring the
@@ -20,6 +20,14 @@ registrar `instructor` column); `secondaryInstructors` is the 0-or-more
 the source, stored as an array). Records written before the multi-instructor
 model simply lack the key — `instructorsOf(o)` (below) reads it as empty, so
 old schedules stay valid.
+
+`seats` is the requested seat count for the section (a positive integer),
+defaulting to `DEFAULT_SEATS` (24) when unspecified. It is **per offering row**
+— a lab carries its own limit, independent of the lecture it mirrors — and it
+is not part of an offering's identity (editing it never changes the content
+`id`). The app's course editor and the `#/course/:code` view surface it; the
+CSV carries it as the optional `seats` column (`parseCsv` reads it, `renderCsv`
+writes it).
 
 **`id`** is a deterministic content hash producers assign at import/creation
 (and fill on legacy records during load): two rows that share a section tuple
@@ -54,15 +62,19 @@ renumbered deterministically.
 
 - `parseCsv(text)` → `offering[]` (columns `dept_prefix`,
   `course_number`, `course_section`, `instructor`, `secondary_instr`, `days`,
-  `times`; blank or literal `NULL` cells — meeting _and_ instructor columns —
-  mark "no value" (a `NULL` lead reads as no instructor, a `NULL`
-  `secondary_instr` as no others, `NULL` tokens inside a list are dropped);
-  the optional `secondary_instr` column is a commma-separated (quoted) list parsed
-  into `secondaryInstructors`; `166L` + section-cell lab digits with
-  deterministic labSeq for colliding rows)
+  `times`, optional `seats`; blank or literal `NULL` cells — meeting
+  _and_ instructor columns — mark "no value" (a `NULL` lead reads as no
+  instructor, a `NULL` `secondary_instr` as no others, `NULL` tokens inside a
+  list are dropped); the optional `secondary_instr` column is a commma-separated
+  (quoted) list parsed into `secondaryInstructors`; the optional `seats` column
+  is a positive integer defaulting to `DEFAULT_SEATS` (24) when absent/blank/
+  invalid; `166L` + section-cell lab digits with deterministic labSeq for
+  colliding rows)
 - `renderCsv(offerings)` → round-trip CSV (`secondary_instr` written back
-  after `instructor`, properly quoted; lab numbers written back as `166L`,
-  sequences as section digits `A1`/`A2`)
+  after `instructor`, properly quoted; a `seats` column written after `times`
+  (blank when a row has none); lab numbers written back as `166L`, sequences
+  as section digits `A1`/`A2`)
+- `DEFAULT_SEATS = 24` (the fallback seat count)
 - `buildIndex(offerings)` → `{ byCourse, byDay, bySlot, byInstructor,
 unscheduled }`; each list is sorted (`compareItems`) and items carry
   `{ o, code, sid, sectionLabel, start, end, days, lab, instructors }` where

@@ -70,6 +70,7 @@ dependency.
   secondaryInstructors: ['Xu', 'Ray'],          // 0-or-more other instructors
   days: 'MWF' | 'MTWRF' | '',   // '' = unscheduled (independent study, etc.)
   time: '9:20-10:30' | '',      // '' = unscheduled; otherwise any HH:MM-HH:MM band
+  seats: 24,                    // NEW: requested seat count, per row, default 24
 }
 ```
 
@@ -78,6 +79,9 @@ dependency.
   import). `instructor` is the single lead; `secondaryInstructors` carries the
   others, sourced from the registrar's comma-separated `secondary_instr`
   column (parsed into an array on import).
+- `seats` is additive: a positive integer defaulting to 24 when the optional
+  CSV `seats` column is blank/absent, not part of the offering's identity, and
+  carried per row (a lab's limit is its own, not the lecture's).
 - Empty `days`/`time` ⇒ unscheduled: present in the schedule/CSV, absent from
   the calendar grid and conflict detection.
 
@@ -164,9 +168,11 @@ GET    /api/schedules/:id/changes/export?fmt=json|md|csv
 ### CSV contract (one round-trip format)
 
 Columns: `dept_prefix, course_number, course_section, instructor,
-secondary_instr, days, times` plus an optional `term` column (`F|W|S`). The
+secondary_instr, days, times, seats` plus an optional `term` column (`F|W|S`). The
 optional `secondary_instr` column is the registrar's comma-separated list of
-other instructors (`"Xu, Ray"`, quoted because of the commas). Blank
+other instructors (`"Xu, Ray"`, quoted because of the commas). The optional
+`seats` column is the requested seat count (a positive integer, default 24 when
+blank/absent). Blank
 `days`/`times` ⇒ unscheduled.
 `parseCsv` holds quoted-field + optional-column handling; `renderCsv`
 matches it. Rows with a `term` value land in that term part; rows without one

@@ -31,8 +31,9 @@ export function offeringKey(o) {
   return tupleKey(o)
 }
 
-// The editable fields considered when diffing two offerings.
-export const EDITABLE_FIELDS = ['instructor', 'secondaryInstructors', 'section', 'days', 'time']
+// The editable fields considered when diffing two offerings. `seats` is a
+// number; `canonical` stringifies it for comparison.
+export const EDITABLE_FIELDS = ['instructor', 'secondaryInstructors', 'section', 'days', 'time', 'seats']
 
 // Canonical comparison form of a field value: arrays (secondaryInstructors)
 // compare element-wise, everything else trims the string.

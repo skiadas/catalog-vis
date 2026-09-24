@@ -87,7 +87,7 @@ export const entries = [
     route: '/#/course/CS%20220',
     seed: 'conflicts',
     steps: [{ act: 'assert', text: 'Conflicts' }],
-    alt: 'The course-conflicts view, listing a course that overlaps another',
+    alt: "The course-conflicts view, listing a course's offerings (with seat counts) that overlap another",
     caption: 'Course conflicts — everything that collides with one course.',
   },
   {
@@ -141,7 +141,7 @@ export const entries = [
     route: '/#/schedule/<id>/course/CS%20220/edit',
     seed: 'populated',
     steps: [{ act: 'assert', text: 'Edit CS 220' }],
-    alt: 'The course editor: section, instructor, days, and meeting time',
+    alt: 'The course editor: section, seats, instructor, days, and meeting time',
     caption: 'The course editor — every setting for one section.',
   },
   {

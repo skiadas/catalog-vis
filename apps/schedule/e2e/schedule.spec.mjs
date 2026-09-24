@@ -1190,6 +1190,66 @@ test('import registrar CSV creates a new schedule and routes rows by term', asyn
   assertClean(errors)
 })
 
+// Seats ride per offering row: imported from the CSV's seats column, shown in
+// the course view, and edited in the course editor.
+test('seats: imported counts show in the course view and persist an editor edit', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'seats-user')
+
+  // Import the registrar fixture (CS 220 carries seats 30).
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', 'apps/schedule/e2e/import.csv')
+  await expect(page.getByText(/Imported 9 course row\(s\)/)).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Seats demo')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Seats demo' }).first().waitFor({ timeout: 10000 })
+
+  // The course view reads the imported count off the offering.
+  await page.goto('/#/course/CS%20220', { waitUntil: 'networkidle' })
+  await expect(page.locator('.detail-header h2')).toHaveText('CS 220')
+  await expect(page.getByText('Seats: 30')).toBeVisible()
+
+  // The course editor surfaces the same value and persists an edit.
+  await page.getByRole('button', { name: 'Grid', exact: true }).click()
+  await page.locator('.schedule-pill-edit').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  const block = page.locator('.cal-block[title="CS 220"]').first()
+  await block.locator('.cal-block-time').click()
+  await block.locator('.filter-offering', { hasText: 'CS 220' }).locator('.filter-offering-edit').first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(em.locator('#course-edit-seats')).toHaveValue('30')
+  await em.locator('#course-edit-seats').fill('42')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Reopening shows the saved value.
+  await block.locator('.filter-offering', { hasText: 'CS 220' }).locator('.filter-offering-edit').first().click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(em.locator('#course-edit-seats')).toHaveValue('42')
+  await em.getByRole('button', { name: 'Cancel' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+
+  // The course view reflects the edit.
+  await page.goto('/#/course/CS%20220', { waitUntil: 'networkidle' })
+  await expect(page.getByText('Seats: 42')).toBeVisible()
+
+  // Clean up.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Seats demo' })
+    .getByRole('button', { name: 'Delete Seats demo' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
 test('day view: a crowded slot lays courses side by side and the scale control resizes the axis', async ({
   page,
 }) => {

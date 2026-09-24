@@ -32,7 +32,8 @@ side by side.
 
 ## Course conflicts — follow one course
 
-Pick a course and see all of its sections and everything they collide with. See
+Pick a course and see all of its sections (each with its seat count) and
+everything they collide with. See
 [Checking for conflicts](/guide/schedule/conflicts).
 
 ## Instructor — follow one teacher

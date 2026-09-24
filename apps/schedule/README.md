@@ -34,11 +34,14 @@ Spring), each a separate `offerings` collection; the app edits one term at a tim
 part.
 
 An **offering** record:
-`{ id, prefix, number, section, instructor, secondaryInstructors, days, time }`
+`{ id, prefix, number, section, instructor, secondaryInstructors, days, time, seats }`
 (`days` ⊆ `MTWRF`, `time` = `"HH:MM-HH:MM"`). `instructor` is the single
 **lead** instructor (0-or-1); `secondaryInstructors` is an array of 0-or-more
 **other** instructors (e.g. the registrar's comma-separated `secondary_instr`
-column). Blank `days`/`time` mark an **unscheduled** offering (independent
+column). `seats` is the requested seat count for the section (a positive
+integer, default 24) — **per offering row**, so a lab has its own limit
+independent of the lecture it mirrors. Blank `days`/`time` mark an
+**unscheduled** offering (independent
 studies) — present in the schedule but excluded from the calendar/conflicts.
 This is the same shape `parseCsv`/`makeSchedule` produce, so it maps directly
 to registrar-style data feeds. Each row carries a stable content **`id`**, so
@@ -101,13 +104,16 @@ stays proportional to the clock.
 
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format
-(`dept_prefix,course_number,course_section,instructor,secondary_instr,days,times`
+(`dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,seats`
 plus optional `term`) produced by "Download registrar CSV". An import **always
 creates a new schedule** (name prefilled from the filename, year optional;
 never touches existing schedules) and routes rows into its F/W/S parts by the
 `term` column (rows without one land in the active term part). Blank or
 literal `NULL` `days`/`times` cells mark unscheduled offerings; a `NULL` in the
-`instructor` or `secondary_instr` columns reads as no instructor. A trailing `L` on
+`instructor` or `secondary_instr` columns reads as no instructor. The optional
+`seats` column is the requested seat count (a positive integer, default 24
+when blank/absent); it is written back on export (blank when a row has none).
+A trailing `L` on
 the course number with a digit in the section cell (`166L` + `A2`) becomes
 a lab section of its parent. The optional `secondary_instr` column holds the
 secondary instructors as a comma-separated, quoted list (`"Xu, Ray"`). Lab rows whose lecture
@@ -216,7 +222,10 @@ foot swaps to "Discard your unsaved changes?" with **Keep editing** /
 **Discard** (deliberate exits — Cancel, Save, Remove — close directly). The
 "Other instructors" field autocompletes from the term's instructor roster,
 matching the last comma-separated token ("Smith, Jo" → pick Jones), replacing
-the old chip wall.
+the old chip wall. Its **Seats** field edits the offering's requested seat
+count (a positive integer, default 24); the `#/course/:code` view prints the
+count beside each section's time so a course's per-section limits are visible
+without opening the editor.
 
 **Recent changes & history**: the edit bar's **History** button opens the
 session's change list. It is not an undo stack: the panel shows the **net

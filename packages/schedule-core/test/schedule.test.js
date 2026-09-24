@@ -57,6 +57,7 @@ import {
   offeringSectionLabel,
   courseNumberLabel,
   offeringItemKey,
+  DEFAULT_SEATS,
 } from '../schedule.js'
 
 const CSV = [
@@ -456,6 +457,7 @@ test('parseCsv maps columns and trims', () => {
     secondaryInstructors: [],
     days: 'MWF',
     time: '9:20-10:30',
+    seats: 24,
     id: offeringIdFor({ prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' }),
   })
 })
@@ -478,6 +480,7 @@ test('parseCsv accepts a `time` column synonym and blank times as unscheduled', 
     secondaryInstructors: [],
     days: '',
     time: '',
+    seats: 24,
     id: offeringIdFor({ prefix: 'CS', number: '220', section: 'A', days: '', time: '' }),
   })
 })
@@ -516,7 +519,9 @@ test('renderCsv writes term only when present on an offering', () => {
     },
   ])
   assert.ok(
-    csv.startsWith('dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,term'),
+    csv.startsWith(
+      'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,seats,term',
+    ),
   )
   assert.ok(csv.includes(',S'))
 })
@@ -599,6 +604,7 @@ test('parseCsv lab rows normalize the trailing L off the number and read the seq
     secondaryInstructors: [],
     days: 'TR',
     time: '10:00-11:45',
+    seats: 24,
     lab: true,
     labSeq: 1,
     id: offeringIdFor({
@@ -707,6 +713,7 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       secondaryInstructors: [],
       days: 'MWF',
       time: '9:20-10:30',
+      seats: 24,
       id: offeringIdFor({ prefix: 'BIO', number: '166', section: 'A', days: 'MWF', time: '9:20-10:30' }),
     },
     {
@@ -717,6 +724,7 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       secondaryInstructors: [],
       days: 'TR',
       time: '10:00-11:45',
+      seats: 24,
       lab: true,
       labSeq: 1,
       id: offeringIdFor({
@@ -737,6 +745,7 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       secondaryInstructors: [],
       days: 'W',
       time: '13:20-14:30',
+      seats: 24,
       lab: true,
       labSeq: 2,
       id: offeringIdFor({
@@ -750,6 +759,57 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       }),
     },
   ])
+})
+
+test('parseCsv reads a seats column, defaulting blank/invalid cells to DEFAULT_SEATS', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times,seats',
+      'CS,101,A,Vosmeier,MWF,9:20-10:30,30',
+      'CS,101,B,Morgan,TR,10:00-11:45,',
+      'CS,101,C,Doe,MWF,8:00-9:10,NULL',
+      'CS,101,D,Doe,MWF,9:20-10:30,0',
+      'CS,101,E,Doe,MWF,10:40-11:50,-5',
+      'CS,101,F,Doe,MWF,12:00-13:10,abc',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.seats),
+    [30, DEFAULT_SEATS, DEFAULT_SEATS, DEFAULT_SEATS, DEFAULT_SEATS, DEFAULT_SEATS],
+  )
+})
+
+test('parseCsv defaults seats to DEFAULT_SEATS when the column is absent', () => {
+  const [row] = parseCsv(
+    'dept_prefix,course_number,course_section,instructor,days,times\nCS,101,A,Vosmeier,MWF,9:20-10:30\n',
+  )
+  assert.equal(row.seats, DEFAULT_SEATS)
+})
+
+test('renderCsv writes the seats column (blank when a row has none) and round-trips it', () => {
+  const csv = renderCsv([
+    {
+      prefix: 'CS',
+      number: '101',
+      section: 'A',
+      instructor: 'Vosmeier',
+      days: 'MWF',
+      time: '9:20-10:30',
+      seats: 30,
+    },
+    { prefix: 'CS', number: '101', section: 'B', instructor: 'Morgan', days: 'TR', time: '10:00-11:45' },
+  ])
+  const lines = csv.split('\n')
+  assert.equal(
+    lines[0],
+    'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,seats',
+  )
+  assert.ok(lines[1].endsWith(',30'))
+  assert.ok(lines[2].endsWith(','), 'a row without seats writes a blank cell')
+  assert.deepEqual(
+    parseCsv(csv).map((r) => r.seats),
+    [30, DEFAULT_SEATS],
+  )
 })
 
 test('buildIndex groups by course, day, slot, instructor', () => {

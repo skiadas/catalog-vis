@@ -618,6 +618,32 @@ test('updateOffering persists a secondaryInstructors change', async () => {
   })
 })
 
+test('updateOffering persists a seats change', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Local', '2026-27', [])
+    store.addCourseToSchedule(id, 'CS 101')
+    assert.equal(store.scheduleById(id).terms.F.offerings[0].seats, 24, 'a new course defaults to 24')
+
+    assert.ok(store.updateOffering(id, { prefix: 'CS', number: '101', section: 'A' }, { seats: 30 }))
+    assert.equal(store.scheduleById(id).terms.F.offerings[0].seats, 30)
+
+    // Re-saving the same seats value (the editor's no-change save) records nothing.
+    await store.setEditingSchedule(id, 'edit')
+    assert.equal(
+      store.updateOffering(
+        id,
+        { prefix: 'CS', number: '101', section: 'A' },
+        { instructor: '', secondaryInstructors: [], section: 'A', days: 'MWF', time: '8:00-9:10', seats: 30 },
+      ),
+      false,
+    )
+  })
+})
+
 test('addLabSection creates an unscheduled lab that mirrors the lecture and copies its instructor', async () => {
   await withRemote(async ({ store }) => {
     store.setRemote(false)
@@ -642,6 +668,7 @@ test('addLabSection creates an unscheduled lab that mirrors the lecture and copi
     assert.deepEqual(lab.secondaryInstructors, ['Xu', 'Ray'], 'copies the secondary instructors too')
     assert.equal(lab.days, '')
     assert.equal(lab.time, '', 'starts unscheduled')
+    assert.equal(lab.seats, 24, 'a lab carries its own seat count, defaulting to 24')
     assert.equal(lab.labSeq, 1)
 
     // A second lab for the same lecture gets the next sequence number, and
