@@ -127,8 +127,8 @@ a lab section of its parent (and takes its lecture's title). The optional
 `secondary_instr` column holds the
 secondary instructors as a comma-separated, quoted list (`"Xu, Ray"`). Lab rows whose lecture
 section isn't in the file are kept and reported in an import warning list.
-`parseCsv`/`renderCsv` in `@major-vis/schedule-core` implement the format
-(quoted-field aware).
+`parseCsv`/`renderCsv` in `@major-vis/schedule-core` implement the format with
+`csv-parse`/`csv-stringify` (header-driven, BOM/CRLF/quoted-newline aware).
 
 On load the app seeds a deterministic "Sample schedule" (`seedSampleSchedule`,
 seed 42) into the Fall part unless schedules already exist.

@@ -58,7 +58,29 @@ import {
   courseNumberLabel,
   offeringItemKey,
   DEFAULT_SEATS,
+  CSV_COLUMNS,
 } from '../schedule.js'
+
+// The CSV header cells of a rendered file (the first line; headers never
+// contain commas/quotes). Compared against `CSV_COLUMNS` so a new column needs
+// no test edit here.
+const headerOf = (csv) => csv.split('\n')[0].split(',')
+
+// A complete offering record for `deepEqual`s, with every optional field at its
+// canonical default. Adding a column means adding its default here once (and to
+// the one canonical record-shape test) — not to every assertion.
+const OFF = (fields = {}) => ({
+  prefix: '',
+  number: '',
+  section: '',
+  title: '',
+  instructor: '',
+  secondaryInstructors: [],
+  days: '',
+  time: '',
+  seats: DEFAULT_SEATS,
+  ...fields,
+})
 
 const CSV = [
   'dept_prefix,course_number,course_section,instructor,days,times',
@@ -449,18 +471,18 @@ test('slotKey', () => {
 test('parseCsv maps columns and trims', () => {
   const rows = parseCsv(CSV)
   assert.equal(rows.length, 6)
-  assert.deepEqual(rows[0], {
-    prefix: 'CS',
-    number: '101',
-    section: 'A',
-    title: '',
-    instructor: 'Vosmeier',
-    secondaryInstructors: [],
-    days: 'MWF',
-    time: '9:20-10:30',
-    seats: 24,
-    id: offeringIdFor({ prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' }),
-  })
+  assert.deepEqual(
+    rows[0],
+    OFF({
+      prefix: 'CS',
+      number: '101',
+      section: 'A',
+      instructor: 'Vosmeier',
+      days: 'MWF',
+      time: '9:20-10:30',
+      id: offeringIdFor({ prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' }),
+    }),
+  )
 })
 
 test('parseCsv skips blank lines', () => {
@@ -473,18 +495,18 @@ test('parseCsv skips blank lines', () => {
 test('parseCsv accepts a `time` column synonym and blank times as unscheduled', () => {
   const rows = parseCsv('dept_prefix,course_number,course_section,instructor,days,time\nCS,220,A,Wahl,,\n')
   assert.equal(rows.length, 1)
-  assert.deepEqual(rows[0], {
-    prefix: 'CS',
-    number: '220',
-    section: 'A',
-    title: '',
-    instructor: 'Wahl',
-    secondaryInstructors: [],
-    days: '',
-    time: '',
-    seats: 24,
-    id: offeringIdFor({ prefix: 'CS', number: '220', section: 'A', days: '', time: '' }),
-  })
+  assert.deepEqual(
+    rows[0],
+    OFF({
+      prefix: 'CS',
+      number: '220',
+      section: 'A',
+      instructor: 'Wahl',
+      days: '',
+      time: '',
+      id: offeringIdFor({ prefix: 'CS', number: '220', section: 'A', days: '', time: '' }),
+    }),
+  )
 })
 
 test('parseCsv handles quoted fields with commas and quotes', () => {
@@ -508,6 +530,57 @@ test('renderCsv round-trips parseCsv output', () => {
   assert.deepEqual(parseCsv(csv), rows)
 })
 
+// The single canonical pin of the record shape and the column order. Adding a
+// column means updating `OFF` (once) and these two expectations — no other CSV
+// test should need to change.
+test('the parsed record shape and rendered header are the canonical contract', () => {
+  const [row] = parseCsv(
+    'dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats\nCS,101,A,,Vosmeier,,MWF,9:20-10:30,24\n',
+  )
+  assert.deepEqual(
+    row,
+    OFF({
+      prefix: 'CS',
+      number: '101',
+      section: 'A',
+      instructor: 'Vosmeier',
+      days: 'MWF',
+      time: '9:20-10:30',
+      id: offeringIdFor({ prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' }),
+    }),
+  )
+  assert.deepEqual(headerOf(renderCsv([])), CSV_COLUMNS)
+})
+
+test('parseCsv tolerates a UTF-8 BOM, CRLF endings, and a quoted embedded newline', () => {
+  const rows = parseCsv(
+    '\uFEFFdept_prefix,course_number,course_section,title,instructor,days,times\r\n' +
+      'CS,220,A,"Topics,\r\nsecond line",Wahl,MWF,9:20-10:30\r\n',
+  )
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].prefix, 'CS', 'the BOM is stripped from the first header cell')
+  assert.equal(rows[0].title, 'Topics,\r\nsecond line', 'a quoted cell may contain a newline')
+})
+
+test('parseCsv tolerates ragged rows (missing and extra trailing cells)', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times',
+      'CS,101,A,Vosmeier,MWF,9:20-10:30,EXTRA',
+      'BIO,161,A,Patterson',
+    ].join('\n'),
+  )
+  assert.equal(rows.length, 2)
+  assert.equal(rows[0].prefix, 'CS')
+  assert.equal(rows[1].prefix, 'BIO')
+  assert.equal(rows[1].days, '')
+  assert.equal(rows[1].time, '', 'missing cells read as blank')
+})
+
+test('parseCsv returns no rows for a malformed file instead of throwing', () => {
+  assert.deepEqual(parseCsv('dept_prefix,course_number\nCS,"unterminated'), [])
+})
+
 test('renderCsv writes term only when present on an offering', () => {
   const csv = renderCsv([
     {
@@ -520,11 +593,7 @@ test('renderCsv writes term only when present on an offering', () => {
       term: 'S',
     },
   ])
-  assert.ok(
-    csv.startsWith(
-      'dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats,term',
-    ),
-  )
+  assert.deepEqual(headerOf(csv), [...CSV_COLUMNS, 'term'])
   assert.ok(csv.includes(',S'))
 })
 
@@ -598,28 +667,28 @@ test('parseCsv lab rows normalize the trailing L off the number and read the seq
     'dept_prefix,course_number,course_section,instructor,days,times\nBIO,166L,A1,Patterson,TR,10:00-11:45\n',
   )
   assert.equal(rows.length, 1)
-  assert.deepEqual(rows[0], {
-    prefix: 'BIO',
-    number: '166',
-    section: 'A',
-    title: '',
-    instructor: 'Patterson',
-    secondaryInstructors: [],
-    days: 'TR',
-    time: '10:00-11:45',
-    seats: 24,
-    lab: true,
-    labSeq: 1,
-    id: offeringIdFor({
+  assert.deepEqual(
+    rows[0],
+    OFF({
       prefix: 'BIO',
       number: '166',
       section: 'A',
-      lab: true,
-      labSeq: 1,
+      instructor: 'Patterson',
       days: 'TR',
       time: '10:00-11:45',
+      lab: true,
+      labSeq: 1,
+      id: offeringIdFor({
+        prefix: 'BIO',
+        number: '166',
+        section: 'A',
+        lab: true,
+        labSeq: 1,
+        days: 'TR',
+        time: '10:00-11:45',
+      }),
     }),
-  })
+  )
 })
 
 test('parseCsv reads lab section digits (multi-digit included, letters case-insensitive)', () => {
@@ -708,28 +777,22 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
   assert.ok(lines[3].startsWith('BIO,166L,A2'))
   // the round-trip is stable
   assert.deepEqual(parseCsv(csv), [
-    {
+    OFF({
       prefix: 'BIO',
       number: '166',
       section: 'A',
-      title: '',
       instructor: 'Patterson',
-      secondaryInstructors: [],
       days: 'MWF',
       time: '9:20-10:30',
-      seats: 24,
       id: offeringIdFor({ prefix: 'BIO', number: '166', section: 'A', days: 'MWF', time: '9:20-10:30' }),
-    },
-    {
+    }),
+    OFF({
       prefix: 'BIO',
       number: '166',
       section: 'A',
-      title: '',
       instructor: 'Doe',
-      secondaryInstructors: [],
       days: 'TR',
       time: '10:00-11:45',
-      seats: 24,
       lab: true,
       labSeq: 1,
       id: offeringIdFor({
@@ -741,17 +804,14 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
         days: 'TR',
         time: '10:00-11:45',
       }),
-    },
-    {
+    }),
+    OFF({
       prefix: 'BIO',
       number: '166',
       section: 'A',
-      title: '',
       instructor: 'Doe',
-      secondaryInstructors: [],
       days: 'W',
       time: '13:20-14:30',
-      seats: 24,
       lab: true,
       labSeq: 2,
       id: offeringIdFor({
@@ -763,7 +823,7 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
         days: 'W',
         time: '13:20-14:30',
       }),
-    },
+    }),
   ])
 })
 
@@ -805,13 +865,9 @@ test('renderCsv writes the seats column (blank when a row has none) and round-tr
     },
     { prefix: 'CS', number: '101', section: 'B', instructor: 'Morgan', days: 'TR', time: '10:00-11:45' },
   ])
-  const lines = csv.split('\n')
-  assert.equal(
-    lines[0],
-    'dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats',
-  )
-  assert.ok(lines[1].endsWith(',30'))
-  assert.ok(lines[2].endsWith(','), 'a row without seats writes a blank cell')
+  assert.deepEqual(headerOf(csv), CSV_COLUMNS)
+  assert.equal(parseCsv(csv)[0].seats, 30)
+  assert.equal(parseCsv(csv)[1].seats, DEFAULT_SEATS, 'a blank seats cell re-imports as the default')
   assert.deepEqual(
     parseCsv(csv).map((r) => r.seats),
     [30, DEFAULT_SEATS],
@@ -868,10 +924,12 @@ test('renderCsv writes the title column (blank when a row has none) and round-tr
     },
     { prefix: 'CS', number: '101', section: 'A', instructor: 'Vosmeier', days: 'MWF', time: '8:00-9:10' },
   ])
-  const lines = csv.split('\n')
-  // The title sits right after the section, before the instructor.
-  assert.ok(lines[1].startsWith('CS,220,A,Special Topics: Graphics,Wahl,'))
-  assert.ok(lines[2].startsWith('CS,101,A,,Vosmeier,'))
+  // The title sits right after the section, before the instructor — an
+  // invariant of CSV_COLUMNS. Asserting the header position (not a full row
+  // template) means appending a new column elsewhere never breaks this test.
+  const header = headerOf(csv)
+  assert.equal(header[header.indexOf('title') - 1], 'course_section')
+  assert.equal(header[header.indexOf('title') + 1], 'instructor')
   assert.deepEqual(
     parseCsv(csv).map((r) => r.title),
     ['Special Topics: Graphics', ''],
@@ -1555,7 +1613,7 @@ test('parseCsv regularizes any band spelling to the canonical form', () => {
     ['8:00-9:10', '10:00-11:45', '12:00-13:10'],
   )
   // exports come back canonical too
-  assert.ok(renderCsv(rows).includes('CS,101,A,,Vosmeier,,MWF,8:00-9:10'))
+  assert.equal(parseCsv(renderCsv(rows))[0].time, '8:00-9:10')
 })
 
 test('buildIndex buckets a band under one slot key regardless of spelling', () => {

@@ -135,13 +135,7 @@ import {
   editingScheduleId,
   editingRole,
 } from '../src/scheduleStore.js'
-import {
-  colorForSchedule,
-  compareItems,
-  renderCsv,
-  courseNumberLabel,
-  offeringSectionLabel,
-} from '@major-vis/schedule-core'
+import { colorForSchedule, compareItems, renderCsv } from '@major-vis/schedule-core'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 import { displayName } from '../src/names.js'
 
@@ -187,11 +181,6 @@ export default {
       () => selectedScheduleIds.value.length > 0 && !filterActive.value,
     )
 
-    // CSV escaping: quote cells containing commas, quotes, or newlines.
-    const csvCell = (value) => {
-      const s = String(value ?? '')
-      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
-    }
     // Turns a schedule name into a safe download filename (strip path/quote
     // characters, collapse whitespace), falling back to a generic name.
     const csvFileName = (name) => {
@@ -209,48 +198,23 @@ export default {
     const effectiveTitle = (o) =>
       String((o && o.title) || '').trim() || catalogCourseName(`${o.prefix} ${o.number}`)
     // Downloads one row per course offering across all selected (visible)
-    // schedules' active term in the canonical registrar format (dept_prefix,
-    // course_number, course_section, title, instructor, secondary_instr, days,
-    // times, seats, term), so the file round-trips through Upload registrar CSV.
-    // Offerings are ordered alphabetically by prefix, then number, then section.
-    // With a single visible schedule the file is named after that schedule.
+    // schedules' active term in the canonical registrar format, so the file
+    // round-trips through Upload registrar CSV. The rows go through
+    // schedule-core's `renderCsv`, so the column list lives in one place
+    // (`CSV_COLUMNS`) and any new column appears here automatically. Offerings
+    // are ordered alphabetically by prefix, then number, then section. With a
+    // single visible schedule the file is named after that schedule.
     const downloadSummaryCsv = () => {
-      const rows = [
-        [
-          'dept_prefix',
-          'course_number',
-          'course_section',
-          'title',
-          'instructor',
-          'secondary_instr',
-          'days',
-          'times',
-          'seats',
-          'term',
-        ],
-      ]
+      const rows = []
       for (const s of visibleSchedules.value) {
         const offerings = [...viewOfferings(s, activeTerm.value)].sort((a, b) =>
           compareItems({ o: a }, { o: b }),
         )
         for (const o of offerings) {
-          rows.push([
-            o.prefix,
-            // Labs export in the registrar shape (166L, section A2) so a
-            // re-import round-trips the lab sequence.
-            courseNumberLabel(o),
-            offeringSectionLabel(o),
-            effectiveTitle(o),
-            o.instructor || '',
-            (o.secondaryInstructors || []).join(', '),
-            o.days || '',
-            o.time || '',
-            o.seats != null && o.seats !== '' ? o.seats : '',
-            activeTerm.value,
-          ])
+          rows.push({ ...o, title: effectiveTitle(o), term: activeTerm.value })
         }
       }
-      const csv = rows.map((r) => r.map(csvCell).join(',')).join('\n')
+      const csv = renderCsv(rows)
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')

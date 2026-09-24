@@ -2,9 +2,12 @@
 
 Pure schedule domain model for Hanover's catalog. No framework or DOM
 dependencies; all data is passed in as arguments, so it runs under
-`node --test`, in the browser, or as a server-side schedule service.
+`node --test`, in the browser, or as a server-side schedule service. The only
+runtime dependencies are `csv-parse` and `csv-stringify` (their browser ESM
+builds), used by `parseCsv`/`renderCsv`.
 
-Two entry points: `.` (domain model) and `./generate` (schedule generation).
+Three entry points: `.` (domain model), `./generate` (schedule generation), and
+`./diff` (suggested-change diffing).
 
 ## Contract — `.` (schedule.js)
 
@@ -69,9 +72,15 @@ renumbered deterministically. A lab also shares its lecture's `title`
 
 ### Parsing + index
 
-- `parseCsv(text)` → `offering[]` (columns `dept_prefix`,
-  `course_number`, `course_section`, `title`, `instructor`, `secondary_instr`,
-  `days`, `times`, optional `seats`; blank or literal `NULL` cells — title,
+- `CSV_COLUMNS` — the canonical column order (`dept_prefix`, `course_number`,
+  `course_section`, `title`, `instructor`, `secondary_instr`, `days`, `times`,
+  `seats`). `renderCsv` builds its header from it and the app's summary export
+  reuses `renderCsv`, so the order lives in one place.
+- `parseCsv(text)` → `offering[]` (header-driven via `csv-parse`, so column
+  order never matters; a UTF-8 BOM, CRLF endings, quoted cells with embedded
+  commas/newlines, and ragged rows are tolerated; a malformed file yields `[]`
+  rather than throwing). Columns: the `CSV_COLUMNS` above plus an optional
+  `term`; blank or literal `NULL` cells — title,
   meeting _and_ instructor columns — mark "no value" (a `NULL` lead reads as no
   instructor, a `NULL` `secondary_instr` as no others, `NULL` tokens inside a
   list are dropped); the optional `secondary_instr` column is a commma-separated
@@ -80,11 +89,11 @@ renumbered deterministically. A lab also shares its lecture's `title`
   is a positive integer defaulting to `DEFAULT_SEATS` (24) when absent/blank/
   invalid; `166L` + section-cell lab digits with deterministic labSeq for
   colliding rows, and lab titles mirrored from their lecture)
-- `renderCsv(offerings)` → round-trip CSV (`title` written right after
-  `course_section`; `secondary_instr` written back
-  after `instructor`, properly quoted; a `seats` column written after `times`
-  (blank when a row has none); lab numbers written back as `166L`, sequences
-  as section digits `A1`/`A2`)
+- `renderCsv(offerings)` → round-trip CSV written by `csv-stringify` from
+  `CSV_COLUMNS` (plus `term` when any row carries one), so the header and cells
+  can't drift apart: records are mapped by column name (`title` right after
+  `course_section`; `secondary_instr` quoted; `seats` blank when a row has none;
+  labs written back as `166L` + section digits `A1`/`A2`)
 - `DEFAULT_SEATS = 24` (the fallback seat count)
 - `buildIndex(offerings)` → `{ byCourse, byDay, bySlot, byInstructor,
 unscheduled }`; each list is sorted (`compareItems`) and items carry

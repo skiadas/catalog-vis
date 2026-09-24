@@ -7,6 +7,7 @@
 // expected noise and filtered), exactly like the smoke script did.
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { parseCsv, CSV_COLUMNS } from '@major-vis/schedule-core'
 import AxeBuilder from '@axe-core/playwright'
 
 // Runs an axe scan and keeps only the violations that block WCAG AA (serious
@@ -1290,12 +1291,16 @@ test('offering titles: imported, shown in the course view, edited, and exported'
     })(),
   ])
   const summary = readFileSync(await download.path(), 'utf8')
-  const lines = summary.split('\n')
-  expect(lines[0]).toBe(
-    'dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats,term',
-  )
-  expect(lines.find((l) => l.startsWith('MUS,001,A,'))).toContain('Special Topics: Choir')
-  expect(lines.find((l) => l.startsWith('CS,220,A,')).split(',')[3], 'blank title resolves').not.toBe('')
+  // The header is the canonical column list plus `term` (compared against the
+  // exported constant, so adding a column needs no edit here). The body is read
+  // back through parseCsv, so cell lookups are by column name, not position.
+  expect(summary.split('\n')[0].split(',')).toEqual([...CSV_COLUMNS, 'term'])
+  const rows = parseCsv(summary)
+  expect(rows.find((r) => r.prefix === 'MUS' && r.number === '001').title).toBe('Special Topics: Choir')
+  expect(
+    rows.find((r) => r.prefix === 'CS' && r.number === '220').title,
+    'a blank offering title resolves to the catalog name',
+  ).not.toBe('')
 
   // The course view shows the special-topics title.
   await page.goto('/#/course/MUS%20001', { waitUntil: 'networkidle' })

@@ -9,6 +9,11 @@
 //   6. Display helpers (briefInstructor, dept/instructor colors)
 //   7. Filters (instructorsInSchedule, departmentsInSchedule, buildFilter)
 
+// The `/browser/esm` builds bundle their own Buffer polyfill and are pure ESM,
+// so the same import works in the browser bundle and under Node (tests, server).
+import { parse as parseCsvRows } from 'csv-parse/browser/esm/sync'
+import { stringify as stringifyCsvRows } from 'csv-stringify/browser/esm/sync'
+
 // ---------------------------------------------------------------------------
 // 1. Weekday constants
 // ---------------------------------------------------------------------------
@@ -207,44 +212,28 @@ export function daySlotTimes(day) {
 // 3. CSV parsing + derived index
 // ---------------------------------------------------------------------------
 
+// The canonical CSV column order for the round-trip / registrar format:
+// identity block first (`title` right after the section), then the editable
+// fields. `renderCsv` builds its header from this list, and `parseCsv` is
+// header-driven (order-independent). Add a new column here + the matching
+// record field + `renderCsv` row key, and the two stay in lockstep.
+export const CSV_COLUMNS = [
+  'dept_prefix',
+  'course_number',
+  'course_section',
+  'title',
+  'instructor',
+  'secondary_instr',
+  'days',
+  'times',
+  'seats',
+]
+
 // The requested seat count for an offering when none is given: a section's
 // `seats` cell is optional, and every producer (import, add-course, add-lab,
 // the generator) falls back to this value. Each offering row carries its own
 // count — a lab has its own limit, independent of the lecture it mirrors.
 export const DEFAULT_SEATS = 24
-
-// Tokenize one CSV line into fields, honoring double-quoted fields (with
-// "" escapes). A trailing-backslash/newline inside a quoted field is not
-// supported (registrar feeds are single-line per record).
-function csvFields(line) {
-  const fields = []
-  let cur = ''
-  let inQuotes = false
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
-    if (inQuotes) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          cur += '"'
-          i++
-        } else {
-          inQuotes = false
-        }
-      } else {
-        cur += ch
-      }
-    } else if (ch === '"') {
-      inQuotes = true
-    } else if (ch === ',') {
-      fields.push(cur)
-      cur = ''
-    } else {
-      cur += ch
-    }
-  }
-  fields.push(cur)
-  return fields.map((f) => f.trim())
-}
 
 // Normalize a raw CSV cell: blank/whitespace or a literal NULL (case-
 // insensitive) means "no value" — the registrar feed writes NULL where a course
@@ -295,7 +284,11 @@ export function instructorsOf(o) {
 // Parse a schedule CSV into offering records. The header is the round-trip /
 // registrar form `dept_prefix,course_number,course_section,title,instructor,
 // secondary_instr,days,times` (optionally extra `seats` and `term` columns,
-// `F|W|S`) or use alternate synonyms for the time column (`time`). The optional
+// `F|W|S`) or use alternate synonyms for the time column (`time`). Assignment
+// is header-driven (via csv-parse), so column order never matters and a UTF-8
+// BOM, CRLF line endings, quoted cells with embedded commas/newlines, and
+// ragged rows are all tolerated. A malformed file (e.g. an unterminated quote)
+// yields no rows rather than throwing. The optional
 // `title` column is the offering's own title (blank/NULL = none; consumers fall
 // back to the catalog name). The optional
 // `secondary_instr` column is a comma-separated list (quoted by the registrar)
@@ -311,17 +304,20 @@ export function instructorsOf(o) {
 // an orphan lab — no lecture row in the file — keeps its own cell value.
 /** @returns {Array<{ id?: string; prefix: string; number: string; section: string; title: string; instructor: string; secondaryInstructors: string[]; days: string; time: string; seats: number; term?: string; lab?: boolean; labSeq?: number }>} */
 export function parseCsv(text) {
-  const lines = text.trim().split(/\r?\n/)
-  const header = csvFields(lines[0])
-  const rows = []
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim()
-    if (!line) continue
-    const cells = csvFields(line)
-    const rec = {}
-    header.forEach((h, idx) => {
-      rec[h] = (cells[idx] || '').trim()
+  let records
+  try {
+    records = parseCsvRows(String(text ?? ''), {
+      bom: true,
+      skip_empty_lines: true,
+      relax_column_count: true,
+      trim: true,
+      columns: true,
     })
+  } catch {
+    return []
+  }
+  const rows = []
+  for (const rec of records) {
     let time = cellValue(rec['times'] != null && rec['times'] !== '' ? rec['times'] : rec['time'] || '')
     let days = cellValue(rec['days'])
     // The contract only defines scheduled (both set) and unscheduled (both
@@ -429,49 +425,33 @@ export function offeringSectionLabel(o) {
 
 // Serialize offerings back to the importable CSV form (an exact round-trip of
 // `parseCsv`). `rows` are offering records; an optional `term` per row is written
-// when the caller provides it. Header is `dept_prefix,course_number,
-// course_section,title,instructor,secondary_instr,days,times,seats` plus `term`
-// when any non-empty term is present — the title sits right after the
-// prefix/number/section identity block, before the instructors. A row without a
-// `seats` value writes a blank cell (re-import defaults it to `DEFAULT_SEATS`);
-// a row without a title writes a blank cell (consumers fall back to the catalog
+// when the caller provides it. The header is `CSV_COLUMNS` (identity block
+// first, `title` right after the section, before the instructors) plus `term`
+// when any non-empty term is present. csv-stringify maps each record by column
+// name, so the header and cells can never drift apart. A row without a `seats`
+// value writes a blank cell (re-import defaults it to `DEFAULT_SEATS`); a row
+// without a title writes a blank cell (consumers fall back to the catalog
 // name). `renderCsv` is catalog-free, so it never resolves that fallback.
 export function renderCsv(offerings) {
   const includesTerm = offerings.some((o) => o.term != null && o.term !== '')
-  const header = [
-    'dept_prefix',
-    'course_number',
-    'course_section',
-    'title',
-    'instructor',
-    'secondary_instr',
-    'days',
-    'times',
-    'seats',
-  ]
-  if (includesTerm) header.push('term')
-  const quote = (v) => {
-    const s = String(v ?? '')
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
-  }
-  const lines = [header.join(',')]
-  for (const o of offerings) {
+  const columns = includesTerm ? [...CSV_COLUMNS, 'term'] : CSV_COLUMNS
+  const records = offerings.map((o) => {
     const isTime = o.time != null && o.time !== '' ? o.time : o.times || ''
-    const rec = [
-      o.prefix,
-      courseNumberLabel(o),
-      offeringSectionLabel(o),
-      o.title != null && o.title !== '' ? o.title : '',
-      o.instructor,
-      (o.secondaryInstructors || []).join(', '),
-      o.days,
-      isTime,
-      o.seats != null && o.seats !== '' ? o.seats : '',
-    ]
-    if (includesTerm) rec.push(o.term || '')
-    lines.push(rec.map(quote).join(','))
-  }
-  return lines.join('\n')
+    const rec = {
+      dept_prefix: o.prefix,
+      course_number: courseNumberLabel(o),
+      course_section: offeringSectionLabel(o),
+      title: o.title != null && o.title !== '' ? o.title : '',
+      instructor: o.instructor,
+      secondary_instr: (o.secondaryInstructors || []).join(', '),
+      days: o.days,
+      times: isTime,
+      seats: o.seats != null && o.seats !== '' ? o.seats : '',
+    }
+    if (includesTerm) rec.term = o.term || ''
+    return rec
+  })
+  return stringifyCsvRows(records, { header: true, columns, eof: false })
 }
 
 // Order two schedule items consistently: dept prefix, then course number
