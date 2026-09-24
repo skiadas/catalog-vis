@@ -11,8 +11,16 @@ Two entry points: `.` (domain model) and `./generate` (schedule generation).
 An **offering** is the primitive record, in the shape `parseCsv` produces:
 
 ```js
-{ id: 'ok16mz2', prefix: 'BIO', number: '161', section: 'A', instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'], days: 'MWF', time: '8:00-9:10', seats: 24 }
+{ id: 'ok16mz2', prefix: 'BIO', number: '161', section: 'A', title: '', instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'], days: 'MWF', time: '8:00-9:10', seats: 24 }
 ```
+
+`title` is the offering's own title (optional): `''` means "fall back to the
+catalog name", which is how special-topics sections carry a per-offering title
+while the course keeps its catalog title. It is **per offering row** (a lab
+always shares its lecture's title — `parseCsv` mirrors it and
+`updateOfferingInSchedule` cascades a lecture edit onto its labs), and it is
+not part of an offering's identity. `parseCsv` reads the optional `title`
+column; `renderCsv` writes it.
 
 `instructor` is the single **lead** instructor (0-or-1, mirroring the
 registrar `instructor` column); `secondaryInstructors` is the 0-or-more
@@ -56,21 +64,24 @@ unchanged, render off-pattern, and are never silently blanked.
 tuple — `prefix/number/section` plus the lab marker — so it is never confused
 with the lecture section it mirrors. A trailing `L` on the course number marks
 the lab; colliding rows (two identical `A1` rows serving one lecture) are
-renumbered deterministically.
+renumbered deterministically. A lab also shares its lecture's `title`
+(`parseCsv` mirrors it; an orphan lab with no lecture row keeps its own).
 
 ### Parsing + index
 
 - `parseCsv(text)` → `offering[]` (columns `dept_prefix`,
-  `course_number`, `course_section`, `instructor`, `secondary_instr`, `days`,
-  `times`, optional `seats`; blank or literal `NULL` cells — meeting
-  _and_ instructor columns — mark "no value" (a `NULL` lead reads as no
+  `course_number`, `course_section`, `title`, `instructor`, `secondary_instr`,
+  `days`, `times`, optional `seats`; blank or literal `NULL` cells — title,
+  meeting _and_ instructor columns — mark "no value" (a `NULL` lead reads as no
   instructor, a `NULL` `secondary_instr` as no others, `NULL` tokens inside a
   list are dropped); the optional `secondary_instr` column is a commma-separated
-  (quoted) list parsed into `secondaryInstructors`; the optional `seats` column
+  (quoted) list parsed into `secondaryInstructors`; the optional `title` column
+  is the offering's own title; the optional `seats` column
   is a positive integer defaulting to `DEFAULT_SEATS` (24) when absent/blank/
   invalid; `166L` + section-cell lab digits with deterministic labSeq for
-  colliding rows)
-- `renderCsv(offerings)` → round-trip CSV (`secondary_instr` written back
+  colliding rows, and lab titles mirrored from their lecture)
+- `renderCsv(offerings)` → round-trip CSV (`title` written right after
+  `course_section`; `secondary_instr` written back
   after `instructor`, properly quoted; a `seats` column written after `times`
   (blank when a row has none); lab numbers written back as `166L`, sequences
   as section digits `A1`/`A2`)

@@ -293,9 +293,11 @@ export function instructorsOf(o) {
 }
 
 // Parse a schedule CSV into offering records. The header is the round-trip /
-// registrar form `dept_prefix,course_number,course_section,instructor,
+// registrar form `dept_prefix,course_number,course_section,title,instructor,
 // secondary_instr,days,times` (optionally extra `seats` and `term` columns,
 // `F|W|S`) or use alternate synonyms for the time column (`time`). The optional
+// `title` column is the offering's own title (blank/NULL = none; consumers fall
+// back to the catalog name). The optional
 // `secondary_instr` column is a comma-separated list (quoted by the registrar)
 // of additional instructors; it becomes the `secondaryInstructors` array.
 // The optional `seats` column is the requested seat count (a positive integer,
@@ -304,8 +306,10 @@ export function instructorsOf(o) {
 // (`166L` is a lab of 166); the lab's sequence is part of the section cell
 // (`A2` = section A, lab 2). A lab row with a plain-letter section gets
 // labSeq 1; colliding rows (identical `A1` rows serving one lecture) are
-// renumbered 1..n in first-seen order so every record stays distinct.
-/** @returns {Array<{ id?: string; prefix: string; number: string; section: string; instructor: string; secondaryInstructors: string[]; days: string; time: string; seats: number; term?: string; lab?: boolean; labSeq?: number }>} */
+// renumbered 1..n in first-seen order so every record stays distinct. A lab's
+// title always mirrors its lecture's (a lab can't title itself differently);
+// an orphan lab — no lecture row in the file — keeps its own cell value.
+/** @returns {Array<{ id?: string; prefix: string; number: string; section: string; title: string; instructor: string; secondaryInstructors: string[]; days: string; time: string; seats: number; term?: string; lab?: boolean; labSeq?: number }>} */
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/)
   const header = csvFields(lines[0])
@@ -335,6 +339,7 @@ export function parseCsv(text) {
       prefix: rec['dept_prefix'],
       number,
       section: rec['course_section'],
+      title: cellValue(rec['title']),
       instructor: cellValue(rec['instructor']),
       secondaryInstructors: instructorList(rec['secondary_instr']),
       days,
@@ -376,6 +381,20 @@ export function parseCsv(text) {
     labCounts.set(key, used)
     r.labSeq = n
   }
+  // A lab shares its lecture's title (it can't title itself): every lab row
+  // takes the first-seen lecture's title for its section tuple. Orphan labs
+  // (no lecture row in the file) keep their own cell value.
+  const lectureTitle = new Map()
+  for (const r of rows) {
+    if (r.lab) continue
+    const key = `${r.prefix}|${r.number}|${r.section}`
+    if (!lectureTitle.has(key)) lectureTitle.set(key, r.title || '')
+  }
+  for (const r of rows) {
+    if (!r.lab) continue
+    const key = `${r.prefix}|${r.number}|${r.section}`
+    if (lectureTitle.has(key)) r.title = lectureTitle.get(key)
+  }
   // Stable per-row identity: rows sharing a section tuple (split meetings,
   // e.g. MW and R each at their own band) get distinct content ids, so the
   // diff/move/edit machinery never confuses them. Re-parsing the same file
@@ -411,15 +430,19 @@ export function offeringSectionLabel(o) {
 // Serialize offerings back to the importable CSV form (an exact round-trip of
 // `parseCsv`). `rows` are offering records; an optional `term` per row is written
 // when the caller provides it. Header is `dept_prefix,course_number,
-// course_section,instructor,secondary_instr,days,times,seats` plus `term` when
-// any non-empty term is present. A row without a `seats` value writes a blank
-// cell (re-import defaults it to `DEFAULT_SEATS`).
+// course_section,title,instructor,secondary_instr,days,times,seats` plus `term`
+// when any non-empty term is present — the title sits right after the
+// prefix/number/section identity block, before the instructors. A row without a
+// `seats` value writes a blank cell (re-import defaults it to `DEFAULT_SEATS`);
+// a row without a title writes a blank cell (consumers fall back to the catalog
+// name). `renderCsv` is catalog-free, so it never resolves that fallback.
 export function renderCsv(offerings) {
   const includesTerm = offerings.some((o) => o.term != null && o.term !== '')
   const header = [
     'dept_prefix',
     'course_number',
     'course_section',
+    'title',
     'instructor',
     'secondary_instr',
     'days',
@@ -438,6 +461,7 @@ export function renderCsv(offerings) {
       o.prefix,
       courseNumberLabel(o),
       offeringSectionLabel(o),
+      o.title != null && o.title !== '' ? o.title : '',
       o.instructor,
       (o.secondaryInstructors || []).join(', '),
       o.days,
@@ -618,12 +642,14 @@ export function nextLabSeq(offerings, prefix, number, section) {
   return max + 1
 }
 
-// Rewrites fields (instructor / section / days / time) on the offering matching
-// `cur` (its current identity, since `section` may itself be edited). Returns a
-// new array, or the same array when nothing matches. A half-set meeting time
-// (`days` without `time` or vice versa) is normalized to the no-meeting-time
-// shape (both blank), since the contract only defines scheduled (both set) and
-// unscheduled (both blank) offerings. Renaming a lecture's section letter also
+// Rewrites fields (title / instructor / section / days / time) on the offering
+// matching `cur` (its current identity, since `section` may itself be edited).
+// Returns a new array, or the same array when nothing matches. A half-set
+// meeting time (`days` without `time` or vice versa) is normalized to the
+// no-meeting-time shape (both blank), since the contract only defines scheduled
+// (both set) and unscheduled (both blank) offerings. Editing a lecture's title
+// also sets it on that lecture's labs (a lab shares its lecture's title).
+// Renaming a lecture's section letter also
 // renames its labs' letters (lab letters mirror the lecture's), re-deriving
 // labSeq so the renamed labs never collide with labs already on the target
 // letter.
@@ -638,6 +664,17 @@ export function updateOfferingInSchedule(offerings, cur, changes) {
     merged.time = ''
   }
   next[idx] = merged
+  // Mirror a lecture's title onto its labs. Done before the section rename
+  // below so a batch edit changing both still finds the labs on the old letter
+  // (after the rename they would no longer match this tuple).
+  if (!cur.lab && changes.title !== undefined && (merged.title || '') !== (list[idx].title || '')) {
+    for (let i = 0; i < next.length; i++) {
+      const o = next[i]
+      if (o.lab && o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section) {
+        next[i] = { ...o, title: merged.title || '' }
+      }
+    }
+  }
   if (!cur.lab && changes.section && changes.section !== cur.section) {
     // Rename the lecture's labs to the new letter. labSeq is re-derived
     // (after the target letter's existing labs) so renamed labs never

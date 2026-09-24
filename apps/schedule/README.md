@@ -34,11 +34,14 @@ Spring), each a separate `offerings` collection; the app edits one term at a tim
 part.
 
 An **offering** record:
-`{ id, prefix, number, section, instructor, secondaryInstructors, days, time, seats }`
+`{ id, prefix, number, section, title, instructor, secondaryInstructors, days, time, seats }`
 (`days` ⊆ `MTWRF`, `time` = `"HH:MM-HH:MM"`). `instructor` is the single
 **lead** instructor (0-or-1); `secondaryInstructors` is an array of 0-or-more
 **other** instructors (e.g. the registrar's comma-separated `secondary_instr`
-column). `seats` is the requested seat count for the section (a positive
+column). `title` is the offering's own title (`''` = fall back to the catalog
+name) — **per offering row**, so a special-topics section can carry its topic
+while the course keeps its catalog title; a lab always shares its lecture's
+title. `seats` is the requested seat count for the section (a positive
 integer, default 24) — **per offering row**, so a lab has its own limit
 independent of the lecture it mirrors. Blank `days`/`time` mark an
 **unscheduled** offering (independent
@@ -57,6 +60,8 @@ carried in the **section cell** (the registrar writes `166L,A2` — the L
 marks the lab, the digit is its sequence). A lab's identity is its full
 tuple, never the mirrored lecture section. Imported `166L` + digit-section
 numbers normalize on parsing and are written back by `renderCsv`; a lab
+also takes its lecture's `title` (edited on the lecture — see the course
+editor). A lab
 with no matching lecture section in its CSV feed is kept but flagged by the
 import warning list. Labs group under the parent course (same name,
 drill-down, and conflict treatment).
@@ -104,18 +109,22 @@ stays proportional to the clock.
 
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format
-(`dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,seats`
+(`dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats`
 plus optional `term`) produced by "Download registrar CSV". An import **always
 creates a new schedule** (name prefilled from the filename, year optional;
 never touches existing schedules) and routes rows into its F/W/S parts by the
 `term` column (rows without one land in the active term part). Blank or
 literal `NULL` `days`/`times` cells mark unscheduled offerings; a `NULL` in the
 `instructor` or `secondary_instr` columns reads as no instructor. The optional
+`title` column is the offering's own title (a blank cell falls back to the
+catalog name on display); exports write it resolved, so a row without a stored
+title carries the catalog name. The optional
 `seats` column is the requested seat count (a positive integer, default 24
 when blank/absent); it is written back on export (blank when a row has none).
 A trailing `L` on
 the course number with a digit in the section cell (`166L` + `A2`) becomes
-a lab section of its parent. The optional `secondary_instr` column holds the
+a lab section of its parent (and takes its lecture's title). The optional
+`secondary_instr` column holds the
 secondary instructors as a comma-separated, quoted list (`"Xu, Ray"`). Lab rows whose lecture
 section isn't in the file are kept and reported in an import warning list.
 `parseCsv`/`renderCsv` in `@major-vis/schedule-core` implement the format
@@ -225,7 +234,12 @@ matching the last comma-separated token ("Smith, Jo" → pick Jones), replacing
 the old chip wall. Its **Seats** field edits the offering's requested seat
 count (a positive integer, default 24); the `#/course/:code` view prints the
 count beside each section's time so a course's per-section limits are visible
-without opening the editor.
+without opening the editor. Its **Title** field edits the offering's own
+title — blank falls back to the catalog name (a special-topics topic can be
+set per offering without touching the catalog). On a lab the field is
+disabled: a lab shares its lecture's title, and editing the lecture's title
+cascades to its labs. The `#/course/:code` view prints an offering's title
+when it differs from the catalog name.
 
 **Recent changes & history**: the edit bar's **History** button opens the
 session's change list. It is not an undo stack: the panel shows the **net

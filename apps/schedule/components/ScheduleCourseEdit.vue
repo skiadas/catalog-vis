@@ -110,6 +110,25 @@
         </div>
 
         <div class="field">
+          <label for="course-edit-offering-title">Title</label>
+          <input
+            id="course-edit-offering-title"
+            class="search-input"
+            type="text"
+            v-model="titleSel"
+            :disabled="isLab"
+            :placeholder="courseName"
+          />
+          <p v-if="isLab" class="field-hint">
+            Labs share their lecture's title — edit it on the lecture section.
+          </p>
+          <p v-else class="field-hint">
+            Leave blank to use the catalog name (<strong>{{ courseName }}</strong
+            >).
+          </p>
+        </div>
+
+        <div class="field">
           <label for="course-edit-secondary">Other instructors</label>
           <div class="secondary-suggest-wrap" ref="secondarySuggestEl">
             <input
@@ -446,6 +465,9 @@ export default {
 
     const instructorSel = ref(o.instructor || '')
     const sectionSel = ref(o.section || '')
+    // The offering's own title ('' = fall back to the catalog name). A lab
+    // shares its lecture's title, so its field is disabled.
+    const titleSel = ref(o.title || '')
     // The requested seat count for this offering (each row — lecture or lab —
     // carries its own). Blank/invalid input falls back to the model default.
     const seatsSel = ref(o.seats ?? DEFAULT_SEATS)
@@ -580,6 +602,7 @@ export default {
             ? normalizeBand(`${snapToFive(customStart.value)}-${snapToFive(customEnd.value)}`)
             : timeSel.value
       return (
+        (!isLab.value && titleSel.value.trim() !== (o.title || '')) ||
         instructorSel.value.trim() !== (o.instructor || '') ||
         listKey(secondaryNames.value) !== listKey(o.secondaryInstructors) ||
         (sectionSel.value.trim() || o.section) !== o.section ||
@@ -752,6 +775,8 @@ export default {
         days = WEEKDAYS.filter((d) => daysSel.value.includes(d)).join('')
         time = timeSel.value
       }
+      // A lab shares its lecture's title, so its disabled field is never
+      // committed — only a lecture's title is written (and cascades to labs).
       updateOffering(
         props.scheduleId,
         { prefix: o.prefix, number: o.number, section: o.section, lab: o.lab, labSeq: o.labSeq, id: o.id },
@@ -762,6 +787,7 @@ export default {
           days,
           time,
           seats: seatsValue.value,
+          ...(isLab.value ? {} : { title: titleSel.value.trim() }),
         },
       )
     }
@@ -808,6 +834,7 @@ export default {
       pickSecondary,
       sectionSel,
       seatsSel,
+      titleSel,
       isLab,
       codeLabel,
       sectionLabel,

@@ -174,6 +174,7 @@ export function makeSchedule(mode, prefix, facultyByPrefix, eligible, seed, term
         prefix: o.prefix,
         number: o.number,
         section: o.section,
+        title: '',
         instructor: instructorOf[`${o.prefix} ${o.number}`],
         secondaryInstructors: [],
         days: labelFor(sk),

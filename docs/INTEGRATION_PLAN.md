@@ -67,6 +67,7 @@ dependency.
 {
   id: string,          // NEW: stable identity, app-assigned on import/creation
   prefix: 'CS', number: '220', section: 'A', instructor: 'Wahl',
+  title: '',                    // NEW: offering title; '' = catalog name
   secondaryInstructors: ['Xu', 'Ray'],          // 0-or-more other instructors
   days: 'MWF' | 'MTWRF' | '',   // '' = unscheduled (independent study, etc.)
   time: '9:20-10:30' | '',      // '' = unscheduled; otherwise any HH:MM-HH:MM band
@@ -79,6 +80,10 @@ dependency.
   import). `instructor` is the single lead; `secondaryInstructors` carries the
   others, sourced from the registrar's comma-separated `secondary_instr`
   column (parsed into an array on import).
+- `title` is additive: the offering's own title (a special-topics topic, say),
+  not part of the offering's identity. `''` means "fall back to the catalog
+  name". Per offering row, except a lab always shares its lecture's title
+  (`parseCsv` mirrors it; editing a lecture's title cascades to its labs).
 - `seats` is additive: a positive integer defaulting to 24 when the optional
   CSV `seats` column is blank/absent, not part of the offering's identity, and
   carried per row (a lab's limit is its own, not the lecture's).
@@ -167,8 +172,10 @@ GET    /api/schedules/:id/changes/export?fmt=json|md|csv
 
 ### CSV contract (one round-trip format)
 
-Columns: `dept_prefix, course_number, course_section, instructor,
+Columns: `dept_prefix, course_number, course_section, title, instructor,
 secondary_instr, days, times, seats` plus an optional `term` column (`F|W|S`). The
+optional `title` column is the offering's own title (blank = catalog name; the
+app's exports write it resolved). The
 optional `secondary_instr` column is the registrar's comma-separated list of
 other instructors (`"Xu, Ray"`, quoted because of the commas). The optional
 `seats` column is the requested seat count (a positive integer, default 24 when

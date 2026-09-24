@@ -11,6 +11,10 @@ setting for one section lives.
 - **Section** — the letter that identifies this class (A, B, …).
 - **Seats** — the requested number of seats for this section (defaults to 24).
   Each row has its own count, so a lab's limit is separate from its lecture's.
+- **Title** — the title shown for this offering. Leave it blank to use the
+  catalog name; type one for a special-topics section whose topic differs. A
+  lab follows its lecture's title (its field is locked), so edit that on the
+  lecture.
 - **Instructor** — start from **Department** or **All instructors**, then pick a
   name, or type one.
 - **Other instructors** — anyone who co-teaches, separated by commas. Leave it

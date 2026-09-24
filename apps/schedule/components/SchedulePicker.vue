@@ -142,6 +142,7 @@ import {
   courseNumberLabel,
   offeringSectionLabel,
 } from '@major-vis/schedule-core'
+import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 import { displayName } from '../src/names.js'
 
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
@@ -201,10 +202,16 @@ export default {
         .replace(/[. ]+$/g, '')
       return safe ? `${safe}.csv` : 'schedules.csv'
     }
+    // The title a CSV row carries: the offering's own title, else the catalog
+    // name for its course. Exports show the resolved title (the raw stored
+    // value is blank when unset; `renderCsv` in schedule-core stays free of
+    // catalog lookups, so the app resolves it here).
+    const effectiveTitle = (o) =>
+      String((o && o.title) || '').trim() || catalogCourseName(`${o.prefix} ${o.number}`)
     // Downloads one row per course offering across all selected (visible)
     // schedules' active term in the canonical registrar format (dept_prefix,
-    // course_number, course_section, instructor, secondary_instr, days, times,
-    // seats, term), so the file round-trips through Upload registrar CSV.
+    // course_number, course_section, title, instructor, secondary_instr, days,
+    // times, seats, term), so the file round-trips through Upload registrar CSV.
     // Offerings are ordered alphabetically by prefix, then number, then section.
     // With a single visible schedule the file is named after that schedule.
     const downloadSummaryCsv = () => {
@@ -213,6 +220,7 @@ export default {
           'dept_prefix',
           'course_number',
           'course_section',
+          'title',
           'instructor',
           'secondary_instr',
           'days',
@@ -232,6 +240,7 @@ export default {
             // re-import round-trips the lab sequence.
             courseNumberLabel(o),
             offeringSectionLabel(o),
+            effectiveTitle(o),
             o.instructor || '',
             (o.secondaryInstructors || []).join(', '),
             o.days || '',
@@ -259,7 +268,9 @@ export default {
       if (!s) return
       const rows = []
       for (const t of Object.keys(s.terms || {})) {
-        for (const o of publishedOfferings(s, t).map((x) => ({ ...x, term: t }))) rows.push(o)
+        for (const o of publishedOfferings(s, t).map((x) => ({ ...x, term: t }))) {
+          rows.push({ ...o, title: effectiveTitle(o) })
+        }
       }
       const csv = renderCsv(rows)
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })

@@ -644,6 +644,42 @@ test('updateOffering persists a seats change', async () => {
   })
 })
 
+test('updateOffering on a lecture cascades its title onto that lecture\'s labs', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Local', '2026-27', [])
+    store.addCourseToSchedule(id, 'BIO 166')
+    store.addCourseToSchedule(id, 'BIO 165')
+    assert.equal(
+      store.scheduleById(id).terms.F.offerings.find((o) => o.number === '166' && !o.lab).title,
+      '',
+      'a new course has no title (falls back to the catalog name)',
+    )
+    const lab = store.addLabSection(id, { prefix: 'BIO', number: '166', section: 'A' })
+
+    assert.ok(
+      store.updateOffering(
+        id,
+        { prefix: 'BIO', number: '166', section: 'A' },
+        { title: 'Genetics' },
+      ),
+    )
+    let rows = store.scheduleById(id).terms.F.offerings
+    assert.equal(rows.find((o) => o.number === '166' && !o.lab).title, 'Genetics')
+    assert.equal(rows.find((o) => o.id === lab.id).title, 'Genetics', 'lab follows the lecture')
+
+    // Clearing the title on the lecture clears it on the lab too.
+    assert.ok(
+      store.updateOffering(id, { prefix: 'BIO', number: '166', section: 'A' }, { title: '' }),
+    )
+    rows = store.scheduleById(id).terms.F.offerings
+    assert.equal(rows.find((o) => o.id === lab.id).title, '', 'lab title cleared with the lecture')
+  })
+})
+
 test('addLabSection creates an unscheduled lab that mirrors the lecture and copies its instructor', async () => {
   await withRemote(async ({ store }) => {
     store.setRemote(false)
@@ -656,7 +692,7 @@ test('addLabSection creates an unscheduled lab that mirrors the lecture and copi
       store.updateOffering(
         id,
         { prefix: 'BIO', number: '166', section: 'A' },
-        { instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'] },
+        { title: 'Genetics', instructor: 'Patterson', secondaryInstructors: ['Xu', 'Ray'] },
       ),
     )
 
@@ -666,6 +702,7 @@ test('addLabSection creates an unscheduled lab that mirrors the lecture and copi
     assert.equal(lab.section, 'A', 'mirrors the lecture letter')
     assert.equal(lab.instructor, 'Patterson', 'copies the lecture instructor as it stands')
     assert.deepEqual(lab.secondaryInstructors, ['Xu', 'Ray'], 'copies the secondary instructors too')
+    assert.equal(lab.title, 'Genetics', 'a lab shares its lecture title')
     assert.equal(lab.days, '')
     assert.equal(lab.time, '', 'starts unscheduled')
     assert.equal(lab.seats, 24, 'a lab carries its own seat count, defaulting to 24')

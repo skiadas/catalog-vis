@@ -32,8 +32,17 @@ export function offeringKey(o) {
 }
 
 // The editable fields considered when diffing two offerings. `seats` is a
-// number; `canonical` stringifies it for comparison.
-export const EDITABLE_FIELDS = ['instructor', 'secondaryInstructors', 'section', 'days', 'time', 'seats']
+// number; `canonical` stringifies it for comparison. `title` is the offering's
+// own title ('' = fall back to the catalog name).
+export const EDITABLE_FIELDS = [
+  'title',
+  'instructor',
+  'secondaryInstructors',
+  'section',
+  'days',
+  'time',
+  'seats',
+]
 
 // Canonical comparison form of a field value: arrays (secondaryInstructors)
 // compare element-wise, everything else trims the string.

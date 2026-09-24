@@ -32,7 +32,8 @@ side by side.
 
 ## Course conflicts — follow one course
 
-Pick a course and see all of its sections (each with its seat count) and
+Pick a course and see all of its sections (each with its seat count and, for a
+special-topics section, its own title) and
 everything they collide with. See
 [Checking for conflicts](/guide/schedule/conflicts).
 

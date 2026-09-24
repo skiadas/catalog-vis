@@ -12,7 +12,8 @@ and apps sometimes use different words for the same concept — this maps them.
 | **course code** | A course's identity, `PREFIX NNN` (e.g. `BIO 161`). | everywhere |
 | **`course_code`** | The property name for a course code inside `majors.json` course records. | `majors.json`, `catalog-client` |
 | **`code`** | The property name for a course code inside parsed requirement items. | `requirements_parsed.json`, `degree-audit` |
-| **offering** | A scheduled section of a course: `{ prefix, number, section, instructor, secondaryInstructors, days, time, seats }` (`instructor` = single lead; `secondaryInstructors` = array of other instructors; `seats` = requested seat count, default 24). Registrar-shaped. | schedule app, `schedule-core` |
+| **offering** | A scheduled section of a course: `{ prefix, number, section, title, instructor, secondaryInstructors, days, time, seats }` (`instructor` = single lead; `secondaryInstructors` = array of other instructors; `title` = the offering's own title, `''` = catalog name; `seats` = requested seat count, default 24). Registrar-shaped. | schedule app, `schedule-core` |
+| **offering title** | An offering's own title (special-topics topics), distinct from the catalog course name; `''` falls back to the catalog name. A lab shares its lecture's title. Optional CSV `title` column; editable in the course editor. | schedule app, `schedule-core`, CSV |
 | **seats** | The requested seat count for one offering row (a positive integer, default `DEFAULT_SEATS` = 24; a lab has its own, distinct from its lecture). Optional `seats` CSV column; editable in the course editor. | schedule app, `schedule-core`, CSV |
 | **course (vs offering)** | A catalog course (identity + name/description) vs a scheduled offering (one section at a time). | catalog vs schedule |
 | **allCourses** | The catalog-client ref: a map keyed by course code. | `catalog-client`, all apps |

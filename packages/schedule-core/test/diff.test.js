@@ -248,6 +248,24 @@ test('describeChange reads a seats change naturally', () => {
   )
 })
 
+test('diffOfferings diffs a title change and applies it', () => {
+  const before = [OFF(1, { number: '101', title: 'Intro' })]
+  const after = [OFF(1, { number: '101', title: 'Special Topics: Graphics' })]
+  const ops = diffOfferings(before, after)
+  assert.equal(ops.length, 1)
+  assert.deepEqual(ops[0].changes, { title: 'Special Topics: Graphics' })
+  assert.deepEqual(ops[0].diff, [{ field: 'title', from: 'Intro', to: 'Special Topics: Graphics' }])
+  assert.equal(applyOperations(before, ops)[0].title, 'Special Topics: Graphics')
+  assert.equal(
+    describeChange({
+      kind: 'update',
+      cur: { prefix: 'CS', number: '101', section: 'A' },
+      diff: [{ field: 'title', from: '', to: 'Special Topics: Graphics' }],
+    }),
+    'CS 101 A: title set to Special Topics: Graphics',
+  )
+})
+
 test('split-meeting rows diff cleanly and apply to the exact row', () => {
   // MUS 001 A meets MW 16:00-16:50 and R 16:10-17:00: two rows sharing the
   // section tuple. Before content ids, every diff invented "days from R to MW"

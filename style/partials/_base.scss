@@ -219,6 +219,11 @@ body {
   color: var(--primary);
   margin-bottom: 8px;
 }
+.offering-title {
+  margin-top: var(--space-1);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+}
 .course-chip {
   display: inline-flex;
   align-items: center;

@@ -453,6 +453,7 @@ test('parseCsv maps columns and trims', () => {
     prefix: 'CS',
     number: '101',
     section: 'A',
+    title: '',
     instructor: 'Vosmeier',
     secondaryInstructors: [],
     days: 'MWF',
@@ -476,6 +477,7 @@ test('parseCsv accepts a `time` column synonym and blank times as unscheduled', 
     prefix: 'CS',
     number: '220',
     section: 'A',
+    title: '',
     instructor: 'Wahl',
     secondaryInstructors: [],
     days: '',
@@ -520,7 +522,7 @@ test('renderCsv writes term only when present on an offering', () => {
   ])
   assert.ok(
     csv.startsWith(
-      'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,seats,term',
+      'dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats,term',
     ),
   )
   assert.ok(csv.includes(',S'))
@@ -600,6 +602,7 @@ test('parseCsv lab rows normalize the trailing L off the number and read the seq
     prefix: 'BIO',
     number: '166',
     section: 'A',
+    title: '',
     instructor: 'Patterson',
     secondaryInstructors: [],
     days: 'TR',
@@ -709,6 +712,7 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       prefix: 'BIO',
       number: '166',
       section: 'A',
+      title: '',
       instructor: 'Patterson',
       secondaryInstructors: [],
       days: 'MWF',
@@ -720,6 +724,7 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       prefix: 'BIO',
       number: '166',
       section: 'A',
+      title: '',
       instructor: 'Doe',
       secondaryInstructors: [],
       days: 'TR',
@@ -741,6 +746,7 @@ test('renderCsv writes lab numbers and sections back in the registrar shape', ()
       prefix: 'BIO',
       number: '166',
       section: 'A',
+      title: '',
       instructor: 'Doe',
       secondaryInstructors: [],
       days: 'W',
@@ -802,7 +808,7 @@ test('renderCsv writes the seats column (blank when a row has none) and round-tr
   const lines = csv.split('\n')
   assert.equal(
     lines[0],
-    'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,seats',
+    'dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats',
   )
   assert.ok(lines[1].endsWith(',30'))
   assert.ok(lines[2].endsWith(','), 'a row without seats writes a blank cell')
@@ -810,6 +816,113 @@ test('renderCsv writes the seats column (blank when a row has none) and round-tr
     parseCsv(csv).map((r) => r.seats),
     [30, DEFAULT_SEATS],
   )
+})
+
+test('parseCsv reads a title column (blank/NULL = none)', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,title,instructor,days,times',
+      'CS,220,A,Special Topics: Graphics,Wahl,MWF,9:20-10:30',
+      'CS,101,A,,Vosmeier,MWF,8:00-9:10',
+      'MAT,131,A,NULL,Aydogan,MWF,14:20-16:05',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.title),
+    ['Special Topics: Graphics', '', ''],
+  )
+})
+
+test('parseCsv mirrors a lecture title onto its labs (lab cell loses)', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,title,instructor,days,times',
+      'BIO,166L,A1,Bogus Lab,Patterson,MWF,11:30-12:40',
+      'BIO,166,A,Genetics,Patterson,TR,13:20-14:30',
+    ].join('\n'),
+  )
+  const lecture = rows.find((r) => !r.lab)
+  const lab = rows.find((r) => r.lab)
+  assert.equal(lecture.title, 'Genetics')
+  assert.equal(lab.title, 'Genetics', 'lab mirrors the lecture, whatever its own cell said')
+})
+
+test('parseCsv keeps an orphan lab title when no lecture row is present', () => {
+  const [lab] = parseCsv(
+    'dept_prefix,course_number,course_section,title,instructor,days,times\nBIO,166L,A1,Solo Lab,Patterson,MWF,11:30-12:40\n',
+  )
+  assert.equal(lab.lab, true)
+  assert.equal(lab.title, 'Solo Lab')
+})
+
+test('renderCsv writes the title column (blank when a row has none) and round-trips it', () => {
+  const csv = renderCsv([
+    {
+      prefix: 'CS',
+      number: '220',
+      section: 'A',
+      title: 'Special Topics: Graphics',
+      instructor: 'Wahl',
+      days: 'MWF',
+      time: '9:20-10:30',
+    },
+    { prefix: 'CS', number: '101', section: 'A', instructor: 'Vosmeier', days: 'MWF', time: '8:00-9:10' },
+  ])
+  const lines = csv.split('\n')
+  // The title sits right after the section, before the instructor.
+  assert.ok(lines[1].startsWith('CS,220,A,Special Topics: Graphics,Wahl,'))
+  assert.ok(lines[2].startsWith('CS,101,A,,Vosmeier,'))
+  assert.deepEqual(
+    parseCsv(csv).map((r) => r.title),
+    ['Special Topics: Graphics', ''],
+  )
+})
+
+test('updateOfferingInSchedule mirrors a lecture title change onto its labs', () => {
+  const before = [
+    { prefix: 'BIO', number: '166', section: 'A', title: 'Genetics', instructor: 'Patterson' },
+    { prefix: 'BIO', number: '166', section: 'A', title: 'Genetics', lab: true, labSeq: 1 },
+    { prefix: 'BIO', number: '166', section: 'A', title: 'Genetics', lab: true, labSeq: 2 },
+    { prefix: 'BIO', number: '165', section: 'A', title: 'Cell', lab: true, labSeq: 1 },
+  ]
+  const next = updateOfferingInSchedule(
+    before,
+    { prefix: 'BIO', number: '166', section: 'A' },
+    { title: 'Genetics II' },
+  )
+  assert.equal(next[0].title, 'Genetics II', 'the lecture takes the new title')
+  assert.deepEqual(
+    next.slice(1, 3).map((o) => o.title),
+    ['Genetics II', 'Genetics II'],
+    "the lecture's labs follow",
+  )
+  assert.equal(next[3].title, 'Cell', "another lecture's lab is untouched")
+})
+
+test('updateOfferingInSchedule mirrors a cleared lecture title (and pairs it with a section rename)', () => {
+  const before = [
+    { prefix: 'BIO', number: '166', section: 'A', title: 'Genetics', instructor: 'Patterson' },
+    { prefix: 'BIO', number: '166', section: 'A', title: 'Genetics', lab: true, labSeq: 1 },
+  ]
+  const cleared = updateOfferingInSchedule(
+    before,
+    { prefix: 'BIO', number: '166', section: 'A' },
+    { title: '' },
+  )
+  assert.deepEqual(
+    cleared.map((o) => o.title),
+    ['', ''],
+  )
+  // A batch edit changing both title and section letter still re-titles the
+  // labs (the title mirror runs before the letter rename).
+  const resectioned = updateOfferingInSchedule(
+    before,
+    { prefix: 'BIO', number: '166', section: 'A' },
+    { section: 'B', title: 'Genetics II' },
+  )
+  assert.equal(resectioned[0].section, 'B')
+  assert.equal(resectioned[1].section, 'B', 'lab follows the lecture letter')
+  assert.equal(resectioned[1].title, 'Genetics II', 'lab still took the title')
 })
 
 test('buildIndex groups by course, day, slot, instructor', () => {
@@ -1442,7 +1555,7 @@ test('parseCsv regularizes any band spelling to the canonical form', () => {
     ['8:00-9:10', '10:00-11:45', '12:00-13:10'],
   )
   // exports come back canonical too
-  assert.ok(renderCsv(rows).includes('CS,101,A,Vosmeier,,MWF,8:00-9:10'))
+  assert.ok(renderCsv(rows).includes('CS,101,A,,Vosmeier,,MWF,8:00-9:10'))
 })
 
 test('buildIndex buckets a band under one slot key regardless of spelling', () => {

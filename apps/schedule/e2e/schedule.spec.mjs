@@ -6,6 +6,7 @@
 // errors and console errors (the pre-sign-in 401s and favicon misses are
 // expected noise and filtered), exactly like the smoke script did.
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
 
 // Runs an axe scan and keeps only the violations that block WCAG AA (serious
@@ -1220,7 +1221,11 @@ test('seats: imported counts show in the course view and persist an editor edit'
   await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   const block = page.locator('.cal-block[title="CS 220"]').first()
   await block.locator('.cal-block-time').click()
-  await block.locator('.filter-offering', { hasText: 'CS 220' }).locator('.filter-offering-edit').first().click()
+  await block
+    .locator('.filter-offering', { hasText: 'CS 220' })
+    .locator('.filter-offering-edit')
+    .first()
+    .click()
   const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
   await em.waitFor({ state: 'visible', timeout: 5000 })
   await expect(em.locator('#course-edit-seats')).toHaveValue('30')
@@ -1229,7 +1234,11 @@ test('seats: imported counts show in the course view and persist an editor edit'
   await em.waitFor({ state: 'detached', timeout: 5000 })
 
   // Reopening shows the saved value.
-  await block.locator('.filter-offering', { hasText: 'CS 220' }).locator('.filter-offering-edit').first().click()
+  await block
+    .locator('.filter-offering', { hasText: 'CS 220' })
+    .locator('.filter-offering-edit')
+    .first()
+    .click()
   await em.waitFor({ state: 'visible', timeout: 5000 })
   await expect(em.locator('#course-edit-seats')).toHaveValue('42')
   await em.getByRole('button', { name: 'Cancel' }).click()
@@ -1245,6 +1254,108 @@ test('seats: imported counts show in the course view and persist an editor edit'
   await page
     .locator('.schedule-manage-row', { hasText: 'Seats demo' })
     .getByRole('button', { name: 'Delete Seats demo' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
+// Offering titles: imported from the CSV, shown in the course view, edited in
+// the course editor (where a lab's field is disabled and mirrors its lecture),
+// and resolved in the CSV exports.
+test('offering titles: imported, shown in the course view, edited, and exported', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'title-user')
+
+  // Import the registrar fixture (MUS 001 carries a special-topics title).
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', 'apps/schedule/e2e/import.csv')
+  await expect(page.getByText(/Imported 9 course row\(s\)/)).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Title demo')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Title demo' }).first().waitFor({ timeout: 10000 })
+
+  // The summary CSV carries the title column (after the section, before the
+  // instructor), writes an explicit title as-is, and resolves a blank offering
+  // title to the catalog name (never blank).
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    (async () => {
+      await page.locator('.schedule-csv-wrap button').first().click()
+      await page.getByRole('button', { name: 'Download summary CSV' }).click()
+    })(),
+  ])
+  const summary = readFileSync(await download.path(), 'utf8')
+  const lines = summary.split('\n')
+  expect(lines[0]).toBe(
+    'dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats,term',
+  )
+  expect(lines.find((l) => l.startsWith('MUS,001,A,'))).toContain('Special Topics: Choir')
+  expect(lines.find((l) => l.startsWith('CS,220,A,')).split(',')[3], 'blank title resolves').not.toBe('')
+
+  // The course view shows the special-topics title.
+  await page.goto('/#/course/MUS%20001', { waitUntil: 'networkidle' })
+  await expect(page.locator('.offering-title').first()).toHaveText('Special Topics: Choir')
+
+  // Edit a title in the course editor (CS 220, Fall) and see it persist.
+  await page.getByRole('button', { name: 'Grid', exact: true }).click()
+  await page.locator('.schedule-pill-edit').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  const block = page.locator('.cal-block[title="CS 220"]').first()
+  await block.locator('.cal-block-time').click()
+  await block
+    .locator('.filter-offering', { hasText: 'CS 220' })
+    .locator('.filter-offering-edit')
+    .first()
+    .click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(em.locator('#course-edit-offering-title')).toHaveValue('')
+  await em.locator('#course-edit-offering-title').fill('Intro to Programming')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await block
+    .locator('.filter-offering', { hasText: 'CS 220' })
+    .locator('.filter-offering-edit')
+    .first()
+    .click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(em.locator('#course-edit-offering-title')).toHaveValue('Intro to Programming')
+  await em.getByRole('button', { name: 'Cancel' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+
+  // The course view now shows the edited title.
+  await page.goto('/#/course/CS%20220', { waitUntil: 'networkidle' })
+  await expect(page.getByText('Intro to Programming')).toBeVisible()
+
+  // A lab's title field is disabled and mirrors its lecture (Spring: BIO 166L
+  // imported "Bogus Lab" but takes the lecture's "Genetics").
+  await page.getByRole('button', { name: 'Grid', exact: true }).click()
+  await page.getByRole('button', { name: 'Spring', exact: true }).click()
+  await page.locator('.schedule-pill-edit').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  const labRow = page
+    .locator('.cal-block', { hasText: 'BIO 166L A1' })
+    .first()
+    .locator('.filter-offering', { hasText: 'BIO 166L' })
+  await labRow.locator('.filter-offering-edit').first().click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(em.locator('#course-edit-offering-title')).toBeDisabled()
+  await expect(em.locator('#course-edit-offering-title')).toHaveValue('Genetics')
+  await em.getByRole('button', { name: 'Cancel' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+
+  // Clean up.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Title demo' })
+    .getByRole('button', { name: 'Delete Title demo' })
     .click()
   await closeManage(page)
   assertClean(errors)

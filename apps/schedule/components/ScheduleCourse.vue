@@ -13,8 +13,11 @@
       <div class="req-block" v-for="s in sections" :key="offeringItemKey(s)">
         <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px">
           <div>
-            <strong>{{ s.sectionLabel }}</strong> · {{ s.o.days }} {{ formatTime(s.o.time) }} · Seats:
-            {{ s.o.seats ?? DEFAULT_SEATS }}
+            <div>
+              <strong>{{ s.sectionLabel }}</strong> · {{ s.o.days }} {{ formatTime(s.o.time) }} · Seats:
+              {{ s.o.seats ?? DEFAULT_SEATS }}
+            </div>
+            <div v-if="offeringTitle(s.o)" class="offering-title">{{ offeringTitle(s.o) }}</div>
           </div>
           <div class="faculty">
             Instructor:
@@ -92,6 +95,14 @@ export default {
     )
     const catalog = computed(() => courseByCode(code.value))
     const nameFor = courseName
+    // The offering's own title, shown only when it differs from the catalog
+    // name (the header already carries the catalog name for the course).
+    const offeringTitle = (o) => {
+      const t = String((o && o.title) || '').trim()
+      if (!t) return ''
+      const cat = catalog.value && catalog.value.course_name
+      return t === cat ? '' : t
+    }
     return {
       code,
       sections,
@@ -100,6 +111,7 @@ export default {
       scheduleOfferings,
       catalog,
       nameFor,
+      offeringTitle,
       formatTime,
       offeringItemKey,
       DEFAULT_SEATS,

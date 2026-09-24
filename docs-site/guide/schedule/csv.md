@@ -9,8 +9,9 @@ two downloads, and they are not the same thing.
 
 **What you are looking at now**, as a spreadsheet. It covers the term you have
 selected (Fall, Winter, or Spring) and every schedule currently shown. Each row
-is one class meeting, with its department, course number, section, teacher, days,
-times, seats, and term.
+is one class meeting, with its department, course number, section, title,
+teacher, days, times, seats, and term. A blank title falls back to the catalog
+name.
 
 For the owner, this is the schedule as it stands. For someone suggesting
 changes, it includes their **not-yet-submitted draft** — because the summary

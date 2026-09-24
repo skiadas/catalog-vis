@@ -56,6 +56,7 @@ test('makeSchedule random mode covers only eligible courses with valid slots', (
     assert.ok(o.instructor)
     assert.match(o.section, /^[AB]$/)
     assert.equal(o.seats, 24)
+    assert.equal(o.title, '')
   }
 })
 
