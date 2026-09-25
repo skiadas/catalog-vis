@@ -152,13 +152,29 @@ export function createApp({
   // The departments a user belongs to (from the admin-maintained directory),
   // as a Set of prefixes; empty for non-directory users.
   const departmentSet = (user) => new Set(userJson(user).departments)
+  // The cross-list group owner an op carries (the offering/cur record, or an
+  // update's changes when the op is the first edit claiming an imported group).
+  const opCrossListOwner = (op) => {
+    const rec = op.kind === 'add' ? op.offering : op.cur
+    const owner = (op.changes && op.changes.crossListOwner) || (rec && rec.crossListOwner) || ''
+    return String(owner).toUpperCase()
+  }
+  // Whether an op is within the user's departments. A plain course is touched
+  // by its own prefix; a cross-listed group is the owner's to edit, while any
+  // member department may add its version or remove it (the owner may too).
+  const opInScope = (op, mine) => {
+    const prefix = opPrefix(op).toUpperCase()
+    const owner = opCrossListOwner(op)
+    if (op.kind === 'update') return mine.has(owner || prefix)
+    return mine.has(prefix) || mine.has(owner)
+  }
   // The dept-scoping verdict for a non-owner's op list: null when every op
   // touches one of the user's directory departments, else the 403 body naming
   // the offending courses (`dept_restricted` + codes).
   const deptBlocked = (operations, user) => {
     if (!Array.isArray(operations)) return null
     const mine = departmentSet(user)
-    const outOfScope = operations.filter((op) => op && !mine.has(opPrefix(op)))
+    const outOfScope = operations.filter((op) => op && !opInScope(op, mine))
     if (!outOfScope.length) return null
     const codes = outOfScope
       .map((op) => `${opPrefix(op)} ${op.kind === 'add' ? op.offering.number : op.cur.number}`)

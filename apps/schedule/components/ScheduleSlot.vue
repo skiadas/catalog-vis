@@ -176,9 +176,7 @@ export default {
         ? goScheduleSlot(day.value, times.value[(timeIndex.value + 1) % times.value.length])
         : null
     const isEditable = (it) =>
-      editingScheduleId.value != null &&
-      it.sid === editingScheduleId.value &&
-      canTouchOffering(it.sid, it.o && it.o.prefix)
+      editingScheduleId.value != null && it.sid === editingScheduleId.value && canTouchOffering(it.sid, it.o)
     return {
       day,
       time,

@@ -1411,3 +1411,94 @@ test('non-owner suggestions are scoped to their directory departments', async ()
     database.close()
   }
 })
+
+test('cross-list dept rule: the owner edits the group; members add/remove their own version', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({ database, services: ['schedule'], adminUsernames: new Set(['registrar']) })
+  const srv = await startTestServer(app)
+  try {
+    const registrar = srv.newClient()
+    const bob = srv.newClient() // CS
+    const carol = srv.newClient() // ENGR
+    await registrar.post('/api/auth/login', { username: 'registrar' })
+    await bob.post('/api/auth/login', { username: 'bob' })
+    await carol.post('/api/auth/login', { username: 'carol' })
+    await registrar.post('/api/admin/users', { username: 'bob', departments: ['CS'] })
+    await registrar.post('/api/admin/users', { username: 'carol', departments: ['ENGR'] })
+
+    const { schedule } = (await registrar.post('/api/schedules', { name: 'X-list' })).json
+    await registrar.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
+    await registrar.put(`/api/schedules/${schedule.id}/terms/F`, {
+      offerings: [
+        { prefix: 'CS', number: '263', section: 'A', crossListOwner: 'CS', days: 'MWF', time: '9:20-10:30' },
+        {
+          prefix: 'ENGR',
+          number: '263',
+          section: 'A',
+          crossListOwner: 'CS',
+          days: 'MWF',
+          time: '9:20-10:30',
+        },
+        // An imported (unowned) version: the first edit carries the claim.
+        { prefix: 'PHI', number: '263', section: 'A', days: 'MWF', time: '9:20-10:30' },
+      ],
+    })
+    const term = (await registrar.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
+    const propose = (client, operations) =>
+      client.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: term.version,
+        operations,
+      })
+    const update = (prefix, changes, curExtra = {}) => ({
+      kind: 'update',
+      cur: { prefix, number: '263', section: 'A', ...curExtra },
+      changes,
+      diff: [],
+    })
+
+    // Bob (CS) owns the group: he may edit the ENGR version (the op carries the
+    // row's owner, as the client's diff does).
+    assert.equal(
+      (await propose(bob, [update('ENGR', { time: '10:00-11:45' }, { crossListOwner: 'CS' })])).status,
+      201,
+    )
+    // Carol (ENGR) may not edit the CS-owned ENGR version.
+    const denied = await propose(carol, [update('ENGR', { time: '10:00-11:45' }, { crossListOwner: 'CS' })])
+    assert.equal(denied.status, 403)
+    assert.equal(denied.json.error, 'dept_restricted')
+    // Carol may remove her own version and add it back (attaching to the group).
+    assert.equal(
+      (
+        await propose(carol, [
+          {
+            kind: 'remove',
+            cur: { prefix: 'ENGR', number: '263', section: 'A', crossListOwner: 'CS' },
+          },
+        ])
+      ).status,
+      201,
+    )
+    assert.equal(
+      (
+        await propose(carol, [
+          {
+            kind: 'add',
+            offering: { prefix: 'ENGR', number: '263', section: 'B', crossListOwner: 'CS' },
+          },
+        ])
+      ).status,
+      201,
+    )
+    // The unowned PHI version: Bob's claiming edit (owner in changes) is allowed…
+    assert.equal(
+      (await propose(bob, [update('PHI', { time: '10:00-11:45', crossListOwner: 'CS' })])).status,
+      201,
+    )
+    // …but an out-of-department update without the claim is refused.
+    assert.equal((await propose(bob, [update('PHI', { time: '10:00-11:45' })])).status, 403)
+  } finally {
+    srv.close()
+    database.close()
+  }
+})

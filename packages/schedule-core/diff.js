@@ -103,9 +103,12 @@ export function diffOfferings(before, after) {
 // Identity object used by update/remove ops (what the apply side matches on).
 // Carries the lab marker so ops target the exact row — and the content `id`
 // when the offering has one, so an op always lands on the exact meeting row
-// even when a sibling shares the section tuple (split meetings).
+// even when a sibling shares the section tuple (split meetings). A cross-listed
+// row's `crossListOwner` rides along so the server's dept rule can see the
+// group owner (apply ignores it; it is not part of identity).
 function keyOf(o) {
   const k = { prefix: o.prefix, number: o.number, section: o.section, lab: o.lab, labSeq: o.labSeq }
+  if (o.crossListOwner) k.crossListOwner = o.crossListOwner
   if (o.id != null && o.id !== '') k.id = o.id
   return k
 }

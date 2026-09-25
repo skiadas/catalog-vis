@@ -26,9 +26,15 @@ import {
   assignOfferingIds,
   offeringCodeLabel,
   offeringSectionLabel,
+  matchOffering,
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
-import { programs, allCourses, coreReqsByCode as catalogCoreReqsByCode } from '@major-vis/catalog-client'
+import {
+  programs,
+  allCourses,
+  coreReqsByCode as catalogCoreReqsByCode,
+  crossListOf,
+} from '@major-vis/catalog-client'
 import {
   diffOfferings,
   applyOperations,
@@ -309,15 +315,190 @@ export const myDepartments = computed(() => {
   return (user && user.departments) || []
 })
 
-// Whether the active session may touch a course with `prefix` on
-// `scheduleId`: owners (and every offline session, where everything is owned)
-// may touch anything; a non-owner's suggest session is scoped to the user's
-// departments — the client-side mirror of the server's `dept_restricted` rule.
-export function canTouchOffering(scheduleId, prefix) {
+// ---- Cross-listed groups -------------------------------------------------
+// A cross-listed course (per `cross_listings.json`) has sibling versions under
+// other department codes; they are kept identical (same meeting, instructors,
+// seats) and share one owning department. Rows carry `crossListOwner` (the
+// owner's prefix, '' when the group came from an import and is still unowned).
+// Membership is resolved from the catalog (schedule-core stays catalog-free),
+// paired by the section letter.
+
+// The `PREFIX NUMBER` code of a raw offering record.
+function offeringCode(o) {
+  return o ? `${o.prefix || ''} ${o.number || ''}`.trim() : ''
+}
+
+// The stored group owner of a row ('' for a plain or unowned row).
+function crossListOwnerOf(o) {
+  return String((o && o.crossListOwner) || '').toUpperCase()
+}
+
+// Whether a course code is cross-listed at all (catalog).
+function isCrossListed(code) {
+  return crossListOf(code).length > 0
+}
+
+// The sibling version rows of `cur` in `offerings`: other catalog-group members
+// present with the same section letter, excluding labs and the row itself.
+function crossListSiblingRows(offerings, cur) {
+  const code = offeringCode(cur)
+  const others = new Set(crossListOf(code))
+  if (!others.size) return []
+  return (offerings || []).filter((o) => !o.lab && o.section === cur.section && others.has(offeringCode(o)))
+}
+
+// Gives an unowned cross-listed group an owner: when `cur` names a row whose
+// course is cross-listed and the group has no owner yet, every group row at the
+// row's section (the row itself included) is stamped with the row's prefix —
+// "the first edit claims ownership". Returns the same array when there is
+// nothing to claim.
+function claimCrossListOwnership(offerings, cur) {
+  const list = offerings || []
+  const target = list.find((o) => matchOffering(o, cur))
+  if (!target || target.lab) return list
+  if (crossListOwnerOf(target)) return list
+  const codes = new Set([offeringCode(target), ...crossListOf(offeringCode(target))])
+  if (codes.size < 2) return list
+  const owner = String(target.prefix || '').toUpperCase()
+  return list.map((o) =>
+    !o.lab && o.section === target.section && codes.has(offeringCode(o))
+      ? { ...o, crossListOwner: owner }
+      : o,
+  )
+}
+
+// The cross-listing picture for one offering, for the course editor / course
+// view: the other catalog codes, which of them are present in the active term,
+// and the stored owner. Returns null when the offering isn't on the schedule.
+export function crossListState(scheduleId, cur) {
+  const s = scheduleById(scheduleId)
+  if (!s) return null
+  const part = viewPart(s, activeTerm.value)
+  const offerings = (part && part.offerings) || []
+  const source = offerings.find((o) => matchOffering(o, cur))
+  if (!source) return null
+  const otherCodes = crossListOf(offeringCode(source))
+  const present = otherCodes.filter((code) =>
+    offerings.some((o) => !o.lab && o.section === source.section && offeringCode(o) === code),
+  )
+  return {
+    crossListed: otherCodes.length > 0,
+    code: offeringCode(source),
+    otherCodes,
+    present,
+    missing: otherCodes.filter((code) => !present.includes(code)),
+    owner: crossListOwnerOf(source) || null,
+  }
+}
+
+// Materializes the group's missing versions onto the active term, copying the
+// source row's scheduling fields (and its labs), for a cross-listed course. The
+// caller is the group's owner (or claims it by acting); the source and any
+// existing versions are stamped with the owner. Returns the created offerings
+// ([] when there was nothing to create), and persists like any term mutation.
+export function materializeCrossListVersions(id, cur) {
+  const s = scheduleById(id)
+  if (!s) return []
+  const { part, draft } = mutablePart(id)
+  if (!part) return []
+  const before = part.offerings || []
+  const source = before.find((o) => matchOffering(o, cur))
+  if (!source) return []
+  const groupCodes = [offeringCode(source), ...crossListOf(offeringCode(source))]
+  if (groupCodes.length < 2) return []
+  const owner = crossListOwnerOf(source) || String(source.prefix || '').toUpperCase()
+  const sourceLabs = before.filter(
+    (o) => o.lab && o.section === source.section && offeringCode(o) === offeringCode(source),
+  )
+  let list = before
+  const created = []
+  for (const code of groupCodes) {
+    if (code === offeringCode(source)) continue
+    const [prefix, number] = code.split(' ')
+    if (list.some((o) => !o.lab && o.prefix === prefix && o.number === number)) continue
+    const section = sectionIsFree(list, prefix, number, source.section)
+      ? source.section
+      : nextSectionLetter(list, prefix, number)
+    const offering = {
+      prefix,
+      number,
+      section,
+      title: source.title || '',
+      instructor: source.instructor || '',
+      secondaryInstructors: [...(source.secondaryInstructors || [])],
+      days: source.days || '',
+      time: source.time || '',
+      seats: source.seats != null ? source.seats : DEFAULT_SEATS,
+      crossListOwner: owner,
+      id: '',
+    }
+    offering.id = offeringIdFor(offering)
+    list = addOfferingToSchedule(list, offering)
+    created.push(offering)
+    for (const lab of sourceLabs) {
+      const labRow = {
+        ...lab,
+        prefix,
+        section,
+        crossListOwner: undefined,
+        title: source.title || '',
+        id: '',
+      }
+      delete labRow.crossListOwner
+      labRow.id = offeringIdFor(labRow)
+      list = addOfferingToSchedule(list, labRow)
+    }
+  }
+  if (!created.length && before.every((o) => crossListOwnerOf(o) === owner)) return []
+  // Stamp the whole group (source + existing versions) with the owner.
+  const groupSet = new Set(groupCodes)
+  list = list.map((o) =>
+    !o.lab && o.section === source.section && groupSet.has(offeringCode(o))
+      ? { ...o, crossListOwner: owner }
+      : o,
+  )
+  const changed = diffOfferings(before, list)
+  if (!changed.length) return []
+  part.offerings = list
+  recordHistory(part, before, id)
+  if (draft) {
+    part.dirty = true
+    touchDraft()
+  } else {
+    part.version = (part.version || 0) + 1
+    schedules.value = [...schedules.value]
+    syncTerm(id)
+    persistSchedules()
+  }
+  return created
+}
+
+// Whether `section` is free for a lecture of (prefix, number) — labs never
+// consume a lecture letter.
+function sectionIsFree(offerings, prefix, number, section) {
+  if (!section) return false
+  return !(offerings || []).some(
+    (o) => !o.lab && o.prefix === prefix && o.number === number && o.section === section,
+  )
+}
+
+// Whether the active session may touch an offering: owners (and every offline
+// session) may touch anything; a non-owner's suggest session is scoped to the
+// user's departments — the client-side mirror of the server's `dept_restricted`
+// rule. `offering` is the record (or a bare prefix for non-group callers).
+// `action` is 'edit' (rewrite the row: a cross-listed group is the owner's to
+// edit), 'add' (attach a version), or 'remove' (a member may remove its own
+// version; the owner may remove any).
+export function canTouchOffering(scheduleId, offering, action = 'edit') {
   const s = scheduleById(scheduleId)
   if (!s) return false
   if (editingRole.value !== 'suggest' || isOwner(s)) return true
-  return myDepartments.value.includes(String(prefix || '').toUpperCase())
+  const mine = myDepartments.value.map((d) => String(d).toUpperCase())
+  const rec = typeof offering === 'string' ? { prefix: offering } : offering || {}
+  const prefix = String(rec.prefix || '').toUpperCase()
+  const owner = String(rec.crossListOwner || '').toUpperCase()
+  if (action === 'edit') return mine.includes(owner || prefix)
+  return mine.includes(prefix) || mine.includes(owner)
 }
 
 // Loads the current user from the backend when in remote mode. No-op (null)
@@ -1277,9 +1458,12 @@ export function importCsvRows(scheduleId, rows) {
     if (!byTerm[t]) byTerm[t] = []
     const offering = { ...r }
     delete offering.term
-    // `coreReqs` is import-time validation only — the catalog owns the
-    // course -> area mapping, so the sheet's claim is never stored.
+    // `coreReqs`/`crossListed` are import-time validation only — the catalog
+    // owns the course's areas and cross-listing, so the sheet's claims are
+    // never stored. An imported cross-listed group starts unowned (no
+    // `crossListOwner`); the first edit claims it.
     delete offering.coreReqs
+    delete offering.crossListed
     byTerm[t].push(offering)
   }
   const written = {}
@@ -1427,14 +1611,21 @@ export function moveOffering(id, prefix, number, section, move, lab = false, lab
   if (!s) return false
   const { part, draft } = mutablePart(id)
   if (!part) return false
-  const next = moveOfferingSmart(
-    part.offerings || [],
-    { prefix, number, section, lab, labSeq, id: offeringId || undefined },
-    move,
-    activeTerm.value,
-  )
-  if (next === part.offerings) return false
-  const before = part.offerings
+  const before = part.offerings || []
+  const cur = { prefix, number, section, lab, labSeq, id: offeringId || undefined }
+  let next = claimCrossListOwnership(before, cur)
+  next = moveOfferingSmart(next, cur, move, activeTerm.value)
+  // Keep a cross-listed group identical: the sibling versions take the moved
+  // row's meeting days/time.
+  if (!lab) {
+    const moved = next.find((o) => matchOffering(o, cur))
+    if (moved) {
+      for (const sib of crossListSiblingRows(next, cur)) {
+        next = updateOfferingInSchedule(next, sib, { days: moved.days, time: moved.time })
+      }
+    }
+  }
+  if (next === part.offerings || diffOfferings(before, next).length === 0) return false
   part.offerings = next
   recordHistory(part, before, id)
   if (draft) {
@@ -1451,19 +1642,23 @@ export function moveOffering(id, prefix, number, section, move, lab = false, lab
 
 // Rewrites an offering's editable fields (instructor / section / days / time)
 // in the schedule's active term. `cur` is the offering's current identity
-// (prefix/number/section) used to locate it; `changes` replaces the rest. In a
-// suggest session the change lands in the draft.
+// (prefix/number/section) used to locate it; `changes` replaces the rest. A
+// cross-list group edits as one: the same changes apply to the sibling versions,
+// and an unowned imported group is claimed by this first edit. In a suggest
+// session the change lands in the draft.
 export function updateOffering(id, cur, changes) {
   const s = scheduleById(id)
   if (!s) return false
   const { part, draft } = mutablePart(id)
   if (!part) return false
-  const next = updateOfferingInSchedule(part.offerings || [], cur, changes)
-  if (next === part.offerings) return false
+  const before = part.offerings || []
+  let next = claimCrossListOwnership(before, cur)
+  const siblings = !cur.lab && isCrossListed(offeringCode(cur)) ? crossListSiblingRows(next, cur) : []
+  next = updateOfferingInSchedule(next, cur, changes)
+  for (const sib of siblings) next = updateOfferingInSchedule(next, sib, changes)
   // A save that rewrites nothing (the editor's "Save changes" on an untouched
   // course) must not bump the version or park a "no change" entry in history.
-  if (diffOfferings(part.offerings || [], next).length === 0) return false
-  const before = part.offerings
+  if (next === part.offerings || diffOfferings(before, next).length === 0) return false
   part.offerings = next
   recordHistory(part, before, id)
   if (draft) {
@@ -1478,8 +1673,12 @@ export function updateOffering(id, cur, changes) {
   return true
 }
 
-// Adds a brand-new catalog course (by code) to the schedule's active term,
-// landing it in the default slot with the first free section letter. Returns the
+// Adds a catalog course (by code) to the schedule's active term, landing it in
+// the default slot with the first free section letter. A cross-listed course
+// joins its group: if a sibling version is already on the term the new row
+// adopts the sibling's section (when free) and copies its scheduling fields,
+// keeping the group's owner (or staying unowned when it came from an import);
+// otherwise the new row is the group's first version and owns it. Returns the
 // merged edit-item ({ o, code, sid }) so the caller can open the course editor.
 // In a suggest session the course lands in the draft.
 export function addCourseToSchedule(id, code) {
@@ -1487,22 +1686,41 @@ export function addCourseToSchedule(id, code) {
   if (!s) return null
   const { part, draft } = mutablePart(id)
   if (!part) return null
+  const offerings = part.offerings || []
   const [prefix, number] = code.split(' ')
-  const section = nextSectionLetter(part.offerings || [], prefix, number)
+  // An existing version of a cross-listed group: adopt its section when free
+  // and copy its scheduling fields.
+  const siblingCodes = crossListOf(code)
+  let existing = null
+  for (const sibling of siblingCodes) {
+    const [p, n] = sibling.split(' ')
+    existing = offerings.find((o) => !o.lab && o.prefix === p && o.number === n) || null
+    if (existing) break
+  }
+  const section =
+    existing && sectionIsFree(offerings, prefix, number, existing.section)
+      ? existing.section
+      : nextSectionLetter(offerings, prefix, number)
   const offering = {
     prefix,
     number,
     section,
-    title: '',
-    instructor: '',
-    secondaryInstructors: [],
-    ...DEFAULT_SLOT,
-    seats: DEFAULT_SEATS,
+    title: existing ? existing.title || '' : '',
+    instructor: existing ? existing.instructor || '' : '',
+    secondaryInstructors: existing ? [...(existing.secondaryInstructors || [])] : [],
+    days: existing ? existing.days : DEFAULT_SLOT.days,
+    time: existing ? existing.time : DEFAULT_SLOT.time,
+    seats: existing ? (existing.seats != null ? existing.seats : DEFAULT_SEATS) : DEFAULT_SEATS,
     id: '',
+  }
+  // The first version created owns the group; joining keeps its owner, and an
+  // unowned (imported) group stays unowned until someone edits it.
+  if (siblingCodes.length) {
+    offering.crossListOwner = existing ? crossListOwnerOf(existing) : String(prefix).toUpperCase()
   }
   offering.id = offeringIdFor(offering)
   const before = part.offerings
-  part.offerings = addOfferingToSchedule(part.offerings || [], offering)
+  part.offerings = addOfferingToSchedule(offerings, offering)
   recordHistory(part, before, id)
   if (draft) {
     part.dirty = true
@@ -1572,16 +1790,33 @@ export function addLabSection(id, cur) {
 }
 
 // Removes the offering matching `cur` (prefix/number/section) from the
-// schedule's active term. Also closes the editor if the edited course was the
-// one removed. In a suggest session the removal lands in the draft.
+// schedule's active term. Removing the version owned by the group's owner
+// removes the whole cross-listed group (every version at the same section, with
+// their labs); removing another version leaves the rest in place. Also closes
+// the editor if the edited course was the one removed. In a suggest session the
+// removal lands in the draft.
 export function removeCourseFromSchedule(id, cur) {
   const s = scheduleById(id)
   if (!s) return false
   const { part, draft } = mutablePart(id)
   if (!part) return false
-  const next = removeOfferingFromSchedule(part.offerings || [], cur)
+  const before = part.offerings || []
+  const target = before.find((o) => matchOffering(o, cur))
+  let next
+  if (
+    target &&
+    !target.lab &&
+    crossListOwnerOf(target) &&
+    crossListOwnerOf(target) === String(target.prefix || '').toUpperCase()
+  ) {
+    // The owner's own version: take the whole group (same-section versions and
+    // their labs) with it.
+    const codes = new Set([offeringCode(target), ...crossListOf(offeringCode(target))])
+    next = before.filter((o) => !(o.section === target.section && codes.has(offeringCode(o))))
+  } else {
+    next = removeOfferingFromSchedule(before, cur)
+  }
   if (next === part.offerings) return false
-  const before = part.offerings
   part.offerings = next
   recordHistory(part, before, id)
   if (draft) {

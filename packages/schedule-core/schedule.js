@@ -822,11 +822,12 @@ export function removeOfferingFromSchedule(offerings, cur) {
 
 // The drag-and-drop payload contract for moving an offering between slots
 // (edit mode). A serialized `{ sid, id, prefix, number, section, lab, labSeq,
-// fromDay }` — the offering's identity (its content `id` so a split-meeting
-// row moves itself, not its sibling) plus the day column the drag started
-// from, so a same-group drop can swap that specific day (see
-// `rescheduleDays`). Shared by the schedule grid/day views and the planner
-// timeline (which only parses).
+// crossListOwner, fromDay }` — the offering's identity (its content `id` so a
+// split-meeting row moves itself, not its sibling), its cross-list owner (so a
+// drop-time permission check can see it), plus the day column the drag started
+// from, so a same-group drop can swap that specific day (see `rescheduleDays`).
+// Shared by the schedule grid/day views and the planner timeline (which only
+// parses).
 export function buildDragPayload(it, fromDay) {
   return JSON.stringify({
     sid: it.sid,
@@ -836,6 +837,7 @@ export function buildDragPayload(it, fromDay) {
     section: it.o.section,
     lab: it.o.lab || false,
     labSeq: it.o.labSeq || 0,
+    crossListOwner: it.o.crossListOwner || '',
     fromDay: fromDay || '',
   })
 }

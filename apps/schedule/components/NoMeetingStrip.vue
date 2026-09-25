@@ -90,9 +90,7 @@ export default {
     // Per-item editability: the session's own schedule, scoped to the user's
     // departments in a non-owner suggest session.
     const isEditable = (it) =>
-      editingScheduleId.value != null &&
-      it.sid === editingScheduleId.value &&
-      canTouchOffering(it.sid, it.o && it.o.prefix)
+      editingScheduleId.value != null && it.sid === editingScheduleId.value && canTouchOffering(it.sid, it.o)
     return {
       items,
       editMode,
