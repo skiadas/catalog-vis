@@ -1199,6 +1199,20 @@ export function colorForInstructor(name) {
   return INSTRUCTOR_COLORS.get(name)
 }
 
+// Distinct color assigned deterministically per core-curriculum area id
+// (`SM`, `LA`, ...), used by the core filter chips and matching blocks.
+const CORE_COLORS = new Map()
+let corePaletteCursor = 0
+
+export function colorForCoreReq(id) {
+  const key = String(id == null ? '' : id)
+  if (!CORE_COLORS.has(key)) {
+    CORE_COLORS.set(key, DEPT_PALETTE[corePaletteCursor % DEPT_PALETTE.length])
+    corePaletteCursor++
+  }
+  return CORE_COLORS.get(key)
+}
+
 // Distinct color assigned deterministically per schedule id, used when multiple
 // schedules are displayed at once and no department/instructor filter is active.
 const SCHEDULE_PALETTE = [
@@ -1257,9 +1271,25 @@ export function departmentsInSchedule(index) {
   return Array.from(set).sort()
 }
 
-// Centralized filter selection: 'dept' or 'instructor' mode.
+// The core-curriculum requirements satisfied by at least one course in the
+// schedule, in the order `reqs` supplies them (the catalog's canonical order).
+// `reqs` is the catalog's core-requirement list (`{ id, courses: [code] }`);
+// schedule-core is catalog-free, so the caller passes it in. Returns the
+// matching requirement records, so the caller keeps each one's label.
+export function coreReqsInSchedule(index, reqs) {
+  if (!index || !Array.isArray(reqs)) return []
+  const codes = new Set(Object.keys(index.byCourse))
+  return reqs.filter((req) => (req.courses || []).some((code) => codes.has(code)))
+}
+
+// Centralized filter selection: 'dept', 'instructor', or 'core' mode.
 // Returns { active, matches(item), color(item) }.
-export function buildFilter(mode, depts, instructors) {
+//
+// The 'core' mode matches an item whose course satisfies any selected
+// core-curriculum area. schedule-core is catalog-free, so the caller supplies
+// both the selected ids and `reqsOf(code)` → the area ids that course
+// satisfies (the app derives it from the catalog).
+export function buildFilter(mode, depts, instructors, coreReqs = [], reqsOf = () => []) {
   if (mode === 'instructor') {
     return {
       active: instructors.length > 0,
@@ -1273,6 +1303,19 @@ export function buildFilter(mode, depts, instructors) {
       },
     }
   }
+  if (mode === 'core') {
+    return {
+      active: coreReqs.length > 0,
+      // An item counts when its course satisfies any selected area; it colors
+      // by the first selected area it matches, so a multi-area course takes the
+      // color of the area you filtered on.
+      matches: (it) => reqsOf(it.code || codeOf(it.o)).some((r) => coreReqs.includes(r)),
+      color: (it) => {
+        const hit = reqsOf(it.code || codeOf(it.o)).find((r) => coreReqs.includes(r))
+        return colorForCoreReq(hit || coreReqs[0] || '')
+      },
+    }
+  }
   return {
     active: depts.length > 0,
     matches: (it) => depts.includes(it.o.prefix),
@@ -1280,12 +1323,27 @@ export function buildFilter(mode, depts, instructors) {
   }
 }
 
-// Unified visual coloring for schedule views. A department/instructor filter takes
-// priority; otherwise, when `colorSchedules` is on and at least one schedule is
-// displayed, every course block is colored by which schedule it belongs to (with a
-// single schedule this shows the actual course list rather than a count summary).
-export function buildVisual(mode, depts, instructors, scheduleIds, colorSchedules) {
-  const filter = buildFilter(mode, depts, instructors)
+// The `PREFIX NUMBER` code of a raw offering record (the key `buildIndex`
+// items carry as `code`), for filters that only have the offering.
+function codeOf(o) {
+  return o ? `${o.prefix || ''} ${o.number || ''}`.trim() : ''
+}
+
+// Unified visual coloring for schedule views. A department/instructor/core
+// filter takes priority; otherwise, when `colorSchedules` is on and at least one
+// schedule is displayed, every course block is colored by which schedule it
+// belongs to (with a single schedule this shows the actual course list rather
+// than a count summary).
+export function buildVisual(
+  mode,
+  depts,
+  instructors,
+  scheduleIds,
+  colorSchedules,
+  coreReqs = [],
+  reqsOf = () => [],
+) {
+  const filter = buildFilter(mode, depts, instructors, coreReqs, reqsOf)
   if (filter.active) return filter
   const ids = (scheduleIds || []).filter(Boolean)
   if (colorSchedules && ids.length > 0) {
@@ -1300,12 +1358,12 @@ export function buildVisual(mode, depts, instructors, scheduleIds, colorSchedule
 
 // The visual filter used while a schedule is in edit/suggest mode. Edit mode
 // must always render individual course pills (so the edited schedule's courses
-// stay draggable), but a department/instructor filter still holds: when one is
-// active its match/color rules apply to everything, exactly like the plain
+// stay draggable), but a department/instructor/core filter still holds: when one
+// is active its match/color rules apply to everything, exactly like the plain
 // views; otherwise every course shows, colored by `colorFn` (the schedule
 // color). Returns { active: true, matches, color }.
-export function buildEditVisual(mode, depts, instructors, colorFn) {
-  const filter = buildFilter(mode, depts, instructors)
+export function buildEditVisual(mode, depts, instructors, colorFn, coreReqs = [], reqsOf = () => []) {
+  const filter = buildFilter(mode, depts, instructors, coreReqs, reqsOf)
   if (filter.active) return filter
   return { active: true, matches: () => true, color: colorFn || (() => '') }
 }
@@ -1374,4 +1432,55 @@ export function proposeOverlay(baseOfferings, pendingSuggestions) {
 
 function offeringKeyOf(o) {
   return offeringKey(o)
+}
+
+// ---------------------------------------------------------------------------
+// 8. Core-requirement quick stats
+// ---------------------------------------------------------------------------
+
+// One row per core-curriculum requirement: how many offerings satisfy it and
+// how many seats they hold, per term plus totals.
+//
+// `offeringsByTerm` is `{ F: offering[], W: offering[], S: offering[] }` (the
+// selected schedules' merged offerings for each term); `reqs` is the catalog's
+// core-requirement list (`{ id, label, courses: [code] }[]`), passed in so
+// schedule-core stays catalog-free.
+//
+// Lab rows never count: a lab is part of its lecture's offering, not a separate
+// one, and its seats are excluded. Split meetings (a section's rows across
+// multiple bands) collapse to one offering via `code|section`, and a section
+// present in more than one selected schedule counts once — the table answers
+// "how many distinct sections satisfy this area in the displayed collection".
+// Unscheduled offerings count (they are offerings with seats all the same).
+//
+// Returns `[{ id, label, terms: { F: { offerings, seats }, W, S }, totals: {
+// offerings, seats } }]` in the order `reqs` supplies (every requirement is
+// listed, zero counts included).
+export function coreReqStats(offeringsByTerm, reqs) {
+  const byTerm = offeringsByTerm || {}
+  return (reqs || []).map((req) => {
+    const courses = new Set(req.courses || [])
+    const terms = {}
+    let totalOfferings = 0
+    let totalSeats = 0
+    for (const t of TERM_KEYS) {
+      const seen = new Set()
+      let offerings = 0
+      let seats = 0
+      for (const o of byTerm[t] || []) {
+        if (o.lab) continue
+        const code = `${o.prefix || ''} ${o.number || ''}`.trim()
+        if (!courses.has(code)) continue
+        const key = `${code}|${o.section || ''}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        offerings++
+        seats += Number(o.seats) || 0
+      }
+      terms[t] = { offerings, seats }
+      totalOfferings += offerings
+      totalSeats += seats
+    }
+    return { id: req.id, label: req.label, terms, totals: { offerings: totalOfferings, seats: totalSeats } }
+  })
 }

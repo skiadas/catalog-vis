@@ -27,12 +27,15 @@ import {
   colorForDept,
   colorForInstructor,
   colorForSchedule,
+  colorForCoreReq,
   buildFilter,
   buildVisual,
   buildEditVisual,
   proposeOverlay,
   instructorsInSchedule,
   departmentsInSchedule,
+  coreReqsInSchedule,
+  coreReqStats,
   moveOfferingSmart,
   rescheduleDays,
   updateOfferingInSchedule,
@@ -1802,6 +1805,114 @@ test('buildEditVisual keeps every course visible but honors an active filter', (
   const inst = buildEditVisual('instructor', [], ['Vosmeier'], () => '#x')
   assert.equal(inst.matches({ o: { instructor: 'Vosmeier' }, instructors: ['Vosmeier'] }), true)
   assert.equal(inst.matches({ o: { instructor: 'Morgan' }, instructors: ['Morgan'] }), false)
+})
+
+test('buildFilter core mode matches a course by the areas it satisfies', () => {
+  const reqsByCode = { 'CS 220': ['SM', 'QL'], 'BIO 166': ['SM'] }
+  const reqsOf = (code) => reqsByCode[code] || []
+
+  // Inactive until at least one area is selected.
+  assert.equal(buildFilter('core', [], [], [], reqsOf).active, false)
+
+  const filter = buildFilter('core', [], [], ['QL'], reqsOf)
+  assert.equal(filter.active, true)
+  assert.equal(filter.matches({ code: 'CS 220', o: { prefix: 'CS', number: '220' } }), true)
+  assert.equal(filter.matches({ code: 'BIO 166', o: { prefix: 'BIO', number: '166' } }), false)
+  assert.equal(
+    filter.matches({ o: { prefix: 'MAT', number: '131' } }),
+    false,
+    'derives the code from the offering when the item carries no code',
+  )
+  assert.equal(
+    filter.color({ code: 'CS 220', o: { prefix: 'CS', number: '220' } }),
+    colorForCoreReq('QL'),
+    'colors by the first selected area the course satisfies',
+  )
+})
+
+test('buildVisual and buildEditVisual thread the core filter through', () => {
+  const reqsOf = (code) => (code === 'CS 220' ? ['SM'] : [])
+  const visual = buildVisual('core', [], [], ['s1'], true, ['SM'], reqsOf)
+  assert.equal(visual.active, true, 'an active core filter wins over schedule coloring')
+  assert.equal(visual.matches({ code: 'CS 220', o: { prefix: 'CS', number: '220' } }), true)
+  assert.equal(visual.matches({ code: 'MAT 131', o: { prefix: 'MAT', number: '131' } }), false)
+
+  const edit = buildEditVisual('core', [], [], () => '#x', ['SM'], reqsOf)
+  assert.equal(edit.active, true)
+  assert.equal(edit.matches({ code: 'CS 220', o: { prefix: 'CS', number: '220' } }), true)
+  assert.equal(edit.matches({ code: 'MAT 131', o: { prefix: 'MAT', number: '131' } }), false)
+})
+
+test('coreReqsInSchedule lists the areas any course in the schedule satisfies', () => {
+  const index = buildIndex([
+    { prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '9:20-10:30' },
+    { prefix: 'BIO', number: '166', section: 'A', days: 'TR', time: '10:00-11:45' },
+  ])
+  const reqs = [
+    { id: 'SM', label: 'Science', courses: ['CS 220', 'MAT 131'] },
+    { id: 'LA', label: 'Arts', courses: ['ARTD 126'] },
+    { id: 'HS', label: 'History', courses: ['BIO 166'] },
+  ]
+  assert.deepEqual(
+    coreReqsInSchedule(index, reqs).map((r) => r.id),
+    ['SM', 'HS'],
+  )
+  assert.deepEqual(coreReqsInSchedule(index, undefined), [])
+})
+
+test('coreReqStats counts sections (labs excluded, split meetings merged) and seats per term', () => {
+  const reqs = [
+    { id: 'SM', label: 'Science', courses: ['CS 220', 'MAT 131'] },
+    { id: 'LA', label: 'Arts', courses: ['ARTD 126'] },
+  ]
+  const stats = coreReqStats(
+    {
+      F: [
+        { prefix: 'CS', number: '220', section: 'A', seats: 30 },
+        { prefix: 'CS', number: '220', section: 'B', seats: 24 },
+        // Split meeting: a second row for section A (same offering) must not
+        // double-count, nor add seats twice.
+        { prefix: 'CS', number: '220', section: 'A', seats: 30, days: 'R', time: '16:00-17:00' },
+        { prefix: 'MAT', number: '131', section: 'A', seats: 20 },
+        // A lab of a core course contributes nothing.
+        { prefix: 'CS', number: '220', section: 'A', lab: true, labSeq: 1, seats: 12 },
+        { prefix: 'BIO', number: '166', section: 'A', seats: 40 },
+      ],
+      W: [{ prefix: 'CS', number: '220', section: 'A', seats: 30 }],
+      S: [],
+    },
+    reqs,
+  )
+  assert.deepEqual(stats, [
+    {
+      id: 'SM',
+      label: 'Science',
+      terms: {
+        F: { offerings: 3, seats: 74 },
+        W: { offerings: 1, seats: 30 },
+        S: { offerings: 0, seats: 0 },
+      },
+      totals: { offerings: 4, seats: 104 },
+    },
+    {
+      id: 'LA',
+      label: 'Arts',
+      terms: {
+        F: { offerings: 0, seats: 0 },
+        W: { offerings: 0, seats: 0 },
+        S: { offerings: 0, seats: 0 },
+      },
+      totals: { offerings: 0, seats: 0 },
+    },
+  ])
+})
+
+test('coreReqStats counts unscheduled offerings too', () => {
+  const [sm] = coreReqStats(
+    { F: [{ prefix: 'CS', number: '220', section: 'A', days: '', time: '', seats: 30 }] },
+    [{ id: 'SM', label: 'Science', courses: ['CS 220'] }],
+  )
+  assert.deepEqual(sm.terms.F, { offerings: 1, seats: 30 })
 })
 
 test('proposeOverlay renders concurrent proposals independently with proposers', () => {
