@@ -59,6 +59,7 @@ import {
   offeringItemKey,
   DEFAULT_SEATS,
   CSV_COLUMNS,
+  lastFirst,
 } from '../schedule.js'
 
 // The CSV header cells of a rendered file (the first line; headers never
@@ -924,16 +925,84 @@ test('renderCsv writes the title column (blank when a row has none) and round-tr
     },
     { prefix: 'CS', number: '101', section: 'A', instructor: 'Vosmeier', days: 'MWF', time: '8:00-9:10' },
   ])
-  // The title sits right after the section, before the instructor — an
-  // invariant of CSV_COLUMNS. Asserting the header position (not a full row
-  // template) means appending a new column elsewhere never breaks this test.
-  const header = headerOf(csv)
-  assert.equal(header[header.indexOf('title') - 1], 'course_section')
-  assert.equal(header[header.indexOf('title') + 1], 'instructor')
   assert.deepEqual(
     parseCsv(csv).map((r) => r.title),
     ['Special Topics: Graphics', ''],
   )
+})
+
+test('lastFirst flips a "First Last" name and leaves comma/single-token names alone', () => {
+  assert.equal(lastFirst('John Wahl'), 'Wahl, John')
+  assert.equal(lastFirst('Charilaos Skiadas'), 'Skiadas, Charilaos')
+  assert.equal(lastFirst('Mary Jane Smith'), 'Smith, Mary Jane')
+  assert.equal(lastFirst('Wahl, John'), 'Wahl, John', 'an already-comma name passes through')
+  assert.equal(lastFirst('Skiadas'), 'Skiadas', 'a single token has no surname to move')
+  assert.equal(lastFirst(''), '')
+})
+
+test('renderCsv resolves the name columns to "Last, First" and keeps usernames last', () => {
+  const fullName = (u) => ({ wahl: 'John Wahl', xu: 'Ray Xu' })[u] || null
+  const csv = renderCsv(
+    [
+      {
+        prefix: 'CS',
+        number: '220',
+        section: 'A',
+        instructor: 'wahl',
+        secondaryInstructors: ['xu'],
+        days: 'MWF',
+        time: '9:20-10:30',
+        term: 'F',
+      },
+    ],
+    { fullName },
+  )
+  const header = headerOf(csv)
+  assert.deepEqual(header, [...CSV_COLUMNS, 'term'])
+  // The full-name block leads (up by the identity columns); the username block
+  // trails, right before the term.
+  assert.ok(header.indexOf('instructor_name') < header.indexOf('days'), 'the name block leads')
+  assert.ok(header.indexOf('instructor') > header.indexOf('seats'), 'the username block trails')
+  assert.ok(header.indexOf('instructor') < header.indexOf('term'), 'usernames come before the term')
+  assert.ok(csv.includes('"Wahl, John"'), 'the lead name is "Last, First"')
+  assert.ok(csv.includes('"Xu, Ray"'), 'the secondary name is "Last, First"')
+  // The username columns still carry the canonical ids and round-trip.
+  const [row] = parseCsv(csv)
+  assert.equal(row.instructor, 'wahl')
+  assert.deepEqual(row.secondaryInstructors, ['xu'])
+})
+
+test('renderCsv falls back to the username when the directory resolves no name', () => {
+  const offering = {
+    prefix: 'CS',
+    number: '220',
+    section: 'A',
+    instructor: 'wahl',
+    days: 'MWF',
+    time: '9:20-10:30',
+  }
+  assert.ok(renderCsv([offering]).includes(',wahl,'), 'no resolver at all (offline)')
+  assert.ok(renderCsv([offering], { fullName: () => null }).includes(',wahl,'), 'person not in the directory')
+})
+
+test('parseCsv ignores the display-only name columns and tolerates a feed without usernames', () => {
+  const namesOnly = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor_name,secondary_instr_name,days,times',
+      'CS,220,A,"Wahl, John","Xu, Ray",MWF,9:20-10:30',
+    ].join('\n'),
+  )
+  assert.equal(namesOnly[0].instructor, '', 'the name columns are display-only')
+  assert.deepEqual(namesOnly[0].secondaryInstructors, [])
+
+  const withUsernames = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor_name,secondary_instr_name,days,times,instructor,secondary_instr',
+      'CS,220,A,"Wahl, John","Xu, Ray",MWF,9:20-10:30,wahl,"xu, ray"',
+    ].join('\n'),
+  )
+  assert.equal(withUsernames[0].instructor, 'wahl', 'identity comes from the username columns')
+  assert.deepEqual(withUsernames[0].secondaryInstructors, ['xu', 'ray'])
 })
 
 test('updateOfferingInSchedule mirrors a lecture title change onto its labs', () => {

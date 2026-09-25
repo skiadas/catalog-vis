@@ -137,6 +137,7 @@ import {
 } from '../src/scheduleStore.js'
 import { colorForSchedule, compareItems, renderCsv } from '@major-vis/schedule-core'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
+import { fetchRoster } from '../src/backend.js'
 import { displayName } from '../src/names.js'
 
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
@@ -197,6 +198,42 @@ export default {
     // catalog lookups, so the app resolves it here).
     const effectiveTitle = (o) =>
       String((o && o.title) || '').trim() || catalogCourseName(`${o.prefix} ${o.number}`)
+    // The directory resolver behind the CSV export's "Last, First" name
+    // columns: a `username -> displayName` map consulted by `renderCsv`. The
+    // roster is fetched fresh per export; an offline/empty directory yields no
+    // resolver, so the name columns fall back to the usernames (never blank).
+    // Keys are normalized (trimmed, lowercased, domain stripped) so a registrar
+    // cell like "Wahl" or "cskiadas@hanover.edu" resolves against the canonical
+    // account.
+    const fullNameResolver = async () => {
+      const roster = await fetchRoster()
+      if (!roster.length) return undefined
+      const key = (u) =>
+        String(u ?? '')
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, '')
+      const byUsername = new Map()
+      for (const u of roster) {
+        const full = key(u.username)
+        if (!full) continue
+        byUsername.set(full, u.displayName)
+        const at = full.indexOf('@')
+        const short = at > 0 ? full.slice(0, at) : full
+        if (!byUsername.has(short)) byUsername.set(short, u.displayName)
+      }
+      return (username) => byUsername.get(key(username)) || null
+    }
+    // Publishes a rendered CSV string as a client-side download.
+    const downloadCsv = (csv, name) => {
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      a.click()
+      URL.revokeObjectURL(url)
+    }
     // Downloads one row per course offering across all selected (visible)
     // schedules' active term in the canonical registrar format, so the file
     // round-trips through Upload registrar CSV. The rows go through
@@ -204,7 +241,7 @@ export default {
     // (`CSV_COLUMNS`) and any new column appears here automatically. Offerings
     // are ordered alphabetically by prefix, then number, then section. With a
     // single visible schedule the file is named after that schedule.
-    const downloadSummaryCsv = () => {
+    const downloadSummaryCsv = async () => {
       const rows = []
       for (const s of visibleSchedules.value) {
         const offerings = [...viewOfferings(s, activeTerm.value)].sort((a, b) =>
@@ -214,20 +251,14 @@ export default {
           rows.push({ ...o, title: effectiveTitle(o), term: activeTerm.value })
         }
       }
-      const csv = renderCsv(rows)
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
+      const csv = renderCsv(rows, { fullName: await fullNameResolver() })
       const only = visibleSchedules.value.length === 1 ? visibleSchedules.value[0].name : null
-      a.download = only ? csvFileName(only) : 'schedules.csv'
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadCsv(csv, only ? csvFileName(only) : 'schedules.csv')
     }
 
     // A term-aware round-trip of a full schedule in the canonical registrar
     // format. Only used when the user asks for a whole schedule.
-    const downloadRegistrarCsv = (id) => {
+    const downloadRegistrarCsv = async (id) => {
       const s = schedules.value.find((x) => x.id === id)
       if (!s) return
       const rows = []
@@ -236,14 +267,8 @@ export default {
           rows.push({ ...o, title: effectiveTitle(o) })
         }
       }
-      const csv = renderCsv(rows)
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = csvFileName(s.name + ' registrar')
-      a.click()
-      URL.revokeObjectURL(url)
+      const csv = renderCsv(rows, { fullName: await fullNameResolver() })
+      downloadCsv(csv, csvFileName(s.name + ' registrar'))
     }
 
     const edit = (id, role = 'edit') => emit('edit', id, role)

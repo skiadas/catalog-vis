@@ -315,6 +315,16 @@ export function createApp({
     },
   )
 
+  // The full directory as a `{ username, displayName }` roster: the same
+  // accounts the access autocomplete searches, unfiltered. Any signed-in user
+  // may read it (names only — no schedule data) — consumers render human names
+  // from it, e.g. the schedule CSV export's "Last, First" columns.
+  app.get('/api/users/roster', requireAuth, (req, res) => {
+    res.json({
+      users: db.listUsers(database).map((u) => ({ username: u.username, displayName: u.displayName })),
+    })
+  })
+
   // Username autocomplete for the access dialogs: any signed-in user can look
   // up accounts in the directory by username or display name (names only —
   // no schedule data). Returns a bounded list of { username, displayName }.

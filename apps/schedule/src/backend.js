@@ -364,3 +364,18 @@ export async function searchUsers(q) {
     return []
   }
 }
+
+// The full directory roster as [{ username, displayName }] — every account, for
+// consumers that render human names (the CSV export's "Last, First" columns).
+// Returns [] when the server is unreachable (offline); callers then fall back to
+// usernames.
+export async function fetchRoster() {
+  try {
+    const res = await fetch(`${apiBase}/users/roster`, { method: 'GET' })
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data && data.users) || []
+  } catch {
+    return []
+  }
+}

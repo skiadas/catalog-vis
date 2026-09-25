@@ -213,20 +213,31 @@ export function daySlotTimes(day) {
 // ---------------------------------------------------------------------------
 
 // The canonical CSV column order for the round-trip / registrar format:
-// identity block first (`title` right after the section), then the editable
-// fields. `renderCsv` builds its header from this list, and `parseCsv` is
-// header-driven (order-independent). Add a new column here + the matching
-// record field + `renderCsv` row key, and the two stay in lockstep.
+// identity block first (`title` right after the section), then the full-name
+// instructor block, the editable meeting fields, and finally the username
+// instructor block (right before the optional `term`). `renderCsv` builds its
+// header from this list, and `parseCsv` is header-driven (order-independent).
+// Add a new column here + the matching record field + `renderCsv` row key, and
+// the two stay in lockstep.
+//
+// The instructors come in two blocks: `instructor`/`secondary_instr` carry the
+// canonical usernames (the identity the round-trip keys on), while
+// `instructor_name`/`secondary_instr_name` carry the directory's human name in
+// "Last, First" form. `parseCsv` reads only the username columns, so a feed
+// that omits them (or that carries only the names) imports with blank
+// instructors rather than failing.
 export const CSV_COLUMNS = [
   'dept_prefix',
   'course_number',
   'course_section',
   'title',
-  'instructor',
-  'secondary_instr',
+  'instructor_name',
+  'secondary_instr_name',
   'days',
   'times',
   'seats',
+  'instructor',
+  'secondary_instr',
 ]
 
 // The requested seat count for an offering when none is given: a section's
@@ -295,6 +306,9 @@ export function instructorsOf(o) {
 // of additional instructors; it becomes the `secondaryInstructors` array.
 // The optional `seats` column is the requested seat count (a positive integer,
 // default 24). Blank/NULL `days`/`times` mark an unscheduled offering.
+// The `instructor_name`/`secondary_instr_name` columns `renderCsv` writes are
+// display-only and ignored here; identity comes from the username columns, so a
+// feed without them imports with blank instructors.
 // A trailing `L` on the course number marks a lab section of that course
 // (`166L` is a lab of 166); the lab's sequence is part of the section cell
 // (`A2` = section A, lab 2). A lab row with a plain-letter section gets
@@ -423,30 +437,69 @@ export function offeringSectionLabel(o) {
   return o.lab && o.labSeq ? `${o.section}${o.labSeq}` : o.section || ''
 }
 
+// The directory's full name in the registrar's "Last, First" form: a
+// "First Last" display name flips to "Last, First", while a name already in
+// comma form or a single token passes through unchanged. Extra given-name
+// tokens stay with the given name ("Mary Jane Smith" -> "Smith, Mary Jane").
+export function lastFirst(name) {
+  const s = String(name ?? '').trim()
+  if (!s || s.includes(',')) return s
+  const tokens = s.split(/\s+/)
+  if (tokens.length < 2) return s
+  return `${tokens[tokens.length - 1]}, ${tokens.slice(0, -1).join(' ')}`
+}
+
+// The registrar's `*_name` cell for one instructor username: the directory's
+// display name in "Last, First" form when the resolver knows the username, else
+// the username itself (offline, or a person the directory does not carry).
+/**
+ * @param {string} username
+ * @param {((username: string) => (string | null | undefined)) | undefined} fullName
+ */
+function instructorName(username, fullName) {
+  const s = String(username ?? '').trim()
+  if (!s) return ''
+  const display = fullName ? fullName(s) : null
+  return lastFirst(display || s)
+}
+
 // Serialize offerings back to the importable CSV form (an exact round-trip of
 // `parseCsv`). `rows` are offering records; an optional `term` per row is written
 // when the caller provides it. The header is `CSV_COLUMNS` (identity block
-// first, `title` right after the section, before the instructors) plus `term`
-// when any non-empty term is present. csv-stringify maps each record by column
-// name, so the header and cells can never drift apart. A row without a `seats`
-// value writes a blank cell (re-import defaults it to `DEFAULT_SEATS`); a row
-// without a title writes a blank cell (consumers fall back to the catalog
-// name). `renderCsv` is catalog-free, so it never resolves that fallback.
-export function renderCsv(offerings) {
+// first, `title` right after the section, the full-name instructor block, the
+// meeting fields, then the username instructor block) plus `term` when any
+// non-empty term is present. csv-stringify maps each record by column name, so
+// the header and cells can never drift apart. A row without a `seats` value
+// writes a blank cell (re-import defaults it to `DEFAULT_SEATS`); a row without
+// a title writes a blank cell (consumers fall back to the catalog name).
+// `renderCsv` is catalog-free, so it never resolves that fallback.
+//
+// `options.fullName` resolves an instructor username to the directory's display
+// name; the name columns are then written as "Last, First" (see `lastFirst`).
+// Without it — or for a username it does not know — the name cell falls back to
+// the username, so an offline export still names every instructor.
+/**
+ * @param {Array<Record<string, any>>} offerings
+ * @param {{ fullName?: (username: string) => (string | null | undefined) }} [options]
+ */
+export function renderCsv(offerings, { fullName } = {}) {
   const includesTerm = offerings.some((o) => o.term != null && o.term !== '')
   const columns = includesTerm ? [...CSV_COLUMNS, 'term'] : CSV_COLUMNS
   const records = offerings.map((o) => {
     const isTime = o.time != null && o.time !== '' ? o.time : o.times || ''
+    const secondaries = o.secondaryInstructors || []
     const rec = {
       dept_prefix: o.prefix,
       course_number: courseNumberLabel(o),
       course_section: offeringSectionLabel(o),
       title: o.title != null && o.title !== '' ? o.title : '',
-      instructor: o.instructor,
-      secondary_instr: (o.secondaryInstructors || []).join(', '),
+      instructor_name: instructorName(o.instructor, fullName),
+      secondary_instr_name: secondaries.map((n) => instructorName(n, fullName)).join(', '),
       days: o.days,
       times: isTime,
       seats: o.seats != null && o.seats !== '' ? o.seats : '',
+      instructor: o.instructor,
+      secondary_instr: secondaries.join(', '),
     }
     if (includesTerm) rec.term = o.term || ''
     return rec

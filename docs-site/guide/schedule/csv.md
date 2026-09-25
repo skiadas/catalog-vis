@@ -13,6 +13,11 @@ is one class meeting, with its department, course number, section, title,
 teacher, days, times, seats, and term. A blank title falls back to the catalog
 name.
 
+Instructors are listed twice: once as the username the schedule is keyed on, and
+once as a full name in **last, first** form (for example `Wahl, John`) drawn
+from the user directory. When someone is not in the directory — or you are
+offline — the full-name column repeats the username instead of going blank.
+
 For the owner, this is the schedule as it stands. For someone suggesting
 changes, it includes their **not-yet-submitted draft** — because the summary
 follows your screen.

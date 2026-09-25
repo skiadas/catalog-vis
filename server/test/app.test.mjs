@@ -1221,6 +1221,39 @@ test('username autocomplete searches the directory for any signed-in user', asyn
   }
 })
 
+test('the roster endpoint returns every account name for any signed-in user', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({
+    database,
+    services: ['schedule'],
+    adminUsernames: new Set(['alice']),
+  })
+  const srv = await startTestServer(app)
+  try {
+    const alice = srv.newClient()
+    assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
+    await alice.post('/api/admin/users', { username: 'wahl', displayName: 'John Wahl' })
+    await alice.post('/api/admin/users', { username: 'bob', displayName: 'Bob Skiadas' })
+
+    const carol = srv.newClient()
+    assert.equal((await carol.post('/api/auth/login', { username: 'carol' })).status, 200)
+    const roster = await carol.get('/api/users/roster')
+    assert.equal(roster.status, 200)
+    // Every account, names only, sorted by username (the repo's listUsers order).
+    assert.deepEqual(roster.json.users, [
+      { username: 'alice', displayName: null },
+      { username: 'bob', displayName: 'Bob Skiadas' },
+      { username: 'carol', displayName: null },
+      { username: 'wahl', displayName: 'John Wahl' },
+    ])
+    // Anonymous is refused.
+    assert.equal((await srv.newClient().get('/api/users/roster')).status, 401)
+  } finally {
+    srv.close()
+    database.close()
+  }
+})
+
 test('non-owner suggestions are scoped to their directory departments', async () => {
   const database = await openDb(':memory:')
   const app = createApp({

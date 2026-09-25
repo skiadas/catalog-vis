@@ -73,9 +73,14 @@ renumbered deterministically. A lab also shares its lecture's `title`
 ### Parsing + index
 
 - `CSV_COLUMNS` — the canonical column order (`dept_prefix`, `course_number`,
-  `course_section`, `title`, `instructor`, `secondary_instr`, `days`, `times`,
-  `seats`). `renderCsv` builds its header from it and the app's summary export
-  reuses `renderCsv`, so the order lives in one place.
+  `course_section`, `title`, `instructor_name`, `secondary_instr_name`, `days`,
+  `times`, `seats`, `instructor`, `secondary_instr`). `renderCsv` builds its
+  header from it and the app's summary export reuses `renderCsv`, so the order
+  lives in one place. The instructors come in two blocks: `instructor` /
+  `secondary_instr` carry the canonical **usernames** (the identity the
+  round-trip keys on) and sit last, just before the optional `term`;
+  `instructor_name` / `secondary_instr_name` carry the directory's human name in
+  "Last, First" form (see `lastFirst`) and sit up with the identity columns.
 - `parseCsv(text)` → `offering[]` (header-driven via `csv-parse`, so column
   order never matters; a UTF-8 BOM, CRLF endings, quoted cells with embedded
   commas/newlines, and ragged rows are tolerated; a malformed file yields `[]`
@@ -88,12 +93,22 @@ renumbered deterministically. A lab also shares its lecture's `title`
   is the offering's own title; the optional `seats` column
   is a positive integer defaulting to `DEFAULT_SEATS` (24) when absent/blank/
   invalid; `166L` + section-cell lab digits with deterministic labSeq for
-  colliding rows, and lab titles mirrored from their lecture)
-- `renderCsv(offerings)` → round-trip CSV written by `csv-stringify` from
-  `CSV_COLUMNS` (plus `term` when any row carries one), so the header and cells
-  can't drift apart: records are mapped by column name (`title` right after
-  `course_section`; `secondary_instr` quoted; `seats` blank when a row has none;
-  labs written back as `166L` + section digits `A1`/`A2`)
+  colliding rows, and lab titles mirrored from their lecture). The
+  `instructor_name`/`secondary_instr_name` columns are **display-only and
+  ignored**: identity comes from the username columns, so a feed that omits them
+  imports with blank instructors.
+- `renderCsv(offerings, { fullName } = {})` → round-trip CSV written by
+  `csv-stringify` from `CSV_COLUMNS` (plus `term` when any row carries one), so
+  the header and cells can't drift apart: records are mapped by column name
+  (`title` right after `course_section`; instructor columns quoted; `seats` blank
+  when a row has none; labs written back as `166L` + section digits `A1`/`A2`).
+  `fullName(username)` → the directory display name; the name columns are then
+  written as "Last, First". Without it — or for a username it does not know — the
+  name cell falls back to the username, so an offline export still names every
+  instructor.
+- `lastFirst(name)` → the directory full name in the registrar's "Last, First"
+  form (`"John Wahl"` → `"Wahl, John"`; an already-comma or single-token name
+  passes through unchanged)
 - `DEFAULT_SEATS = 24` (the fallback seat count)
 - `buildIndex(offerings)` → `{ byCourse, byDay, bySlot, byInstructor,
 unscheduled }`; each list is sorted (`compareItems`) and items carry

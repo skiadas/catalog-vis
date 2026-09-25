@@ -1288,7 +1288,16 @@ test('seats: imported counts show in the course view and persist an editor edit'
 // Offering titles: imported from the CSV, shown in the course view, edited in
 // the course editor (where a lab's field is disabled and mirrors its lecture),
 // and resolved in the CSV exports.
-test('offering titles: imported, shown in the course view, edited, and exported', async ({ page }) => {
+test('offering titles: imported, shown in the course view, edited, and exported', async ({
+  page,
+  request,
+}) => {
+  // Seed one directory name so the export's "Last, First" column resolves for a
+  // known instructor; the rest fall back to their usernames. The request
+  // context is separate from the page, so this does not touch the page session.
+  await request.post('/api/auth/login', { data: { username: 'registrar' } })
+  await request.post('/api/admin/users', { data: { username: 'wahl', displayName: 'John Wahl' } })
+
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page, 'title-user')
@@ -1320,6 +1329,11 @@ test('offering titles: imported, shown in the course view, edited, and exported'
   // exported constant, so adding a column needs no edit here). The body is read
   // back through parseCsv, so cell lookups are by column name, not position.
   expect(summary.split('\n')[0].split(',')).toEqual([...CSV_COLUMNS, 'term'])
+  // The username instructor columns moved to the end, just before the term.
+  expect(summary.split('\n')[0].endsWith('instructor,secondary_instr,term')).toBe(true)
+  // The directory resolves the "Last, First" name column; instructors absent
+  // from it fall back to their usernames (still covered by parseCsv below).
+  expect(summary).toContain('"Wahl, John"')
   const rows = parseCsv(summary)
   expect(rows.find((r) => r.prefix === 'MUS' && r.number === '001').title).toBe('Special Topics: Choir')
   expect(
