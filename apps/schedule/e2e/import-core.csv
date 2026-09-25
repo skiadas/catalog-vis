@@ -1,0 +1,6 @@
+dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats,core_reqs,term
+CS,220,A,,Wahl,,MWF,9:20-10:30,30,SM,F
+BIO,161,A,,Patterson,,MWF,8:00-9:10,24,SM,F
+ANTH,160,A,,Smith,,MWF,14:20-16:05,20,LA,F
+MAT,131,A,,Aydogan,,MWF,12:00-13:10,20,QL,F
+ENG,111,A,,NULL,,,,,,F

@@ -1098,6 +1098,16 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await blockTime.click()
   await page.getByRole('button', { name: 'Done' }).click()
 
+  // The core-requirements quick-stats dialog (opened from the picker cluster).
+  await page.getByRole('button', { name: 'Core stats' }).click()
+  const statsDialog = page.locator('.modal[aria-labelledby="core-stats-title"]')
+  await statsDialog.waitFor({ state: 'visible', timeout: 5000 })
+  await settle(page)
+  const statsViolations = await seriousViolations(page, '.modal[aria-labelledby="core-stats-title"]')
+  expect(brief(statsViolations), 'core stats dialog').toEqual([])
+  await statsDialog.getByRole('button', { name: 'Close' }).click()
+  await statsDialog.waitFor({ state: 'detached', timeout: 5000 })
+
   // A day view (buttons on cards) after opening a block's slot.
   await page.locator('.cal-block:not(.off-pattern) .cal-block-time').first().click()
   await page.locator('.cal-block-view').first().click()
@@ -1349,13 +1359,18 @@ test('offering titles: imported, shown in the course view, edited, and exported'
   // exported constant, so adding a column needs no edit here). The body is read
   // back through parseCsv, so cell lookups are by column name, not position.
   expect(summary.split('\n')[0].split(',')).toEqual([...CSV_COLUMNS, 'term'])
-  // The username instructor columns moved to the end, just before the term.
-  expect(summary.split('\n')[0].endsWith('instructor,secondary_instr,term')).toBe(true)
+  // The username instructor columns sit before the core-requirement column,
+  // which sits just before the term.
+  expect(summary.split('\n')[0].endsWith('instructor,secondary_instr,core_reqs,term')).toBe(true)
   // The directory resolves the "Last, First" name column; instructors absent
   // from it fall back to their usernames (still covered by parseCsv below).
   expect(summary).toContain('"Wahl, John"')
   const rows = parseCsv(summary)
   expect(rows.find((r) => r.prefix === 'MUS' && r.number === '001').title).toBe('Special Topics: Choir')
+  // The core_reqs column is resolved from the catalog: CS 220 satisfies SM; a
+  // course with no area exports a blank cell (parseCsv reads it as []).
+  expect(rows.find((r) => r.prefix === 'CS' && r.number === '220').coreReqs).toEqual(['SM'])
+  expect(rows.find((r) => r.prefix === 'MAT' && r.number === '131').coreReqs).toEqual([])
   expect(
     rows.find((r) => r.prefix === 'CS' && r.number === '220').title,
     'a blank offering title resolves to the catalog name',
@@ -1420,6 +1435,67 @@ test('offering titles: imported, shown in the course view, edited, and exported'
   await page
     .locator('.schedule-manage-row', { hasText: 'Title demo' })
     .getByRole('button', { name: 'Delete Title demo' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
+// Core requirements across the app: a course's areas show in the course view,
+// the core_reqs column is validated on import (disagreements flagged), the
+// calendar filters by area, and the picker's Core stats popup tabulates
+// offerings/seats per area.
+test('core requirements: course view, import flags, filter, and quick stats', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'core-user')
+
+  // Import a sheet whose core_reqs column disagrees with the catalog in two
+  // rows: BIO 161 omits QL, and ANTH 160 claims LA though the catalog lists no
+  // areas for it. CS 220's SM agrees; MAT 131 is not a catalog course at all, so
+  // it is counted (not flagged); ENG 111's blank cell is not compared.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', 'apps/schedule/e2e/import-core.csv')
+  await expect(page.getByText(/Imported 5 course row\(s\)/)).toBeVisible()
+  await expect(page.getByText(/2 row\(s\) disagree with the catalog's core requirements/)).toBeVisible()
+  await expect(page.getByText(/\(1 course\(s\) not in the catalog\)/)).toBeVisible()
+  await expect(page.getByText(/BIO 161 A: file says SM · catalog says SM, QL/)).toBeVisible()
+  await expect(page.getByText(/ANTH 160 A: file says LA · catalog says —/)).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Core demo')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Core demo' }).first().waitFor({ timeout: 10000 })
+
+  // The course view lists the area on the right.
+  await page.goto('/#/course/CS%20220', { waitUntil: 'networkidle' })
+  const aside = page.locator('.course-detail-aside')
+  await expect(aside.locator('.core-req-id')).toHaveText('SM')
+  await expect(aside).toContainText('Scientific and Mathematical Methods')
+
+  // The core filter narrows the grid: SM keeps CS 220 and drops ANTH 160.
+  await page.goto('/#/', { waitUntil: 'networkidle' })
+  await page.getByRole('group', { name: 'Filter by' }).getByRole('button', { name: /Core reqs/ }).click()
+  await page.locator('.filter-panel').getByRole('button', { name: 'SM', exact: true }).click()
+  await expect(page.locator('.cal-block[title="CS 220"]').first()).toBeVisible()
+  await expect(page.locator('.cal-block[title="ANTH 160"]')).toHaveCount(0)
+
+  // The quick-stats popup tabulates per area: SM Fall = 2 offerings, 54 seats.
+  await page.getByRole('button', { name: 'Core stats' }).click()
+  const dialog = page.locator('.modal[aria-labelledby="core-stats-title"]')
+  await dialog.waitFor({ state: 'visible', timeout: 5000 })
+  const smRow = dialog.getByRole('row', { name: /Scientific and Mathematical Methods/ })
+  await expect(smRow.locator('td').nth(1)).toHaveText('2 · 54')
+  await expect(smRow.locator('td').nth(4)).toHaveText('2 · 54')
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await dialog.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Clean up.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Core demo' })
+    .getByRole('button', { name: 'Delete Core demo' })
     .click()
   await closeManage(page)
   assertClean(errors)
