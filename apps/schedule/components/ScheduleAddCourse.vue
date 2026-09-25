@@ -29,7 +29,7 @@
         <p v-if="deptFiltered" class="field-hint schedule-add-scope">
           <template v-if="showAllCourses">Showing every catalog course.</template>
           <template v-else>Your departments: {{ deptListLabel }}.</template>
-          <button type="button" class="schedule-add-scope-toggle" @click="showAllCourses = !showAllCourses">
+          <button type="button" class="link-toggle" @click="showAllCourses = !showAllCourses">
             {{ showAllCourses ? 'Limit to my departments' : 'Show all catalog courses' }}
           </button>
         </p>

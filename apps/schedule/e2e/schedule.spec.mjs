@@ -45,6 +45,13 @@ const brief = (violations) =>
 // far below its real ratio); settle like the rest of the suite before scanning.
 const settle = (page) => page.waitForTimeout(400)
 
+// The "Other instructors" field collapses behind a trigger when the offering
+// has no co-teachers; expand it before interacting with the field.
+async function ensureOtherInstructors(em) {
+  const trigger = em.locator('.add-others-btn')
+  if (await trigger.count()) await trigger.click()
+}
+
 // Collects page errors + console errors for a page; the signed-in flows by
 // definition hit 401s before login and favicon misses, so filter those.
 function trackErrors(page, { signedIn = true } = {}) {
@@ -620,6 +627,7 @@ test('course editor guards unsaved changes, pins its actions, and completes inst
 
   // Change a field, then dismiss by clicking the overlay outside the dialog:
   // the foot asks before discarding.
+  await ensureOtherInstructors(em)
   await em.locator('#course-edit-secondary').fill('Test Person')
   const box = await em.boundingBox()
   await page.mouse.click(box.x + box.width / 2, Math.max(2, box.y - 10))
@@ -658,6 +666,7 @@ test('course editor guards unsaved changes, pins its actions, and completes inst
   // focus and fills the free-text field on pick.
   await page.locator('.filter-offering-edit').first().click()
   await em.waitFor({ state: 'visible', timeout: 5000 })
+  await ensureOtherInstructors(em)
   const sec = em.locator('#course-edit-secondary')
   await sec.focus()
   const firstSuggestion = em.locator('.course-picker-dropdown .course-picker-option').first()
@@ -719,6 +728,12 @@ test('instructor combobox suggests catalog faculty on a fresh schedule and accep
   // The department pool is the catalog BIO roster — a real faculty name is
   // suggested with nothing else in the schedule.
   await expect(em.locator('.course-picker-dropdown .course-picker-option', { hasText: 'Gall' })).toBeVisible()
+  // The dropdown's foot offers the department escape hatch; flipping it swaps
+  // the pool and the link's own label.
+  const scope = em.locator('.course-picker-scope')
+  await expect(scope).toHaveText('Show all instructors')
+  await scope.click()
+  await expect(scope).toHaveText('Limit to department')
   // Typing a name from nobody's roster closes the suggestions and stays legal.
   await inst.fill('Ada Lovelace')
   await expect(em.locator('.course-picker-dropdown')).toHaveCount(0)
@@ -1034,13 +1049,23 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await expect(grips.first()).not.toHaveAttribute('draggable')
   await expect(grips.first()).toHaveCSS('cursor', 'grab')
 
-  // The course editor: scan it open, then in its discard-confirm state.
+  // The course editor: scan it open (the collapsed "Other instructors"
+  // trigger is visible), its instructor dropdown (which carries the scope
+  // link), then its discard-confirm state.
   await page.locator('.filter-offering-edit').first().click()
   await settle(page)
   const editDialog = page.locator('.modal[aria-labelledby="course-edit-title"]')
   await editDialog.waitFor({ state: 'visible', timeout: 5000 })
   const editViolations = await seriousViolations(page, '.modal[aria-labelledby="course-edit-title"]')
   expect(brief(editViolations), 'course editor dialog').toEqual([])
+  await editDialog.locator('#course-edit-instructor').focus()
+  await settle(page)
+  const dropdownViolations = await seriousViolations(page, '.modal[aria-labelledby="course-edit-title"]')
+  expect(brief(dropdownViolations), 'instructor dropdown').toEqual([])
+  // Blur the combobox (focus the section field) so its dropdown closes, then
+  // make the form dirty to reach the discard-confirm state.
+  await editDialog.locator('#course-edit-section').focus()
+  await ensureOtherInstructors(editDialog)
   await editDialog.locator('#course-edit-secondary').fill('Test Person')
   await page.keyboard.press('Escape')
   await settle(page)

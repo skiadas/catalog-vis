@@ -24,7 +24,7 @@
       </div>
       <div class="modal-body">
         <p class="modal-intro">
-          {{ courseName }} — editing this offering in <strong>{{ schedule.name }}</strong> ({{ termLabel }}).
+          Editing this offering in <strong>{{ schedule.name }}</strong> ({{ termLabel }}).
           <template v-if="editingRole === 'suggest'"
             >These changes are collected into a proposal for the owner; nothing is written to the schedule
             until it's approved.</template
@@ -34,53 +34,15 @@
 
         <div class="field-row">
           <div class="field">
-            <label for="course-edit-instructor">Instructor</label>
-            <div class="filter-group" role="group" aria-label="Instructor list">
-              <button
-                class="filter-btn"
-                :class="{ active: !showAll }"
-                :aria-pressed="!showAll"
-                @click="showAll = false"
-              >
-                Department
-              </button>
-              <button
-                class="filter-btn"
-                :class="{ active: showAll }"
-                :aria-pressed="showAll"
-                @click="showAll = true"
-              >
-                All instructors
-              </button>
-            </div>
-            <div class="secondary-suggest-wrap" ref="instructorSuggestEl">
-              <input
-                id="course-edit-instructor"
-                ref="instructorEl"
-                class="search-input"
-                type="text"
-                v-model="instructorSel"
-                placeholder="Type or pick a name…"
-                @focus="instructorSuggestOpen = true"
-                @blur="onInstructorBlur"
-                @keydown.esc="instructorSuggestOpen = false"
-              />
-              <div
-                v-if="instructorSuggestOpen && instructorSuggestions.length"
-                class="course-picker-dropdown"
-              >
-                <button
-                  v-for="n in instructorSuggestions"
-                  :key="n"
-                  type="button"
-                  class="course-picker-option"
-                  @mousedown.prevent
-                  @click="pickInstructor(n)"
-                >
-                  <span class="planner-pick-code">{{ n }}</span>
-                </button>
-              </div>
-            </div>
+            <label for="course-edit-offering-title">Title</label>
+            <input
+              id="course-edit-offering-title"
+              class="search-input"
+              type="text"
+              v-model="titleSel"
+              :disabled="isLab"
+              :placeholder="courseName"
+            />
           </div>
 
           <div class="field field-fit">
@@ -108,56 +70,94 @@
             />
           </div>
         </div>
+        <p class="field-hint">
+          <template v-if="isLab">Labs share their lecture's title — edit it on the lecture section.</template>
+          <template v-else>Leave blank to use the catalog name ({{ courseName }}).</template>
+        </p>
 
-        <div class="field">
-          <label for="course-edit-offering-title">Title</label>
-          <input
-            id="course-edit-offering-title"
-            class="search-input"
-            type="text"
-            v-model="titleSel"
-            :disabled="isLab"
-            :placeholder="courseName"
-          />
-          <p v-if="isLab" class="field-hint">
-            Labs share their lecture's title — edit it on the lecture section.
-          </p>
-          <p v-else class="field-hint">
-            Leave blank to use the catalog name (<strong>{{ courseName }}</strong
-            >).
-          </p>
-        </div>
-
-        <div class="field">
-          <label for="course-edit-secondary">Other instructors</label>
-          <div class="secondary-suggest-wrap" ref="secondarySuggestEl">
-            <input
-              id="course-edit-secondary"
-              class="search-input"
-              type="text"
-              v-model="secondaryText"
-              placeholder="e.g. Smith, Jones"
-              @focus="suggestOpen = true"
-              @blur="onSecondaryBlur"
-              @keydown.esc="suggestOpen = false"
-            />
-            <div v-if="suggestOpen && secondarySuggestions.length" class="course-picker-dropdown">
-              <button
-                v-for="n in secondarySuggestions"
-                :key="n"
-                type="button"
-                class="course-picker-option"
-                @mousedown.prevent
-                @click="pickSecondary(n)"
+        <div class="field-row">
+          <div class="field">
+            <label for="course-edit-instructor">Instructor</label>
+            <div class="secondary-suggest-wrap" ref="instructorSuggestEl">
+              <input
+                id="course-edit-instructor"
+                ref="instructorEl"
+                class="search-input"
+                type="text"
+                v-model="instructorSel"
+                placeholder="Type or pick a name…"
+                @focus="instructorSuggestOpen = true"
+                @blur="onInstructorBlur"
+                @keydown.esc="instructorSuggestOpen = false"
+              />
+              <div
+                v-if="instructorSuggestOpen && instructorSuggestions.length"
+                class="course-picker-dropdown"
               >
-                <span class="planner-pick-code">{{ n }}</span>
-              </button>
+                <button
+                  v-for="n in instructorSuggestions"
+                  :key="n"
+                  type="button"
+                  class="course-picker-option"
+                  @mousedown.prevent
+                  @click="pickInstructor(n)"
+                >
+                  <span class="planner-pick-code">{{ n }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="course-picker-scope link-toggle"
+                  @mousedown.prevent
+                  @click="showAll = !showAll"
+                >
+                  {{ showAll ? 'Limit to department' : 'Show all instructors' }}
+                </button>
+              </div>
             </div>
           </div>
-          <p class="field-hint">
-            Comma-separated (like the registrar's <code>secondary_instr</code> column); leave blank for none.
-          </p>
+
+          <div class="field">
+            <template v-if="secondaryOpen">
+              <label for="course-edit-secondary">Other instructors</label>
+              <div class="secondary-suggest-wrap" ref="secondarySuggestEl">
+                <input
+                  id="course-edit-secondary"
+                  class="search-input"
+                  type="text"
+                  v-model="secondaryText"
+                  placeholder="e.g. Smith, Jones"
+                  @focus="suggestOpen = true"
+                  @blur="onSecondaryBlur"
+                  @keydown.esc="suggestOpen = false"
+                />
+                <div v-if="suggestOpen && secondarySuggestions.length" class="course-picker-dropdown">
+                  <button
+                    v-for="n in secondarySuggestions"
+                    :key="n"
+                    type="button"
+                    class="course-picker-option"
+                    @mousedown.prevent
+                    @click="pickSecondary(n)"
+                  >
+                    <span class="planner-pick-code">{{ n }}</span>
+                  </button>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <span class="field-label">Other instructors</span>
+              <button
+                type="button"
+                class="filter-btn add-others-btn"
+                aria-label="Add other instructors"
+                @click="secondaryOpen = true"
+              >
+                ＋ Add
+              </button>
+            </template>
+          </div>
         </div>
+        <p v-if="secondaryOpen" class="field-hint">Comma-separated; leave blank for none.</p>
 
         <div class="field">
           <span class="field-label">Meeting time</span>
@@ -511,6 +511,9 @@ export default {
     const listKey = (names) =>
       [...new Set((names || []).map((n) => String(n || '').trim()).filter(Boolean))].join(',')
     const secondaryText = ref((o.secondaryInstructors || []).join(', '))
+    // Most courses have no co-teachers, so the field stays collapsed behind a
+    // trigger unless this offering already has some (or the user expands it).
+    const secondaryOpen = ref(Boolean((o.secondaryInstructors || []).length))
     const secondaryNames = computed(() => [
       ...new Set(
         secondaryText.value
@@ -826,6 +829,7 @@ export default {
       pickInstructor,
       secondaryText,
       secondaryNames,
+      secondaryOpen,
       instructorPool,
       suggestOpen,
       secondarySuggestEl,

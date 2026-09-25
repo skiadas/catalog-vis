@@ -229,17 +229,23 @@ course / Cancel / Save changes never scroll out of view), and closing a
 dirty editor — outside click, ×, or Escape — asks before discarding: the
 foot swaps to "Discard your unsaved changes?" with **Keep editing** /
 **Discard** (deliberate exits — Cancel, Save, Remove — close directly). The
-"Other instructors" field autocompletes from the term's instructor roster,
-matching the last comma-separated token ("Smith, Jo" → pick Jones), replacing
-the old chip wall. Its **Seats** field edits the offering's requested seat
-count (a positive integer, default 24); the `#/course/:code` view prints the
-count beside each section's time so a course's per-section limits are visible
-without opening the editor. Its **Title** field edits the offering's own
-title — blank falls back to the catalog name (a special-topics topic can be
-set per offering without touching the catalog). On a lab the field is
-disabled: a lab shares its lecture's title, and editing the lecture's title
-cascades to its labs. The `#/course/:code` view prints an offering's title
-when it differs from the catalog name.
+identity row carries **Title | Section | Seats**; the people row carries
+**Instructor | Other instructors**. The instructor autocomplete draws from the
+course's department roster, with a "Show all instructors" scope link at the
+foot of its dropdown (an existing instructor outside the department opens the
+dropdown on the all-instructors pool instead). The "Other instructors" field
+autocompletes from the term's roster, matching the last comma-separated token
+("Smith, Jo" → pick Jones); it stays collapsed behind a **＋ Add** trigger
+unless the offering already has co-teachers. Its **Seats** field edits the
+offering's requested seat count (a positive integer, default 24); the
+`#/course/:code` view prints the count beside each section's time so a
+course's per-section limits are visible without opening the editor. Its
+**Title** field edits the offering's own title — blank falls back to the
+catalog name (a special-topics topic can be set per offering without touching
+the catalog). On a lab the field is disabled: a lab shares its lecture's
+title, and editing the lecture's title cascades to its labs. The
+`#/course/:code` view prints an offering's title when it differs from the
+catalog name.
 
 **Recent changes & history**: the edit bar's **History** button opens the
 session's change list. It is not an undo stack: the panel shows the **net

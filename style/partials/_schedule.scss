@@ -246,20 +246,6 @@
   gap: var(--space-2);
   margin: 0 0 8px;
 }
-.schedule-add-scope-toggle {
-  border: none;
-  background: none;
-  padding: 4px 0;
-  min-height: 24px;
-  color: var(--primary);
-  text-decoration: underline;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-.schedule-add-scope-toggle:hover {
-  background: var(--primary-12);
-}
 .schedule-add-list {
   max-height: 40vh;
   min-height: 80px;
@@ -293,7 +279,8 @@
 .add-lab-row {
   margin: 0 0 var(--space-3);
 }
-.add-lab-btn {
+.add-lab-btn,
+.add-others-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;

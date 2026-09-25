@@ -15,10 +15,12 @@ setting for one section lives.
   catalog name; type one for a special-topics section whose topic differs. A
   lab follows its lecture's title (its field is locked), so edit that on the
   lecture.
-- **Instructor** — start from **Department** or **All instructors**, then pick a
-  name, or type one.
-- **Other instructors** — anyone who co-teaches, separated by commas. Leave it
-  blank if there is only one teacher.
+- **Instructor** — start typing, or pick from the name suggestions. The
+  suggestions come from the course's department; if the person isn't there, use
+  **Show all instructors** at the bottom of the list, or just type the name.
+- **Other instructors** — anyone who co-teaches, separated by commas. It stays
+  tucked behind **＋ Add** until you need it; leave it empty/closed if there is
+  only one teacher.
 - **Meeting time** — three choices:
   - **Time slot** — pick a day group (**MWF** or **TR**) and one of the standard
     times.

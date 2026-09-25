@@ -421,6 +421,29 @@ body {
   overflow-y: auto;
   box-shadow: var(--shadow-md);
 }
+/* A borderless, underlined text button (the "escape hatch" pattern: add-course
+   scope, instructor scope). */
+.link-toggle {
+  border: none;
+  background: none;
+  padding: 4px 0;
+  min-height: 24px;
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.link-toggle:hover {
+  background: var(--primary-12);
+}
+/* The instructor dropdown's scope link sits at its foot, separated by a rule. */
+.course-picker-scope {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+}
 .course-picker-option {
   @include button-reset;
   display: flex;
