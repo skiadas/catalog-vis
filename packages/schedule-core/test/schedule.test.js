@@ -80,6 +80,7 @@ const OFF = (fields = {}) => ({
   days: '',
   time: '',
   seats: DEFAULT_SEATS,
+  coreReqs: [],
   ...fields,
 })
 
@@ -873,6 +874,69 @@ test('renderCsv writes the seats column (blank when a row has none) and round-tr
     parseCsv(csv).map((r) => r.seats),
     [30, DEFAULT_SEATS],
   )
+})
+
+test('parseCsv reads core_reqs as a comma list (blank/NULL = none) and dedupes', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times,core_reqs',
+      'CS,220,A,Wahl,MWF,9:20-10:30,"SM, LA,SM"',
+      'MAT,131,A,Aydogan,MWF,14:20-16:05,',
+      'ENG,111,A,Doe,,,NULL',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.coreReqs),
+    [['SM', 'LA'], [], []],
+  )
+})
+
+test('core_reqs is always present on parsed records (default empty)', () => {
+  const [row] = parseCsv(
+    'dept_prefix,course_number,course_section,instructor,days,times\nCS,101,A,Vosmeier,MWF,9:20-10:30\n',
+  )
+  assert.deepEqual(row.coreReqs, [])
+})
+
+test('renderCsv writes the core_reqs column (blank when absent) and round-trips it', () => {
+  const csv = renderCsv([
+    {
+      prefix: 'CS',
+      number: '220',
+      section: 'A',
+      instructor: 'Wahl',
+      days: 'MWF',
+      time: '9:20-10:30',
+      coreReqs: ['SM', 'LA'],
+    },
+    { prefix: 'MAT', number: '131', section: 'A', instructor: 'Aydogan', days: 'MWF', time: '14:20-16:05' },
+  ])
+  assert.equal(headerOf(csv).at(-1), 'core_reqs')
+  assert.deepEqual(
+    parseCsv(csv).map((r) => r.coreReqs),
+    [['SM', 'LA'], []],
+  )
+  assert.deepEqual(parseCsv(csv), [
+    OFF({
+      prefix: 'CS',
+      number: '220',
+      section: 'A',
+      instructor: 'Wahl',
+      days: 'MWF',
+      time: '9:20-10:30',
+      coreReqs: ['SM', 'LA'],
+      id: offeringIdFor({ prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '9:20-10:30' }),
+    }),
+    OFF({
+      prefix: 'MAT',
+      number: '131',
+      section: 'A',
+      instructor: 'Aydogan',
+      days: 'MWF',
+      time: '14:20-16:05',
+      id: offeringIdFor({ prefix: 'MAT', number: '131', section: 'A', days: 'MWF', time: '14:20-16:05' }),
+    }),
+  ])
 })
 
 test('parseCsv reads a title column (blank/NULL = none)', () => {
