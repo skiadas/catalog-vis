@@ -79,6 +79,17 @@
               <span class="core-req-label">{{ r.label }}</span>
             </li>
           </ul>
+
+          <div v-if="crossList" class="cross-list-note">
+            <div class="section-title">Cross-listed</div>
+            <p class="core-req-label">
+              Also listed as {{ crossList.others.join(', ') }}.
+              <template v-if="crossList.present.length">
+                On this schedule: {{ crossList.present.join(', ') }}.
+              </template>
+              <template v-if="crossList.owner"> Maintained by {{ crossList.owner }}.</template>
+            </p>
+          </div>
         </aside>
       </div>
     </div>
@@ -93,7 +104,13 @@
 <script>
 import { useRoute } from 'vue-router'
 import { schedule, scheduleOfferings, instructorName } from '../src/scheduleStore.js'
-import { courseByCode, courseName, coreReqLabel, coreReqsByCode } from '@major-vis/catalog-client'
+import {
+  courseByCode,
+  courseName,
+  coreReqLabel,
+  coreReqsByCode,
+  crossListOf,
+} from '@major-vis/catalog-client'
 import {
   conflictsForCourse,
   formatTime,
@@ -122,6 +139,15 @@ export default {
     const coreReqs = computed(() =>
       (coreReqsByCode().get(code.value) || []).map((id) => ({ id, label: coreReqLabel(id) })),
     )
+    // Cross-listing: the other catalog codes, and which of them are on this
+    // term's schedule (the sibling versions). The owner comes from the row.
+    const crossList = computed(() => {
+      const others = crossListOf(code.value)
+      if (!others.length) return null
+      const present = others.filter((c) => (schedule.value.byCourse[c] || []).length > 0)
+      const owner = (sections.value[0] && sections.value[0].o.crossListOwner) || null
+      return { others, present, owner }
+    })
     const nameFor = courseName
     // The offering's own title, shown only when it differs from the catalog
     // name (the header already carries the catalog name for the course).
@@ -141,6 +167,7 @@ export default {
       nameFor,
       offeringTitle,
       coreReqs,
+      crossList,
       colorForCoreReq,
       instructorName,
       formatTime,

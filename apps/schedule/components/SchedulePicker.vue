@@ -150,7 +150,7 @@ import {
   editingRole,
 } from '../src/scheduleStore.js'
 import { colorForSchedule, compareItems, renderCsv } from '@major-vis/schedule-core'
-import { courseName as catalogCourseName } from '@major-vis/catalog-client'
+import { courseName as catalogCourseName, crossListOf } from '@major-vis/catalog-client'
 import { fetchRoster } from '../src/backend.js'
 import { buildNameIndex, usernameKey, displayName } from '../src/names.js'
 import CoreStats from './CoreStats.vue'
@@ -222,6 +222,18 @@ export default {
     // the catalog (like the title): `renderCsv` stays catalog-free, so the app
     // fills `coreReqs` on each row and the column is written from `CSV_COLUMNS`.
     const coreReqsFor = (o) => coreReqsByCode.value.get(`${o.prefix} ${o.number}`) || []
+    // The other department prefixes this row is cross-listed with *and that are
+    // materialized in the same term* (the export's "materialized versions only"
+    // cross_listed column).
+    const crossListedPrefixes = (offerings, o) => {
+      const others = crossListOf(`${o.prefix} ${o.number}`)
+      if (!others.length) return []
+      return others
+        .filter((code) =>
+          offerings.some((x) => !x.lab && `${x.prefix} ${x.number}` === code && x.section === o.section),
+        )
+        .map((code) => code.split(' ')[0])
+    }
     // The directory resolver behind the CSV export's "Last, First" name
     // columns: `renderCsv` asks it for a username's display name. The roster is
     // fetched fresh per export (so an admin's latest import is included); an
@@ -258,7 +270,13 @@ export default {
           compareItems({ o: a }, { o: b }),
         )
         for (const o of offerings) {
-          rows.push({ ...o, title: effectiveTitle(o), coreReqs: coreReqsFor(o), term: activeTerm.value })
+          rows.push({
+            ...o,
+            title: effectiveTitle(o),
+            coreReqs: coreReqsFor(o),
+            crossListed: crossListedPrefixes(offerings, o),
+            term: activeTerm.value,
+          })
         }
       }
       const csv = renderCsv(rows, { fullName: await fullNameResolver() })
@@ -273,8 +291,14 @@ export default {
       if (!s) return
       const rows = []
       for (const t of Object.keys(s.terms || {})) {
-        for (const o of publishedOfferings(s, t).map((x) => ({ ...x, term: t }))) {
-          rows.push({ ...o, title: effectiveTitle(o), coreReqs: coreReqsFor(o) })
+        const offerings = publishedOfferings(s, t)
+        for (const o of offerings.map((x) => ({ ...x, term: t }))) {
+          rows.push({
+            ...o,
+            title: effectiveTitle(o),
+            coreReqs: coreReqsFor(o),
+            crossListed: crossListedPrefixes(offerings, o),
+          })
         }
       }
       const csv = renderCsv(rows, { fullName: await fullNameResolver() })

@@ -17,7 +17,7 @@
           :item="it"
           :filter-active="filter.active"
           :color="filter.active ? filter.color(it) : ''"
-          :editable="isEditable(it)"
+          :editable="canOpenEditor(it)"
           :draggable="isEditable(it)"
           :drag-day="''"
           @edit="openCourseEdit(it)"
@@ -91,10 +91,17 @@ export default {
     // departments in a non-owner suggest session.
     const isEditable = (it) =>
       editingScheduleId.value != null && it.sid === editingScheduleId.value && canTouchOffering(it.sid, it.o)
+    // The editor also opens for a version the session may only remove (a member
+    // of a cross-list group owned elsewhere).
+    const canOpenEditor = (it) =>
+      editingScheduleId.value != null &&
+      it.sid === editingScheduleId.value &&
+      (canTouchOffering(it.sid, it.o, 'edit') || canTouchOffering(it.sid, it.o, 'remove'))
     return {
       items,
       editMode,
       isEditable,
+      canOpenEditor,
       formatTime,
       offeringItemKey,
       activeTerm,

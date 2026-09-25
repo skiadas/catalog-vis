@@ -283,6 +283,20 @@ body {
 .core-stat-total {
   font-weight: var(--weight-semibold);
 }
+.cross-list-block {
+  @include surface;
+  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-3);
+}
+.cross-list-note {
+  margin-top: var(--space-4);
+}
+.schedule-add-xlist {
+  margin-left: auto;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
 .course-chip {
   display: inline-flex;
   align-items: center;

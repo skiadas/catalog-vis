@@ -42,6 +42,13 @@
           >
             <span class="planner-pick-code">{{ code }}</span>
             <span class="planner-pick-name">{{ courseName(code) }}</span>
+            <span
+              v-if="crossPrefixes(code).length"
+              class="schedule-add-xlist"
+              :title="'Cross-listed with ' + crossPrefixes(code).join(', ')"
+            >
+              x-list: {{ crossPrefixes(code).join(', ') }}
+            </span>
           </button>
           <div v-if="!addCourseResults.length" class="course-picker-empty">No courses match.</div>
         </div>
@@ -63,7 +70,7 @@ import {
   openCourseEdit,
   myDepartments,
 } from '../src/scheduleStore.js'
-import { allCourses, courseName } from '@major-vis/catalog-client'
+import { allCourses, courseName, crossListOf } from '@major-vis/catalog-client'
 import { compareCodes } from '@major-vis/schedule-core'
 import { useModalFocus } from '../src/modalFocus.js'
 
@@ -101,6 +108,9 @@ export default {
       return list
     })
     const editingName = computed(() => (editingSchedule.value ? editingSchedule.value.name : ''))
+    // The other department prefixes a course is cross-listed with, for the
+    // option tag (`['ENGR', 'PHI']`), or [] when it isn't cross-listed.
+    const crossPrefixes = (code) => crossListOf(code).map((c) => String(c).split(' ')[0])
 
     // The modal stays mounted between opens, so reset its transient scope/search
     // state on close rather than leaking it into the next open.
@@ -132,6 +142,7 @@ export default {
       showAllCourses,
       addCourse,
       courseName,
+      crossPrefixes,
     }
   },
 }

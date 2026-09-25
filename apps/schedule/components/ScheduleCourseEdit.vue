@@ -23,7 +23,7 @@
         <button class="modal-close" @click="close" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
-        <p class="modal-intro">
+        <p v-if="canEdit" class="modal-intro">
           Editing this offering in <strong>{{ schedule.name }}</strong> ({{ termLabel }}).
           <template v-if="editingRole === 'suggest'"
             >These changes are collected into a proposal for the owner; nothing is written to the schedule
@@ -31,247 +31,274 @@
           >
           <template v-else>Any changes are saved to this schedule in your browser.</template>
         </p>
-
-        <div class="field-row">
-          <div class="field">
-            <label for="course-edit-offering-title">Title</label>
-            <input
-              id="course-edit-offering-title"
-              class="search-input"
-              type="text"
-              v-model="titleSel"
-              :disabled="isLab"
-              :placeholder="courseName"
-            />
-          </div>
-
-          <div class="field field-fit">
-            <label for="course-edit-section">Section</label>
-            <input
-              id="course-edit-section"
-              class="search-input"
-              type="text"
-              maxlength="4"
-              v-model="sectionSel"
-              placeholder="A"
-            />
-          </div>
-
-          <div class="field field-fit">
-            <label for="course-edit-seats">Seats</label>
-            <input
-              id="course-edit-seats"
-              class="search-input"
-              type="number"
-              min="1"
-              step="1"
-              v-model.number="seatsSel"
-              placeholder="24"
-            />
-          </div>
-        </div>
-        <p class="field-hint">
-          <template v-if="isLab">Labs share their lecture's title — edit it on the lecture section.</template>
-          <template v-else>Leave blank to use the catalog name ({{ courseName }}).</template>
+        <p v-else class="modal-intro">
+          This cross-listed version is maintained by <strong>{{ crossState && crossState.owner }}</strong
+          >. You can remove your listing, but only the owning department edits it.
         </p>
 
-        <div class="field-row">
-          <div class="field">
-            <label for="course-edit-instructor">Instructor</label>
-            <div class="secondary-suggest-wrap" ref="instructorSuggestEl">
+        <template v-if="canEdit">
+          <div class="field-row">
+            <div class="field">
+              <label for="course-edit-offering-title">Title</label>
               <input
-                id="course-edit-instructor"
-                ref="instructorEl"
+                id="course-edit-offering-title"
                 class="search-input"
                 type="text"
-                v-model="instructorSel"
-                placeholder="Type or pick a name…"
-                @focus="instructorSuggestOpen = true"
-                @blur="onInstructorBlur"
-                @keydown.esc="instructorSuggestOpen = false"
+                v-model="titleSel"
+                :disabled="isLab"
+                :placeholder="courseName"
               />
-              <div
-                v-if="instructorSuggestOpen && instructorSuggestions.length"
-                class="course-picker-dropdown"
-              >
-                <button
-                  v-for="opt in instructorSuggestions"
-                  :key="opt.value"
-                  type="button"
-                  class="course-picker-option"
-                  :title="opt.value"
-                  :aria-label="opt.value === opt.label ? opt.label : opt.label + ' (' + opt.value + ')'"
-                  @mousedown.prevent
-                  @click="pickInstructor(opt)"
-                >
-                  <span class="planner-pick-code">{{ opt.label }}</span>
-                </button>
-                <button
-                  type="button"
-                  class="course-picker-scope link-toggle"
-                  @mousedown.prevent
-                  @click="showAll = !showAll"
-                >
-                  {{ showAll ? 'Limit to department' : 'Show all instructors' }}
-                </button>
-              </div>
+            </div>
+
+            <div class="field field-fit">
+              <label for="course-edit-section">Section</label>
+              <input
+                id="course-edit-section"
+                class="search-input"
+                type="text"
+                maxlength="4"
+                v-model="sectionSel"
+                placeholder="A"
+              />
+            </div>
+
+            <div class="field field-fit">
+              <label for="course-edit-seats">Seats</label>
+              <input
+                id="course-edit-seats"
+                class="search-input"
+                type="number"
+                min="1"
+                step="1"
+                v-model.number="seatsSel"
+                placeholder="24"
+              />
             </div>
           </div>
+          <p class="field-hint">
+            <template v-if="isLab"
+              >Labs share their lecture's title — edit it on the lecture section.</template
+            >
+            <template v-else>Leave blank to use the catalog name ({{ courseName }}).</template>
+          </p>
 
-          <div class="field">
-            <template v-if="secondaryOpen">
-              <label for="course-edit-secondary">Other instructors</label>
-              <div class="secondary-suggest-wrap" ref="secondarySuggestEl">
+          <div class="field-row">
+            <div class="field">
+              <label for="course-edit-instructor">Instructor</label>
+              <div class="secondary-suggest-wrap" ref="instructorSuggestEl">
                 <input
-                  id="course-edit-secondary"
+                  id="course-edit-instructor"
+                  ref="instructorEl"
                   class="search-input"
                   type="text"
-                  v-model="secondaryText"
-                  placeholder="e.g. Smith, Jones"
-                  @focus="suggestOpen = true"
-                  @blur="onSecondaryBlur"
-                  @keydown.esc="suggestOpen = false"
+                  v-model="instructorSel"
+                  placeholder="Type or pick a name…"
+                  @focus="instructorSuggestOpen = true"
+                  @blur="onInstructorBlur"
+                  @keydown.esc="instructorSuggestOpen = false"
                 />
-                <div v-if="suggestOpen && secondarySuggestions.length" class="course-picker-dropdown">
+                <div
+                  v-if="instructorSuggestOpen && instructorSuggestions.length"
+                  class="course-picker-dropdown"
+                >
                   <button
-                    v-for="opt in secondarySuggestions"
+                    v-for="opt in instructorSuggestions"
                     :key="opt.value"
                     type="button"
                     class="course-picker-option"
                     :title="opt.value"
                     :aria-label="opt.value === opt.label ? opt.label : opt.label + ' (' + opt.value + ')'"
                     @mousedown.prevent
-                    @click="pickSecondary(opt)"
+                    @click="pickInstructor(opt)"
                   >
                     <span class="planner-pick-code">{{ opt.label }}</span>
                   </button>
+                  <button
+                    type="button"
+                    class="course-picker-scope link-toggle"
+                    @mousedown.prevent
+                    @click="showAll = !showAll"
+                  >
+                    {{ showAll ? 'Limit to department' : 'Show all instructors' }}
+                  </button>
                 </div>
               </div>
-            </template>
-            <template v-else>
-              <span class="field-label">Other instructors</span>
-              <button
-                type="button"
-                class="filter-btn add-others-btn"
-                aria-label="Add other instructors"
-                @click="secondaryOpen = true"
-              >
-                ＋ Add
-              </button>
-            </template>
-          </div>
-        </div>
-        <p v-if="secondaryOpen" class="field-hint">Comma-separated; leave blank for none.</p>
-
-        <div class="field">
-          <span class="field-label">Meeting time</span>
-          <div class="seg" role="group" aria-label="Meeting time">
-            <button
-              class="seg-btn"
-              :class="{ active: timeMode === 'slot' }"
-              :aria-pressed="timeMode === 'slot'"
-              @click="timeMode = 'slot'"
-            >
-              Time slot
-            </button>
-            <button
-              class="seg-btn"
-              :class="{ active: timeMode === 'custom' }"
-              :aria-pressed="timeMode === 'custom'"
-              @click="timeMode = 'custom'"
-            >
-              Custom time
-            </button>
-            <button
-              class="seg-btn"
-              :class="{ active: timeMode === 'none' }"
-              :aria-pressed="timeMode === 'none'"
-              @click="timeMode = 'none'"
-            >
-              No meeting time
-            </button>
-          </div>
-
-          <div v-if="timeMode !== 'none'" class="slot-time-groups">
-            <div
-              class="slot-time-group"
-              v-for="g in dayGroups"
-              :key="g.label"
-              :class="{ inactive: timeGroupSel !== g.label }"
-            >
-              <button
-                class="slot-time-group-name"
-                :class="{ active: timeGroupSel === g.label }"
-                :aria-pressed="timeGroupSel === g.label"
-                @click="pickGroup(g.label)"
-              >
-                {{ g.label }}
-              </button>
-              <div class="slot-time-group-days">
-                <button
-                  v-for="d in g.days"
-                  :key="d"
-                  type="button"
-                  class="day-chip"
-                  :class="{ active: daysSel.includes(d), disabled: timeGroupSel !== g.label }"
-                  :disabled="timeGroupSel !== g.label"
-                  :aria-pressed="daysSel.includes(d)"
-                  @click="timeGroupSel === g.label && toggleDay(d)"
-                >
-                  {{ d }}
-                </button>
-              </div>
-              <div v-if="timeMode === 'slot'" class="slot-time-opts">
-                <button
-                  v-for="s in slotsForGroup(g.label)"
-                  :key="s"
-                  type="button"
-                  class="filter-btn slot-time-btn"
-                  :class="{ active: timeSel === s }"
-                  :disabled="timeGroupSel !== g.label"
-                  @click="timeGroupSel === g.label && (timeSel = s)"
-                >
-                  {{ s }}
-                </button>
-              </div>
             </div>
 
-            <div v-if="timeMode === 'custom'" class="custom-time-row">
-              <input
-                ref="startTimeEl"
-                class="search-input"
-                type="text"
-                placeholder="e.g. 09:00"
-                :value="customStart"
-                aria-label="Start time"
-                @change="onStartTimeInput"
-              />
-              <span class="custom-time-sep">to</span>
-              <input
-                ref="endTimeEl"
-                class="search-input"
-                type="text"
-                placeholder="e.g. 10:00"
-                :value="customEnd"
-                aria-label="End time"
-                @change="onEndTimeInput"
-              />
+            <div class="field">
+              <template v-if="secondaryOpen">
+                <label for="course-edit-secondary">Other instructors</label>
+                <div class="secondary-suggest-wrap" ref="secondarySuggestEl">
+                  <input
+                    id="course-edit-secondary"
+                    class="search-input"
+                    type="text"
+                    v-model="secondaryText"
+                    placeholder="e.g. Smith, Jones"
+                    @focus="suggestOpen = true"
+                    @blur="onSecondaryBlur"
+                    @keydown.esc="suggestOpen = false"
+                  />
+                  <div v-if="suggestOpen && secondarySuggestions.length" class="course-picker-dropdown">
+                    <button
+                      v-for="opt in secondarySuggestions"
+                      :key="opt.value"
+                      type="button"
+                      class="course-picker-option"
+                      :title="opt.value"
+                      :aria-label="opt.value === opt.label ? opt.label : opt.label + ' (' + opt.value + ')'"
+                      @mousedown.prevent
+                      @click="pickSecondary(opt)"
+                    >
+                      <span class="planner-pick-code">{{ opt.label }}</span>
+                    </button>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <span class="field-label">Other instructors</span>
+                <button
+                  type="button"
+                  class="filter-btn add-others-btn"
+                  aria-label="Add other instructors"
+                  @click="secondaryOpen = true"
+                >
+                  ＋ Add
+                </button>
+              </template>
             </div>
-            <p v-if="timeHint" class="field-hint">{{ timeHint }}</p>
           </div>
-          <p v-else class="field-hint">
-            Independent studies and the like can sit in the schedule without a meeting time.
+          <p v-if="secondaryOpen" class="field-hint">Comma-separated; leave blank for none.</p>
+
+          <div class="field">
+            <span class="field-label">Meeting time</span>
+            <div class="seg" role="group" aria-label="Meeting time">
+              <button
+                class="seg-btn"
+                :class="{ active: timeMode === 'slot' }"
+                :aria-pressed="timeMode === 'slot'"
+                @click="timeMode = 'slot'"
+              >
+                Time slot
+              </button>
+              <button
+                class="seg-btn"
+                :class="{ active: timeMode === 'custom' }"
+                :aria-pressed="timeMode === 'custom'"
+                @click="timeMode = 'custom'"
+              >
+                Custom time
+              </button>
+              <button
+                class="seg-btn"
+                :class="{ active: timeMode === 'none' }"
+                :aria-pressed="timeMode === 'none'"
+                @click="timeMode = 'none'"
+              >
+                No meeting time
+              </button>
+            </div>
+
+            <div v-if="timeMode !== 'none'" class="slot-time-groups">
+              <div
+                class="slot-time-group"
+                v-for="g in dayGroups"
+                :key="g.label"
+                :class="{ inactive: timeGroupSel !== g.label }"
+              >
+                <button
+                  class="slot-time-group-name"
+                  :class="{ active: timeGroupSel === g.label }"
+                  :aria-pressed="timeGroupSel === g.label"
+                  @click="pickGroup(g.label)"
+                >
+                  {{ g.label }}
+                </button>
+                <div class="slot-time-group-days">
+                  <button
+                    v-for="d in g.days"
+                    :key="d"
+                    type="button"
+                    class="day-chip"
+                    :class="{ active: daysSel.includes(d), disabled: timeGroupSel !== g.label }"
+                    :disabled="timeGroupSel !== g.label"
+                    :aria-pressed="daysSel.includes(d)"
+                    @click="timeGroupSel === g.label && toggleDay(d)"
+                  >
+                    {{ d }}
+                  </button>
+                </div>
+                <div v-if="timeMode === 'slot'" class="slot-time-opts">
+                  <button
+                    v-for="s in slotsForGroup(g.label)"
+                    :key="s"
+                    type="button"
+                    class="filter-btn slot-time-btn"
+                    :class="{ active: timeSel === s }"
+                    :disabled="timeGroupSel !== g.label"
+                    @click="timeGroupSel === g.label && (timeSel = s)"
+                  >
+                    {{ s }}
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="timeMode === 'custom'" class="custom-time-row">
+                <input
+                  ref="startTimeEl"
+                  class="search-input"
+                  type="text"
+                  placeholder="e.g. 09:00"
+                  :value="customStart"
+                  aria-label="Start time"
+                  @change="onStartTimeInput"
+                />
+                <span class="custom-time-sep">to</span>
+                <input
+                  ref="endTimeEl"
+                  class="search-input"
+                  type="text"
+                  placeholder="e.g. 10:00"
+                  :value="customEnd"
+                  aria-label="End time"
+                  @change="onEndTimeInput"
+                />
+              </div>
+              <p v-if="timeHint" class="field-hint">{{ timeHint }}</p>
+            </div>
+            <p v-else class="field-hint">
+              Independent studies and the like can sit in the schedule without a meeting time.
+            </p>
+          </div>
+
+          <div v-if="!isLab" class="add-lab-row">
+            <button v-if="!labAdded" class="filter-btn add-lab-btn" @click="addLab">
+              <IconFlaskConical :size="13" :stroke-width="2.2" />
+              Add lab section
+            </button>
+            <p v-else class="add-lab-confirm" role="status">
+              Lab added — <strong>{{ labLabel }}</strong
+              >. It's in the <strong>No meeting times</strong> strip; drag it onto a slot to schedule it.
+            </p>
+          </div>
+        </template>
+
+        <div v-if="crossState && crossState.crossListed" class="cross-list-block">
+          <p class="field-hint">
+            <strong>Cross-listed:</strong>
+            {{ crossState.otherCodes.join(', ') }}
+            <template v-if="crossState.owner"> · maintained by {{ crossState.owner }}</template>
+            <template v-else> · no owner yet — your next edit claims maintenance</template>
           </p>
-        </div>
-
-        <div v-if="!isLab" class="add-lab-row">
-          <button v-if="!labAdded" class="filter-btn add-lab-btn" @click="addLab">
-            <IconFlaskConical :size="13" :stroke-width="2.2" />
-            Add lab section
+          <p v-if="crossState.missing.length" class="field-hint">
+            Not listed this term: {{ crossState.missing.join(', ') }}.
+          </p>
+          <button v-if="canMaterialize" class="filter-btn" @click="createVersions">
+            Create cross-listed versions
           </button>
-          <p v-else class="add-lab-confirm" role="status">
-            Lab added — <strong>{{ labLabel }}</strong
-            >. It's in the <strong>No meeting times</strong> strip; drag it onto a slot to schedule it.
+          <p v-if="materializeFeedback" class="field-hint" role="status">{{ materializeFeedback }}</p>
+          <p v-if="canEdit" class="field-hint">
+            Changes to time, instructors, or seats apply to every version.
           </p>
         </div>
       </div>
@@ -283,13 +310,15 @@
           <button ref="keepEditEl" class="filter-btn primary" @click="keepEditing">Keep editing</button>
         </template>
         <template v-else>
-          <button class="filter-btn remove-course-btn" @click="removeCourse">
+          <button v-if="canRemove" class="filter-btn remove-course-btn" @click="removeCourse">
             <IconTrash2 :size="13" :stroke-width="2.2" />
-            Remove course
+            {{ removeLabel }}
           </button>
           <span class="controls-spacer"></span>
-          <button class="filter-btn" @click="$emit('close')">Cancel</button>
-          <button class="filter-btn primary" :disabled="!canSave" @click="save">Save changes</button>
+          <button class="filter-btn" @click="$emit('close')">{{ canEdit ? 'Cancel' : 'Close' }}</button>
+          <button v-if="canEdit" class="filter-btn primary" :disabled="!canSave" @click="save">
+            Save changes
+          </button>
         </template>
       </div>
     </div>
@@ -314,6 +343,9 @@ import {
   updateOffering,
   removeCourseFromSchedule,
   addLabSection,
+  materializeCrossListVersions,
+  crossListState,
+  canTouchOffering,
   activeTerm,
   editingRole,
   publishedPart,
@@ -425,6 +457,44 @@ export default {
     useModalFocus(ref(true), modalEl, close)
 
     const schedule = computed(() => scheduleById(props.scheduleId))
+
+    // Permission for this row in the active session: a non-owner's suggest
+    // session may edit its own department's (or the group it owns) versions; a
+    // member of an owned cross-list group may only remove its own version, in
+    // which case the editor opens read-only.
+    const cur = {
+      prefix: o.prefix,
+      number: o.number,
+      section: o.section,
+      lab: o.lab,
+      labSeq: o.labSeq,
+      id: o.id,
+    }
+    const canEdit = computed(() => canTouchOffering(props.scheduleId, o, 'edit'))
+    const canRemove = computed(() => canTouchOffering(props.scheduleId, o, 'remove'))
+    // The cross-listing picture for this offering (other codes, present/missing
+    // versions, owner), or null for a plain course.
+    const crossState = computed(() => crossListState(props.scheduleId, cur))
+    const canMaterialize = computed(
+      () =>
+        canEdit.value &&
+        crossState.value &&
+        crossState.value.crossListed &&
+        crossState.value.missing.length > 0,
+    )
+    const materializeFeedback = ref('')
+    const createVersions = () => {
+      if (!canMaterialize.value) return
+      const created = materializeCrossListVersions(props.scheduleId, cur)
+      materializeFeedback.value = created.length
+        ? `Created ${created.map((x) => `${x.prefix} ${x.number}`).join(', ')}.`
+        : 'Nothing to create.'
+    }
+    // Removing the group owner's own version takes the whole group with it.
+    const isOwnerRow = computed(
+      () => Boolean(crossState.value) && crossState.value.owner === String(o.prefix || '').toUpperCase(),
+    )
+    const removeLabel = computed(() => (isOwnerRow.value ? 'Remove all versions' : 'Remove course'))
 
     // Instructor dropdowns are drawn from the catalog faculty rosters
     // (per-program `faculty` lists, mapped to course prefixes the same way the
@@ -859,6 +929,16 @@ export default {
     }
 
     const removeCourse = () => {
+      if (
+        isOwnerRow.value &&
+        crossState.value &&
+        crossState.value.present.length &&
+        !window.confirm(
+          `Removing this version also removes the other cross-listed versions (${crossState.value.present.join(', ')}). Continue?`,
+        )
+      ) {
+        return
+      }
       removeCourseFromSchedule(props.scheduleId, {
         prefix: o.prefix,
         number: o.number,
@@ -927,6 +1007,13 @@ export default {
       timeHint,
       save,
       removeCourse,
+      canEdit,
+      canRemove,
+      removeLabel,
+      crossState,
+      canMaterialize,
+      materializeFeedback,
+      createVersions,
       courseName,
       termLabel,
       activeTerm,

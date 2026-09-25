@@ -170,6 +170,21 @@
               >{{ coreRowLabel(d) }}</span
             >
           </p>
+          <p v-if="crossIssueCount" class="schedule-upload-warning">
+            <strong>{{ crossIssueCount }} cross-listing issue(s)</strong>:
+            <span
+              v-for="c in crossIssues.claims"
+              :key="'claim-' + c.code + c.section"
+              class="schedule-upload-warning-item"
+              >{{ crossClaimLabel(c) }}</span
+            >
+            <span
+              v-for="g in crossIssues.inconsistent"
+              :key="'group-' + g.codes.join() + g.section"
+              class="schedule-upload-warning-item"
+              >{{ crossGroupLabel(g) }} disagree on shared fields</span
+            >
+          </p>
         </div>
         <div v-else class="field">
           <span class="field-label">Type</span>
@@ -259,9 +274,10 @@ import {
   isOwner,
   canSuggest,
 } from '../src/scheduleStore.js'
-import { allCourses, coreReqsByCode } from '@major-vis/catalog-client'
+import { allCourses, coreReqsByCode, crossListings } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS, parseCsv } from '@major-vis/schedule-core'
 import { coreReqsDisagreements } from '../src/coreCompare.js'
+import { crossListIssues } from '../src/crossCompare.js'
 import { useModalFocus } from '../src/modalFocus.js'
 import { displayName } from '../src/names.js'
 
@@ -383,6 +399,20 @@ export default {
       const catalog = d.catalog.length ? d.catalog.join(', ') : '—'
       return `${d.code}${d.section ? ' ' + d.section : ''}: file says ${file} · catalog says ${catalog}`
     }
+    // Cross-listing issues in the staged file: a `cross_listed` cell that
+    // disagrees with the catalog or with the group rows present, and group rows
+    // that disagree on their shared scheduling fields.
+    const crossIssues = computed(() => crossListIssues(csvRows.value || [], crossListings.value))
+    const crossIssueCount = computed(
+      () => crossIssues.value.claims.length + crossIssues.value.inconsistent.length,
+    )
+    const crossClaimLabel = (c) => {
+      const bits = []
+      if (c.extra.length) bits.push(`claims ${c.extra.join(', ')}`)
+      if (c.missing.length) bits.push(`omits ${c.missing.join(', ')}`)
+      return `${c.code}${c.section ? ' ' + c.section : ''}: ${bits.join(' and ')}`
+    }
+    const crossGroupLabel = (g) => `${g.codes.join(', ')}${g.section ? ' ' + g.section : ''}`
     const pickCsvFile = () => {
       csvInput.value && csvInput.value.click()
     }
@@ -534,6 +564,10 @@ export default {
       coreDisagreements,
       coreUnknown,
       coreRowLabel,
+      crossIssues,
+      crossIssueCount,
+      crossClaimLabel,
+      crossGroupLabel,
       csvError,
       removeSchedule,
       ownerLabel,

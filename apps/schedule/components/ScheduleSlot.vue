@@ -20,7 +20,7 @@
         :item="it"
         :filter-active="filter.active"
         :color="filter.color(it)"
-        :editable="isEditable(it)"
+        :editable="canOpenEditor(it)"
         :proposed="proposalFor(it) ? itemTitle(it) : ''"
         :removed="removalFor(it) ? itemTitle(it) : ''"
         @edit="openCourseEdit(it)"
@@ -177,6 +177,12 @@ export default {
         : null
     const isEditable = (it) =>
       editingScheduleId.value != null && it.sid === editingScheduleId.value && canTouchOffering(it.sid, it.o)
+    // The editor also opens for a version the session may only remove (a member
+    // of a cross-list group owned elsewhere).
+    const canOpenEditor = (it) =>
+      editingScheduleId.value != null &&
+      it.sid === editingScheduleId.value &&
+      (canTouchOffering(it.sid, it.o, 'edit') || canTouchOffering(it.sid, it.o, 'remove'))
     return {
       day,
       time,
@@ -194,6 +200,7 @@ export default {
       goScheduleCourse,
       goScheduleDay,
       isEditable,
+      canOpenEditor,
       proposalFor,
       removalFor,
       itemTitle,

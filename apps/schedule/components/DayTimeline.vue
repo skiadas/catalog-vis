@@ -68,7 +68,7 @@
                   <OfferingRow
                     :item="it"
                     :color="rowColor(it)"
-                    :editable="isEditable(it)"
+                    :editable="canOpenEditor(it)"
                     :draggable="isEditable(it)"
                     :proposed="proposalFor(it) ? itemTitle(it) : ''"
                     :removed="removalFor(it) ? itemTitle(it) : ''"
@@ -327,6 +327,12 @@ export default {
       moveOffering,
       canTouchOffering,
     )
+    // The editor also opens for a version the session may only remove (a member
+    // of a cross-list group owned elsewhere).
+    const canOpenEditor = (it) =>
+      editingScheduleId.value != null &&
+      it.sid === editingScheduleId.value &&
+      (canTouchOffering(it.sid, it.o, 'edit') || canTouchOffering(it.sid, it.o, 'remove'))
 
     const empty = computed(() => blocks.value.length === 0)
 
@@ -348,6 +354,7 @@ export default {
       colsFor,
       offeringItemKey,
       isEditable,
+      canOpenEditor,
       proposalFor,
       removalFor,
       itemTitle,

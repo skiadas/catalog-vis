@@ -49,7 +49,7 @@
                 :key="offeringItemKey(it)"
                 :item="it"
                 :color="rowColor(it)"
-                :editable="isEditable(it)"
+                :editable="canOpenEditor(it)"
                 :draggable="isEditable(it)"
                 :proposed="proposalFor(it) ? itemTitle(it) : ''"
                 :removed="removalFor(it) ? itemTitle(it) : ''"
@@ -311,6 +311,13 @@ export default {
       moveOffering,
       canTouchOffering,
     )
+    // The editor opens for a course the session may edit OR only remove (a
+    // member of a cross-list group owned by another department can remove its
+    // own version; the editor then opens read-only).
+    const canOpenEditor = (it) =>
+      editingScheduleId.value != null &&
+      it.sid === editingScheduleId.value &&
+      (canTouchOffering(it.sid, it.o, 'edit') || canTouchOffering(it.sid, it.o, 'remove'))
 
     // The assignable time bands per weekday for the active term are the drop
     // targets. Bands already occupied by a block get their drop handling on the
@@ -352,6 +359,7 @@ export default {
       goScheduleDay,
       dropZones,
       isEditable,
+      canOpenEditor,
       editingId,
       dragOver,
       dragging,
