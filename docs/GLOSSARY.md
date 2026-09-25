@@ -15,6 +15,7 @@ and apps sometimes use different words for the same concept — this maps them.
 | **offering** | A scheduled section of a course: `{ prefix, number, section, title, instructor, secondaryInstructors, days, time, seats }` (`instructor` = single lead; `secondaryInstructors` = array of other instructors; `title` = the offering's own title, `''` = catalog name; `seats` = requested seat count, default 24). Registrar-shaped. | schedule app, `schedule-core` |
 | **offering title** | An offering's own title (special-topics topics), distinct from the catalog course name; `''` falls back to the catalog name. A lab shares its lecture's title. Optional CSV `title` column; editable in the course editor. | schedule app, `schedule-core`, CSV |
 | **seats** | The requested seat count for one offering row (a positive integer, default `DEFAULT_SEATS` = 24; a lab has its own, distinct from its lecture). Optional `seats` CSV column; editable in the course editor. | schedule app, `schedule-core`, CSV |
+| **core area / `core_reqs`** | A core-curriculum area id (`LA`, `HS`, `SM`, ...) a course satisfies. The optional `core_reqs` CSV column carries the comma-separated ids: exports resolve them from the catalog, imports only compare them against it (disagreements flagged, never stored). | `core_requirements.json`, `catalog-client`, `schedule-core`, CSV |
 | **course (vs offering)** | A catalog course (identity + name/description) vs a scheduled offering (one section at a time). | catalog vs schedule |
 | **allCourses** | The catalog-client ref: a map keyed by course code. | `catalog-client`, all apps |
 | **parsed requirement** | One requirement in `requirements_parsed.json`: `{ label, sections }`. | planner, browse |
@@ -66,5 +67,6 @@ Filters **scope the universe**; aggregates **verify counts over the chosen set**
 | **import map** | The `<script type="importmap">` in each app's `index.html` that maps `@major-vis/*` to package files. |
 | **`baseUrl`** | The argument to `loadCatalog({ baseUrl })` — the seam for pointing an app at a catalog source. Co-deployed apps pass `'../../'`. |
 | **`independentSections`** | A requirement flag (core curriculum) letting one course satisfy several sections at once. |
+| **`coreReqStats`** | Pure `schedule-core` helper: per core area, offering/seat counts per term plus totals (labs excluded, split meetings merged). |
 | **schema_version** | The contract version (`2.0`) on `requirements_parsed.json` / `core_requirements.json`. |
 | **`dataContract`** | See `packages/catalog-contract` — schemas + validator + consumer matrix. |

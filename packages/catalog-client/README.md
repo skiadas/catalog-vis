@@ -56,6 +56,10 @@ of an empty catalog). Pass `{ validate: false }` to skip the check.
 - `courseByCode(code)` → the course record or `null`
 - `courseName(code)` → the course's `course_name` or `''` (the one way
   components look up a course name)
+- `coreReqsByCode()` → `Map<courseCode, areaId[]>`: the core-curriculum areas
+  each course satisfies (derived from `coreRequirements`, built per call)
+- `coreReqLabel(id)` → an area's label (`SM` → `Scientific and Mathematical
+  Methods (SM)`), or `''` when unknown
 - `filteredPrograms` (computed, via `searchQuery`/`filterType`)
 
 ## Consumers

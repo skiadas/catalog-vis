@@ -74,13 +74,16 @@ renumbered deterministically. A lab also shares its lecture's `title`
 
 - `CSV_COLUMNS` — the canonical column order (`dept_prefix`, `course_number`,
   `course_section`, `title`, `instructor_name`, `secondary_instr_name`, `days`,
-  `times`, `seats`, `instructor`, `secondary_instr`). `renderCsv` builds its
-  header from it and the app's summary export reuses `renderCsv`, so the order
-  lives in one place. The instructors come in two blocks: `instructor` /
-  `secondary_instr` carry the canonical **usernames** (the identity the
-  round-trip keys on) and sit last, just before the optional `term`;
-  `instructor_name` / `secondary_instr_name` carry the directory's human name in
-  "Last, First" form (see `lastFirst`) and sit up with the identity columns.
+  `times`, `seats`, `instructor`, `secondary_instr`, `core_reqs`). `renderCsv`
+  builds its header from it and the app's summary export reuses `renderCsv`, so
+  the order lives in one place. The instructors come in two blocks: `instructor`
+  / `secondary_instr` carry the canonical **usernames** (the identity the
+  round-trip keys on) and sit after the meeting columns; `instructor_name` /
+  `secondary_instr_name` carry the directory's human name in "Last, First" form
+  (see `lastFirst`) and sit up with the identity columns. `core_reqs` is last,
+  just before the optional `term`: the comma-separated core-curriculum area ids
+  (`SM`, `LA`, ...) the course satisfies — a display/validation aid, not
+  offering identity (catalog-free, the app resolves the values).
 - `parseCsv(text)` → `offering[]` (header-driven via `csv-parse`, so column
   order never matters; a UTF-8 BOM, CRLF endings, quoted cells with embedded
   commas/newlines, and ragged rows are tolerated; a malformed file yields `[]`
@@ -92,7 +95,9 @@ renumbered deterministically. A lab also shares its lecture's `title`
   (quoted) list parsed into `secondaryInstructors`; the optional `title` column
   is the offering's own title; the optional `seats` column
   is a positive integer defaulting to `DEFAULT_SEATS` (24) when absent/blank/
-  invalid; `166L` + section-cell lab digits with deterministic labSeq for
+  invalid; the optional `core_reqs` column is a comma-separated list carried
+  through verbatim as `coreReqs` (always present, default `[]`); `166L` +
+  section-cell lab digits with deterministic labSeq for
   colliding rows, and lab titles mirrored from their lecture). The
   `instructor_name`/`secondary_instr_name` columns are **display-only and
   ignored**: identity comes from the username columns, so a feed that omits them
@@ -101,7 +106,8 @@ renumbered deterministically. A lab also shares its lecture's `title`
   `csv-stringify` from `CSV_COLUMNS` (plus `term` when any row carries one), so
   the header and cells can't drift apart: records are mapped by column name
   (`title` right after `course_section`; instructor columns quoted; `seats` blank
-  when a row has none; labs written back as `166L` + section digits `A1`/`A2`).
+  when a row has none; `core_reqs` blank when a row has none; labs written back
+  as `166L` + section digits `A1`/`A2`).
   `fullName(username)` → the directory display name; the name columns are then
   written as "Last, First". Without it — or for a username it does not know — the
   name cell falls back to the username, so an offline export still names every
@@ -190,10 +196,19 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
   distinct lead + secondary list), `colorForDept(prefix)`,
   `colorForInstructor(name)`, `colorForSchedule(sid)` (deterministic palettes)
 - `instructorSortKey(name)`, `compareInstructors`, `instructorsInSchedule(index)`,
-  `departmentsInSchedule(index)`
-- `buildFilter(mode, depts, instructors)` → `{ active, matches(item), color(item) }`
-- `buildVisual(mode, depts, instructors, scheduleIds, colorSchedules)` →
-  filter-first, then schedule coloring, else inactive
+  `departmentsInSchedule(index)`, `coreReqsInSchedule(index, reqs)` (the areas
+  any course in the schedule satisfies; `reqs` is the catalog's list, passed in)
+- `colorForCoreReq(id)` (the core filter's chip/block palette)
+- `buildFilter(mode, depts, instructors, coreReqs, reqsOf)` →
+  `{ active, matches(item), color(item) }`; mode is `'dept'`, `'instructor'`, or
+  `'core'` (a course matches when `reqsOf(item.code)` intersects the selected
+  area ids — the resolver is passed in, keeping the package catalog-free)
+- `buildVisual(mode, depts, instructors, scheduleIds, colorSchedules, coreReqs, reqsOf)`
+  → filter-first, then schedule coloring, else inactive
+- `coreReqStats(offeringsByTerm, reqs)` → per-area
+  `{ id, label, terms: { F, W, S }, totals }` offering/seat counts. Labs never
+  count (not as an offering, not their seats); split meetings collapse to one;
+  unscheduled offerings count; a section in more than one schedule counts once.
 
 ### Drag payload (shared with the planner timeline)
 

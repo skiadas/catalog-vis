@@ -109,7 +109,7 @@ stays proportional to the clock.
 
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format
-(`dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats`
+(`dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats,core_reqs`
 plus optional `term`) produced by "Download registrar CSV". An import **always
 creates a new schedule** (name prefilled from the filename, year optional;
 never touches existing schedules) and routes rows into its F/W/S parts by the
@@ -121,7 +121,12 @@ catalog name on display); exports write it resolved, so a row without a stored
 title carries the catalog name. The optional
 `seats` column is the requested seat count (a positive integer, default 24
 when blank/absent); it is written back on export (blank when a row has none).
-A trailing `L` on
+The optional `core_reqs` column is the comma-separated core-curriculum area ids
+the course satisfies (`SM, LA`); the app resolves it from the catalog on export
+and, on import, compares it with the catalog's own list — **disagreements (in
+either direction) are flagged in the import summary** and rows for courses the
+catalog doesn't carry are counted, but nothing is stored from the column (the
+catalog stays the source of truth). A trailing `L` on
 the course number with a digit in the section cell (`166L` + `A2`) becomes
 a lab section of its parent (and takes its lecture's title). The optional
 `secondary_instr` column holds the
@@ -129,6 +134,19 @@ secondary instructors as a comma-separated, quoted list (`"Xu, Ray"`). Lab rows 
 section isn't in the file are kept and reported in an import warning list.
 `parseCsv`/`renderCsv` in `@major-vis/schedule-core` implement the format with
 `csv-parse`/`csv-stringify` (header-driven, BOM/CRLF/quoted-newline aware).
+
+**Core requirements**: a course's core-curriculum areas (LA, HS, SM, W1, ...)
+appear on the `#/course/:code` view as a right-side list beside its offerings
+and conflicts. The calendar's filter bar has a third mode, **Core reqs**, whose
+chips narrow the grid/day/slot views to courses satisfying the selected areas
+(labs filter with their lecture, like every other view). A **Core stats**
+button in the picker's right cluster (beside CSV) opens a table of offering and
+seat counts per area across the selected schedules: one column each for
+Fall/Winter/Spring plus **Total**, with each cell showing *offerings · seats*.
+A lab is never a separate offering and its seats never count, split meetings
+collapse to one, and unscheduled offerings still count. The area lists come
+from `core_requirements.json` via `@major-vis/catalog-client`; the counting is
+`coreReqStats` in `@major-vis/schedule-core`.
 
 On load the app seeds a deterministic "Sample schedule" (`seedSampleSchedule`,
 seed 42) into the Fall part unless schedules already exist.
