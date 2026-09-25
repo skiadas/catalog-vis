@@ -216,10 +216,13 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
   area ids — the resolver is passed in, keeping the package catalog-free)
 - `buildVisual(mode, depts, instructors, scheduleIds, colorSchedules, coreReqs, reqsOf)`
   → filter-first, then schedule coloring, else inactive
-- `coreReqStats(offeringsByTerm, reqs)` → per-area
+- `coreReqStats(offeringsByTerm, reqs, crossGroups)` → per-area
   `{ id, label, terms: { F, W, S }, totals }` offering/seat counts. Labs never
   count (not as an offering, not their seats); split meetings collapse to one;
-  unscheduled offerings count; a section in more than one schedule counts once.
+  a section in more than one schedule counts once; cross-listed versions (same
+  group, same section) collapse to one and share the first row's seats.
+  Unscheduled offerings count. `crossGroups` is the catalog's cross-listing
+  groups, passed in to keep the package catalog-free.
 
 ### Drag payload (shared with the planner timeline)
 

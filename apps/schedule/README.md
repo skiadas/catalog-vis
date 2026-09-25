@@ -148,7 +148,9 @@ button in the picker's right cluster (beside CSV) opens a table of offering and
 seat counts per area across the selected schedules: one column each for
 Fall/Winter/Spring plus **Total**, with each cell showing *offerings · seats*.
 A lab is never a separate offering and its seats never count, split meetings
-collapse to one, and unscheduled offerings still count. The area lists come
+collapse to one, and unscheduled offerings still count. Cross-listed versions of
+one course (same group and section) collapse to a single offering sharing one
+seat pool. The area lists come
 from `core_requirements.json` via `@major-vis/catalog-client`; the counting is
 `coreReqStats` in `@major-vis/schedule-core`.
 

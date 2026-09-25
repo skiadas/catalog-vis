@@ -1479,21 +1479,31 @@ function offeringKeyOf(o) {
 //
 // `offeringsByTerm` is `{ F: offering[], W: offering[], S: offering[] }` (the
 // selected schedules' merged offerings for each term); `reqs` is the catalog's
-// core-requirement list (`{ id, label, courses: [code] }[]`), passed in so
-// schedule-core stays catalog-free.
+// core-requirement list (`{ id, label, courses: [code] }[]`); `crossGroups` is
+// the catalog's cross-listing groups (arrays of codes, or `{ codes }` records).
+// Both are passed in so schedule-core stays catalog-free.
 //
 // Lab rows never count: a lab is part of its lecture's offering, not a separate
 // one, and its seats are excluded. Split meetings (a section's rows across
 // multiple bands) collapse to one offering via `code|section`, and a section
 // present in more than one selected schedule counts once — the table answers
 // "how many distinct sections satisfy this area in the displayed collection".
-// Unscheduled offerings count (they are offerings with seats all the same).
+// Cross-listed versions of one course are identical except their prefix and
+// share a single seat pool, so group members with the same section collapse to
+// one offering (and the first row's seats) via `group|section`. Unscheduled
+// offerings count (they are offerings with seats all the same).
 //
 // Returns `[{ id, label, terms: { F: { offerings, seats }, W, S }, totals: {
 // offerings, seats } }]` in the order `reqs` supplies (every requirement is
 // listed, zero counts included).
-export function coreReqStats(offeringsByTerm, reqs) {
+export function coreReqStats(offeringsByTerm, reqs, crossGroups) {
   const byTerm = offeringsByTerm || {}
+  const groupOf = new Map()
+  for (const group of crossGroups || []) {
+    const codes = Array.isArray(group) ? group : (group && group.codes) || []
+    const id = (group && !Array.isArray(group) && group.id) || codes.join('|')
+    for (const code of codes) groupOf.set(code, id)
+  }
   return (reqs || []).map((req) => {
     const courses = new Set(req.courses || [])
     const terms = {}
@@ -1507,7 +1517,7 @@ export function coreReqStats(offeringsByTerm, reqs) {
         if (o.lab) continue
         const code = `${o.prefix || ''} ${o.number || ''}`.trim()
         if (!courses.has(code)) continue
-        const key = `${code}|${o.section || ''}`
+        const key = `${groupOf.get(code) || code}|${o.section || ''}`
         if (seen.has(key)) continue
         seen.add(key)
         offerings++

@@ -1363,9 +1363,7 @@ test('offering titles: imported, shown in the course view, edited, and exported'
   // which sits just before the term.
   // The username instructor columns sit before the core-requirement and
   // cross-listing columns, which sit just before the term.
-  expect(summary.split('\n')[0].endsWith('instructor,secondary_instr,core_reqs,cross_listed,term')).toBe(
-    true,
-  )
+  expect(summary.split('\n')[0].endsWith('instructor,secondary_instr,core_reqs,cross_listed,term')).toBe(true)
   // The directory resolves the "Last, First" name column; instructors absent
   // from it fall back to their usernames (still covered by parseCsv below).
   expect(summary).toContain('"Wahl, John"')
@@ -1480,7 +1478,10 @@ test('core requirements: course view, import flags, filter, and quick stats', as
 
   // The core filter narrows the grid: SM keeps CS 220 and drops ANTH 160.
   await page.goto('/#/', { waitUntil: 'networkidle' })
-  await page.getByRole('group', { name: 'Filter by' }).getByRole('button', { name: /Core reqs/ }).click()
+  await page
+    .getByRole('group', { name: 'Filter by' })
+    .getByRole('button', { name: /Core reqs/ })
+    .click()
   await page.locator('.filter-panel').getByRole('button', { name: 'SM', exact: true }).click()
   await expect(page.locator('.cal-block[title="CS 220"]').first()).toBeVisible()
   await expect(page.locator('.cal-block[title="ANTH 160"]')).toHaveCount(0)
@@ -1500,6 +1501,53 @@ test('core requirements: course view, import flags, filter, and quick stats', as
   await page
     .locator('.schedule-manage-row', { hasText: 'Core demo' })
     .getByRole('button', { name: 'Delete Core demo' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
+// Core stats collapses cross-listed versions of one course into a single
+// offering and shared seat pool (they are the same physical section).
+test('core stats: cross-listed versions count once', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'core-xlist-user')
+
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', {
+    name: 'core-cross.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'dept_prefix,course_number,course_section,instructor,days,times,seats,term\n' +
+        'CS,263,A,Wahl,MWF,9:20-10:30,24,F\n' +
+        'ENGR,263,A,Wahl,MWF,9:20-10:30,24,F\n',
+    ),
+  })
+  await expect(page.getByText(/Imported 2 course row\(s\)/)).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Core cross')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Core cross' }).first().waitFor({ timeout: 10000 })
+
+  // The PP area lists both codes, but the versions share one 24-seat pool, so
+  // the area counts one offering and 24 seats, not two and 48.
+  await page.getByRole('button', { name: 'Core stats' }).click()
+  const dialog = page.locator('.modal[aria-labelledby="core-stats-title"]')
+  await dialog.waitFor({ state: 'visible', timeout: 5000 })
+  const ppRow = dialog.getByRole('row', { name: /Philosophical Perspectives/ })
+  await expect(ppRow.locator('td').nth(1)).toHaveText('1 · 24')
+  await expect(ppRow.locator('td').nth(4)).toHaveText('1 · 24')
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await dialog.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Clean up.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Core cross' })
+    .getByRole('button', { name: 'Delete Core cross' })
     .click()
   await closeManage(page)
   assertClean(errors)

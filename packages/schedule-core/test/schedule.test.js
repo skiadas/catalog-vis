@@ -1958,6 +1958,47 @@ test('coreReqStats counts unscheduled offerings too', () => {
   assert.deepEqual(sm.terms.F, { offerings: 1, seats: 30 })
 })
 
+test('coreReqStats collapses cross-listed versions sharing one seat pool', () => {
+  const reqs = [{ id: 'PP', label: 'Philosophical Perspectives', courses: ['CS 263', 'ENGR 263', 'PHI 263'] }]
+  const groups = [{ id: 'cs-263-engr-263-phi-263', codes: ['CS 263', 'ENGR 263', 'PHI 263'] }]
+  const [pp] = coreReqStats(
+    {
+      F: [
+        { prefix: 'CS', number: '263', section: 'A', seats: 24 },
+        { prefix: 'ENGR', number: '263', section: 'A', seats: 24 },
+        // A split meeting on a group sibling still collapses to the one pool.
+        { prefix: 'PHI', number: '263', section: 'A', seats: 24, days: 'R', time: '16:00-17:00' },
+      ],
+      W: [{ prefix: 'CS', number: '263', section: 'A', seats: 24 }],
+      S: [],
+    },
+    reqs,
+    groups,
+  )
+  assert.deepEqual(pp.terms.F, { offerings: 1, seats: 24 })
+  assert.deepEqual(pp.terms.W, { offerings: 1, seats: 24 })
+  assert.deepEqual(pp.totals, { offerings: 2, seats: 48 })
+})
+
+test('coreReqStats keeps distinct sections of a cross-listed group separate', () => {
+  const groups = [['CS 263', 'ENGR 263']]
+  const [pp] = coreReqStats(
+    {
+      F: [
+        { prefix: 'CS', number: '263', section: 'A', seats: 24 },
+        { prefix: 'ENGR', number: '263', section: 'A', seats: 24 },
+        { prefix: 'CS', number: '263', section: 'B', seats: 30 },
+        { prefix: 'ENGR', number: '263', section: 'B', seats: 30 },
+      ],
+      W: [],
+      S: [],
+    },
+    [{ id: 'PP', label: 'Philosophical Perspectives', courses: ['CS 263', 'ENGR 263'] }],
+    groups,
+  )
+  assert.deepEqual(pp.terms.F, { offerings: 2, seats: 54 })
+})
+
 test('proposeOverlay renders concurrent proposals independently with proposers', () => {
   const base = [
     { prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '9:20-10:30' },

@@ -69,6 +69,6 @@ Filters **scope the universe**; aggregates **verify counts over the chosen set**
 | **import map** | The `<script type="importmap">` in each app's `index.html` that maps `@major-vis/*` to package files. |
 | **`baseUrl`** | The argument to `loadCatalog({ baseUrl })` — the seam for pointing an app at a catalog source. Co-deployed apps pass `'../../'`. |
 | **`independentSections`** | A requirement flag (core curriculum) letting one course satisfy several sections at once. |
-| **`coreReqStats`** | Pure `schedule-core` helper: per core area, offering/seat counts per term plus totals (labs excluded, split meetings merged). |
+| **`coreReqStats`** | Pure `schedule-core` helper: per core area, offering/seat counts per term plus totals (labs excluded, split meetings merged, cross-listed versions collapsed to one shared seat pool). |
 | **schema_version** | The contract version (`2.0`) on `requirements_parsed.json` / `core_requirements.json`. |
 | **`dataContract`** | See `packages/catalog-contract` — schemas + validator + consumer matrix. |

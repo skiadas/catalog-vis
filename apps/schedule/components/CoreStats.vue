@@ -14,7 +14,8 @@
       <div class="modal-body">
         <p class="modal-intro">
           Offerings and total seats per core-curriculum area across the selected schedules. A lab is not a
-          separate offering and its seats are not counted, so a lecture with labs counts once. Each cell shows
+          separate offering and its seats are not counted, so a lecture with labs counts once. Cross-listed
+          versions of one course share a single seat pool, so they count once. Each cell shows
           <strong>offerings · seats</strong>.
         </p>
         <table class="courses-table core-stats-table">
@@ -53,7 +54,7 @@
 // not just the active one). Counts and seats come from schedule-core's pure
 // `coreReqStats` (labs excluded, split meetings merged, unscheduled included).
 import { schedules, selectedScheduleIds, viewOfferings } from '../src/scheduleStore.js'
-import { coreRequirements } from '@major-vis/catalog-client'
+import { coreRequirements, crossListings } from '@major-vis/catalog-client'
 import { TERM_KEYS, TERM_LABELS, coreReqStats, colorForCoreReq } from '@major-vis/schedule-core'
 import { useModalFocus } from '../src/modalFocus.js'
 
@@ -84,7 +85,9 @@ export default {
       }
       return out
     })
-    const stats = computed(() => coreReqStats(offeringsByTerm.value, coreRequirements.value))
+    const stats = computed(() =>
+      coreReqStats(offeringsByTerm.value, coreRequirements.value, crossListings.value),
+    )
     return { modalEl, stats, TERM_KEYS, TERM_LABELS, colorForCoreReq }
   },
 }
