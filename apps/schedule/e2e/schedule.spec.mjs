@@ -1361,7 +1361,11 @@ test('offering titles: imported, shown in the course view, edited, and exported'
   expect(summary.split('\n')[0].split(',')).toEqual([...CSV_COLUMNS, 'term'])
   // The username instructor columns sit before the core-requirement column,
   // which sits just before the term.
-  expect(summary.split('\n')[0].endsWith('instructor,secondary_instr,core_reqs,term')).toBe(true)
+  // The username instructor columns sit before the core-requirement and
+  // cross-listing columns, which sit just before the term.
+  expect(summary.split('\n')[0].endsWith('instructor,secondary_instr,core_reqs,cross_listed,term')).toBe(
+    true,
+  )
   // The directory resolves the "Last, First" name column; instructors absent
   // from it fall back to their usernames (still covered by parseCsv below).
   expect(summary).toContain('"Wahl, John"')
@@ -1496,6 +1500,120 @@ test('core requirements: course view, import flags, filter, and quick stats', as
   await page
     .locator('.schedule-manage-row', { hasText: 'Core demo' })
     .getByRole('button', { name: 'Delete Core demo' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
+// Cross-listing: the import flags a group whose versions disagree, and the
+// summary CSV lists each version's materialized sibling prefixes.
+test('cross-listing: import flags and the export column', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'xlist-flags-user')
+
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', {
+    name: 'cross.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'dept_prefix,course_number,course_section,instructor,days,times,seats,cross_listed,term\n' +
+        'CS,263,A,Wahl,MWF,9:20-10:30,30,ENGR,F\n' +
+        'ENGR,263,A,Wahl,MWF,10:00-11:45,30,CS,F\n',
+    ),
+  })
+  await expect(page.getByText(/Imported 2 course row\(s\)/)).toBeVisible()
+  await expect(page.getByText(/1 cross-listing issue\(s\)/)).toBeVisible()
+  await expect(page.getByText(/CS 263, ENGR 263 A disagree on shared fields/)).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Cross flags')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Cross flags' }).first().waitFor({ timeout: 10000 })
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    (async () => {
+      await page.locator('.schedule-csv-wrap button').first().click()
+      await page.getByRole('button', { name: 'Download summary CSV' }).click()
+    })(),
+  ])
+  const summary = readFileSync(await download.path(), 'utf8')
+  expect(summary.split('\n')[0].endsWith('core_reqs,cross_listed,term')).toBe(true)
+  const rows = parseCsv(summary)
+  expect(rows.find((r) => r.prefix === 'CS' && r.number === '263').crossListed).toEqual(['ENGR'])
+  expect(rows.find((r) => r.prefix === 'ENGR' && r.number === '263').crossListed).toEqual(['CS'])
+
+  // The course view names the cross-listing.
+  await page.goto('/#/course/CS%20263', { waitUntil: 'networkidle' })
+  await expect(page.locator('.cross-list-note')).toContainText('Also listed as ENGR 263')
+
+  // Clean up.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Cross flags' })
+    .getByRole('button', { name: 'Delete Cross flags' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
+// Cross-listing: the owner materializes the missing versions and edits cascade.
+test('cross-listing: materialize versions and cascade an edit', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'xlist-flow-user')
+
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', {
+    name: 'cross-solo.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'dept_prefix,course_number,course_section,instructor,days,times,seats,term\n' +
+        'ENGR,263,A,Wahl,MWF,9:20-10:30,30,F\n',
+    ),
+  })
+  await expect(page.getByText(/Imported 1 course row\(s\)/)).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Cross solo')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Cross solo' }).first().waitFor({ timeout: 10000 })
+
+  const schedules = await page.evaluate(() => fetch('../../api/schedules').then((r) => r.json()))
+  const id = schedules.schedules.find((s) => s.name === 'Cross solo').id
+
+  // The ENGR editor offers to create the missing CS version.
+  await page.goto(`/#/schedule/${id}/course/ENGR%20263/edit`, { waitUntil: 'networkidle' })
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(em.locator('.cross-list-block')).toContainText('Cross-listed:')
+  await expect(em.locator('.cross-list-block')).toContainText('Not listed this term: CS 263')
+  await em.getByRole('button', { name: 'Create cross-listed versions' }).click()
+  await expect(em.getByText(/Created CS 263/)).toBeVisible()
+
+  // The owner edits the ENGR version; the CS version follows and the group is
+  // now owned by ENGR.
+  await em.locator('#course-edit-instructor').fill('Skiadas')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+
+  await page.goto(`/#/schedule/${id}/course/CS%20263/edit`, { waitUntil: 'networkidle' })
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(em.locator('#course-edit-instructor')).toHaveValue('Skiadas')
+  await expect(em.locator('.cross-list-block')).toContainText('maintained by ENGR')
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Clean up.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Cross solo' })
+    .getByRole('button', { name: 'Delete Cross solo' })
     .click()
   await closeManage(page)
   assertClean(errors)
