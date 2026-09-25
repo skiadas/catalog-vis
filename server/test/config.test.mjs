@@ -8,12 +8,12 @@ import { loadConfig, parseAuth, parseAuthDomain, parseAdminUsernames } from '../
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 // The env vars config.js reads that are deliberately NOT container settings:
-// STATIC_DIR and SESSION_COOKIE are dev-only overrides, and NODE_ENV is set by
-// nothing at runtime (the image is the production build). Every other env
-// loadConfig reads must reach the container through compose.yaml and be
-// documented in deploy/.env.example — the deploy seam that a unit-testable
-// config() alone cannot protect.
-const CONFIG_INTERNAL_ONLY = new Set(['STATIC_DIR', 'SESSION_COOKIE', 'NODE_ENV'])
+// STATIC_DIR, SESSION_COOKIE, and SEED_DIRECTORY are dev-only overrides, and
+// NODE_ENV is set by nothing at runtime (the image is the production build).
+// Every other env loadConfig reads must reach the container through compose.yaml
+// and be documented in deploy/.env.example — the deploy seam that a
+// unit-testable config() alone cannot protect.
+const CONFIG_INTERNAL_ONLY = new Set(['STATIC_DIR', 'SESSION_COOKIE', 'NODE_ENV', 'SEED_DIRECTORY'])
 
 // The env names loadConfig actually reads, captured by handing it a recording
 // proxy (once per auth provider, since the OIDC vars are only touched in that
@@ -157,4 +157,17 @@ test('parseAdminUsernames canonicalizes the comma list; unset means no admins', 
 test('loadConfig exposes adminUsernames', () => {
   assert.deepEqual(loadConfig({}).adminUsernames, new Set())
   assert.deepEqual(loadConfig({ ADMIN_USERNAMES: 'a, b' }).adminUsernames, new Set(['a', 'b']))
+})
+
+test('loadConfig seeds the directory only in the repo-root dev layout', () => {
+  // Repo-root layout + no production flag: dev, so it seeds.
+  assert.equal(loadConfig({}).seedDirectory, true)
+  // The container's coordinates: assembled STATIC_DIR and NODE_ENV=production.
+  assert.equal(loadConfig({ STATIC_DIR: '/srv/static' }).seedDirectory, false)
+  assert.equal(loadConfig({ NODE_ENV: 'production' }).seedDirectory, false)
+  // The escape hatch for a pristine dev directory.
+  for (const off of ['0', 'false', 'no', 'off']) {
+    assert.equal(loadConfig({ SEED_DIRECTORY: off }).seedDirectory, false, off)
+  }
+  assert.equal(loadConfig({ SEED_DIRECTORY: '1' }).seedDirectory, true)
 })

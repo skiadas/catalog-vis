@@ -120,7 +120,8 @@ async function captureEntry(browser, entry, baseURL) {
 }
 
 const selected = entries.filter(
-  (entry) => entry.app === 'schedule' && (filters.length === 0 || filters.some((f) => entry.file.includes(f))),
+  (entry) =>
+    entry.app === 'schedule' && (filters.length === 0 || filters.some((f) => entry.file.includes(f))),
 )
 if (selected.length === 0) {
   console.error('no matching schedule entries in the manifest')
@@ -142,6 +143,9 @@ async function startServer(port) {
       HOST: '127.0.0.1',
       ADMIN_USERNAMES: 'registrar',
       DB_PATH: join(dbDir, 'shots.db'),
+      // Hermetic: never seed from the gitignored repo-root directory.csv, so a
+      // local screenshot run matches CI and the fixtures stay authoritative.
+      SEED_DIRECTORY: '0',
     },
     stdio: ['ignore', 'ignore', 'inherit'],
   })

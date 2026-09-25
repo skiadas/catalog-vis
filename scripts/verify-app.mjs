@@ -37,6 +37,8 @@ const server = spawn('node', ['server/src/index.js'], {
     PORT: '0',
     DB_PATH: join(dbDir, 'probe.db'),
     ADMIN_USERNAMES: 'registrar',
+    // Hermetic: never seed from the gitignored repo-root directory.csv.
+    SEED_DIRECTORY: '0',
   },
   stdio: ['ignore', 'pipe', 'inherit'],
 })

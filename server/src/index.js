@@ -11,6 +11,7 @@ import { loadConfig } from './config.js'
 import { openDb } from './db.js'
 import { createApp } from './app.js'
 import { catalogRouter } from './catalog.js'
+import { seedDirectoryFromCsv } from './seed-directory.js'
 
 // In the container the assembled static layout (/srv/static) already holds the
 // built apps under apps/<name>/. When serving the repo root directly (local
@@ -49,6 +50,22 @@ export function mountLocalLayout(app, config) {
 export async function buildServer(env = process.env) {
   const config = loadConfig(env)
   const database = await openDb(config.dbPath)
+
+  // Dev only (see config.seedDirectory): populate the directory from the
+  // repo-root directory.csv so display names resolve without an admin import.
+  // The file is authoritative for its rows, so this is the same upsert the
+  // admin endpoint performs — and a missing file is a silent no-op.
+  if (config.seedDirectory) {
+    const seeded = seedDirectoryFromCsv(database, {
+      csvPath: path.join(config.repoRoot, 'directory.csv'),
+      domain: config.authDomain,
+    })
+    if (seeded.seeded) {
+      const errors = seeded.errors.length ? `, ${seeded.errors.length} row error(s)` : ''
+      console.log(`[seed] directory.csv: ${seeded.added} added, ${seeded.updated} updated${errors}`)
+    }
+  }
+
   const app = createApp({
     database,
     services: config.services,

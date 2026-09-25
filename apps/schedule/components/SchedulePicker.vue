@@ -204,7 +204,8 @@ export default {
     // resolver, so the name columns fall back to the usernames (never blank).
     // Keys are normalized (trimmed, lowercased, domain stripped) so a registrar
     // cell like "Wahl" or "cskiadas@hanover.edu" resolves against the canonical
-    // account.
+    // account. A real name wins over a null one, so a stale bare row (an old
+    // `wahl` without a display name) never shadows the canonical `wahl@…`.
     const fullNameResolver = async () => {
       const roster = await fetchRoster()
       if (!roster.length) return undefined
@@ -214,13 +215,15 @@ export default {
           .toLowerCase()
           .replace(/\s+/g, '')
       const byUsername = new Map()
+      const setBest = (k, v) => {
+        if (!byUsername.has(k) || byUsername.get(k) == null) byUsername.set(k, v)
+      }
       for (const u of roster) {
         const full = key(u.username)
         if (!full) continue
-        byUsername.set(full, u.displayName)
+        setBest(full, u.displayName)
         const at = full.indexOf('@')
-        const short = at > 0 ? full.slice(0, at) : full
-        if (!byUsername.has(short)) byUsername.set(short, u.displayName)
+        setBest(at > 0 ? full.slice(0, at) : full, u.displayName)
       }
       return (username) => byUsername.get(key(username)) || null
     }

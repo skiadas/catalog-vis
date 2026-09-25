@@ -36,6 +36,12 @@ function flag(input) {
   return v === '1' || v === 'true'
 }
 
+// A toggle that is ON unless explicitly turned off ('0' / 'false' / 'no' /
+// 'off'); an unset value stays ON. The complement of `flag` for opt-out vars.
+function toggledOff(input) {
+  return /^(0|false|no|off)$/i.test(String(input ?? '').trim())
+}
+
 // Loopback hosts may speak plain http (a local issuer in dev); anything else
 // must be https, and insecure issuers are never allowed in production.
 function isLoopbackUrl(value) {
@@ -113,12 +119,13 @@ export function parseAuth(env) {
 
 export function loadConfig(env = process.env) {
   const repoRoot = path.resolve(__dirname, '..', '..')
+  // Where the static apps + catalog JSON live (the repo root by default).
+  const staticDir = path.resolve(env.STATIC_DIR || repoRoot)
   return {
     port: Number(env.PORT || 8080),
     host: env.HOST || '0.0.0.0',
     services: parseServices(env.SERVICES),
-    // Where the static apps + catalog JSON live (the repo root by default).
-    staticDir: path.resolve(env.STATIC_DIR || repoRoot),
+    staticDir,
     repoRoot,
     dbPath: path.resolve(env.DB_PATH || path.join(repoRoot, 'server', 'data', 'major-vis.db')),
     sessionCookie: env.SESSION_COOKIE || 'mjv_sid',
@@ -131,6 +138,13 @@ export function loadConfig(env = process.env) {
     // Admins (canonical usernames) manage the user directory: display names
     // and the departments each user belongs to.
     adminUsernames: parseAdminUsernames(env.ADMIN_USERNAMES, env.AUTH_DOMAIN),
+    // Local-dev convenience: seed the user directory from the gitignored
+    // repo-root `directory.csv` at boot (see seed-directory.js), so a developer
+    // sees real display names without signing in as an admin. Only the
+    // repo-root dev layout qualifies — the container serves an assembled
+    // `STATIC_DIR` and is `NODE_ENV=production`, so it never seeds.
+    // `SEED_DIRECTORY=0` disables the seed for a pristine directory.
+    seedDirectory: staticDir === repoRoot && env.NODE_ENV !== 'production' && !toggledOff(env.SEED_DIRECTORY),
   }
 }
 

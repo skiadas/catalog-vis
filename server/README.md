@@ -20,7 +20,8 @@ npm run build && npm run serve
 #      AUTH_DOMAIN (optional bare domain, e.g. hanover.edu: bare usernames
 #        typed at sign-in or in access lists canonicalize to name@domain),
 #      ADMIN_USERNAMES (optional comma list of canonical usernames allowed to
-#        maintain the user directory)
+#        maintain the user directory),
+#      SEED_DIRECTORY (0 disables the local-dev directory auto-seed; default on)
 # oidc provider additionally requires: OIDC_ISSUER, OIDC_CLIENT_ID,
 #      OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI, and (recommended) PUBLIC_ORIGIN,
 #      COOKIE_SECURE=true — the server refuses to boot with any missing
@@ -43,6 +44,16 @@ relative seams (`loadCatalog`'s `baseUrl: '../../'`, the schedule API base
 served. Serves at `http://localhost:8080/` (the root launcher redirects to the
 first enabled service) with the API under `/api`.
 
+In the repo-root layout (`STATIC_DIR` unset) outside production, boot also
+**seeds the user directory** from the gitignored repo-root `directory.csv` (the
+output of `tools/catalog-pipeline/scrape_faculty.py`): the same authoritative
+upsert as the admin import, so display names resolve without signing in as an
+admin. A missing file is a no-op; `SEED_DIRECTORY=0` disables it. Run dev with
+`AUTH_DOMAIN=hanover.edu` so your sign-in and the seed's bare usernames
+canonicalize to the same accounts (`skiadas` → `skiadas@hanover.edu`), or your
+own account keeps a separate identity from the seeded one. The container
+(`NODE_ENV=production`, `STATIC_DIR=/srv/static`) never seeds.
+
 ## Storage
 
 SQLite via `node:sqlite` (`DatabaseSync`). The schema is owned by **versioned
@@ -55,15 +66,15 @@ the `schema_migrations` table). `0001_baseline` creates:
   (`0004_directory`)
 - `sessions(id, user_id, token_hash, created_at, expires_at)` — token_hash indexed
 - `schedules(id, name, year, owner_user_id, status, version, visibility,
-  suggest_mode, viewers, suggesters, created_at, updated_at)` — owner FK
+suggest_mode, viewers, suggesters, created_at, updated_at)` — owner FK
   cascades on user delete; `viewers`/`suggesters` are JSON username arrays
   (`0003_access_control`)
 - `schedule_terms(id, schedule_id, term, payload, version)` — one row per
   (schedule, term); `payload` is the JSON offerings array
 - `schedule_changes(id, schedule_id, term, proposer_user_id, base_version,
-  note, created_at)` — suggested changes
+note, created_at)` — suggested changes
 - `suggestion_ops(id, suggestion_id, position, op, status, applied,
-  resolved_at)` — one row per change of a suggestion (suggestion_id indexed)
+resolved_at)` — one row per change of a suggestion (suggestion_id indexed)
 - `oidc_flows(state, nonce, code_verifier, return_to, created_at, expires_at)`
   — single-use state for in-flight OIDC logins (`0002_oidc_flows`; only used by
   the `oidc` provider, pruned lazily on the next login)
