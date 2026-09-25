@@ -215,10 +215,10 @@ export function daySlotTimes(day) {
 // The canonical CSV column order for the round-trip / registrar format:
 // identity block first (`title` right after the section), then the full-name
 // instructor block, the editable meeting fields, the username instructor block,
-// and finally the informational `core_reqs` block (right before the optional
-// `term`). `renderCsv` builds its header from this list, and `parseCsv` is
-// header-driven (order-independent). Add a new column here + the matching
-// record field + `renderCsv` row key, and the two stay in lockstep.
+// then the informational `core_reqs` and `cross_listed` blocks (right before
+// the optional `term`). `renderCsv` builds its header from this list, and
+// `parseCsv` is header-driven (order-independent). Add a new column here + the
+// matching record field + `renderCsv` row key, and the two stay in lockstep.
 //
 // The instructors come in two blocks: `instructor`/`secondary_instr` carry the
 // canonical usernames (the identity the round-trip keys on), while
@@ -231,6 +231,9 @@ export function daySlotTimes(day) {
 // satisfies (`SM`, `LA`, ...), a display/validation aid rather than offering
 // identity: `renderCsv` is catalog-free, so the app resolves the values from
 // the catalog and `parseCsv` just carries the cell through as `coreReqs`.
+// `cross_listed` is the comma-separated list of the *other* department prefixes
+// this offering is cross-listed with (the sibling versions present in the
+// exported schedule), carried through as `crossListed`.
 export const CSV_COLUMNS = [
   'dept_prefix',
   'course_number',
@@ -244,6 +247,7 @@ export const CSV_COLUMNS = [
   'instructor',
   'secondary_instr',
   'core_reqs',
+  'cross_listed',
 ]
 
 // The requested seat count for an offering when none is given: a section's
@@ -326,7 +330,10 @@ export function instructorsOf(o) {
 // default 24). Blank/NULL `days`/`times` mark an unscheduled offering.
 // The optional `core_reqs` column is a comma-separated list of core-curriculum
 // area ids (`SM`, `LA`, ...) carried through verbatim as `coreReqs` — the app
-// compares them against the catalog.
+// compares them against the catalog. The optional `cross_listed` column is a
+// comma-separated list of the other department prefixes this offering is
+// cross-listed with, carried through as `crossListed` (also catalog-resolved by
+// the app, never stored).
 // The `instructor_name`/`secondary_instr_name` columns `renderCsv` writes are
 // display-only and ignored here; identity comes from the username columns, so a
 // feed without them imports with blank instructors.
@@ -337,7 +344,7 @@ export function instructorsOf(o) {
 // renumbered 1..n in first-seen order so every record stays distinct. A lab's
 // title always mirrors its lecture's (a lab can't title itself differently);
 // an orphan lab — no lecture row in the file — keeps its own cell value.
-/** @returns {Array<{ id?: string; prefix: string; number: string; section: string; title: string; instructor: string; secondaryInstructors: string[]; days: string; time: string; seats: number; coreReqs: string[]; term?: string; lab?: boolean; labSeq?: number }>} */
+/** @returns {Array<{ id?: string; prefix: string; number: string; section: string; title: string; instructor: string; secondaryInstructors: string[]; days: string; time: string; seats: number; coreReqs: string[]; crossListed: string[]; term?: string; lab?: boolean; labSeq?: number }>} */
 export function parseCsv(text) {
   let records
   try {
@@ -377,6 +384,7 @@ export function parseCsv(text) {
       time,
       seats: seatCount(rec['seats']),
       coreReqs: coreReqList(rec['core_reqs']),
+      crossListed: commaList(rec['cross_listed']),
     }
     // `166L` / `166l` -> number `166`, lab. The L is the only lab marker in
     // the course number (the sequence lives in the section cell); anything
@@ -489,14 +497,15 @@ function instructorName(username, fullName) {
 // `parseCsv`). `rows` are offering records; an optional `term` per row is written
 // when the caller provides it. The header is `CSV_COLUMNS` (identity block
 // first, `title` right after the section, the full-name instructor block, the
-// meeting fields, then the username instructor block, then the core-requirement
-// ids) plus `term` when any non-empty term is present. csv-stringify maps each
-// record by column name, so the header and cells can never drift apart. A row
-// without a `seats` value writes a blank cell (re-import defaults it to
-// `DEFAULT_SEATS`); a row without a title writes a blank cell (consumers fall
-// back to the catalog name); a row without `coreReqs` writes a blank cell.
-// `renderCsv` is catalog-free, so it never resolves the title fallback or the
-// core-requirement values — the app fills both on the rows it passes in.
+// meeting fields, then the username instructor block, core-area ids, and the
+// cross-listed prefixes) plus `term` when any non-empty term is present.
+// csv-stringify maps each record by column name, so the header and cells can
+// never drift apart. A row without a `seats` value writes a blank cell
+// (re-import defaults it to `DEFAULT_SEATS`); a row without a title writes a
+// blank cell (consumers fall back to the catalog name); a row without
+// `coreReqs`/`crossListed` writes a blank cell. `renderCsv` is catalog-free, so
+// it never resolves the title fallback or the core/cross values — the app fills
+// both on the rows it passes in.
 //
 // `options.fullName` resolves an instructor username to the directory's display
 // name; the name columns are then written as "Last, First" (see `lastFirst`).
@@ -525,6 +534,7 @@ export function renderCsv(offerings, { fullName } = {}) {
       instructor: o.instructor,
       secondary_instr: secondaries.join(', '),
       core_reqs: (o.coreReqs || []).join(', '),
+      cross_listed: (o.crossListed || []).join(', '),
     }
     if (includesTerm) rec.term = o.term || ''
     return rec

@@ -84,6 +84,7 @@ const OFF = (fields = {}) => ({
   time: '',
   seats: DEFAULT_SEATS,
   coreReqs: [],
+  crossListed: [],
   ...fields,
 })
 
@@ -914,7 +915,7 @@ test('renderCsv writes the core_reqs column (blank when absent) and round-trips 
     },
     { prefix: 'MAT', number: '131', section: 'A', instructor: 'Aydogan', days: 'MWF', time: '14:20-16:05' },
   ])
-  assert.equal(headerOf(csv).at(-1), 'core_reqs')
+  assert.equal(headerOf(csv).at(-2), 'core_reqs')
   assert.deepEqual(
     parseCsv(csv).map((r) => r.coreReqs),
     [['SM', 'LA'], []],
@@ -940,6 +941,48 @@ test('renderCsv writes the core_reqs column (blank when absent) and round-trips 
       id: offeringIdFor({ prefix: 'MAT', number: '131', section: 'A', days: 'MWF', time: '14:20-16:05' }),
     }),
   ])
+})
+
+test('parseCsv reads cross_listed as a comma list (blank/NULL = none)', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times,cross_listed',
+      'CS,263,A,Wahl,MWF,9:20-10:30,"ENGR, PHI"',
+      'MAT,131,A,Aydogan,MWF,14:20-16:05,',
+      'ENG,111,A,Doe,,,NULL',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.crossListed),
+    [['ENGR', 'PHI'], [], []],
+  )
+})
+
+test('cross_listed is always present on parsed records (default empty)', () => {
+  const [row] = parseCsv(
+    'dept_prefix,course_number,course_section,instructor,days,times\nCS,101,A,Vosmeier,MWF,9:20-10:30\n',
+  )
+  assert.deepEqual(row.crossListed, [])
+})
+
+test('renderCsv writes the cross_listed column (blank when absent) and round-trips it', () => {
+  const csv = renderCsv([
+    {
+      prefix: 'CS',
+      number: '263',
+      section: 'A',
+      instructor: 'Wahl',
+      days: 'MWF',
+      time: '9:20-10:30',
+      crossListed: ['ENGR', 'PHI'],
+    },
+    { prefix: 'MAT', number: '131', section: 'A', instructor: 'Aydogan', days: 'MWF', time: '14:20-16:05' },
+  ])
+  assert.equal(headerOf(csv).at(-1), 'cross_listed')
+  assert.deepEqual(
+    parseCsv(csv).map((r) => r.crossListed),
+    [['ENGR', 'PHI'], []],
+  )
 })
 
 test('parseCsv reads a title column (blank/NULL = none)', () => {

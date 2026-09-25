@@ -33,7 +33,11 @@ export function offeringKey(o) {
 
 // The editable fields considered when diffing two offerings. `seats` is a
 // number; `canonical` stringifies it for comparison. `title` is the offering's
-// own title ('' = fall back to the catalog name).
+// own title ('' = fall back to the catalog name). `crossListOwner` is the
+// cross-list group's owning department prefix ('' = ungrouped/unowned): it must
+// travel in the op's `changes` so a first edit that claims an imported group
+// survives propose/approve, but it is metadata — never shown in the
+// human-readable diff (see `diffOfferings`).
 export const EDITABLE_FIELDS = [
   'title',
   'instructor',
@@ -42,7 +46,12 @@ export const EDITABLE_FIELDS = [
   'days',
   'time',
   'seats',
+  'crossListOwner',
 ]
+
+// Editable fields that are state metadata rather than course content: they ride
+// in `changes` (so apply sets them) but are kept out of the readable diff.
+const METADATA_FIELDS = new Set(['crossListOwner'])
 
 // Canonical comparison form of a field value: arrays (secondaryInstructors)
 // compare element-wise, everything else trims the string.
@@ -76,10 +85,10 @@ export function diffOfferings(before, after) {
       const to = canonical(a[field])
       if (from !== to) {
         changes[field] = a[field]
-        diff.push({ field, from: b[field] ?? '', to: a[field] ?? '' })
+        if (!METADATA_FIELDS.has(field)) diff.push({ field, from: b[field] ?? '', to: a[field] ?? '' })
       }
     }
-    if (diff.length) {
+    if (diff.length || Object.keys(changes).length) {
       operations.push({ kind: 'update', cur: keyOf(b), changes, diff })
     }
   }

@@ -52,6 +52,15 @@ test('diffOfferings: add, update (with per-field diff), remove', () => {
   assert.deepEqual(rem.cur, { prefix: 'CS', number: '101', section: 'A', lab: undefined, labSeq: undefined })
 })
 
+test('a cross-list ownership claim rides in changes but stays out of the readable diff', () => {
+  const before = [OFF(2, { prefix: 'ENGR', number: '263' })]
+  const after = [OFF(2, { prefix: 'ENGR', number: '263', crossListOwner: 'CS' })]
+  const [op] = diffOfferings(before, after)
+  assert.equal(op.kind, 'update')
+  assert.deepEqual(op.changes, { crossListOwner: 'CS' })
+  assert.deepEqual(op.diff, [], 'metadata changes never appear in the readable diff')
+})
+
 test('diffOfferings returns empty when unchanged', () => {
   const list = [OFF(1, { number: '101' }), OFF(2, { number: '220' })]
   assert.deepEqual(
