@@ -165,6 +165,40 @@ export function courseName(code) {
   return c ? c.course_name : ''
 }
 
+// The core-curriculum areas a course satisfies, derived from
+// `coreRequirements`: a Map from course code to its area ids (`SM`, `LA`, ...),
+// in the catalog's area order. Built fresh per call (twelve areas over a few
+// hundred codes) — cheap enough to use from a computed.
+/**
+ * @returns {Map<string, string[]>}
+ */
+export function coreReqsByCode() {
+  /** @type {Map<string, string[]>} */
+  const map = new Map()
+  for (const req of coreRequirements.value) {
+    for (const code of req.courses || []) {
+      const ids = map.get(code)
+      if (ids) {
+        if (!ids.includes(req.id)) ids.push(req.id)
+      } else {
+        map.set(code, [req.id])
+      }
+    }
+  }
+  return map
+}
+
+// The label of a core-curriculum area id (e.g. `SM` -> `Scientific and
+// Mathematical Methods (SM)`), or '' when the catalog does not carry it.
+/**
+ * @param {string} id
+ * @returns {string}
+ */
+export function coreReqLabel(id) {
+  const req = coreRequirements.value.find((r) => r.id === id)
+  return req ? req.label : ''
+}
+
 /** @type {import('vue').ComputedRef<import('@major-vis/catalog-contract').Program[]>} */
 export const filteredPrograms = computed(() => {
   let list = programs.value
