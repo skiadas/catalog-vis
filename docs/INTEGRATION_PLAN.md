@@ -173,8 +173,8 @@ GET    /api/schedules/:id/changes/export?fmt=json|md|csv
 ### CSV contract (one round-trip format)
 
 Columns: `dept_prefix, course_number, course_section, title, instructor,
-secondary_instr, days, times, seats, core_reqs` plus an optional `term` column
-(`F|W|S`). The
+secondary_instr, days, times, seats, core_reqs, cross_listed` plus an optional
+`term` column (`F|W|S`). The
 optional `title` column is the offering's own title (blank = catalog name; the
 app's exports write it resolved). The
 optional `secondary_instr` column is the registrar's comma-separated list of
@@ -182,7 +182,10 @@ other instructors (`"Xu, Ray"`, quoted because of the commas). The optional
 `seats` column is the requested seat count (a positive integer, default 24 when
 blank/absent). The optional `core_reqs` column is the comma-separated
 core-curriculum area ids the course satisfies (exports resolve them from the
-catalog; imports compare them against it). Blank
+catalog; imports compare them against it). The optional `cross_listed` column
+is the comma-separated other department prefixes whose cross-listed versions
+are also present (imports flag disagreements with the catalog and with the
+file's own group rows). Blank
 `days`/`times` ⇒ unscheduled.
 `parseCsv` holds quoted-field + optional-column handling; `renderCsv`
 matches it. Rows with a `term` value land in that term part; rows without one

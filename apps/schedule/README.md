@@ -109,7 +109,7 @@ stays proportional to the clock.
 
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format
-(`dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats,core_reqs`
+(`dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats,core_reqs,cross_listed`
 plus optional `term`) produced by "Download registrar CSV". An import **always
 creates a new schedule** (name prefilled from the filename, year optional;
 never touches existing schedules) and routes rows into its F/W/S parts by the
@@ -126,7 +126,11 @@ the course satisfies (`SM, LA`); the app resolves it from the catalog on export
 and, on import, compares it with the catalog's own list — **disagreements (in
 either direction) are flagged in the import summary** and rows for courses the
 catalog doesn't carry are counted, but nothing is stored from the column (the
-catalog stays the source of truth). A trailing `L` on
+catalog stays the source of truth). The optional `cross_listed` column is the
+comma-separated other department prefixes whose versions are also present in
+the export; on import it is compared with the catalog and the file's own group
+rows (mismatches and disagreeing group rows are flagged), and it is not stored.
+A trailing `L` on
 the course number with a digit in the section cell (`166L` + `A2`) becomes
 a lab section of its parent (and takes its lecture's title). The optional
 `secondary_instr` column holds the
@@ -147,6 +151,23 @@ A lab is never a separate offering and its seats never count, split meetings
 collapse to one, and unscheduled offerings still count. The area lists come
 from `core_requirements.json` via `@major-vis/catalog-client`; the counting is
 `coreReqStats` in `@major-vis/schedule-core`.
+
+**Cross-listed courses** are kept as one group. The catalog's
+`cross_listings.json` names the courses that are the same course under several
+department codes (`CS 263` / `ENGR 263` / `PHI 263`). Adding a cross-listable
+course creates only that version; adding another version **attaches** to the
+group (adopting the sibling's section and scheduling fields). The department
+that creates the first version **owns** the group: only it edits the shared
+fields (time, instructors, seats — cascading to every version, and the one way
+an edit can reach outside your departments); a member of another cross-listed
+department may add its own version or remove it, and removing the owner's own
+version removes the whole group. An imported group starts **unowned** — the
+first edit claims ownership. The course editor's Cross-listed block shows the
+other codes, the owner, and (for the owner) a **Create cross-listed versions**
+action; the course view names the cross-listing. The CSV's `cross_listed`
+column lists the materialized sibling prefixes, and an import compares each
+claim with the catalog and flags a group whose versions disagree on their
+shared fields (see `apps/schedule/src/crossCompare.js`).
 
 On load the app seeds a deterministic "Sample schedule" (`seedSampleSchedule`,
 seed 42) into the Fall part unless schedules already exist.

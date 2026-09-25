@@ -12,6 +12,7 @@ schemas.
 | `majors.json` | `scrape_catalog.py` | `schemas/majors.schema.json` |
 | `requirements_parsed.json` | `codify_requirements.py` (LLM-assisted) | `schemas/requirements.schema.json` |
 | `core_requirements.json` | `extract_core.py` | `schemas/core.schema.json` |
+| `cross_listings.json` | `extract_cross_list.py` | `schemas/cross_listings.schema.json` |
 
 Plus generated reports that are **not** part of the runtime contract:
 `catalog_issues.{json,md,html}` (`audit_catalog.py` + `md_to_html.py`).
@@ -26,7 +27,7 @@ structure and vocabulary; `test_data.py` keeps the derived/relational rules
 integrity). Keep all three in sync when the contract changes.
 
 The **code projection** of the contract lives in `types.d.ts` — hand-authored
-TypeScript types for the three documents, consumed by JS/TS code through
+TypeScript types for the documents, consumed by JS/TS code through
 JSDoc `import()`s. Data conformance stays the schemas' job (`validate:catalog`);
 type conformance is witnessed by `types.witness.ts` + `test/types.test.js`, both
 checked in CI (`npm run typecheck` / `npm test`). When the contract changes,
@@ -47,9 +48,9 @@ identically. CI runs it on every push.
 ## Runtime entry
 
 `index.js` is the browser-safe validator surface: `validateCatalog(docs)`
-returns `null` when the three documents (keyed by their canonical filenames,
-`majors.json` / `requirements_parsed.json` / `core_requirements.json`)
-conform, or a list of per-file Ajv errors otherwise. `@major-vis/catalog-client`
+returns `null` when the documents (keyed by their canonical filenames,
+`majors.json` / `requirements_parsed.json` / `core_requirements.json` /
+`cross_listings.json`) conform, or a list of per-file Ajv errors otherwise. `@major-vis/catalog-client`
 calls it in `loadCatalog` before storing fetched data (fail loud on mismatch).
 The `types.d.ts` declarations mirror this entry; `test/runtime.test.js`
 imports the package by name to keep the declared surface and the runtime
@@ -66,6 +67,7 @@ data through `@major-vis/catalog-client` (browser) or fetch the JSON directly.
 | `majors.json.catalog` (course index by code) | ✓ | ✓ | ✓ | ✓ (as the universe) | |
 | `requirements_parsed.json` (program → structured requirement nodes) | ✓ (render) | ✓ (tracks + audit) | | ✓ (evaluate) | |
 | `core_requirements.json` (CCR/ACE areas) | | ✓ (core track) | | ✓ | |
+| `cross_listings.json` (cross-listed course groups) | | | ✓ (group offerings) | | |
 | Course offering records (`prefix/number/section/instructor/secondaryInstructors/days/time`) | | | ✓ (store + index) | | ✓ (domain) |
 
 ## Join keys
@@ -80,6 +82,9 @@ The contract is keyed by strings that are stable across re-scrapes:
 - **Track key**: slug of a parsed requirement's `label`, stable per program
   (see `lib` in `@major-vis/catalog-client`/planner store).
 - **Requirement area id** (core only): the CCR/ACE code (`LA`, `HS`, `WL`, …).
+- **Cross-list group**: the concrete `PREFIX NNN` codes that are the same course
+  (e.g. `CS 263` / `ENGR 263` / `PHI 263`); membership comes from
+  `cross_listings.json`, never from the code shape.
 
 ## Consuming it
 

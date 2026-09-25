@@ -14,17 +14,19 @@ catalog.hanover.edu  (the public catalog)
         │    scrape_catalog.py            → majors.json               (raw programs, courses, faculty)
         │    codify_requirements.py       → requirements_parsed.json  (structured requirement nodes)
         │    extract_core.py              → core_requirements.json    (CCR/ACE areas)
+        │    extract_cross_list.py        → cross_listings.json       (cross-listed course groups)
         │    audit_catalog.py             → catalog_issues.{json,md}  (admin report — NOT runtime)
         ▼
    ┌────────────────────────────────────────────────────────────────┐
-   │  The three JSON files at the repo root are the CATALOG DATA    │
+   │  The JSON files at the repo root are the CATALOG DATA          │
    │  CONTRACT — validated against packages/catalog-contract        │
    │  schemas by `npm run validate:catalog` (run in CI).            │
    └────────────────────────────────────────────────────────────────┘
         │
         │  packages/catalog-client — loadCatalog({ baseUrl })
-        │    fetches the three JSON files into reactive refs:
+        │    fetches the catalog JSON files into reactive refs:
         │    programs · allCourses · parsedRequirements · coreRequirements
+        │    · crossListings
         ▼
    ┌──────────────┐     ┌────────────────┐     ┌───────────────────┐
    │ apps/browse  │     │ apps/schedule  │     │ apps/planner      │

@@ -16,6 +16,7 @@ and apps sometimes use different words for the same concept — this maps them.
 | **offering title** | An offering's own title (special-topics topics), distinct from the catalog course name; `''` falls back to the catalog name. A lab shares its lecture's title. Optional CSV `title` column; editable in the course editor. | schedule app, `schedule-core`, CSV |
 | **seats** | The requested seat count for one offering row (a positive integer, default `DEFAULT_SEATS` = 24; a lab has its own, distinct from its lecture). Optional `seats` CSV column; editable in the course editor. | schedule app, `schedule-core`, CSV |
 | **core area / `core_reqs`** | A core-curriculum area id (`LA`, `HS`, `SM`, ...) a course satisfies. The optional `core_reqs` CSV column carries the comma-separated ids: exports resolve them from the catalog, imports only compare them against it (disagreements flagged, never stored). | `core_requirements.json`, `catalog-client`, `schedule-core`, CSV |
+| **cross-listed group** | The same course under several department codes (`CS 263` / `ENGR 263` / `PHI 263`), from `cross_listings.json`. A group's offerings are kept identical and share an owning department (`crossListOwner`); the optional `cross_listed` CSV column lists the materialized sibling prefixes. | `cross_listings.json`, `catalog-client`, schedule app, `schedule-core`, CSV |
 | **course (vs offering)** | A catalog course (identity + name/description) vs a scheduled offering (one section at a time). | catalog vs schedule |
 | **allCourses** | The catalog-client ref: a map keyed by course code. | `catalog-client`, all apps |
 | **parsed requirement** | One requirement in `requirements_parsed.json`: `{ label, sections }`. | planner, browse |
@@ -58,6 +59,7 @@ Filters **scope the universe**; aggregates **verify counts over the chosen set**
 | Program id | derived from the program **name** | e.g. `anthropologycultural`. |
 | Track key | slug of the requirement **label** | stable across re-scrapes. |
 | Core area id | `LA`, `HS`, … | `core_requirements.json` requirement ids. |
+| Cross-list group | concrete codes (`CS 263`, `ENGR 263`) | membership from `cross_listings.json`; never derived from the code shape. |
 | `scheduleView` | `grid` \| `day` \| `slot` \| `course` \| `instructor` | the schedule app's sub-view param. |
 
 ## Mechanisms

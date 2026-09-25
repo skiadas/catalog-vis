@@ -40,6 +40,13 @@ is not part of an offering's identity (editing it never changes the content
 CSV carries it as the optional `seats` column (`parseCsv` reads it, `renderCsv`
 writes it).
 
+`crossListOwner` is the cross-list group's owning department prefix (`''` or
+absent = not grouped, or an imported group no one has claimed yet). It is
+app-state — not part of the offering's identity, and never serialized to CSV —
+but `diffOfferings` includes it in an update op's `changes` (so a first edit
+that claims an imported group survives propose/approve) while keeping it out of
+the human-readable `diff` detail.
+
 **`id`** is a deterministic content hash producers assign at import/creation
 (and fill on legacy records during load): two rows that share a section tuple
 but meet at different bands — a _split meeting_, e.g. MUS 001 A on MW
@@ -74,16 +81,18 @@ renumbered deterministically. A lab also shares its lecture's `title`
 
 - `CSV_COLUMNS` — the canonical column order (`dept_prefix`, `course_number`,
   `course_section`, `title`, `instructor_name`, `secondary_instr_name`, `days`,
-  `times`, `seats`, `instructor`, `secondary_instr`, `core_reqs`). `renderCsv`
+  `times`, `seats`, `instructor`, `secondary_instr`, `core_reqs`,
+  `cross_listed`). `renderCsv`
   builds its header from it and the app's summary export reuses `renderCsv`, so
   the order lives in one place. The instructors come in two blocks: `instructor`
   / `secondary_instr` carry the canonical **usernames** (the identity the
   round-trip keys on) and sit after the meeting columns; `instructor_name` /
   `secondary_instr_name` carry the directory's human name in "Last, First" form
-  (see `lastFirst`) and sit up with the identity columns. `core_reqs` is last,
-  just before the optional `term`: the comma-separated core-curriculum area ids
-  (`SM`, `LA`, ...) the course satisfies — a display/validation aid, not
-  offering identity (catalog-free, the app resolves the values).
+  (see `lastFirst`) and sit up with the identity columns. `core_reqs` and
+  `cross_listed` are last, just before the optional `term`: the core-curriculum
+  area ids and the other department prefixes the offering is cross-listed with
+  — display/validation aids, not offering identity (catalog-free, the app
+  resolves the values).
 - `parseCsv(text)` → `offering[]` (header-driven via `csv-parse`, so column
   order never matters; a UTF-8 BOM, CRLF endings, quoted cells with embedded
   commas/newlines, and ragged rows are tolerated; a malformed file yields `[]`
@@ -96,7 +105,9 @@ renumbered deterministically. A lab also shares its lecture's `title`
   is the offering's own title; the optional `seats` column
   is a positive integer defaulting to `DEFAULT_SEATS` (24) when absent/blank/
   invalid; the optional `core_reqs` column is a comma-separated list carried
-  through verbatim as `coreReqs` (always present, default `[]`); `166L` +
+  through verbatim as `coreReqs` (always present, default `[]`); the optional
+  `cross_listed` column is a comma-separated list carried through as
+  `crossListed` (always present, default `[]`); `166L` +
   section-cell lab digits with deterministic labSeq for
   colliding rows, and lab titles mirrored from their lecture). The
   `instructor_name`/`secondary_instr_name` columns are **display-only and
@@ -213,8 +224,9 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
 ### Drag payload (shared with the planner timeline)
 
 - `buildDragPayload(it, fromDay)` → serialized
-  `{ sid, id, prefix, number, section, lab, labSeq, fromDay }` (the content
-  `id` rides along so a split-meeting row drags only itself)
+  `{ sid, id, prefix, number, section, lab, labSeq, crossListOwner, fromDay }`
+  (the content `id` rides along so a split-meeting row drags only itself; the
+  owner rides along so the drop-time permission check can see the group owner)
 - `dragPayloadFrom(e)` → parsed payload (or `null`) from a `dataTransfer`
 
 ## Contract — `./generate` (generate.js)

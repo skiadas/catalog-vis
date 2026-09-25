@@ -89,10 +89,11 @@ development the directory is also pre-seeded from the repo-root `directory.csv`
 | Scrape catalog                     | `tools/catalog-pipeline/scrape_catalog.py`                                                             | `majors.json` (54 programs, 1144 courses) |
 | Codify requirements (LLM-assisted) | `tools/catalog-pipeline/codify_requirements.py` per `packages/catalog-contract/REQUIREMENTS_SCHEMA.md` | `requirements_parsed.json`                |
 | Extract core curriculum            | `tools/catalog-pipeline/extract_core.py`                                                               | `core_requirements.json`                  |
+| Extract cross-listings             | `tools/catalog-pipeline/extract_cross_list.py`                                                         | `cross_listings.json`                     |
 | Audit cross-references             | `tools/catalog-pipeline/audit_catalog.py`                                                              | `catalog_issues.{json,md}`                |
 | Render admin report                | `tools/catalog-pipeline/md_to_html.py` (pandoc)                                                        | `catalog_issues.html`                     |
 
-The three JSON artifacts are the **catalog data contract** — validated by
+The catalog JSON artifacts are the **catalog data contract** — validated by
 `packages/catalog-contract` (`npm run validate:catalog`). See
 `packages/catalog-contract/README.md` for the schemas and consumer-needs
 matrix. The sample schedule is generated in the browser from the catalog
@@ -157,9 +158,9 @@ build:
 - the root `index.html` **launcher** — resolves which services are enabled
   (`/api/config`, else `config.json`, else all) and redirects to the first
   enabled app under `/apps/<name>/`;
-- the **catalog API** — the three artifacts (`/majors.json`,
-  `/requirements_parsed.json`, `/core_requirements.json`) plus a
-  `/catalog.json` manifest, always public;
+- the **catalog API** — the catalog artifacts (`/majors.json`,
+  `/requirements_parsed.json`, `/core_requirements.json`, `/cross_listings.json`)
+  plus a `/catalog.json` manifest, always public;
 - the **backend API** (`/api/*`: auth — username self-identify or OIDC SSO —
   yearly schedules/terms, suggested changes) backed by SQLite via the built-in
   `node:sqlite` module — no native dependencies;

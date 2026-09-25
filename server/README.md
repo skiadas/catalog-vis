@@ -29,7 +29,7 @@ npm run build && npm run serve
 ```
 
 The container sets `STATIC_DIR=/srv/static` to an **assembled layout**: the
-root launcher (`index.html`, `config.json`), the three catalog artifacts, the
+root launcher (`index.html`, `config.json`), the catalog artifacts, the
 built apps under `apps/<name>/` (copied from `dist/<name>/`), and the user
 guide under `docs/` (copied from `docs-site/.vitepress/dist/`). Locally
 (`STATIC_DIR` unset = repo root), the same layout is mirrored: the built
@@ -99,7 +99,8 @@ The catalog is the **pipeline JSON as source of truth**, served from
 `staticDir` (see `src/catalog.js`):
 
 ```
-GET  /majors.json, /requirements_parsed.json, /core_requirements.json
+GET  /majors.json, /requirements_parsed.json, /core_requirements.json,
+     /cross_listings.json
      -> the artifacts, with Cache-Control: no-store + ETag/Last-Modified
 GET  /catalog.json -> { catalog_year, updated_at, schema_version, artifacts }
 ```

@@ -19,6 +19,8 @@ Browser-only (fetches via `fetch`), so the apps' unit-tested engines
   `requirements_parsed.json`
 - `coreRequirements` — the single core-curriculum program's requirements from
   `core_requirements.json`
+- `crossListings` — the cross-listed course groups from `cross_listings.json`
+  (`{ id, codes }[]`; `codes` are the same course under several departments)
 - `loading` — true until `loadCatalog` finishes
 - `errorMessage` — human-readable reason the catalog couldn't be loaded (fetch
   failure or contract validation failure), or `''` when all is well; the apps
@@ -60,6 +62,9 @@ of an empty catalog). Pass `{ validate: false }` to skip the check.
   each course satisfies (derived from `coreRequirements`, built per call)
 - `coreReqLabel(id)` → an area's label (`SM` → `Scientific and Mathematical
   Methods (SM)`), or `''` when unknown
+- `crossListGroup(code)` → the group a course code belongs to, or `null`
+- `crossListOf(code)` → the other catalog codes a course is cross-listed with
+  (`[]` when it isn't cross-listed)
 - `filteredPrograms` (computed, via `searchQuery`/`filterType`)
 
 ## Consumers

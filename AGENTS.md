@@ -57,11 +57,11 @@ tools/catalog-pipeline/      Python: scrape, codify, extract_core, audit, md_to_
   (`../../style/<name>.scss`); Vite compiles it with `sass` natively (dev
   injects it with HMR; build emits a hashed CSS asset in `dist/<name>/assets/`),
   and a SCSS error fails the build.
-- **The catalog is three root JSON files** (`majors.json`,
-  `requirements_parsed.json`, `core_requirements.json`), validated against the
-  contract schemas by `npm run validate:catalog` (run in CI). The pipeline is the
-  only writer; apps are read-only consumers — swap the producer without touching
-  consumers as long as the JSON contract holds.
+- **The catalog is four root JSON files** (`majors.json`,
+  `requirements_parsed.json`, `core_requirements.json`, `cross_listings.json`),
+  validated against the contract schemas by `npm run validate:catalog` (run in
+  CI). The pipeline is the only writer; apps are read-only consumers — swap the
+  producer without touching consumers as long as the JSON contract holds.
 - **Apps never import each other.** Navigation between them is plain URLs, not
   function calls (examples in `docs/ARCHITECTURE.md`).
 - **Persistence is localStorage** — `major-vis.schedules*` (schedule app) and
