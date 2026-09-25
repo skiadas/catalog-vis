@@ -96,6 +96,7 @@ import {
 import {
   selectedDepartments,
   selectedInstructors,
+  selectedCoreReqs,
   filterMode,
   activeTerm,
   blockMode,
@@ -106,6 +107,7 @@ import {
   scheduleOfferings,
   selectedScheduleIds,
   colorSchedules,
+  coreReqsByCode,
   editingScheduleId,
   canTouchOffering,
   showPendingSuggestions,
@@ -178,10 +180,17 @@ export default {
     // the normal filter / schedule-coloring behavior applies — and when pending
     // proposals are shown, the view activates (pills + schedule colors) so the
     // proposed blocks are visible rather than hidden behind count summaries.
+    // The core filter's resolver: a course code -> its core-area ids.
+    const reqsOf = (code) => coreReqsByCode.value.get(code) || []
     const filter = computed(() => {
       if (editingScheduleId.value) {
-        return buildEditVisual(filterMode.value, selectedDepartments.value, selectedInstructors.value, (it) =>
-          colorForSchedule(it.sid),
+        return buildEditVisual(
+          filterMode.value,
+          selectedDepartments.value,
+          selectedInstructors.value,
+          (it) => colorForSchedule(it.sid),
+          selectedCoreReqs.value,
+          reqsOf,
         )
       }
       const visual = buildVisual(
@@ -190,6 +199,8 @@ export default {
         selectedInstructors.value,
         selectedScheduleIds.value,
         colorSchedules.value,
+        selectedCoreReqs.value,
+        reqsOf,
       )
       if (!visual.active && overlay.value.aware) {
         return { active: true, matches: () => true, color: (it) => colorForSchedule(it.sid) }

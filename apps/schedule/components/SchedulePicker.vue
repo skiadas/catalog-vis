@@ -80,6 +80,15 @@
         {{ selectedScheduleIds.length > 1 ? 'Color by schedule' : 'See individual courses' }}
       </button>
 
+      <button
+        v-if="selectedScheduleIds.length"
+        class="filter-btn schedule-corestats-btn"
+        title="Offering and seat counts per core requirement"
+        @click="coreStatsOpen = true"
+      >
+        Core stats
+      </button>
+
       <div class="schedule-csv-wrap" v-if="selectedScheduleIds.length" @click.stop>
         <button
           class="filter-btn"
@@ -109,13 +118,16 @@
       </div>
     </div>
   </div>
+
+  <CoreStats :is-open="coreStatsOpen" @close="coreStatsOpen = false" />
 </template>
 
 <script>
 // The schedule-selection area: visible schedule pills, the color-by-schedule
-// toggle, the CSV download, and the "Your schedules" manage trigger. Read-only
-// on the schedule collection (store); editing/managing are delegated upward via
-// events so the parent can initialize edit-mode state.
+// toggle, the CSV download, the core-requirements stats popup, and the "Your
+// schedules" manage trigger. Read-only on the schedule collection (store);
+// editing/managing are delegated upward via events so the parent can initialize
+// edit-mode state.
 
 import {
   schedules,
@@ -126,6 +138,8 @@ import {
   filterMode,
   selectedDepartments,
   selectedInstructors,
+  selectedCoreReqs,
+  coreReqsByCode,
   activeTerm,
   viewOfferings,
   publishedOfferings,
@@ -139,13 +153,18 @@ import { colorForSchedule, compareItems, renderCsv } from '@major-vis/schedule-c
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 import { fetchRoster } from '../src/backend.js'
 import { buildNameIndex, usernameKey, displayName } from '../src/names.js'
+import CoreStats from './CoreStats.vue'
 
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 
 export default {
   name: 'SchedulePicker',
+  components: { CoreStats },
   emits: ['edit', 'manage', 'createterm'],
   setup(_, { emit }) {
+    // The "Core stats" popup: this component owns its open/closed state; the
+    // dialog renders its own overlay (the ScheduleAddCourse pattern).
+    const coreStatsOpen = ref(false)
     const visibleSchedules = computed(() =>
       schedules.value.filter((s) => selectedScheduleIds.value.includes(s.id)),
     )
@@ -176,7 +195,8 @@ export default {
     const filterActive = computed(
       () =>
         (filterMode.value === 'dept' && selectedDepartments.value.length > 0) ||
-        (filterMode.value === 'instructor' && selectedInstructors.value.length > 0),
+        (filterMode.value === 'instructor' && selectedInstructors.value.length > 0) ||
+        (filterMode.value === 'core' && selectedCoreReqs.value.length > 0),
     )
     const scheduleColorApplicable = computed(
       () => selectedScheduleIds.value.length > 0 && !filterActive.value,
@@ -198,6 +218,10 @@ export default {
     // catalog lookups, so the app resolves it here).
     const effectiveTitle = (o) =>
       String((o && o.title) || '').trim() || catalogCourseName(`${o.prefix} ${o.number}`)
+    // The core-curriculum area ids a row's course satisfies, resolved fresh from
+    // the catalog (like the title): `renderCsv` stays catalog-free, so the app
+    // fills `coreReqs` on each row and the column is written from `CSV_COLUMNS`.
+    const coreReqsFor = (o) => coreReqsByCode.value.get(`${o.prefix} ${o.number}`) || []
     // The directory resolver behind the CSV export's "Last, First" name
     // columns: `renderCsv` asks it for a username's display name. The roster is
     // fetched fresh per export (so an admin's latest import is included); an
@@ -234,7 +258,7 @@ export default {
           compareItems({ o: a }, { o: b }),
         )
         for (const o of offerings) {
-          rows.push({ ...o, title: effectiveTitle(o), term: activeTerm.value })
+          rows.push({ ...o, title: effectiveTitle(o), coreReqs: coreReqsFor(o), term: activeTerm.value })
         }
       }
       const csv = renderCsv(rows, { fullName: await fullNameResolver() })
@@ -250,7 +274,7 @@ export default {
       const rows = []
       for (const t of Object.keys(s.terms || {})) {
         for (const o of publishedOfferings(s, t).map((x) => ({ ...x, term: t }))) {
-          rows.push({ ...o, title: effectiveTitle(o) })
+          rows.push({ ...o, title: effectiveTitle(o), coreReqs: coreReqsFor(o) })
         }
       }
       const csv = renderCsv(rows, { fullName: await fullNameResolver() })
@@ -281,6 +305,7 @@ export default {
       manage,
       csvOpen,
       closeCsv,
+      coreStatsOpen,
     }
   },
 }

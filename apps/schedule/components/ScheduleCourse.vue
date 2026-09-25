@@ -4,65 +4,82 @@
       <p>Select a course from the dropdown above to view its offerings and conflicts.</p>
     </div>
     <div v-else>
-      <div class="detail-header">
-        <h2>{{ code }}</h2>
-        <div class="faculty" v-if="catalog">{{ catalog.course_name }}</div>
-      </div>
+      <div class="course-detail-layout">
+        <div class="course-detail-main">
+          <div class="detail-header">
+            <h2>{{ code }}</h2>
+            <div class="faculty" v-if="catalog">{{ catalog.course_name }}</div>
+          </div>
 
-      <div class="section-title">Offerings ({{ sections.length }})</div>
-      <div class="req-block" v-for="s in sections" :key="offeringItemKey(s)">
-        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px">
-          <div>
-            <div>
-              <strong>{{ s.sectionLabel }}</strong> · {{ s.o.days }} {{ formatTime(s.o.time) }} · Seats:
-              {{ s.o.seats ?? DEFAULT_SEATS }}
+          <div class="section-title">Offerings ({{ sections.length }})</div>
+          <div class="req-block" v-for="s in sections" :key="offeringItemKey(s)">
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px">
+              <div>
+                <div>
+                  <strong>{{ s.sectionLabel }}</strong> · {{ s.o.days }} {{ formatTime(s.o.time) }} · Seats:
+                  {{ s.o.seats ?? DEFAULT_SEATS }}
+                </div>
+                <div v-if="offeringTitle(s.o)" class="offering-title">{{ offeringTitle(s.o) }}</div>
+              </div>
+              <div class="faculty">
+                Instructor:
+                <template v-for="(n, i) in s.instructors" :key="n"
+                  ><span v-if="i" class="sep">, </span
+                  ><button type="button" class="faculty-link" @click="goScheduleInstructor(n)">
+                    {{ instructorName(n) }}
+                  </button></template
+                ><span v-if="!s.instructors.length">—</span>
+              </div>
             </div>
-            <div v-if="offeringTitle(s.o)" class="offering-title">{{ offeringTitle(s.o) }}</div>
           </div>
-          <div class="faculty">
-            Instructor:
-            <template v-for="(n, i) in s.instructors" :key="n"
-              ><span v-if="i" class="sep">, </span
-              ><button type="button" class="faculty-link" @click="goScheduleInstructor(n)">
-                {{ instructorName(n) }}
-              </button></template
-            ><span v-if="!s.instructors.length">—</span>
-          </div>
-        </div>
-      </div>
 
-      <div style="margin-top: 24px">
-        <div class="section-title">Conflicts ({{ conflicts.length }})</div>
-        <div v-if="!conflicts.length" class="empty-state">
-          <p>No student-side time conflicts for this course.</p>
+          <div style="margin-top: 24px">
+            <div class="section-title">Conflicts ({{ conflicts.length }})</div>
+            <div v-if="!conflicts.length" class="empty-state">
+              <p>No student-side time conflicts for this course.</p>
+            </div>
+            <table class="courses-table" v-else>
+              <thead>
+                <tr>
+                  <th>Course</th>
+                  <th>Conflicting times</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="c in conflicts" :key="c">
+                  <td>
+                    <button type="button" class="course-code-cell" @click="goScheduleCourse(c)">
+                      {{ c }}
+                    </button>
+                    <span class="conflict-course-name">{{ nameFor(c) }}</span>
+                  </td>
+                  <td>
+                    <button
+                      v-for="sec in schedule.byCourse[c]"
+                      :key="sec.o.days + sec.o.time"
+                      type="button"
+                      class="course-chip mini"
+                      @click="goScheduleSlot(sec.days[0], sec.o.time)"
+                    >
+                      {{ sec.o.days }} {{ sec.o.time }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <table class="courses-table" v-else>
-          <thead>
-            <tr>
-              <th>Course</th>
-              <th>Conflicting times</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="c in conflicts" :key="c">
-              <td>
-                <button type="button" class="course-code-cell" @click="goScheduleCourse(c)">{{ c }}</button>
-                <span class="conflict-course-name">{{ nameFor(c) }}</span>
-              </td>
-              <td>
-                <button
-                  v-for="sec in schedule.byCourse[c]"
-                  :key="sec.o.days + sec.o.time"
-                  type="button"
-                  class="course-chip mini"
-                  @click="goScheduleSlot(sec.days[0], sec.o.time)"
-                >
-                  {{ sec.o.days }} {{ sec.o.time }}
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+
+        <aside class="course-detail-aside" aria-labelledby="course-core-reqs-title">
+          <div id="course-core-reqs-title" class="section-title">Core requirements</div>
+          <p v-if="!coreReqs.length" class="core-req-empty">None.</p>
+          <ul v-else class="core-req-list">
+            <li v-for="r in coreReqs" :key="r.id" class="core-req-item">
+              <span class="core-req-id" :style="{ backgroundColor: colorForCoreReq(r.id) }">{{ r.id }}</span>
+              <span class="core-req-label">{{ r.label }}</span>
+            </li>
+          </ul>
+        </aside>
       </div>
     </div>
 
@@ -76,8 +93,14 @@
 <script>
 import { useRoute } from 'vue-router'
 import { schedule, scheduleOfferings, instructorName } from '../src/scheduleStore.js'
-import { courseByCode, courseName } from '@major-vis/catalog-client'
-import { conflictsForCourse, formatTime, offeringItemKey, DEFAULT_SEATS } from '@major-vis/schedule-core'
+import { courseByCode, courseName, coreReqLabel, coreReqsByCode } from '@major-vis/catalog-client'
+import {
+  conflictsForCourse,
+  formatTime,
+  offeringItemKey,
+  colorForCoreReq,
+  DEFAULT_SEATS,
+} from '@major-vis/schedule-core'
 import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../router.js'
 
 import { computed } from 'vue'
@@ -94,6 +117,11 @@ export default {
       schedule.value && code.value ? conflictsForCourse(code.value, schedule.value) : [],
     )
     const catalog = computed(() => courseByCode(code.value))
+    // The core-curriculum areas this course satisfies, resolved from the
+    // catalog (read-only; the schedule never stores the mapping).
+    const coreReqs = computed(() =>
+      (coreReqsByCode().get(code.value) || []).map((id) => ({ id, label: coreReqLabel(id) })),
+    )
     const nameFor = courseName
     // The offering's own title, shown only when it differs from the catalog
     // name (the header already carries the catalog name for the course).
@@ -112,6 +140,8 @@ export default {
       catalog,
       nameFor,
       offeringTitle,
+      coreReqs,
+      colorForCoreReq,
       instructorName,
       formatTime,
       offeringItemKey,

@@ -126,9 +126,17 @@
                 >({{ instructorFilterCount }})</span
               >
             </button>
+            <button
+              class="seg-btn"
+              :class="{ active: filterMode === 'core' && filterPanelOpen }"
+              :aria-pressed="filterMode === 'core'"
+              @click="pickFilter('core')"
+            >
+              Core reqs<span v-if="coreFilterCount" class="filter-count">({{ coreFilterCount }})</span>
+            </button>
           </div>
           <button
-            v-if="!filterPanelOpen && (deptFilterCount || instructorFilterCount)"
+            v-if="!filterPanelOpen && (deptFilterCount || instructorFilterCount || coreFilterCount)"
             class="filter-clear"
             @click="clearActiveFilters"
           >
@@ -287,6 +295,7 @@ import {
   filterPanelOpen,
   selectedDepartments,
   selectedInstructors,
+  selectedCoreReqs,
   schedule,
   schedules,
   selectedScheduleIds,
@@ -406,9 +415,11 @@ export default {
     }
     const deptFilterCount = computed(() => selectedDepartments.value.length)
     const instructorFilterCount = computed(() => selectedInstructors.value.length)
+    const coreFilterCount = computed(() => selectedCoreReqs.value.length)
     const clearActiveFilters = () => {
       if (filterMode.value === 'dept') selectedDepartments.value = []
-      else selectedInstructors.value = []
+      else if (filterMode.value === 'instructor') selectedInstructors.value = []
+      else selectedCoreReqs.value = []
     }
 
     // Course picker — the "course conflicts" dropdown. It stays open while
@@ -600,6 +611,7 @@ export default {
       pickFilter,
       deptFilterCount,
       instructorFilterCount,
+      coreFilterCount,
       clearActiveFilters,
       courseQuery,
       courseOpen,

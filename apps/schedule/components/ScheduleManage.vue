@@ -158,6 +158,18 @@
               l.label
             }}</span>
           </p>
+          <p v-if="coreDisagreements.length || coreUnknown" class="schedule-upload-warning">
+            <strong
+              >{{ coreDisagreements.length }} row(s) disagree with the catalog's core requirements</strong
+            >
+            <template v-if="coreUnknown">({{ coreUnknown }} course(s) not in the catalog)</template>:
+            <span
+              v-for="d in coreDisagreements"
+              :key="d.code + d.section"
+              class="schedule-upload-warning-item"
+              >{{ coreRowLabel(d) }}</span
+            >
+          </p>
         </div>
         <div v-else class="field">
           <span class="field-label">Type</span>
@@ -247,8 +259,9 @@ import {
   isOwner,
   canSuggest,
 } from '../src/scheduleStore.js'
-import { allCourses } from '@major-vis/catalog-client'
+import { allCourses, coreReqsByCode } from '@major-vis/catalog-client'
 import { colorForSchedule, TERM_KEYS, TERM_LABELS, parseCsv } from '@major-vis/schedule-core'
+import { coreReqsDisagreements } from '../src/coreCompare.js'
 import { useModalFocus } from '../src/modalFocus.js'
 import { displayName } from '../src/names.js'
 
@@ -356,6 +369,20 @@ export default {
           label: `${r.prefix} ${r.number}L ${r.section}${r.labSeq || 1}`,
         }))
     })
+    // The catalog's core-requirement disagreements for the staged file: one
+    // entry per row whose `core_reqs` cell differs from the catalog's list.
+    // Rows for courses the catalog does not carry are counted, not flagged.
+    const coreCompare = computed(() =>
+      coreReqsDisagreements(csvRows.value || [], coreReqsByCode(), new Set(Object.keys(allCourses.value))),
+    )
+    const coreDisagreements = computed(() => coreCompare.value.disagreements)
+    const coreUnknown = computed(() => coreCompare.value.unknown)
+    // One flagged row's summary: `CS 220 A: file says SM, LA · catalog says SM`.
+    const coreRowLabel = (d) => {
+      const file = d.file.length ? d.file.join(', ') : '—'
+      const catalog = d.catalog.length ? d.catalog.join(', ') : '—'
+      return `${d.code}${d.section ? ' ' + d.section : ''}: file says ${file} · catalog says ${catalog}`
+    }
     const pickCsvFile = () => {
       csvInput.value && csvInput.value.click()
     }
@@ -504,6 +531,9 @@ export default {
       csvName,
       csvParts,
       importWarning,
+      coreDisagreements,
+      coreUnknown,
+      coreRowLabel,
       csvError,
       removeSchedule,
       ownerLabel,

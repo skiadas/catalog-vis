@@ -28,7 +28,7 @@ import {
   offeringSectionLabel,
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
-import { programs, allCourses } from '@major-vis/catalog-client'
+import { programs, allCourses, coreReqsByCode as catalogCoreReqsByCode } from '@major-vis/catalog-client'
 import {
   diffOfferings,
   applyOperations,
@@ -43,7 +43,13 @@ import { ref, computed, watch } from 'vue'
 
 export const selectedDepartments = ref([])
 export const selectedInstructors = ref([])
+export const selectedCoreReqs = ref([])
 export const filterMode = ref('dept')
+
+// The catalog's course-code -> core-requirement ids map, shared by the three
+// calendar views and the core filter (schedule-core's `buildVisual` asks a
+// resolver; this is the one seam between the catalog and that pure package).
+export const coreReqsByCode = computed(() => catalogCoreReqsByCode())
 
 // Whether the filter chips panel is expanded. The mode buttons (Departments /
 // Instructors) drive this: clicking the active mode collapses the picklist
@@ -1271,6 +1277,9 @@ export function importCsvRows(scheduleId, rows) {
     if (!byTerm[t]) byTerm[t] = []
     const offering = { ...r }
     delete offering.term
+    // `coreReqs` is import-time validation only — the catalog owns the
+    // course -> area mapping, so the sheet's claim is never stored.
+    delete offering.coreReqs
     byTerm[t].push(offering)
   }
   const written = {}

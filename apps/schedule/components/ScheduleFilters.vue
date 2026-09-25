@@ -33,26 +33,49 @@
       </button>
       <button v-if="selectedInstructors.length" class="filter-clear" @click="clearInstructors">Clear</button>
     </div>
+
+    <div class="filter-panel" v-if="showFilter && filterPanelOpen && filterMode === 'core'">
+      <span class="filter-label">Core requirements:</span>
+      <button
+        v-for="r in coreReqs"
+        :key="r.id"
+        type="button"
+        class="filter-chip"
+        :class="{ active: selectedCoreReqs.includes(r.id) }"
+        :style="selectedCoreReqs.includes(r.id) ? { backgroundColor: colorForCoreReq(r.id) } : {}"
+        :aria-pressed="selectedCoreReqs.includes(r.id)"
+        :title="r.label"
+        @click="toggleCoreReq(r.id)"
+      >
+        {{ r.id }}
+      </button>
+      <button v-if="selectedCoreReqs.length" class="filter-clear" @click="clearCoreReqs">Clear</button>
+    </div>
   </div>
 </template>
 
 <script>
-// Department / instructor filter chips for the schedule views. Reads the
-// selected filters and the schedule index from the module stores directly;
-// rendered as a sibling of the schedule header (below the toolbar).
+// Department / instructor / core-requirement filter chips for the schedule
+// views. Reads the selected filters and the schedule index from the module
+// stores directly; rendered as a sibling of the schedule header (below the
+// toolbar).
 
 import {
   departmentsInSchedule,
   instructorsInSchedule,
+  coreReqsInSchedule,
   colorForDept,
   colorForInstructor,
+  colorForCoreReq,
 } from '@major-vis/schedule-core'
+import { coreRequirements } from '@major-vis/catalog-client'
 import {
   schedule,
   filterMode,
   filterPanelOpen,
   selectedDepartments,
   selectedInstructors,
+  selectedCoreReqs,
   instructorName,
 } from '../src/scheduleStore.js'
 
@@ -67,6 +90,9 @@ export default {
     const showFilter = computed(() => ['grid', 'day', 'slot'].includes(props.view))
     const depts = computed(() => departmentsInSchedule(schedule.value))
     const instructors = computed(() => instructorsInSchedule(schedule.value))
+    // Only the areas some course in the schedule actually satisfies, so the
+    // chip row stays a reflection of what is on screen (like depts/instructors).
+    const coreReqs = computed(() => coreReqsInSchedule(schedule.value, coreRequirements.value))
 
     const toggleDept = (prefix) => {
       const i = selectedDepartments.value.indexOf(prefix)
@@ -84,6 +110,14 @@ export default {
     const clearInstructors = () => {
       selectedInstructors.value = []
     }
+    const toggleCoreReq = (id) => {
+      const i = selectedCoreReqs.value.indexOf(id)
+      if (i < 0) selectedCoreReqs.value = [...selectedCoreReqs.value, id]
+      else selectedCoreReqs.value = selectedCoreReqs.value.filter((r) => r !== id)
+    }
+    const clearCoreReqs = () => {
+      selectedCoreReqs.value = []
+    }
 
     return {
       props,
@@ -91,16 +125,21 @@ export default {
       filterPanelOpen,
       depts,
       instructors,
+      coreReqs,
       toggleDept,
       clearDepts,
       toggleInstructor,
       clearInstructors,
+      toggleCoreReq,
+      clearCoreReqs,
       filterMode,
       selectedDepartments,
       selectedInstructors,
+      selectedCoreReqs,
       instructorName,
       colorForDept,
       colorForInstructor,
+      colorForCoreReq,
     }
   },
 }

@@ -44,12 +44,19 @@ import {
   termSlotOptions,
   offeringItemKey,
 } from '@major-vis/schedule-core'
-import { selectedDepartments, selectedInstructors, filterMode, activeTerm } from '../src/scheduleStore.js'
+import {
+  selectedDepartments,
+  selectedInstructors,
+  selectedCoreReqs,
+  filterMode,
+  activeTerm,
+} from '../src/scheduleStore.js'
 import {
   schedule,
   scheduleOfferings,
   selectedScheduleIds,
   colorSchedules,
+  coreReqsByCode,
   editingScheduleId,
   canTouchOffering,
   showPendingSuggestions,
@@ -99,10 +106,16 @@ export default {
     // In edit/suggest mode the filter is overridden (like the grid) so the
     // session schedule's courses are visible — an active filter still limits.
     // Pending proposals force the pill view so proposed blocks are visible.
+    const reqsOf = (code) => coreReqsByCode.value.get(code) || []
     const filter = computed(() => {
       if (editingScheduleId.value) {
-        return buildEditVisual(filterMode.value, selectedDepartments.value, selectedInstructors.value, (it) =>
-          colorForSchedule(it.sid),
+        return buildEditVisual(
+          filterMode.value,
+          selectedDepartments.value,
+          selectedInstructors.value,
+          (it) => colorForSchedule(it.sid),
+          selectedCoreReqs.value,
+          reqsOf,
         )
       }
       const visual = buildVisual(
@@ -111,6 +124,8 @@ export default {
         selectedInstructors.value,
         selectedScheduleIds.value,
         colorSchedules.value,
+        selectedCoreReqs.value,
+        reqsOf,
       )
       if (!visual.active && overlay.value.aware) {
         return { active: true, matches: () => true, color: (it) => colorForSchedule(it.sid) }

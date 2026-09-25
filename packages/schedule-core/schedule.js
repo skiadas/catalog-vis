@@ -1289,6 +1289,13 @@ export function coreReqsInSchedule(index, reqs) {
 // core-curriculum area. schedule-core is catalog-free, so the caller supplies
 // both the selected ids and `reqsOf(code)` → the area ids that course
 // satisfies (the app derives it from the catalog).
+/**
+ * @param {string} mode
+ * @param {string[]} depts
+ * @param {string[]} instructors
+ * @param {string[]} [coreReqs]
+ * @param {(code: string) => string[]} [reqsOf]
+ */
 export function buildFilter(mode, depts, instructors, coreReqs = [], reqsOf = () => []) {
   if (mode === 'instructor') {
     return {
@@ -1334,6 +1341,15 @@ function codeOf(o) {
 // schedule is displayed, every course block is colored by which schedule it
 // belongs to (with a single schedule this shows the actual course list rather
 // than a count summary).
+/**
+ * @param {string} mode
+ * @param {string[]} depts
+ * @param {string[]} instructors
+ * @param {Array<string | number>} scheduleIds
+ * @param {boolean} colorSchedules
+ * @param {string[]} [coreReqs]
+ * @param {(code: string) => string[]} [reqsOf]
+ */
 export function buildVisual(
   mode,
   depts,
@@ -1362,6 +1378,14 @@ export function buildVisual(
 // is active its match/color rules apply to everything, exactly like the plain
 // views; otherwise every course shows, colored by `colorFn` (the schedule
 // color). Returns { active: true, matches, color }.
+/**
+ * @param {string} mode
+ * @param {string[]} depts
+ * @param {string[]} instructors
+ * @param {(item: any) => string} colorFn
+ * @param {string[]} [coreReqs]
+ * @param {(code: string) => string[]} [reqsOf]
+ */
 export function buildEditVisual(mode, depts, instructors, colorFn, coreReqs = [], reqsOf = () => []) {
   const filter = buildFilter(mode, depts, instructors, coreReqs, reqsOf)
   if (filter.active) return filter
