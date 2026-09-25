@@ -37,8 +37,9 @@ const server = spawn('node', ['server/src/index.js'], {
     PORT: '0',
     DB_PATH: join(dbDir, 'probe.db'),
     ADMIN_USERNAMES: 'registrar',
-    // Hermetic: never seed from the gitignored repo-root directory.csv.
-    SEED_DIRECTORY: '0',
+    // A test session, not a dev one: NODE_ENV=test keeps the dev-only
+    // conveniences (directory seed, default AUTH_DOMAIN) out by construction.
+    NODE_ENV: 'test',
   },
   stdio: ['ignore', 'pipe', 'inherit'],
 })

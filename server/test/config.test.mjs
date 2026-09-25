@@ -9,10 +9,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 
 // The env vars config.js reads that are deliberately NOT container settings:
 // STATIC_DIR, SESSION_COOKIE, and SEED_DIRECTORY are dev-only overrides, and
-// NODE_ENV is set by nothing at runtime (the image is the production build).
-// Every other env loadConfig reads must reach the container through compose.yaml
-// and be documented in deploy/.env.example — the deploy seam that a
-// unit-testable config() alone cannot protect.
+// NODE_ENV is the dev/test marker (`npm run serve` sets development; the
+// harnesses set test). Every other env loadConfig reads must reach the
+// container through compose.yaml and be documented in deploy/.env.example — the
+// deploy seam that a unit-testable config() alone cannot protect.
 const CONFIG_INTERNAL_ONLY = new Set(['STATIC_DIR', 'SESSION_COOKIE', 'NODE_ENV', 'SEED_DIRECTORY'])
 
 // The env names loadConfig actually reads, captured by handing it a recording
@@ -159,15 +159,32 @@ test('loadConfig exposes adminUsernames', () => {
   assert.deepEqual(loadConfig({ ADMIN_USERNAMES: 'a, b' }).adminUsernames, new Set(['a', 'b']))
 })
 
-test('loadConfig seeds the directory only in the repo-root dev layout', () => {
-  // Repo-root layout + no production flag: dev, so it seeds.
-  assert.equal(loadConfig({}).seedDirectory, true)
-  // The container's coordinates: assembled STATIC_DIR and NODE_ENV=production.
-  assert.equal(loadConfig({ STATIC_DIR: '/srv/static' }).seedDirectory, false)
+test('loadConfig seeds the directory only in development mode', () => {
+  // Only the `npm run serve` marker qualifies — unset, production, and test
+  // sessions all stay pristine.
+  assert.equal(loadConfig({}).seedDirectory, false)
   assert.equal(loadConfig({ NODE_ENV: 'production' }).seedDirectory, false)
+  assert.equal(loadConfig({ NODE_ENV: 'test' }).seedDirectory, false)
+  assert.equal(loadConfig({ NODE_ENV: 'development' }).seedDirectory, true)
   // The escape hatch for a pristine dev directory.
   for (const off of ['0', 'false', 'no', 'off']) {
-    assert.equal(loadConfig({ SEED_DIRECTORY: off }).seedDirectory, false, off)
+    assert.equal(loadConfig({ NODE_ENV: 'development', SEED_DIRECTORY: off }).seedDirectory, false, off)
   }
-  assert.equal(loadConfig({ SEED_DIRECTORY: '1' }).seedDirectory, true)
+  assert.equal(loadConfig({ NODE_ENV: 'development', SEED_DIRECTORY: '1' }).seedDirectory, true)
+})
+
+test('loadConfig defaults AUTH_DOMAIN to hanover.edu in dev, explicit elsewhere', () => {
+  assert.equal(loadConfig({}).authDomain, '', 'not a dev session: no domain default')
+  assert.equal(loadConfig({ NODE_ENV: 'production' }).authDomain, '')
+  assert.equal(loadConfig({ NODE_ENV: 'development' }).authDomain, 'hanover.edu')
+  // An explicit value always wins, including an explicitly empty one.
+  assert.equal(loadConfig({ NODE_ENV: 'development', AUTH_DOMAIN: '' }).authDomain, '')
+  assert.equal(loadConfig({ NODE_ENV: 'development', AUTH_DOMAIN: 'other.edu' }).authDomain, 'other.edu')
+  assert.equal(loadConfig({ NODE_ENV: 'production', AUTH_DOMAIN: 'other.edu' }).authDomain, 'other.edu')
+  // Admin names canonicalize through the effective domain, so bare names match
+  // the dev default.
+  assert.deepEqual(
+    loadConfig({ NODE_ENV: 'development', ADMIN_USERNAMES: 'haris' }).adminUsernames,
+    new Set(['haris@hanover.edu']),
+  )
 })

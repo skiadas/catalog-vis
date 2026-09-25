@@ -143,9 +143,10 @@ async function startServer(port) {
       HOST: '127.0.0.1',
       ADMIN_USERNAMES: 'registrar',
       DB_PATH: join(dbDir, 'shots.db'),
-      // Hermetic: never seed from the gitignored repo-root directory.csv, so a
-      // local screenshot run matches CI and the fixtures stay authoritative.
-      SEED_DIRECTORY: '0',
+      // A test session, not a dev one: NODE_ENV=test keeps the dev-only
+      // conveniences (directory seed, default AUTH_DOMAIN) out by construction,
+      // so a local screenshot run matches CI and the fixtures stay authoritative.
+      NODE_ENV: 'test',
     },
     stdio: ['ignore', 'ignore', 'inherit'],
   })

@@ -117,10 +117,33 @@ export function parseAuth(env) {
   return auth
 }
 
+// The default email domain for local development. `npm run serve` runs with
+// `NODE_ENV=development`, which makes bare usernames canonicalize to this
+// domain — so a directory.csv of bare names (`skiadas`) and a developer's
+// sign-in land on the same account. Set `AUTH_DOMAIN=` (empty) to opt out, or
+// any explicit value to override.
+export const DEV_AUTH_DOMAIN = 'hanover.edu'
+
+// The effective AUTH_DOMAIN: an explicit env value always wins (including an
+// explicitly empty one, which disables the default); an unset value falls back
+// to DEV_AUTH_DOMAIN in development mode and to no domain otherwise.
+export function effectiveAuthDomain(env, devMode) {
+  if (env.AUTH_DOMAIN === undefined || env.AUTH_DOMAIN === null) {
+    return devMode ? DEV_AUTH_DOMAIN : ''
+  }
+  return parseAuthDomain(env.AUTH_DOMAIN)
+}
+
 export function loadConfig(env = process.env) {
   const repoRoot = path.resolve(__dirname, '..', '..')
   // Where the static apps + catalog JSON live (the repo root by default).
   const staticDir = path.resolve(env.STATIC_DIR || repoRoot)
+  // Development mode is opt-in and set by the `npm run serve` script alone
+  // (NODE_ENV=development). It is what gates the dev-only conveniences below;
+  // the container is NODE_ENV=production and the test harnesses are
+  // NODE_ENV=test, so neither ever gets them.
+  const devMode = env.NODE_ENV === 'development'
+  const authDomain = effectiveAuthDomain(env, devMode)
   return {
     port: Number(env.PORT || 8080),
     host: env.HOST || '0.0.0.0',
@@ -130,21 +153,19 @@ export function loadConfig(env = process.env) {
     dbPath: path.resolve(env.DB_PATH || path.join(repoRoot, 'server', 'data', 'major-vis.db')),
     sessionCookie: env.SESSION_COOKIE || 'mjv_sid',
     auth: parseAuth(env),
-    // The default email domain (e.g. 'hanover.edu'): bare usernames typed at
-    // sign-in or in access lists are canonicalized to name@domain when set.
-    // Empty = no domain default; names are used exactly as typed (the username
-    // provider is the common case).
-    authDomain: parseAuthDomain(env.AUTH_DOMAIN),
+    // The canonicalization domain for bare usernames (see effectiveAuthDomain):
+    // defaults to hanover.edu in dev, explicit-only elsewhere. Empty = names
+    // used exactly as typed (the username provider's common case).
+    authDomain,
     // Admins (canonical usernames) manage the user directory: display names
-    // and the departments each user belongs to.
-    adminUsernames: parseAdminUsernames(env.ADMIN_USERNAMES, env.AUTH_DOMAIN),
-    // Local-dev convenience: seed the user directory from the gitignored
-    // repo-root `directory.csv` at boot (see seed-directory.js), so a developer
-    // sees real display names without signing in as an admin. Only the
-    // repo-root dev layout qualifies — the container serves an assembled
-    // `STATIC_DIR` and is `NODE_ENV=production`, so it never seeds.
-    // `SEED_DIRECTORY=0` disables the seed for a pristine directory.
-    seedDirectory: staticDir === repoRoot && env.NODE_ENV !== 'production' && !toggledOff(env.SEED_DIRECTORY),
+    // and the departments each user belongs to. Canonicalized through the same
+    // effective domain, so `ADMIN_USERNAMES=haris` matches in dev.
+    adminUsernames: parseAdminUsernames(env.ADMIN_USERNAMES, authDomain),
+    // Dev convenience: seed the user directory from the gitignored repo-root
+    // `directory.csv` at boot (see seed-directory.js), so a developer sees real
+    // display names without signing in as an admin. Dev-only, and
+    // `SEED_DIRECTORY=0` disables it for a pristine directory.
+    seedDirectory: devMode && !toggledOff(env.SEED_DIRECTORY),
   }
 }
 

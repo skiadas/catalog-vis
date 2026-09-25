@@ -17,11 +17,12 @@ npm run build && npm run serve
 #      SERVICES (comma list: program|schedule|planner; default schedule),
 #      STATIC_DIR (built static layout; defaults to the repo root),
 #      AUTH_PROVIDER (username | oidc; default username),
-#      AUTH_DOMAIN (optional bare domain, e.g. hanover.edu: bare usernames
-#        typed at sign-in or in access lists canonicalize to name@domain),
+#      AUTH_DOMAIN (bare domain, e.g. hanover.edu: bare usernames typed at
+#        sign-in or in access lists canonicalize to name@domain; defaults to
+#        hanover.edu in development, and to none otherwise),
 #      ADMIN_USERNAMES (optional comma list of canonical usernames allowed to
 #        maintain the user directory),
-#      SEED_DIRECTORY (0 disables the local-dev directory auto-seed; default on)
+#      SEED_DIRECTORY (0 disables the development directory auto-seed; default on)
 # oidc provider additionally requires: OIDC_ISSUER, OIDC_CLIENT_ID,
 #      OIDC_CLIENT_SECRET, OIDC_REDIRECT_URI, and (recommended) PUBLIC_ORIGIN,
 #      COOKIE_SECURE=true — the server refuses to boot with any missing
@@ -44,15 +45,20 @@ relative seams (`loadCatalog`'s `baseUrl: '../../'`, the schedule API base
 served. Serves at `http://localhost:8080/` (the root launcher redirects to the
 first enabled service) with the API under `/api`.
 
-In the repo-root layout (`STATIC_DIR` unset) outside production, boot also
-**seeds the user directory** from the gitignored repo-root `directory.csv` (the
-output of `tools/catalog-pipeline/scrape_faculty.py`): the same authoritative
-upsert as the admin import, so display names resolve without signing in as an
-admin. A missing file is a no-op; `SEED_DIRECTORY=0` disables it. Run dev with
-`AUTH_DOMAIN=hanover.edu` so your sign-in and the seed's bare usernames
-canonicalize to the same accounts (`skiadas` → `skiadas@hanover.edu`), or your
-own account keeps a separate identity from the seeded one. The container
-(`NODE_ENV=production`, `STATIC_DIR=/srv/static`) never seeds.
+`npm run serve` runs with `NODE_ENV=development`, which turns on two
+conveniences for local work. Both are **development-only** — the container is
+`NODE_ENV=production` and the test/probe/screenshot harnesses run
+`NODE_ENV=test`, so neither ever sees them:
+
+- **Directory seed**: boot loads the gitignored repo-root `directory.csv` (the
+  output of `tools/catalog-pipeline/scrape_faculty.py`) through the same
+  authoritative upsert as the admin import, so display names resolve without
+  signing in as an admin. A missing file is a no-op; `SEED_DIRECTORY=0` disables
+  it.
+- **Default `AUTH_DOMAIN`**: bare usernames canonicalize to `@hanover.edu`, so
+  your sign-in and the seed's bare rows land on the same account (`skiadas` →
+  `skiadas@hanover.edu`). Override with any explicit value, or `AUTH_DOMAIN=` to
+  turn the default off.
 
 ## Storage
 

@@ -66,8 +66,9 @@ rebuilt on demand, so you never commit bundles.
 To exercise the **admin flows** locally (the user directory that carries each
 user's display name and departments), name the admins with the
 `ADMIN_USERNAMES` env var — a comma-separated list of canonical usernames
-(`AUTH_DOMAIN` canonicalizes bare names, so `haris` may become
-`haris@your.domain`):
+(`npm run serve` runs in development mode, where `AUTH_DOMAIN` defaults to
+`hanover.edu` — so `haris` becomes `haris@hanover.edu`; set `AUTH_DOMAIN=` or
+another value to override):
 
 ```sh
 ADMIN_USERNAMES=haris npm run dev:serve   # or prefix `npm run serve`
@@ -76,8 +77,10 @@ ADMIN_USERNAMES=haris npm run dev:serve   # or prefix `npm run serve`
 Sign in with that username: a **Directory** link appears in the header (at
 `#/admin`), while everyone else is a regular user. The directory is what gives
 a user their **departments**, which scope the add-course picker and non-owner
-suggest edits. Unset means no admins and the directory API is inert. The full
-env contract is in `server/README.md`.
+suggest edits. Unset means no admins and the directory API is inert. In
+development the directory is also pre-seeded from the repo-root `directory.csv`
+(if present) so display names show without an admin import; see
+`server/README.md` for the full env contract.
 
 ## Data pipeline
 
