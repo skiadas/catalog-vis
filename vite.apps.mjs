@@ -21,7 +21,12 @@ const repoRoot = fileURLToPath(new URL('.', import.meta.url))
 // find. This plugin serves them from the repo root during `vite serve` only;
 // `vite build` is untouched (deployed apps keep resolving the shared-root
 // layout as designed).
-const CATALOG_FILES = ['majors.json', 'requirements_parsed.json', 'core_requirements.json']
+const CATALOG_FILES = [
+  'majors.json',
+  'requirements_parsed.json',
+  'core_requirements.json',
+  'cross_listings.json',
+]
 
 const catalogDevPlugin = {
   name: 'major-vis-catalog-dev',

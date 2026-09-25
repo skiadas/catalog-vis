@@ -23,6 +23,7 @@ const docs = {
   'majors.json': undefined,
   'requirements_parsed.json': undefined,
   'core_requirements.json': undefined,
+  'cross_listings.json': undefined,
 }
 let readFailed = 0
 for (const file of CATALOG_FILES) {

@@ -1,9 +1,9 @@
 // Shared browser catalog data layer.
 //
-// Loads the three catalog artifacts (majors.json, requirements_parsed.json,
-// core_requirements.json) into Vue-reactive refs and derives browse filters.
-// This is the read-only data contract all apps consume; the college catalog
-// API plugs in here via `loadCatalog`'s `baseUrl`.
+// Loads the catalog artifacts (majors.json, requirements_parsed.json,
+// core_requirements.json, cross_listings.json) into Vue-reactive refs and
+// derives browse filters. This is the read-only data contract all apps consume;
+// the college catalog API plugs in here via `loadCatalog`'s `baseUrl`.
 //
 // Fetched documents are validated against the catalog contract before they
 // are stored (`validate: true` by default, see `loadCatalog`): a source that
@@ -25,6 +25,8 @@ export const allCourses = ref({})
 export const parsedRequirements = ref({})
 /** @type {import('vue').Ref<import('@major-vis/catalog-contract').CoreRequirement[]>} */
 export const coreRequirements = ref([])
+/** @type {import('vue').Ref<import('@major-vis/catalog-contract').CrossListGroup[]>} */
+export const crossListings = ref([])
 /** @type {import('vue').Ref<boolean>} */
 export const loading = ref(true)
 /** @type {import('vue').Ref<string>} */
@@ -48,7 +50,7 @@ export const errorMessage = ref('')
 /**
  * @typedef {Object} CatalogOptions
  * @property {string} [baseUrl]
- * @property {{ majors?: string; parsed?: string; core?: string }} [files]
+ * @property {{ majors?: string; parsed?: string; core?: string; cross?: string }} [files]
  * @property {boolean} [validate]
  */
 
@@ -61,12 +63,14 @@ export async function loadCatalog({ baseUrl = '', files, validate = true } = {})
     majors: 'majors.json',
     parsed: 'requirements_parsed.json',
     core: 'core_requirements.json',
+    cross: 'cross_listings.json',
   }
   try {
-    const [majorsRes, parsedRes, coreRes] = await Promise.all([
+    const [majorsRes, parsedRes, coreRes, crossRes] = await Promise.all([
       fetch(baseUrl + paths.majors),
       fetch(baseUrl + paths.parsed),
       fetch(baseUrl + paths.core),
+      fetch(baseUrl + paths.cross),
     ])
     const majorsData = /** @type {import('@major-vis/catalog-contract').MajorsDoc} */ (await majorsRes.json())
     const parsedData = /** @type {import('@major-vis/catalog-contract').RequirementsDoc} */ (
@@ -75,12 +79,16 @@ export async function loadCatalog({ baseUrl = '', files, validate = true } = {})
     const coreData = /** @type {import('@major-vis/catalog-contract').CoreRequirementsDoc} */ (
       await coreRes.json()
     )
+    const crossData = /** @type {import('@major-vis/catalog-contract').CrossListingsDoc} */ (
+      await crossRes.json()
+    )
 
     if (validate) {
       const issues = validateCatalog({
         'majors.json': majorsData,
         'requirements_parsed.json': parsedData,
         'core_requirements.json': coreData,
+        'cross_listings.json': crossData,
       })
       if (issues) {
         const detail = issues
@@ -119,6 +127,7 @@ export async function loadCatalog({ baseUrl = '', files, validate = true } = {})
     }
     parsedRequirements.value = parsedMap
     coreRequirements.value = ((coreData.programs || [])[0] || {}).requirements || []
+    crossListings.value = crossData.groups || []
   } catch (err) {
     // Network/parse failures and validation failures land here: the refs stay
     // empty so the apps render `errorMessage` instead of a broken catalog.
@@ -197,6 +206,30 @@ export function coreReqsByCode() {
 export function coreReqLabel(id) {
   const req = coreRequirements.value.find((r) => r.id === id)
   return req ? req.label : ''
+}
+
+// The cross-listing group a course code belongs to, or null when the course is
+// not cross-listed. Groups come from `cross_listings.json` (derived from the
+// catalog's "identical to" description phrases).
+/**
+ * @param {string} code
+ * @returns {import('@major-vis/catalog-contract').CrossListGroup | null}
+ */
+export function crossListGroup(code) {
+  const c = String(code || '').trim()
+  if (!c) return null
+  return crossListings.value.find((g) => (g.codes || []).includes(c)) || null
+}
+
+// The other catalog codes a course is cross-listed with ([] when it is not
+// cross-listed). The primary lookup the schedule app's group logic uses.
+/**
+ * @param {string} code
+ * @returns {string[]}
+ */
+export function crossListOf(code) {
+  const group = crossListGroup(code)
+  return group ? group.codes.filter((x) => x !== code) : []
 }
 
 /** @type {import('vue').ComputedRef<import('@major-vis/catalog-contract').Program[]>} */

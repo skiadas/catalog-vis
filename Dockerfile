@@ -50,7 +50,7 @@ WORKDIR /srv
 COPY --from=deps /srv/node_modules node_modules
 COPY packages packages
 COPY server server
-COPY index.html config.json majors.json requirements_parsed.json core_requirements.json /srv/static/
+COPY index.html config.json majors.json requirements_parsed.json core_requirements.json cross_listings.json /srv/static/
 COPY --from=build /src/dist/browse /srv/static/apps/browse
 COPY --from=build /src/dist/schedule /srv/static/apps/schedule
 COPY --from=build /src/dist/planner /srv/static/apps/planner

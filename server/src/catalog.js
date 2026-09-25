@@ -1,4 +1,4 @@
-// Catalog API: the three catalog artifacts + a manifest, always public.
+// Catalog API: the catalog artifacts + a manifest, always public.
 //
 // The pipeline JSON files are the source of truth (live at the static root —
 // see config.js `staticDir`); this router serves them with the cache policy
@@ -11,8 +11,13 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import express from 'express'
 
-/** The three canonical catalog artifacts (names match the contract's files). */
-export const CATALOG_ARTIFACTS = ['majors.json', 'requirements_parsed.json', 'core_requirements.json']
+/** The canonical catalog artifacts (names match the contract's files). */
+export const CATALOG_ARTIFACTS = [
+  'majors.json',
+  'requirements_parsed.json',
+  'core_requirements.json',
+  'cross_listings.json',
+]
 
 /**
  * @param {string} staticDir
@@ -41,13 +46,19 @@ export function catalogRouter(staticDir) {
     const majors = JSON.parse(readFileSync(majorsAbs, 'utf8'))
     const parsedAbs = join(staticDir, 'requirements_parsed.json')
     const coreAbs = join(staticDir, 'core_requirements.json')
+    const crossAbs = join(staticDir, 'cross_listings.json')
     const parsed = existsSync(parsedAbs) ? JSON.parse(readFileSync(parsedAbs, 'utf8')) : null
     const core = existsSync(coreAbs) ? JSON.parse(readFileSync(coreAbs, 'utf8')) : null
+    const cross = existsSync(crossAbs) ? JSON.parse(readFileSync(crossAbs, 'utf8')) : null
     res.setHeader('Cache-Control', 'no-store')
     res.json({
       catalog_year: majors.catalog_year || null,
       updated_at: majors.generated_at || null,
-      schema_version: (parsed && parsed.schema_version) || (core && core.schema_version) || null,
+      schema_version:
+        (parsed && parsed.schema_version) ||
+        (core && core.schema_version) ||
+        (cross && cross.schema_version) ||
+        null,
       artifacts: CATALOG_ARTIFACTS,
     })
   })

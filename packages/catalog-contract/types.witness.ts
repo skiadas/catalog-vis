@@ -16,12 +16,14 @@ import type {
   MajorsDoc,
   RequirementsDoc,
   CoreRequirementsDoc,
+  CrossListingsDoc,
   RequirementItem,
 } from '@major-vis/catalog-contract'
 
 import majorsJson from '../../majors.json'
 import requirementsJson from '../../requirements_parsed.json'
 import coreJson from '../../core_requirements.json'
+import crossListingsJson from '../../cross_listings.json'
 
 // majors.json has no literal-widened discriminators left after `side` is
 // modeled as string, so a direct assignment fully gates it.
@@ -35,6 +37,11 @@ const requirementsDoc = requirementsJson as unknown as RequirementsDoc
 const coreDoc = coreJson as unknown as CoreRequirementsDoc
 void requirementsDoc
 void coreDoc
+
+// cross_listings.json has no literal-widened discriminator either, so a direct
+// assignment gates it fully.
+const crossListingsDoc: CrossListingsDoc = crossListingsJson
+void crossListingsDoc
 
 // The discriminated union itself is exercised in code-land: constructing a
 // node narrows to its branch, and the branch's own fields are visible.

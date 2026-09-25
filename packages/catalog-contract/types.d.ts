@@ -152,16 +152,32 @@ export interface CoreRequirementsDoc {
   programs: CoreProgram[]
 }
 
+// ---- cross_listings.json ------------------------------------------------------
+
+/** One cross-listed group: the same course under several department codes. */
+export interface CrossListGroup {
+  id: string
+  /** Two or more catalog course codes, e.g. `['CS 263', 'ENGR 263', 'PHI 263']`. */
+  codes: CourseCode[]
+}
+
+export interface CrossListingsDoc {
+  schema_version: string
+  source?: string
+  groups: CrossListGroup[]
+}
+
 // ---- Runtime validation API (implemented in index.js) ------------------------
 // These declarations mirror the runtime entry so consumers type-check against
 // the same surface the browser executes. `test/runtime.test.js` imports the
 // package by name and exercises the real functions — the parity tripwire.
 
-/** The three catalog documents, keyed by their canonical artifact filenames. */
+/** The catalog documents, keyed by their canonical artifact filenames. */
 export type CatalogDocs = {
   'majors.json': unknown
   'requirements_parsed.json': unknown
   'core_requirements.json': unknown
+  'cross_listings.json': unknown
 }
 
 /** A schema failure for one artifact: the file and its Ajv errors. */
@@ -171,10 +187,15 @@ export interface CatalogValidationIssue {
 }
 
 /**
- * Validates the three catalog documents against the contract schemas. Returns
+ * Validates the catalog documents against the contract schemas. Returns
  * null when every document conforms, or the per-file failures otherwise.
  */
 export function validateCatalog(docs: CatalogDocs): CatalogValidationIssue[] | null
 
-/** The three canonical catalog artifact filenames (the `docs` keys). */
-export const CATALOG_FILES: readonly ['majors.json', 'requirements_parsed.json', 'core_requirements.json']
+/** The canonical catalog artifact filenames (the `docs` keys). */
+export const CATALOG_FILES: readonly [
+  'majors.json',
+  'requirements_parsed.json',
+  'core_requirements.json',
+  'cross_listings.json',
+]

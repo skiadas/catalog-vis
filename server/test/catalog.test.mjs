@@ -7,8 +7,8 @@ import { buildServer, mountLocalBuiltApps, mountLocalDocs, mountLocalLayout } fr
 import { startTestServer } from './helpers.mjs'
 import express from 'express'
 
-// A hermetic serving layout: a temp static root with the three catalog
-// artifacts, the root launcher, and a built-looking app under apps/<name>/.
+// A hermetic serving layout: a temp static root with the catalog artifacts,
+// the root launcher, and a built-looking app under apps/<name>/.
 function fixtureDir() {
   const dir = mkdtempSync(join(tmpdir(), 'major-vis-catalog-'))
   writeFileSync(
@@ -27,6 +27,7 @@ function fixtureDir() {
     JSON.stringify({ schema_version: '2.0', programs: [] }),
   )
   writeFileSync(join(dir, 'core_requirements.json'), JSON.stringify({ schema_version: '2.0', programs: [] }))
+  writeFileSync(join(dir, 'cross_listings.json'), JSON.stringify({ schema_version: '2.0', groups: [] }))
   writeFileSync(join(dir, 'index.html'), '<html><body>launcher</body></html>')
   writeFileSync(join(dir, 'config.json'), JSON.stringify({ services: ['schedule'] }))
   mkdirSync(join(dir, 'apps', 'browse', 'assets'), { recursive: true })
@@ -50,7 +51,12 @@ async function catalogServer(extraEnv = {}) {
 test('catalog artifacts are served with no-store and revalidation headers', async () => {
   const { srv, dir, db } = await catalogServer()
   try {
-    for (const file of ['majors.json', 'requirements_parsed.json', 'core_requirements.json']) {
+    for (const file of [
+      'majors.json',
+      'requirements_parsed.json',
+      'core_requirements.json',
+      'cross_listings.json',
+    ]) {
       const res = await srv.get(`/${file}`)
       assert.equal(res.status, 200, file)
       assert.equal(res.headers.get('content-type').startsWith('application/json'), true, file)
@@ -75,7 +81,7 @@ test('catalog manifest summarizes the served artifacts', async () => {
       catalog_year: '2025-2026',
       updated_at: '2026-01-02T03:04:05.000Z',
       schema_version: '2.0',
-      artifacts: ['majors.json', 'requirements_parsed.json', 'core_requirements.json'],
+      artifacts: ['majors.json', 'requirements_parsed.json', 'core_requirements.json', 'cross_listings.json'],
     })
   } finally {
     srv.close()
@@ -168,9 +174,7 @@ test('the local-layout branch mounts the built apps and docs only at the repo ro
 
   // staticDir === repoRoot: dist + docs mount; the source/dev index must not appear.
   const local = express()
-  const srvLocal = await startTestServer(
-    mountLocalLayout(local, { staticDir: root, repoRoot: root }),
-  )
+  const srvLocal = await startTestServer(mountLocalLayout(local, { staticDir: root, repoRoot: root }))
   try {
     const page = await srvLocal.get('/apps/schedule/')
     assert.equal(page.status, 200)

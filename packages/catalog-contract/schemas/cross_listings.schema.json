@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://catalog.hanover.edu/schemas/cross_listings.schema.json",
+  "title": "Cross-listed course groups (cross_listings.json)",
+  "description": "Groups of catalog courses that are cross-listed: the same course offered under several department codes. Derived from course descriptions by tools/catalog-pipeline/extract_cross_list.py; consumed by the schedule app to keep cross-listed offerings identical.",
+  "type": "object",
+  "required": ["schema_version", "groups"],
+  "properties": {
+    "schema_version": { "const": "2.0" },
+    "source": { "type": "string" },
+    "groups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/group" }
+    }
+  },
+  "$defs": {
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,6} \\d{3}$"
+    },
+    "group": {
+      "type": "object",
+      "required": ["id", "codes"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "codes": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/code" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

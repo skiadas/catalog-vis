@@ -168,6 +168,25 @@ def main():
 
     validate_parsed(parsed)
 
+    # Cross-listing integrity: every group references catalog courses, is
+    # two-or-more strong, and no course belongs to two groups.
+    with open(os.path.join(ROOT, 'cross_listings.json'), encoding='utf-8') as f:
+        cross = json.load(f)
+    assert cross['schema_version'] == '2.0', 'cross_listings.json schema_version must be 2.0'
+    catalog_codes = set(data['catalog'])
+    seen_codes = {}
+    for group in cross['groups']:
+        assert isinstance(group.get('id'), str) and group['id'], 'cross-listing group needs an id'
+        codes = group.get('codes')
+        assert isinstance(codes, list) and len(codes) >= 2, f'group {group.get("id")} needs >= 2 codes'
+        assert len(codes) == len(set(codes)), f'duplicate code in group {group["id"]}'
+        for code in codes:
+            assert code in catalog_codes, f'cross-listed code not in catalog: {code}'
+            assert code not in seen_codes, f'{code} appears in two cross-listing groups'
+            seen_codes[code] = group['id']
+    if cross['groups']:
+        print(f'NOTE: {len(cross["groups"])} cross-listing group(s), ' f'{len(seen_codes)} course codes')
+
     print(f'OK: {len(data["programs"])} programs, ids unique + derived, codes/faculty normalized')
 
 

@@ -20,6 +20,7 @@ const realDocs = {
   'majors.json': load('majors.json'),
   'requirements_parsed.json': load('requirements_parsed.json'),
   'core_requirements.json': load('core_requirements.json'),
+  'cross_listings.json': load('cross_listings.json'),
 }
 
 // Deep-clones a fixture and returns an untyped copy so tests can corrupt
@@ -27,7 +28,12 @@ const realDocs = {
 const corrupt = (doc) => /** @type {any} */ (structuredClone(doc))
 
 test('exports match the declared runtime surface', () => {
-  assert.deepEqual(CATALOG_FILES, ['majors.json', 'requirements_parsed.json', 'core_requirements.json'])
+  assert.deepEqual(CATALOG_FILES, [
+    'majors.json',
+    'requirements_parsed.json',
+    'core_requirements.json',
+    'cross_listings.json',
+  ])
   assert.equal(typeof validateCatalog, 'function')
 })
 

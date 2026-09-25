@@ -11,6 +11,7 @@ const load = (rel) => JSON.parse(readFileSync(join(here, rel), 'utf8'))
 const majorsSchema = load('../schemas/majors.schema.json')
 const requirementsSchema = load('../schemas/requirements.schema.json')
 const coreSchema = load('../schemas/core.schema.json')
+const crossListingsSchema = load('../schemas/cross_listings.schema.json')
 
 const ajv = new Ajv2020({ allErrors: true })
 const compile = (schema) => {
@@ -23,6 +24,7 @@ const compile = (schema) => {
 const checkMajors = compile(majorsSchema)
 const checkRequirements = compile(requirementsSchema)
 const checkCore = compile(coreSchema)
+const checkCrossListings = compile(crossListingsSchema)
 
 // Deep-clones a valid fixture and returns an untyped copy, so tests can corrupt
 // documents into shapes the valid-document type can't express (the schema must
@@ -116,4 +118,20 @@ test('core schema accepts a valid area and rejects a missing electives count', (
   const bad = corrupt(valid)
   bad.programs[0].requirements[0].sections[0].items[0] = { type: 'electives' }
   assert.equal(checkCore(bad).ok, false)
+})
+
+test('cross-listings schema accepts valid groups and rejects single-member or bad-code groups', () => {
+  const valid = {
+    schema_version: '2.0',
+    groups: [{ id: 'cs-263-engr-263-phi-263', codes: ['CS 263', 'ENGR 263', 'PHI 263'] }],
+  }
+  assert.equal(checkCrossListings(valid).ok, true)
+
+  const single = structuredClone(valid)
+  single.groups[0].codes = ['CS 263']
+  assert.equal(checkCrossListings(single).ok, false)
+
+  const badCode = structuredClone(valid)
+  badCode.groups[0].codes[0] = 'CS263'
+  assert.equal(checkCrossListings(badCode).ok, false)
 })

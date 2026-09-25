@@ -1,0 +1,227 @@
+{
+  "schema_version": "2.0",
+  "source": "https://catalog.hanover.edu#programs (derived from course descriptions)",
+  "groups": [
+    {
+      "id": "anth-222-soc-222",
+      "codes": [
+        "ANTH 222",
+        "SOC 222"
+      ]
+    },
+    {
+      "id": "anth-223-arth-223-soc-223",
+      "codes": [
+        "ANTH 223",
+        "ARTH 223",
+        "SOC 223"
+      ]
+    },
+    {
+      "id": "anth-228-cla-228",
+      "codes": [
+        "ANTH 228",
+        "CLA 228"
+      ]
+    },
+    {
+      "id": "anth-259-soc-259",
+      "codes": [
+        "ANTH 259",
+        "SOC 259"
+      ]
+    },
+    {
+      "id": "artd-210-com-210",
+      "codes": [
+        "ARTD 210",
+        "COM 210"
+      ]
+    },
+    {
+      "id": "arth-225-cla-225",
+      "codes": [
+        "ARTH 225",
+        "CLA 225"
+      ]
+    },
+    {
+      "id": "bsp-212-busn-212-phi-212",
+      "codes": [
+        "BSP 212",
+        "BUSN 212",
+        "PHI 212"
+      ]
+    },
+    {
+      "id": "bsp-225-busn-225-engr-225",
+      "codes": [
+        "BSP 225",
+        "BUSN 225",
+        "ENGR 225"
+      ]
+    },
+    {
+      "id": "busn-216-smgt-216",
+      "codes": [
+        "BUSN 216",
+        "SMGT 216"
+      ]
+    },
+    {
+      "id": "busn-319-com-319",
+      "codes": [
+        "BUSN 319",
+        "COM 319"
+      ]
+    },
+    {
+      "id": "busn-320-smgt-320",
+      "codes": [
+        "BUSN 320",
+        "SMGT 320"
+      ]
+    },
+    {
+      "id": "busn-332-smgt-332",
+      "codes": [
+        "BUSN 332",
+        "SMGT 332"
+      ]
+    },
+    {
+      "id": "busn-352-com-352",
+      "codes": [
+        "BUSN 352",
+        "COM 352"
+      ]
+    },
+    {
+      "id": "cla-163-com-163",
+      "codes": [
+        "CLA 163",
+        "COM 163"
+      ]
+    },
+    {
+      "id": "cla-226-phi-226",
+      "codes": [
+        "CLA 226",
+        "PHI 226"
+      ]
+    },
+    {
+      "id": "cla-251-his-251",
+      "codes": [
+        "CLA 251",
+        "HIS 251"
+      ]
+    },
+    {
+      "id": "cla-252-his-252",
+      "codes": [
+        "CLA 252",
+        "HIS 252"
+      ]
+    },
+    {
+      "id": "cla-253-his-253",
+      "codes": [
+        "CLA 253",
+        "HIS 253"
+      ]
+    },
+    {
+      "id": "cla-351-his-351",
+      "codes": [
+        "CLA 351",
+        "HIS 351"
+      ]
+    },
+    {
+      "id": "cla-366-his-366",
+      "codes": [
+        "CLA 366",
+        "HIS 366"
+      ]
+    },
+    {
+      "id": "com-250-psy-250",
+      "codes": [
+        "COM 250",
+        "PSY 250"
+      ]
+    },
+    {
+      "id": "com-251-eng-251",
+      "codes": [
+        "COM 251",
+        "ENG 251"
+      ]
+    },
+    {
+      "id": "cs-263-engr-263-phi-263",
+      "codes": [
+        "CS 263",
+        "ENGR 263",
+        "PHI 263"
+      ]
+    },
+    {
+      "id": "eco-234-phi-234",
+      "codes": [
+        "ECO 234",
+        "PHI 234"
+      ]
+    },
+    {
+      "id": "eng-343-thr-343",
+      "codes": [
+        "ENG 343",
+        "THR 343"
+      ]
+    },
+    {
+      "id": "eng-348-thr-348",
+      "codes": [
+        "ENG 348",
+        "THR 348"
+      ]
+    },
+    {
+      "id": "phi-236-pls-236",
+      "codes": [
+        "PHI 236",
+        "PLS 236"
+      ]
+    },
+    {
+      "id": "phi-338-pls-235",
+      "codes": [
+        "PHI 338",
+        "PLS 235"
+      ]
+    },
+    {
+      "id": "pls-359-soc-359",
+      "codes": [
+        "PLS 359",
+        "SOC 359"
+      ]
+    },
+    {
+      "id": "soc-235-ths-235",
+      "codes": [
+        "SOC 235",
+        "THS 235"
+      ]
+    },
+    {
+      "id": "soc-236-ths-236",
+      "codes": [
+        "SOC 236",
+        "THS 236"
+      ]
+    }
+  ]
+}

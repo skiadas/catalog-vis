@@ -25,4 +25,9 @@ test('emitted catalog documents carry the contract top-level shape', () => {
   const core = load('core_requirements.json')
   assert.equal(core.schema_version, '2.0')
   assert.ok(core.programs.length > 0)
+
+  const crossListings = load('cross_listings.json')
+  assert.equal(crossListings.schema_version, '2.0')
+  assert.ok(crossListings.groups.length > 0)
+  assert.ok(crossListings.groups.every((g) => g.codes.length >= 2))
 })
