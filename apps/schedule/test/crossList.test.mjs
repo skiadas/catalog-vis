@@ -108,10 +108,7 @@ test("the owner's edit cascades to every version", () => {
 })
 
 test('the first edit claims an unowned imported group', () => {
-  install([
-    offering({ prefix: 'CS', section: 'A' }),
-    offering({ prefix: 'ENGR', section: 'A' }),
-  ])
+  install([offering({ prefix: 'CS', section: 'A' }), offering({ prefix: 'ENGR', section: 'A' })])
   store.updateOffering('s1', { prefix: 'ENGR', number: '263', section: 'A' }, { time: '8:00-9:10' })
   assert.equal(row('ENGR', '263').crossListOwner, 'ENGR')
   assert.equal(row('CS', '263').crossListOwner, 'ENGR', 'the claim covers the whole group')
@@ -167,10 +164,26 @@ test('materializing versions copies the source fields, section, and labs', () =>
   assert.equal(lab.time, '14:00-16:00')
 })
 
+test('a differing-number cross-listed version takes its own code (and lab number)', () => {
+  install([offering({ prefix: 'PHI', number: '338', crossListOwner: 'PHI' })])
+  crossListings.value = [{ id: 'phi-338-pls-235', codes: ['PHI 338', 'PLS 235'] }]
+  store.schedules.value[0].terms.F.offerings.push(
+    offering({ prefix: 'PHI', number: '338', lab: true, labSeq: 1, section: 'A' }),
+  )
+  const created = store.materializeCrossListVersions('s1', {
+    prefix: 'PHI',
+    number: '338',
+    section: 'A',
+  })
+  assert.equal(created.length, 1)
+  assert.ok(row('PLS', '235'), 'the sibling takes its own number, not the source number')
+  const lab = term().find((o) => o.prefix === 'PLS' && o.lab)
+  assert.ok(lab)
+  assert.equal(lab.number, '235')
+})
+
 test('crossListState reports the other codes, present versions, and owner', () => {
-  install([
-    offering({ prefix: 'CS', crossListOwner: 'CS' }),
-  ])
+  install([offering({ prefix: 'CS', crossListOwner: 'CS' })])
   const state = store.crossListState('s1', { prefix: 'CS', number: '263', section: 'A' })
   assert.equal(state.crossListed, true)
   assert.deepEqual(state.otherCodes, ['ENGR 263'])
@@ -191,7 +204,15 @@ test('permission: the group owner may edit any version; a member only removes it
 test('imported rows are unowned and their cross_listed claim is not stored', () => {
   install([])
   store.importCsvRows('s1', [
-    { prefix: 'CS', number: '263', section: 'A', term: 'F', crossListed: ['ENGR'], days: 'MWF', time: '9:20-10:30' },
+    {
+      prefix: 'CS',
+      number: '263',
+      section: 'A',
+      term: 'F',
+      crossListed: ['ENGR'],
+      days: 'MWF',
+      time: '9:20-10:30',
+    },
   ])
   const [o] = term()
   assert.equal(o.crossListed, undefined, 'the sheet claim is stripped')

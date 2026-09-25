@@ -439,8 +439,8 @@ export function materializeCrossListVersions(id, cur) {
       const labRow = {
         ...lab,
         prefix,
+        number,
         section,
-        crossListOwner: undefined,
         title: source.title || '',
         id: '',
       }
