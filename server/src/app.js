@@ -130,9 +130,10 @@ export function createApp({
   const isAdminUser = (user) => Boolean(user && adminUsernames.has(String(user.username)))
   // The user's directory entry (display name + departments), or null.
   const directoryEntry = (user) => (user ? db.getDirectoryUser(database, user.id) : null)
-  // The user object the app sees — admin + departments are part of the
-  // identity contract so the UI can show the directory controls and gate
-  // suggest sessions to the user's own departments.
+  // The user object the app sees — admin, departments, and the directory
+  // display name are part of the identity contract so the UI can show the
+  // directory controls, gate suggest sessions to the user's own departments,
+  // and greet the user by name.
   const userJson = (user) => {
     const entry = directoryEntry(user)
     return {
@@ -140,6 +141,7 @@ export function createApp({
       username: user.username,
       admin: isAdminUser(user),
       departments: (entry && entry.departments) || [],
+      displayName: (entry && entry.displayName) || null,
     }
   }
   const requireAdmin = (req, res, next) => {

@@ -1221,6 +1221,31 @@ test('username autocomplete searches the directory for any signed-in user', asyn
   }
 })
 
+test('the session user carries the directory display name', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({
+    database,
+    services: ['schedule'],
+    adminUsernames: new Set(['alice']),
+  })
+  const srv = await startTestServer(app)
+  try {
+    const alice = srv.newClient()
+    assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
+    await alice.post('/api/admin/users', { username: 'wahl', displayName: 'Barbara Wahl' })
+
+    const wahl = srv.newClient()
+    assert.equal((await wahl.post('/api/auth/login', { username: 'wahl' })).status, 200)
+    assert.equal((await wahl.get('/api/auth/session')).json.user.displayName, 'Barbara Wahl')
+    // An account with no directory entry reports null (the client falls back to
+    // the username).
+    assert.equal((await alice.get('/api/auth/session')).json.user.displayName, null)
+  } finally {
+    srv.close()
+    database.close()
+  }
+})
+
 test('the roster endpoint returns every account name for any signed-in user', async () => {
   const database = await openDb(':memory:')
   const app = createApp({

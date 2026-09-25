@@ -120,6 +120,7 @@ import {
   moveOffering,
   openCourseEdit,
   verticalScale,
+  instructorName,
 } from '../src/scheduleStore.js'
 import { goScheduleSlot } from '../router.js'
 import { useScheduleDrag } from '../scheduleDrag.js'
@@ -295,7 +296,7 @@ export default {
       const rem = removalFor(it)
       if (rem) return `${it.code}${it.o.section}: removal proposed by ${rem.proposer}`
       // Team-taught courses list the full roster in the tooltip.
-      if ((it.instructors || []).length > 1) return it.instructors.join(', ')
+      if ((it.instructors || []).length > 1) return it.instructors.map(instructorName).join(', ')
       return ''
     }
 

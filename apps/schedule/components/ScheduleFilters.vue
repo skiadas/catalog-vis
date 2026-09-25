@@ -29,7 +29,7 @@
         :aria-pressed="selectedInstructors.includes(i)"
         @click="toggleInstructor(i)"
       >
-        {{ i }}
+        {{ instructorName(i) }}
       </button>
       <button v-if="selectedInstructors.length" class="filter-clear" @click="clearInstructors">Clear</button>
     </div>
@@ -53,6 +53,7 @@ import {
   filterPanelOpen,
   selectedDepartments,
   selectedInstructors,
+  instructorName,
 } from '../src/scheduleStore.js'
 
 import { computed } from 'vue'
@@ -97,6 +98,7 @@ export default {
       filterMode,
       selectedDepartments,
       selectedInstructors,
+      instructorName,
       colorForDept,
       colorForInstructor,
     }

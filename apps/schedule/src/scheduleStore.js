@@ -37,6 +37,7 @@ import {
   describeChange,
 } from '@major-vis/schedule-core/diff'
 import * as backend from './backend.js'
+import { buildNameIndex, instructorLabel, canonicalInstructor } from './names.js'
 
 import { ref, computed, watch } from 'vue'
 
@@ -239,6 +240,7 @@ export function workOffline() {
   setRemote(false)
   if (typeof window !== 'undefined') localStorage.setItem(LS_OFFLINE, '1')
   closeAuthPrompt()
+  clearDirectory()
   seedSampleSchedule()
 }
 
@@ -269,6 +271,29 @@ export const currentUser = ref(null)
 // Whether the signed-in user is an administrator (the server's ADMIN_USERNAMES
 // config; the server includes the flag on every user object it returns).
 export const isAdmin = computed(() => Boolean(currentUser.value && currentUser.value.admin))
+
+// The user directory as a name index (username <-> display name), loaded with
+// the server state. Identity on an offering stays the stored value; this index
+// is only how it is displayed. Offline (or before it loads) it is empty, so
+// labels fall back to the stored values.
+export const directoryIndex = ref(buildNameIndex([]))
+const clearDirectory = () => {
+  directoryIndex.value = buildNameIndex([])
+}
+
+// The display label for a stored instructor value: the directory's full name
+// when it knows the account, else the value itself. Display-only — filters,
+// exports, and the stored record keep the canonical value.
+export function instructorName(value) {
+  return instructorLabel(value, directoryIndex.value)
+}
+
+// The value to store for instructor text the user typed or picked: a full name
+// that names a directory account resolves to its short username; anything else
+// is stored verbatim (new hires, adjuncts).
+export function instructorValue(text) {
+  return canonicalInstructor(text, directoryIndex.value)
+}
 
 // The signed-in user's departments (from the admin-maintained directory; the
 // server includes them on every user object). Empty offline and for users
@@ -319,6 +344,7 @@ export async function signOut() {
   if (!remote.value || typeof window === 'undefined') return
   await backend.logout()
   currentUser.value = null
+  clearDirectory()
   suggestions.value = []
   suggestionsBySchedule.value = {}
   editingScheduleId.value = null
@@ -332,7 +358,14 @@ export async function signOut() {
 // dropped. The default selection is the user's own schedules — a stranger's
 // schedule is never auto-selected (it stays one search away in the manage
 // dialog).
+// Loads the directory roster into the name index (labels for instructors).
+// Returns [] offline / unauthenticated, so the index just stays empty.
+async function loadDirectory() {
+  directoryIndex.value = buildNameIndex(await backend.fetchRoster())
+}
+
 async function loadServerState() {
+  await loadDirectory()
   const list = await backend.fetchSchedules()
   if (!list) return false
   schedules.value = list

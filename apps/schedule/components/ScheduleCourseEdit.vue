@@ -95,14 +95,16 @@
                 class="course-picker-dropdown"
               >
                 <button
-                  v-for="n in instructorSuggestions"
-                  :key="n"
+                  v-for="opt in instructorSuggestions"
+                  :key="opt.value"
                   type="button"
                   class="course-picker-option"
+                  :title="opt.value"
+                  :aria-label="opt.value === opt.label ? opt.label : opt.label + ' (' + opt.value + ')'"
                   @mousedown.prevent
-                  @click="pickInstructor(n)"
+                  @click="pickInstructor(opt)"
                 >
-                  <span class="planner-pick-code">{{ n }}</span>
+                  <span class="planner-pick-code">{{ opt.label }}</span>
                 </button>
                 <button
                   type="button"
@@ -132,14 +134,16 @@
                 />
                 <div v-if="suggestOpen && secondarySuggestions.length" class="course-picker-dropdown">
                   <button
-                    v-for="n in secondarySuggestions"
-                    :key="n"
+                    v-for="opt in secondarySuggestions"
+                    :key="opt.value"
                     type="button"
                     class="course-picker-option"
+                    :title="opt.value"
+                    :aria-label="opt.value === opt.label ? opt.label : opt.label + ' (' + opt.value + ')'"
                     @mousedown.prevent
-                    @click="pickSecondary(n)"
+                    @click="pickSecondary(opt)"
                   >
-                    <span class="planner-pick-code">{{ n }}</span>
+                    <span class="planner-pick-code">{{ opt.label }}</span>
                   </button>
                 </div>
               </div>
@@ -313,9 +317,12 @@ import {
   activeTerm,
   editingRole,
   publishedPart,
+  directoryIndex,
+  instructorValue,
 } from '../src/scheduleStore.js'
 import { courseName as catalogCourseName, programs, allCourses } from '@major-vis/catalog-client'
 import { buildFacultyAndEligible } from '@major-vis/schedule-core/generate'
+import { directoryPeople, matchesDirectory, instructorLabel } from '../src/names.js'
 import { useModalFocus } from '../src/modalFocus.js'
 import AirDatepicker from 'air-datepicker'
 import 'air-datepicker/air-datepicker.css'
@@ -444,26 +451,53 @@ export default {
         if (x.prefix !== o.prefix) continue
         for (const n of instructorsOf(x)) set.add(n)
       }
-      return Array.from(set).sort(compareInstructors)
+      return Array.from(set)
     })
     const allInstructors = computed(() => {
       const set = new Set()
       for (const x of courseOfferings.value) for (const n of instructorsOf(x)) set.add(n)
-      return Array.from(set).sort(compareInstructors)
+      return Array.from(set)
     })
 
+    // Picker entries are `{ label, value }`: the label is what the user reads
+    // and types (the directory's full name when the account is known), the
+    // value is what gets stored (the short username). Directory people come
+    // first; the catalog's surname-only roster follows, minus anyone a
+    // directory person already covers; term instructors come last, labelled by
+    // their stored value.
+    const poolEntries = (catalogNames, storedValues, dirPeople) => {
+      const out = []
+      const seen = new Set()
+      const add = (label, value) => {
+        const key = String(value || '').toLowerCase()
+        if (!key || seen.has(key)) return
+        seen.add(key)
+        out.push({ label, value })
+      }
+      for (const p of dirPeople) add(p.label, p.value)
+      for (const name of catalogNames) {
+        if (matchesDirectory(name, directoryIndex.value)) continue
+        add(name, name)
+      }
+      for (const value of storedValues) add(instructorLabel(value, directoryIndex.value), value)
+      return out.sort((a, b) => compareInstructors(a.label, b.label))
+    }
     const deptOptions = computed(() =>
-      [...new Set([...(facultyByPrefix.value[o.prefix] || []), ...deptInstructors.value])].sort(
-        compareInstructors,
+      poolEntries(
+        facultyByPrefix.value[o.prefix] || [],
+        deptInstructors.value,
+        directoryPeople(directoryIndex.value, o.prefix),
       ),
     )
     const allOptions = computed(() =>
-      [...new Set([...allCatalogFaculty.value, ...allInstructors.value])].sort(compareInstructors),
+      poolEntries(allCatalogFaculty.value, allInstructors.value, directoryPeople(directoryIndex.value)),
     )
 
-    const showAll = ref(o.instructor && !deptOptions.value.includes(o.instructor))
+    const showAll = ref(
+      Boolean(o.instructor) && !deptOptions.value.some((e) => e.value === instructorValue(o.instructor)),
+    )
 
-    const instructorSel = ref(o.instructor || '')
+    const instructorSel = ref(instructorLabel(o.instructor, directoryIndex.value))
     const sectionSel = ref(o.section || '')
     // The offering's own title ('' = fall back to the catalog name). A lab
     // shares its lecture's title, so its field is disabled.
@@ -477,16 +511,20 @@ export default {
     })
 
     // The lead-instructor combobox: free text (any name is legal — new hires,
-    // adjuncts), with suggestions from the department pool (catalog roster +
-    // same-prefix term instructors) or the all-instructors pool, matched
-    // against the typed token.
+    // adjuncts), with suggestions from the department pool (directory people +
+    // catalog roster + same-prefix term instructors) or the all-instructors
+    // pool, matched against the typed token (a full name or a username).
     const instructorSuggestOpen = ref(false)
     const instructorSuggestEl = ref(null)
     const instructorSuggestions = computed(() => {
       if (!instructorSuggestOpen.value) return []
       const pool = showAll.value ? allOptions.value : deptOptions.value
       const token = instructorSel.value.trim().toLowerCase()
-      const matched = token ? pool.filter((n) => n.toLowerCase().startsWith(token)) : pool
+      const matched = token
+        ? pool.filter(
+            (e) => e.label.toLowerCase().startsWith(token) || e.value.toLowerCase().startsWith(token),
+          )
+        : pool
       return matched.slice(0, 8)
     })
     // Closes the suggestion list when focus leaves the input + list (clicking
@@ -496,8 +534,8 @@ export default {
       if (next && instructorSuggestEl.value && instructorSuggestEl.value.contains(next)) return
       instructorSuggestOpen.value = false
     }
-    const pickInstructor = (name) => {
-      instructorSel.value = name
+    const pickInstructor = (entry) => {
+      instructorSel.value = entry.label
       instructorSuggestOpen.value = false
     }
 
@@ -510,7 +548,11 @@ export default {
     // "Smith, Jones" by picking a suggestion.
     const listKey = (names) =>
       [...new Set((names || []).map((n) => String(n || '').trim()).filter(Boolean))].join(',')
-    const secondaryText = ref((o.secondaryInstructors || []).join(', '))
+    // The field shows resolved full names; each entry is canonicalized to its
+    // stored value on save (see `commit`).
+    const secondaryText = ref(
+      (o.secondaryInstructors || []).map((n) => instructorLabel(n, directoryIndex.value)).join(', '),
+    )
     // Most courses have no co-teachers, so the field stays collapsed behind a
     // trigger unless this offering already has some (or the user expands it).
     const secondaryOpen = ref(Boolean((o.secondaryInstructors || []).length))
@@ -522,22 +564,36 @@ export default {
           .filter(Boolean),
       ),
     ])
+    // The picker pool: both scopes, minus the lead instructor and the names
+    // already listed (keyed on the canonical value, so a full name and its
+    // username never both appear).
     const instructorPool = computed(() => {
-      const lead = instructorSel.value
-      return [...new Set([...deptOptions.value, ...allOptions.value])].filter((n) => n !== lead)
+      const lead = instructorValue(instructorSel.value)
+      const current = secondaryNames.value.map(instructorValue)
+      const out = []
+      const seen = new Set()
+      for (const e of [...deptOptions.value, ...allOptions.value]) {
+        if (e.value === lead || current.includes(e.value) || seen.has(e.value)) continue
+        seen.add(e.value)
+        out.push(e)
+      }
+      return out
     })
     const suggestOpen = ref(false)
     const secondarySuggestEl = ref(null)
     const secondarySuggestions = computed(() => {
       if (!suggestOpen.value) return []
-      const current = secondaryNames.value
       const text = secondaryText.value
       const token = text
         .slice(text.lastIndexOf(',') + 1)
         .trim()
         .toLowerCase()
-      const pool = instructorPool.value.filter((n) => !current.includes(n))
-      const matched = token ? pool.filter((n) => n.toLowerCase().startsWith(token)) : pool
+      const pool = instructorPool.value
+      const matched = token
+        ? pool.filter(
+            (e) => e.label.toLowerCase().startsWith(token) || e.value.toLowerCase().startsWith(token),
+          )
+        : pool
       return matched.slice(0, 8)
     })
     // Closes the suggestion list when focus leaves the input + list (clicking
@@ -547,11 +603,11 @@ export default {
       if (next && secondarySuggestEl.value && secondarySuggestEl.value.contains(next)) return
       suggestOpen.value = false
     }
-    // Replaces the partially-typed token with the picked name.
-    const pickSecondary = (name) => {
+    // Replaces the partially-typed token with the picked label.
+    const pickSecondary = (entry) => {
       const text = secondaryText.value
       const i = text.lastIndexOf(',')
-      secondaryText.value = (i < 0 ? '' : `${text.slice(0, i + 1)} `) + name
+      secondaryText.value = (i < 0 ? '' : `${text.slice(0, i + 1)} `) + entry.label
       suggestOpen.value = false
     }
 
@@ -606,8 +662,9 @@ export default {
             : timeSel.value
       return (
         (!isLab.value && titleSel.value.trim() !== (o.title || '')) ||
-        instructorSel.value.trim() !== (o.instructor || '') ||
-        listKey(secondaryNames.value) !== listKey(o.secondaryInstructors) ||
+        instructorValue(instructorSel.value) !== instructorValue(o.instructor) ||
+        listKey(secondaryNames.value.map(instructorValue)) !==
+          listKey((o.secondaryInstructors || []).map(instructorValue)) ||
         (sectionSel.value.trim() || o.section) !== o.section ||
         days !== (o.days || '') ||
         time !== normalizeBand(o.time || '') ||
@@ -784,8 +841,8 @@ export default {
         props.scheduleId,
         { prefix: o.prefix, number: o.number, section: o.section, lab: o.lab, labSeq: o.labSeq, id: o.id },
         {
-          instructor: instructorSel.value.trim(),
-          secondaryInstructors: [...secondaryNames.value],
+          instructor: instructorValue(instructorSel.value),
+          secondaryInstructors: secondaryNames.value.map(instructorValue),
           section: sectionSel.value.trim() || o.section,
           days,
           time,

@@ -24,7 +24,7 @@
             <template v-for="(n, i) in s.instructors" :key="n"
               ><span v-if="i" class="sep">, </span
               ><button type="button" class="faculty-link" @click="goScheduleInstructor(n)">
-                {{ n }}
+                {{ instructorName(n) }}
               </button></template
             ><span v-if="!s.instructors.length">—</span>
           </div>
@@ -75,7 +75,7 @@
 
 <script>
 import { useRoute } from 'vue-router'
-import { schedule, scheduleOfferings } from '../src/scheduleStore.js'
+import { schedule, scheduleOfferings, instructorName } from '../src/scheduleStore.js'
 import { courseByCode, courseName } from '@major-vis/catalog-client'
 import { conflictsForCourse, formatTime, offeringItemKey, DEFAULT_SEATS } from '@major-vis/schedule-core'
 import { goScheduleCourse, goScheduleSlot, goScheduleInstructor } from '../router.js'
@@ -112,6 +112,7 @@ export default {
       catalog,
       nameFor,
       offeringTitle,
+      instructorName,
       formatTime,
       offeringItemKey,
       DEFAULT_SEATS,

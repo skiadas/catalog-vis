@@ -138,7 +138,7 @@ import {
 import { colorForSchedule, compareItems, renderCsv } from '@major-vis/schedule-core'
 import { courseName as catalogCourseName } from '@major-vis/catalog-client'
 import { fetchRoster } from '../src/backend.js'
-import { displayName } from '../src/names.js'
+import { buildNameIndex, usernameKey, displayName } from '../src/names.js'
 
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 
@@ -199,33 +199,16 @@ export default {
     const effectiveTitle = (o) =>
       String((o && o.title) || '').trim() || catalogCourseName(`${o.prefix} ${o.number}`)
     // The directory resolver behind the CSV export's "Last, First" name
-    // columns: a `username -> displayName` map consulted by `renderCsv`. The
-    // roster is fetched fresh per export; an offline/empty directory yields no
-    // resolver, so the name columns fall back to the usernames (never blank).
-    // Keys are normalized (trimmed, lowercased, domain stripped) so a registrar
-    // cell like "Wahl" or "cskiadas@hanover.edu" resolves against the canonical
-    // account. A real name wins over a null one, so a stale bare row (an old
-    // `wahl` without a display name) never shadows the canonical `wahl@…`.
+    // columns: `renderCsv` asks it for a username's display name. The roster is
+    // fetched fresh per export (so an admin's latest import is included); an
+    // offline/empty directory yields no resolver, so the name columns fall back
+    // to the usernames (never blank). `buildNameIndex` normalizes the keys, so
+    // a registrar cell like "Wahl" or "cskiadas@hanover.edu" resolves.
     const fullNameResolver = async () => {
       const roster = await fetchRoster()
       if (!roster.length) return undefined
-      const key = (u) =>
-        String(u ?? '')
-          .trim()
-          .toLowerCase()
-          .replace(/\s+/g, '')
-      const byUsername = new Map()
-      const setBest = (k, v) => {
-        if (!byUsername.has(k) || byUsername.get(k) == null) byUsername.set(k, v)
-      }
-      for (const u of roster) {
-        const full = key(u.username)
-        if (!full) continue
-        setBest(full, u.displayName)
-        const at = full.indexOf('@')
-        setBest(at > 0 ? full.slice(0, at) : full, u.displayName)
-      }
-      return (username) => byUsername.get(key(username)) || null
+      const { byUser } = buildNameIndex(roster)
+      return (username) => byUser.get(usernameKey(username)) || null
     }
     // Publishes a rendered CSV string as a client-side download.
     const downloadCsv = (csv, name) => {

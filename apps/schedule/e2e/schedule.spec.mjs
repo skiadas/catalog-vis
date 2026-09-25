@@ -463,7 +463,27 @@ test('course editor overlay route: section switcher saves the section you leave'
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page, 'editor-route-user')
-  await createPopulatedSchedule(page, 'Editor route')
+
+  // Import a single-section course rather than generating one: the generator's
+  // random output can put a two-section course first, which would defeat the
+  // "no switcher yet" assertion below.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', {
+    name: 'section-switch.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'dept_prefix,course_number,course_section,instructor,days,times,term\n' +
+        'CS,220,A,Smith,MWF,9:20-10:30,F\n',
+    ),
+  })
+  await expect(page.getByText(/Imported 1 course row\(s\)/)).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Editor route')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Editor route' }).first().waitFor({ timeout: 10000 })
 
   // Enter edit mode and open the editor on the first offering row.
   await page.locator('.schedule-pill-edit').first().click()
@@ -1405,6 +1425,98 @@ test('offering titles: imported, shown in the course view, edited, and exported'
   assertClean(errors)
 })
 
+test('instructor full names resolve in the course view, the filter pills, and the editor', async ({
+  page,
+  request,
+}) => {
+  const errors = trackErrors(page)
+  // Seed a directory name so the stored username 'wahl' displays as a full
+  // name; 'albers' stays unseeded to prove the raw fallback.
+  await request.post('/api/auth/login', { data: { username: 'registrar' } })
+  await request.post('/api/admin/users', {
+    data: { username: 'wahl', displayName: 'John Wahl', departments: ['CS'] },
+  })
+
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'names-user')
+
+  // Import a schedule whose instructor cells are usernames.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', {
+    name: 'names.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'dept_prefix,course_number,course_section,instructor,secondary_instr,days,times,term\n' +
+        'CS,220,A,wahl,,MWF,9:20-10:30,F\n' +
+        'MAT,121,A,albers,,TR,10:00-11:45,F\n',
+    ),
+  })
+  await expect(page.getByText(/Imported 2 course row\(s\)/)).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Names roster')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Names roster' }).first().waitFor({ timeout: 10000 })
+
+  // The course view shows the resolved full name, and the raw value otherwise.
+  await page.goto('/#/course/CS%20220', { waitUntil: 'networkidle' })
+  await expect(page.locator('.faculty-link', { hasText: 'John Wahl' })).toBeVisible()
+  await page.goto('/#/course/MAT%20121', { waitUntil: 'networkidle' })
+  await expect(page.locator('.faculty-link', { hasText: 'albers' })).toBeVisible()
+
+  // The instructor filter pills show full names too (keyed on the stored value).
+  await page.goto('/#/', { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: /Instructors/ }).click()
+  await expect(page.locator('.filter-chip', { hasText: 'John Wahl' })).toBeVisible()
+  await expect(page.locator('.filter-chip', { hasText: 'albers' })).toBeVisible()
+
+  // The editor opens on the full name; typing a full-name prefix offers the
+  // directory person, and picking stores the canonical username again.
+  await page
+    .locator('.schedule-pill', { hasText: 'Names roster' })
+    .locator('.schedule-pill-edit')
+    .first()
+    .click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  const csBlock = page.locator('.cal-block[title="CS 220"]').first()
+  await csBlock.locator('.cal-block-time').click()
+  await csBlock.locator('.filter-offering-edit').first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  const inst = em.locator('#course-edit-instructor')
+  await expect(inst).toHaveValue('John Wahl')
+  await inst.fill('John')
+  await inst.focus()
+  await em.locator('.course-picker-option', { hasText: 'John Wahl' }).first().click()
+  await expect(inst).toHaveValue('John Wahl')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+
+  // The stored value is still the canonical username (the CSV export proves it).
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    (async () => {
+      await page.locator('.schedule-csv-wrap button').first().click()
+      await page.getByRole('button', { name: 'Download summary CSV' }).click()
+    })(),
+  ])
+  const summary = readFileSync(await download.path(), 'utf8')
+  const row = parseCsv(summary).find((r) => r.prefix === 'CS' && r.number === '220')
+  expect(row.instructor).toBe('wahl')
+
+  // Clean up the shared server collection.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Names roster' })
+    .getByRole('button', { name: 'Delete Names roster' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
 test('day view: a crowded slot lays courses side by side and the scale control resizes the axis', async ({
   page,
 }) => {
@@ -1818,7 +1930,7 @@ test('add-course dialog scopes to directory departments, with an all-courses esc
   const cluster = page.locator('.schedule-auth-cluster')
   await cluster.getByLabel('Username').fill('deptonly')
   await cluster.getByRole('button', { name: 'Sign in' }).click()
-  await page.getByText('Signed in as deptonly').waitFor({ timeout: 10000 })
+  await page.getByText('Signed in as Dept Only').waitFor({ timeout: 10000 })
   // We signed in from the admin route; leave it for the schedules view.
   await page.getByRole('link', { name: '← Schedules' }).click()
   await page.getByRole('button', { name: /Your schedules/ }).waitFor({ timeout: 10000 })

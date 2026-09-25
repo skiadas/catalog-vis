@@ -39,7 +39,8 @@
       </div>
       <div v-else-if="remote && currentUser" class="schedule-auth-cluster">
         <span class="schedule-auth-label" aria-live="polite"
-          >Signed in as <strong>{{ displayName(currentUser.username) }}</strong></span
+          >Signed in as
+          <strong>{{ currentUser.displayName || displayName(currentUser.username) }}</strong></span
         >
         <RouterLink v-if="isAdmin" class="filter-btn" to="/admin">Directory</RouterLink>
         <button class="filter-btn" @click="doSignOut">Sign out</button>

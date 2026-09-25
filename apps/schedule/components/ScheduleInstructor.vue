@@ -9,14 +9,14 @@
         :value="name"
         @change="onInstructorChange"
       >
-        <option v-for="i in instructors" :key="i" :value="i">{{ i }}</option>
+        <option v-for="i in instructors" :key="i" :value="i">{{ instructorName(i) }}</option>
       </select>
     </div>
 
     <div v-if="!name" class="empty-state"><p>Select an instructor to view their timetable.</p></div>
     <div v-else>
       <div class="detail-header">
-        <h2>{{ name }}</h2>
+        <h2>{{ instructorName(name) }}</h2>
         <div class="faculty">{{ items.length }} offering{{ items.length !== 1 ? 's' : '' }}</div>
       </div>
 
@@ -26,7 +26,8 @@
       </div>
       <div v-if="!conflicts.length" class="results-count">No double-bookings detected.</div>
       <div v-for="c in conflicts" :key="c.a.code + c.a.o.time + c.b.code + c.b.o.time" class="conflict-alert">
-        <strong>{{ name }}</strong> is double-booked: {{ c.a.code }}({{ c.a.o.section }}) {{ c.a.o.days }}
+        <strong>{{ instructorName(name) }}</strong> is double-booked: {{ c.a.code }}({{ c.a.o.section }})
+        {{ c.a.o.days }}
         {{ c.a.o.time }} overlaps {{ c.b.code }}({{ c.b.o.section }}) {{ c.b.o.days }} {{ c.b.o.time }}.
       </div>
 
@@ -53,7 +54,7 @@
 
 <script>
 import { useRoute } from 'vue-router'
-import { schedule } from '../src/scheduleStore.js'
+import { schedule, instructorName } from '../src/scheduleStore.js'
 import {
   instructorConflicts,
   compareInstructors,
@@ -102,6 +103,7 @@ export default {
       conflicts,
       dayItems,
       onInstructorChange,
+      instructorName,
       goScheduleCourse,
       goScheduleSlot,
       goScheduleInstructor,
