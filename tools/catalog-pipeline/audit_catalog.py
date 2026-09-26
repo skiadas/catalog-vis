@@ -163,14 +163,22 @@ def _designation_window(text, pos, limit=80):
     return text[max(clause, pos - limit) : pos]
 
 
-def designations(desc):
-    """The CCR/ACE areas a course description claims to satisfy."""
+def designations(desc, full_only=False):
+    """The CCR/ACE areas a course description claims to satisfy.
+
+    With `full_only`, a clause that says the course only *partially* satisfies
+    an area is ignored — used when merging descriptions into the area pools,
+    where a partial designation doesn't make a course eligible on its own
+    (an SL course's "partially satisfies the SM CCR" is the exception, handled
+    by the SM pool's own SL merge)."""
     ccr, ace = set(), set()
     d = desc or ''
     for m in AREA_TOKEN_RE.finditer(d):
         area = m.group(1)
         window = _designation_window(d, m.start())
         if not _verb_hits(window) or _NEGATED_VERB.search(window):
+            continue
+        if full_only and re.search(r'\bpartial(?:ly)?\b', window, re.I):
             continue
         if area in CCR_AREAS:
             ccr.add(area)

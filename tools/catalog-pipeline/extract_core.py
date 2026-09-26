@@ -36,6 +36,8 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
+from audit_catalog import designations
+
 # Repo root (this script lives in tools/catalog-pipeline/).
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -176,6 +178,25 @@ def load_catalog():
         return json.load(f)['catalog']
 
 
+def augment_from_descriptions(areas, catalog):
+    """Merge description-confirmed designations into the parsed area pools.
+
+    The core page's `course-list` blocks are the primary source, but they are
+    sometimes incomplete: a course's own description says it satisfies an area
+    the page's list omits (the audit's CAT3 "designated, not listed" class —
+    e.g. CHE 323/W2, GEO 222/QL, COM 244/S). A *full* designation ("Satisfies
+    the W2 ACE") adds the course to that area's pool; a merely "partially
+    satisfies" clause does not (an SL course's partial SM membership already
+    reaches SM through the SL merge in `build_requirements`)."""
+    for code, rec in (catalog or {}).items():
+        ccr, ace = designations(rec.get('description', ''), full_only=True)
+        for area in ccr | ace:
+            entry = areas.get(area)
+            if entry is not None and code not in entry['courses']:
+                entry['courses'].append(code)
+    return areas
+
+
 def report(areas, catalog):
     print('=== Core Curriculum / ACEs vs majors.json catalog ===')
     for area_id in ('LA', 'HS', 'PP', 'RP', 'SM', 'SL', 'WL', 'AF', 'HW', 'W1', 'S', 'W2', 'CP', 'QL'):
@@ -266,6 +287,7 @@ def main():
     html = fetch_html() if not args.html else open(args.html).read()
     areas = parse_areas(html)
     catalog = load_catalog()
+    augment_from_descriptions(areas, catalog)
     report(areas, catalog)
 
     doc = {
