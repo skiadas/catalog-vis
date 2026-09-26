@@ -19,6 +19,12 @@ import { editingDraft, editingScheduleId, clearDraft, activeTerm } from './src/s
 const routes = [
   { path: '/', name: 'schedule-grid', component: ScheduleApp, meta: { scheduleView: 'grid' } },
   {
+    path: '/table',
+    name: 'schedule-table',
+    component: ScheduleApp,
+    meta: { scheduleView: 'table' },
+  },
+  {
     path: '/schedules',
     name: 'schedule-manage',
     component: ScheduleApp,
@@ -95,6 +101,9 @@ export function goSchedule() {
 }
 export function goScheduleGrid() {
   go({ name: 'schedule-grid' })
+}
+export function goScheduleTable() {
+  go({ name: 'schedule-table' })
 }
 export function goScheduleDay(day) {
   go({ name: 'schedule-day', params: { day } })

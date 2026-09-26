@@ -948,6 +948,100 @@ test('no-meeting strip keys a lecture and its labs apart and survives filter tog
   assertClean(errors)
 })
 
+// The table ("spreadsheet") view: a compact row per offering with a department
+// selector, in-place editing inside a session, and the full editor as the
+// escape hatch for labs/cross-listing. Two populated schedules make the
+// session's reference dimming observable.
+test('table view: department filter, inline edit, add and remove', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'table-user')
+  await createPopulatedSchedule(page, 'Table schedule')
+  await createPopulatedSchedule(page, 'Table ref schedule')
+
+  // Table is its own view route, reached from the toolbar.
+  await page.getByRole('button', { name: 'Table', exact: true }).click()
+  await expect(page).toHaveURL(/#\/table$/)
+  const table = page.locator('.schedule-table')
+  await table.waitFor({ state: 'visible', timeout: 5000 })
+  const rows = table.locator('.schedule-table-row')
+  const initialCount = await rows.count()
+  expect(initialCount).toBeGreaterThan(0)
+
+  // The department selector narrows to one department's prefix; All restores.
+  const deptSel = page.locator('#schedule-table-dept')
+  const dept = await deptSel.locator('option').nth(1).getAttribute('value')
+  await deptSel.selectOption(dept)
+  const codes = await table.locator('.schedule-table-code .course-code-cell').allTextContents()
+  expect(codes.length).toBeGreaterThan(0)
+  for (const c of codes) expect(c.trim().startsWith(`${dept} `)).toBeTruthy()
+  await deptSel.selectOption('')
+  expect(await rows.count()).toBe(initialCount)
+
+  // Outside a session the table is read-only: values render as spans.
+  await expect(table.locator('.schedule-table-hint')).toContainText('Read-only')
+  await expect(table.locator('.schedule-table-value-edit')).toHaveCount(0)
+
+  // Enter edit on one schedule: its rows become editable, the other's dim.
+  await page.locator('.schedule-pill', { hasText: 'Table schedule' }).locator('.schedule-pill-edit').click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  await expect(table.locator('.schedule-table-value-edit').first()).toBeVisible()
+  expect(await table.locator('.schedule-table-row.reference').count()).toBeGreaterThan(0)
+
+  // Inline-edit the first live lecture: title and seats commit on Enter.
+  const live = table.locator('.schedule-table-row:not(.reference):not(.lab)').first()
+  await live.locator('td').nth(1).locator('.schedule-table-value-edit').click()
+  await live.locator('.schedule-table-input').fill('E2E Table Topic')
+  await live.locator('.schedule-table-input').press('Enter')
+  await expect(live).toContainText('E2E Table Topic')
+  await live.locator('button[aria-label^="Edit seats of"]').click()
+  await live.locator('.schedule-table-input').fill('99')
+  await live.locator('.schedule-table-input').press('Enter')
+  await expect(live.locator('button[aria-label^="Edit seats of"]')).toHaveText('99')
+
+  // The row pencil opens the full course editor; Cancel returns to the table.
+  await live.locator('.schedule-table-action').first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await em.getByRole('button', { name: 'Cancel' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(page).toHaveURL(/#\/table/)
+  await table.waitFor({ state: 'visible', timeout: 5000 })
+
+  // Add from the table header: the editor opens, saving lands a new row.
+  const beforeAdd = await rows.count()
+  await table.getByRole('button', { name: '＋ Add course' }).click()
+  const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
+  await addm.waitFor({ state: 'visible', timeout: 5000 })
+  await addm.getByPlaceholder('Search code or name…').fill('BIO')
+  await addm.locator('.schedule-add-option').first().click()
+  const addEm = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await addEm.waitFor({ state: 'visible', timeout: 5000 })
+  await addEm.getByRole('button', { name: 'Save changes' }).click()
+  await addEm.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(rows).toHaveCount(beforeAdd + 1)
+
+  // Remove a live row (accept the confirm); the table shrinks.
+  page.on('dialog', (d) => d.accept())
+  const beforeRemove = await rows.count()
+  await table
+    .locator('.schedule-table-row:not(.reference):not(.lab)')
+    .first()
+    .locator('button[aria-label^="Remove"]')
+    .click()
+  await expect.poll(async () => rows.count(), { timeout: 5000 }).toBeLessThan(beforeRemove)
+
+  await settle(page)
+  // Scope to the table surface: the picker's pre-existing reference-pill
+  // dimming fails contrast in any multi-schedule edit session (a separate,
+  // out-of-scope accessibility fix).
+  const editingViolations = await seriousViolations(page, '.schedule-table')
+  expect(brief(editingViolations), 'table view (editing)').toEqual([])
+  await assertTargetSize(page, ['.schedule-table-value-edit', '.schedule-table-action'], 'table view')
+
+  assertClean(errors)
+})
+
 test('main views and dialogs have no serious/critical accessibility violations', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })

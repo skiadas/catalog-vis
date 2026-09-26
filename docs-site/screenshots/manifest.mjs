@@ -164,6 +164,16 @@ export const entries = [
     caption: 'Adding a lab: a lab section is attached to its lecture.',
   },
   {
+    file: 'schedule-table.png',
+    app: 'schedule',
+    as: 'registrar',
+    route: '/#/table',
+    seed: 'populated',
+    steps: [{ act: 'assert', text: 'Read-only' }],
+    alt: 'The table view: one compact row per offering with a Department selector and columns for title, instructor, days, time, seats, core areas, and schedule',
+    caption: 'The table view — one row per offering, ready for in-place edits.',
+  },
+  {
     file: 'schedule-proposals.png',
     app: 'schedule',
     as: 'registrar',

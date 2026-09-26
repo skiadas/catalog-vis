@@ -1,8 +1,9 @@
 # The views at a glance
 
-The tabs **Grid**, **Course conflicts**, and **Instructor** are always one click
-away, and they always bring you back to the top level of each view. The term
-buttons (**Fall**, **Winter**, **Spring**) apply to whichever view you are in.
+The tabs **Grid**, **Table**, **Course conflicts**, and **Instructor** are
+always one click away, and they always bring you back to the top level of each
+view. The term buttons (**Fall**, **Winter**, **Spring**) apply to whichever
+view you are in.
 
 ## Grid — the whole week
 
@@ -30,6 +31,20 @@ Click **View slot** on a block, or the time label in the day view, to see a list
 of everything meeting at that exact day and time — useful for comparing sections
 side by side.
 
+## Table — one row per offering
+
+Every offering of the selected schedules' term as a compact, spreadsheet-like
+row: course and section, title, instructor, days, time, seats, core areas, and
+the schedule it came from. A **Department** selector narrows the table to one
+department. When you start editing (or suggesting), the cells you are allowed
+to change become editable in place — Enter or click away to commit, Esc to
+cancel. The row's pencil opens the full
+[course editor](/guide/schedule/edit-course) for labs and cross-listing, and
+**＋ Add course** adds a section. Rows from the other selected schedules are
+dimmed as references, just like in the Grid.
+
+<Shot file="schedule-table.png" />
+
 ## Course conflicts — follow one course
 
 Pick a course and see all of its sections (each with its seat count and, for a
@@ -49,7 +64,8 @@ Pick a teacher to see their week and any double-bookings. See
 On the **Grid**, **Day**, and **Slot** views, the **Departments** and
 **Instructors** buttons open a row of chips. Click chips to pick departments or
 teachers; matching classes are highlighted and colored, and everything else is
-dimmed. **Clear** resets it.
+dimmed. **Clear** resets it. (The **Table** view has its own **Department**
+selector instead.)
 
 ::: tip
 Filters make matching classes stand out — they do not remove the others from

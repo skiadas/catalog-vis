@@ -14,6 +14,14 @@
         </button>
         <button
           class="seg-btn"
+          :class="{ active: view === 'table' }"
+          :aria-pressed="view === 'table'"
+          @click="goScheduleTable()"
+        >
+          Table
+        </button>
+        <button
+          class="seg-btn"
           :class="{ active: view === 'course' }"
           :aria-pressed="view === 'course'"
           @click="goScheduleCourse(selectedCode || sortedCourses[0])"
@@ -244,6 +252,7 @@
     </div>
     <template v-else>
       <ScheduleGrid v-if="view === 'grid'" />
+      <ScheduleTable v-else-if="view === 'table'" @add-course="showAddCourse = true" />
       <ScheduleDay v-else-if="view === 'day'" />
       <ScheduleSlot v-else-if="view === 'slot'" />
       <ScheduleCourse v-else-if="view === 'course'" />
@@ -279,6 +288,7 @@
 import { useRoute } from 'vue-router'
 import {
   goScheduleGrid,
+  goScheduleTable,
   goScheduleCourse,
   goScheduleInstructor,
   goManage,
@@ -330,6 +340,7 @@ import { TERM_KEYS, TERM_LABELS, offeringItemKey } from '@major-vis/schedule-cor
 import ScheduleGrid from './ScheduleGrid.vue'
 import ScheduleDay from './ScheduleDay.vue'
 import ScheduleSlot from './ScheduleSlot.vue'
+import ScheduleTable from './ScheduleTable.vue'
 import ScheduleCourse from './ScheduleCourse.vue'
 import ScheduleInstructor from './ScheduleInstructor.vue'
 import ScheduleCourseEdit from './ScheduleCourseEdit.vue'
@@ -349,6 +360,7 @@ export default {
     ScheduleGrid,
     ScheduleDay,
     ScheduleSlot,
+    ScheduleTable,
     ScheduleCourse,
     ScheduleInstructor,
     ScheduleCourseEdit,
@@ -663,6 +675,7 @@ export default {
       historyEntries,
       onEditCourse,
       goScheduleGrid,
+      goScheduleTable,
       goScheduleCourse,
       goScheduleInstructor,
     }

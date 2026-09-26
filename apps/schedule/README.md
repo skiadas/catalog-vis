@@ -107,6 +107,19 @@ lane-split/stacked rows stop fitting), while `1×`/`2×` pin the base or doubled
 scale. Every top and height is multiplied by the same factor, so vertical size
 stays proportional to the clock.
 
+The **table view** (`#/table`) lists the selected schedules' active term as one
+compact row per offering — course and section, title, instructor, days, time,
+seats, core areas, and the source schedule — with a **Department** selector
+over the prefixes present. Inside a session the cells a user may touch (owners
+anywhere; a non-owner only their departments, per `canTouchOffering`) edit in
+place: title/instructor/days/time/seats commit through `updateOffering`, so
+drafts, history, and cross-list rules apply unchanged; invalid input (a bad day
+set or time band, a non-positive seat count) is ignored. The row pencil opens
+the full course editor for labs/cross-listing/custom times, and **＋ Add
+course** opens the add dialog. Rows from other selected schedules render dimmed
+as references. Row grouping/ordering and the inline-cell parsers live in
+`src/scheduleTable.js`.
+
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format
 (`dept_prefix,course_number,course_section,title,instructor,secondary_instr,days,times,seats,core_reqs,cross_listed`
@@ -373,6 +386,7 @@ button, and all mutating actions behave identically in both modes.
 ## Routes
 
 - `#/` — grid
+- `#/table` — table (spreadsheet) view
 - `#/day/:day`, `#/slot/:day/:time`, `#/course/:code`, `#/instructor/:name`
 - `#/schedules` — "Your schedules" management page
 - `#/schedule/:id/access` — owner-only access dialog (overlay)

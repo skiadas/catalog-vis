@@ -99,9 +99,10 @@ state. They talk through deep links (see `docs/GLOSSARY.md` → "join keys"):
 `trackKey` is a stable slug of a parsed requirement's label.
 
 The schedule app also treats its own internal surfaces as deep links (hash
-history, `apps/schedule/router.js`): the grid (`#/`), day/slot/course/
-instructor views, the `#/schedules` management page, and `#/admin`, plus three
-**overlay** routes that render over the surface you came from —
+history, `apps/schedule/router.js`): the grid (`#/`), the table/spreadsheet
+view (`#/table`), day/slot/course/instructor views, the `#/schedules`
+management page, and `#/admin`, plus three **overlay** routes that render over
+the surface you came from —
 `#/schedule/<id>/access`, `#/schedule/<id>/proposals`, and the course editor
 `#/schedule/<id>/course/<code>/edit`. The edit/suggest session is orthogonal
 to the view, so it rides in the query (`#/day/M?mode=edit&id=<id>`) rather
