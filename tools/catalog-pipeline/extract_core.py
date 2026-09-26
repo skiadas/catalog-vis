@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 """Extract the Core Curriculum / Areas of Competency sections from catalog.hanover.edu.
 
-Pulls the two distribution sections from the catalog homepage:
+Pulls the current curriculum (students entering Fall 2026+) from the catalog
+homepage:
 
-  * Core Curriculum Requirements (CCRs): LA, HS, PP, RP, SM, SL, WL, AF
-  * Areas of Competency and Engagement (ACEs): W1, S, W2, CP, QL
+  * Knowledge Courses: LA, HS, PP, RP, SM, SL, WL
+  * Skills Courses: W1, S, W2, CP, QL, HW
 
 For each area it records the authoritative course list (the catalog's
 `course-list` blocks) plus a planner-compatible `item` (an `electives` node
 scoped by a `from` constraint, with the area's own count rule as an aggregate).
+
+SL is the laboratory/field-study component of SM. It is emitted as its own
+requirement so the designation is visible to consumers (course view, filter,
+import comparison); SM keeps the merged pool and a `min_from` SL constraint.
+AF (Health and Fitness Applied) still applies to students who entered before
+Fall 2026, but the current page only summarizes it and points to the registrar,
+so its curated pool is carried forward from the previous output.
 
 It then auto-reports discrepancies against `majors.json`:
 
@@ -50,15 +58,21 @@ def fetch_html():
 
 
 def area_patterns():
+    # The current curriculum numbers its headings ("1. Literary and Artistic
+    # Perspectives (LA) — 2 units...", "6. Health and Wellness (HW) — one
+    # course.") and splits the scientific area into "SM courses:" / "SL courses:"
+    # sub-headings, so areas are matched by their parenthesized id token (or the
+    # sub-heading text) rather than a leading `ID:` prefix.
     return [
         (re.compile(r'\(LA\)'), 'LA', 'Literary and Artistic Perspectives'),
         (re.compile(r'\(HS\)'), 'HS', 'Historical and Social Perspectives'),
-        (re.compile(r'^PP[:.]'), 'PP', 'Philosophical Perspectives'),
-        (re.compile(r'^RP[:.]'), 'RP', 'Religious Perspectives'),
-        (re.compile(r'^SM[:.]'), 'SM', 'Scientific and Mathematical Methods'),
-        (re.compile(r'^SL[:.]'), 'SL', 'Scientific Laboratory / Field Study'),
+        (re.compile(r'\(PP\)'), 'PP', 'Philosophical Perspectives'),
+        (re.compile(r'\(RP\)'), 'RP', 'Religious Perspectives'),
+        (re.compile(r'^SM courses:'), 'SM', 'Scientific, Mathematical and Algorithmic Methods'),
+        (re.compile(r'^SL courses:'), 'SL', 'Scientific Laboratory / Field Study'),
         (re.compile(r'\(WL\)'), 'WL', 'World Languages and Cultures'),
         (re.compile(r'\(AF\)'), 'AF', 'Health and Fitness Applied'),
+        (re.compile(r'\(HW\)'), 'HW', 'Health and Wellness'),
         (re.compile(r'Writing 1 \(W1\)'), 'W1', 'Writing 1'),
         (re.compile(r'Speaking \(S\)'), 'S', 'Speaking'),
         (re.compile(r'Writing 2 \(W2\)'), 'W2', 'Writing 2'),
@@ -145,12 +159,15 @@ def build_item(area_id, courses, lab_codes):
             'count': 2,
             'constraints': [from_scope, {'type': 'discipline', 'sameDiscipline': True}],
         }
-    if area_id in ('PP', 'RP', 'W1', 'W2', 'S', 'CP', 'QL'):
+    if area_id in ('PP', 'RP', 'W1', 'W2', 'S', 'CP', 'QL', 'HW'):
         return {'type': 'electives', 'count': 1, 'constraints': [from_scope]}
     if area_id == 'AF':
         return {'type': 'electives', 'count': 2, 'constraints': [from_scope]}
     if area_id == 'SL':
-        return None  # SL is a sub-pool of SM, not a standalone requirement
+        # SL is SM's laboratory/field-study component. It is emitted as its own
+        # requirement so the designation is visible; one SL course satisfies it
+        # and also counts toward SM's `min_from` SL constraint.
+        return {'type': 'electives', 'count': 1, 'constraints': [from_scope]}
     raise ValueError(f'unknown area {area_id}')
 
 
@@ -161,7 +178,7 @@ def load_catalog():
 
 def report(areas, catalog):
     print('=== Core Curriculum / ACEs vs majors.json catalog ===')
-    for area_id in ('LA', 'HS', 'PP', 'RP', 'SM', 'SL', 'WL', 'AF', 'W1', 'S', 'W2', 'CP', 'QL'):
+    for area_id in ('LA', 'HS', 'PP', 'RP', 'SM', 'SL', 'WL', 'AF', 'HW', 'W1', 'S', 'W2', 'CP', 'QL'):
         if area_id not in areas:
             print(f'- {area_id}: MISSING FROM PARSED HTML')
             continue
@@ -178,19 +195,36 @@ def report(areas, catalog):
     print(f'\nCatalog courses referenced by no CCR/ACE area: {len(unreferenced)} of {len(catalog)}')
 
 
-def build_requirements(areas):
+def load_carried_areas():
+    """Prior requirement entries keyed by id, so an area the live page no longer
+    lists can be preserved. Returns {} when there is no prior output."""
+    if not os.path.exists(OUTPUT):
+        return {}
+    with open(OUTPUT) as f:
+        doc = json.load(f)
+    out = {}
+    for program in doc.get('programs', []):
+        for req in program.get('requirements', []):
+            if req.get('id'):
+                out[req['id']] = req
+    return out
+
+
+def build_requirements(areas, carried=None):
+    carried = carried or {}
     lab_codes = areas.get('SL', {}).get('courses', [])
     requirements = []
-    order = ['LA', 'HS', 'PP', 'RP', 'SM', 'SL', 'WL', 'AF', 'W1', 'S', 'W2', 'CP', 'QL']
+    order = ['LA', 'HS', 'PP', 'RP', 'SM', 'SL', 'WL', 'AF', 'HW', 'W1', 'S', 'W2', 'CP', 'QL']
     rules = {
         'LA': '2 units in different disciplines',
         'HS': '2 units in different disciplines',
         'PP': '1 unit',
         'RP': '1 unit',
         'SM': '3 units in different disciplines; at least 1 must be a laboratory/field-study (SL) course',
-        'SL': 'sub-pool of SM',
+        'SL': 'at least 1 laboratory/field-study (SL) course (also counts toward SM)',
         'WL': '2-unit sequence in the same language',
         'AF': 'two 0.25 unit courses',
+        'HW': 'one course',
         'W1': '1 course',
         'S': '1 course',
         'W2': '1 course',
@@ -200,10 +234,13 @@ def build_requirements(areas):
     for area_id in order:
         area = areas.get(area_id)
         if not area:
+            # AF still applies to students who entered before Fall 2026, but the
+            # current page only summarizes it (no course-list); keep the curated
+            # entry from the prior output rather than dropping it.
+            if area_id == 'AF' and 'AF' in carried:
+                requirements.append(carried['AF'])
             continue
         item = build_item(area_id, area['courses'], lab_codes)
-        if item is None:
-            continue  # SL is folded into SM (as the min_from lab pool), not a requirement
         # The SM pool includes SL courses — they count toward the 3 units too.
         pool = area['courses'] + lab_codes if area_id == 'SM' else area['courses']
         entry = {
@@ -238,7 +275,7 @@ def main():
             {
                 'id': 'core-curriculum',
                 'name': 'Core Curriculum and Areas of Competency',
-                'requirements': build_requirements(areas),
+                'requirements': build_requirements(areas, load_carried_areas()),
             }
         ],
     }

@@ -282,6 +282,18 @@ def get_known_prefixes(programs_soup):
     return prefixes
 
 
+def catalog_year_from_html(html):
+    """The catalog's academic year, read from the tuition section's
+    "ACADEMIC YEAR YYYY-YYYY" text; falls back to the academic year computed
+    from today's date (an academic year starts in August)."""
+    m = re.search(r'ACADEMIC YEAR (\d{4})-(\d{4})', html, re.I)
+    if m:
+        return f'{m.group(1)}-{m.group(2)}'
+    today = date.today()
+    start = today.year if today.month >= 8 else today.year - 1
+    return f'{start}-{start + 1}'
+
+
 def main():
     print('Fetching main HTML...')
     html = fetch_html()
@@ -428,7 +440,7 @@ def main():
     catalog = dict(sorted(catalog.items()))
 
     output = {
-        'catalog_year': '2025-2026',
+        'catalog_year': catalog_year_from_html(html),
         'generated_at': date.today().isoformat(),
         'source_url': 'https://catalog.hanover.edu/#programs',
         'total_programs': len(programs_data),

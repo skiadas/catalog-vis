@@ -127,7 +127,7 @@ def main():
     with open(os.path.join(ROOT, 'majors.json'), encoding='utf-8') as f:
         data = json.load(f)
 
-    assert data['total_programs'] == len(data['programs']) == 54, 'expected 54 programs'
+    assert data['total_programs'] == len(data['programs']), 'total_programs must match programs length'
 
     ids = {}
     for p in data['programs']:

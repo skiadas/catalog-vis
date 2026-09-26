@@ -54,10 +54,11 @@ ISSUES_JSON = os.path.join(ROOT, 'catalog_issues.json')
 ISSUES_MD = os.path.join(ROOT, 'catalog_issues.md')
 
 CCR_AREAS = ['LA', 'HS', 'PP', 'RP', 'SM', 'SL', 'WL', 'AF']
-ACE_AREAS = ['W1', 'W2', 'S', 'CP', 'QL']
-# Requirement areas that appear in `core_requirements.json` as pools. SL is a
-# sub-pool of SM so it is folded into the SM pool, not an area of its own.
-AREA_KEYS = ['LA', 'HS', 'PP', 'RP', 'SM', 'WL', 'AF', 'W1', 'S', 'W2', 'CP', 'QL']
+ACE_AREAS = ['W1', 'W2', 'S', 'CP', 'QL', 'HW']
+# The areas that appear as course pools in `core_requirements.json`. SL is its
+# own pool (SM's laboratory/field-study component) and HW is the newer Health
+# and Wellness skills requirement.
+AREA_KEYS = ['LA', 'HS', 'PP', 'RP', 'SM', 'SL', 'WL', 'AF', 'W1', 'S', 'W2', 'CP', 'QL', 'HW']
 
 
 def normalize_code(code):
@@ -293,10 +294,9 @@ def audit(majors, core_reqs):
                     )
 
     # --- Category 3: designated but not present in that area's pool
-    # SL courses belong to the SM pool (SL is SM's lab sub-pool).
     cat3 = []
     for area in CCR_AREAS + ACE_AREAS:
-        pool = pools['SM'] if area == 'SL' else pools.get(area, set())
+        pool = pools.get(area, set())
         for code in sorted(ccr_desig.get(area, set()) | ace_desig.get(area, set())):
             if code not in pool:
                 cat3.append({'area': area, 'code': code})
