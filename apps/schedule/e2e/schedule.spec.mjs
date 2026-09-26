@@ -1452,9 +1452,9 @@ test('core requirements: course view, import flags, filter, and quick stats', as
   await signIn(page, 'core-user')
 
   // Import a sheet whose core_reqs column disagrees with the catalog in two
-  // rows: BIO 161 omits QL, and ANTH 160 claims LA though the catalog lists no
-  // areas for it. CS 220's SM agrees; MAT 131 is not a catalog course at all, so
-  // it is counted (not flagged); ENG 111's blank cell is not compared.
+  // rows: BIO 161 omits QL and SL, and ANTH 160 claims LA though the catalog
+  // lists no areas for it. CS 220's SM agrees; MAT 131 is not a catalog course
+  // at all, so it is counted (not flagged); ENG 111's blank cell is not compared.
   await page.getByRole('button', { name: /Your schedules/ }).click()
   await page.getByRole('button', { name: '＋ New schedule' }).click()
   await page.getByRole('button', { name: 'Import CSV…' }).click()
@@ -1462,7 +1462,7 @@ test('core requirements: course view, import flags, filter, and quick stats', as
   await expect(page.getByText(/Imported 5 course row\(s\)/)).toBeVisible()
   await expect(page.getByText(/2 row\(s\) disagree with the catalog's core requirements/)).toBeVisible()
   await expect(page.getByText(/\(1 course\(s\) not in the catalog\)/)).toBeVisible()
-  await expect(page.getByText(/BIO 161 A: file says SM · catalog says SM, QL/)).toBeVisible()
+  await expect(page.getByText(/BIO 161 A: file says SM · catalog says SM, SL, QL/)).toBeVisible()
   await expect(page.getByText(/ANTH 160 A: file says LA · catalog says —/)).toBeVisible()
   await page.locator('#schedule-create-name').fill('Core demo')
   await page.getByRole('button', { name: 'Import', exact: true }).click()
@@ -1474,7 +1474,11 @@ test('core requirements: course view, import flags, filter, and quick stats', as
   await page.goto('/#/course/CS%20220', { waitUntil: 'networkidle' })
   const aside = page.locator('.course-detail-aside')
   await expect(aside.locator('.core-req-id')).toHaveText('SM')
-  await expect(aside).toContainText('Scientific and Mathematical Methods')
+  await expect(aside).toContainText('Scientific, Mathematical and Algorithmic Methods')
+
+  // A laboratory course carries the SL designation alongside SM.
+  await page.goto('/#/course/BIO%20161', { waitUntil: 'networkidle' })
+  await expect(page.locator('.course-detail-aside')).toContainText('SL')
 
   // The core filter narrows the grid: SM keeps CS 220 and drops ANTH 160.
   await page.goto('/#/', { waitUntil: 'networkidle' })
@@ -1490,7 +1494,7 @@ test('core requirements: course view, import flags, filter, and quick stats', as
   await page.getByRole('button', { name: 'Core stats' }).click()
   const dialog = page.locator('.modal[aria-labelledby="core-stats-title"]')
   await dialog.waitFor({ state: 'visible', timeout: 5000 })
-  const smRow = dialog.getByRole('row', { name: /Scientific and Mathematical Methods/ })
+  const smRow = dialog.getByRole('row', { name: /Scientific, Mathematical and Algorithmic Methods/ })
   await expect(smRow.locator('td').nth(1)).toHaveText('2 · 54')
   await expect(smRow.locator('td').nth(4)).toHaveText('2 · 54')
   await dialog.getByRole('button', { name: 'Close' }).click()

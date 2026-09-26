@@ -694,7 +694,7 @@
         },
         {
           "id": "SM",
-          "label": "Scientific and Mathematical Methods (SM)",
+          "label": "Scientific, Mathematical and Algorithmic Methods (SM)",
           "rule": "3 units in different disciplines; at least 1 must be a laboratory/field-study (SL) course",
           "courses": [
             "CS 112",
@@ -841,6 +841,73 @@
             "PHY 186",
             "PSY 162",
             "PSY 164"
+          ]
+        },
+        {
+          "id": "SL",
+          "label": "Scientific Laboratory / Field Study (SL)",
+          "rule": "at least 1 laboratory/field-study (SL) course (also counts toward SM)",
+          "courses": [
+            "AST 165",
+            "AST 166",
+            "BIO 161",
+            "BIO 165",
+            "BIO 185",
+            "BIO 223",
+            "CHE 161",
+            "ENV 265",
+            "GEO 161",
+            "GEO 162",
+            "GEO 236",
+            "GEO 239",
+            "GEO 262",
+            "KIP 161",
+            "KIP 162",
+            "PHY 161",
+            "PHY 162",
+            "PHY 185",
+            "PHY 186",
+            "PSY 162",
+            "PSY 164"
+          ],
+          "sections": [
+            {
+              "heading": "at least 1 laboratory/field-study (SL) course (also counts toward SM)",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
+                        "AST 165",
+                        "AST 166",
+                        "BIO 161",
+                        "BIO 165",
+                        "BIO 185",
+                        "BIO 223",
+                        "CHE 161",
+                        "ENV 265",
+                        "GEO 161",
+                        "GEO 162",
+                        "GEO 236",
+                        "GEO 239",
+                        "GEO 262",
+                        "KIP 161",
+                        "KIP 162",
+                        "PHY 161",
+                        "PHY 162",
+                        "PHY 185",
+                        "PHY 186",
+                        "PSY 162",
+                        "PSY 164"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
           ]
         },
         {
@@ -1021,6 +1088,67 @@
                         "HFA 038",
                         "HFA 039",
                         "HFA 040",
+                        "HFA 043",
+                        "HFA 045",
+                        "HFA 046",
+                        "HFA 050",
+                        "HFA 051",
+                        "HFA 052",
+                        "HFA 060",
+                        "HFA 066",
+                        "HFA 067",
+                        "HFA 068",
+                        "HFA 070",
+                        "HFA 074",
+                        "HFA 075",
+                        "HFA 076",
+                        "HFA 077",
+                        "HFA 092",
+                        "HFA 096",
+                        "HF 105"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "HW",
+          "label": "Health and Wellness (HW)",
+          "rule": "one course",
+          "courses": [
+            "HFA 043",
+            "HFA 045",
+            "HFA 046",
+            "HFA 050",
+            "HFA 051",
+            "HFA 052",
+            "HFA 060",
+            "HFA 066",
+            "HFA 067",
+            "HFA 068",
+            "HFA 070",
+            "HFA 074",
+            "HFA 075",
+            "HFA 076",
+            "HFA 077",
+            "HFA 092",
+            "HFA 096",
+            "HF 105"
+          ],
+          "sections": [
+            {
+              "heading": "one course",
+              "items": [
+                {
+                  "type": "electives",
+                  "count": 1,
+                  "constraints": [
+                    {
+                      "type": "from",
+                      "codes": [
                         "HFA 043",
                         "HFA 045",
                         "HFA 046",

@@ -145,7 +145,7 @@ section isn't in the file are kept and reported in an import warning list.
 `parseCsv`/`renderCsv` in `@major-vis/schedule-core` implement the format with
 `csv-parse`/`csv-stringify` (header-driven, BOM/CRLF/quoted-newline aware).
 
-**Core requirements**: a course's core-curriculum areas (LA, HS, SM, W1, ...)
+**Core requirements**: a course's core-curriculum areas (LA, HS, SM, SL, HW, W1, ...)
 appear on the `#/course/:code` view as a right-side list beside its offerings
 and conflicts. The calendar's filter bar has a third mode, **Core reqs**, whose
 chips narrow the grid/day/slot views to courses satisfying the selected areas
