@@ -18,6 +18,10 @@ AF (Health and Fitness Applied) still applies to students who entered before
 Fall 2026, but the current page only summarizes it and points to the registrar,
 so its curated pool is carried forward from the previous output.
 
+The registrar's own feed is the more current word on a course's areas, so the
+committed `core_corrections.json` overlays it on the parsed pools (a corrected
+code's list replaces its parsed membership) before the requirements are built.
+
 It then auto-reports discrepancies against `majors.json`:
 
   * CCR/ACE codes that do not appear in our scraped catalog (stale data, or
@@ -45,6 +49,7 @@ BASE_URL = 'https://catalog.hanover.edu'
 SOURCE_URL = BASE_URL + '#curriculum'
 OUTPUT = os.path.join(ROOT, 'core_requirements.json')
 MAJORS_JSON = os.path.join(ROOT, 'majors.json')
+CORRECTIONS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'core_corrections.json')
 
 CODE_RE = re.compile(r'^([A-Z][A-Z/]*)\s+(\d{3})\b')
 
@@ -197,6 +202,40 @@ def augment_from_descriptions(areas, catalog):
     return areas
 
 
+def load_core_corrections():
+    """The committed registrar-feed corrections, keyed by normalized course code.
+
+    Returns {} when the file is absent, so the step is a no-op on a revision
+    that predates it."""
+    if not os.path.exists(CORRECTIONS):
+        return {}
+    with open(CORRECTIONS) as f:
+        doc = json.load(f)
+    return {normalize_code(code): list(areas or []) for code, areas in (doc.get('corrections') or {}).items()}
+
+
+def apply_core_corrections(areas, corrections):
+    """Overlay the registrar feed's corrected core areas on the parsed pools.
+
+    The core page is sometimes stale: the registrar's own feed tags a course for
+    an area the page omits (GER 226/WL, HF 101/HW). A corrected code's list
+    *replaces* its parsed membership — removed from every pool, then added to
+    the listed ones — so a feed tag wins over the page. Runs before
+    `build_requirements`, so an `SL`-only tag still reaches SM through the SL
+    merge. Ids naming an area the page didn't produce are skipped."""
+    corrections = corrections or {}
+    for code, ids in corrections.items():
+        code = normalize_code(code)
+        for entry in areas.values():
+            if code in entry['courses']:
+                entry['courses'] = [c for c in entry['courses'] if c != code]
+        for area_id in ids:
+            entry = areas.get(area_id)
+            if entry is not None and code not in entry['courses']:
+                entry['courses'].append(code)
+    return areas
+
+
 def report(areas, catalog):
     print('=== Core Curriculum / ACEs vs majors.json catalog ===')
     for area_id in ('LA', 'HS', 'PP', 'RP', 'SM', 'SL', 'WL', 'AF', 'HW', 'W1', 'S', 'W2', 'CP', 'QL'):
@@ -288,6 +327,10 @@ def main():
     areas = parse_areas(html)
     catalog = load_catalog()
     augment_from_descriptions(areas, catalog)
+    corrections = load_core_corrections()
+    apply_core_corrections(areas, corrections)
+    if corrections:
+        print(f'Applied {len(corrections)} core correction(s) from the registrar feed')
     report(areas, catalog)
 
     doc = {
