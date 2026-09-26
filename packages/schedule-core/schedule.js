@@ -233,7 +233,9 @@ export function daySlotTimes(day) {
 // the catalog and `parseCsv` just carries the cell through as `coreReqs`.
 // `cross_listed` is the comma-separated list of the *other* department prefixes
 // this offering is cross-listed with (the sibling versions present in the
-// exported schedule), carried through as `crossListed`.
+// exported schedule), carried through as `crossListed`. `parseCsv` also accepts
+// the registrar feed's renamed columns (`course_title`, `course_limit`,
+// `core_requirements`) and its `cross_listed_parent_course` notation.
 export const CSV_COLUMNS = [
   'dept_prefix',
   'course_number',
@@ -264,6 +266,17 @@ function cellValue(v) {
   return !s || /^null$/i.test(s) ? '' : s
 }
 
+// The first header spelling among `names` whose cell carries a value: the app's
+// round-trip columns come first, the registrar feed's renamed columns after, so
+// a file carrying either (or both) parses. Blank and literal-NULL cells fall
+// through to the next name; returns '' when none carries a value.
+function firstCell(rec, ...names) {
+  for (const name of names) {
+    if (cellValue(rec[name]) !== '') return rec[name]
+  }
+  return ''
+}
+
 // The requested seat count from a `seats` cell: a positive integer, defaulting
 // to DEFAULT_SEATS when the column is absent, blank/NULL, or not a positive
 // integer. (The registrar's seat limit is optional — an unspecified section
@@ -292,11 +305,104 @@ function instructorList(cell) {
   return commaList(cell)
 }
 
-// Split the `core_reqs` cell into distinct core-curriculum area ids (`SM`,
-// `LA`, ...). The ids are carried through verbatim — schedule-core is
+// Split the `core_reqs` / `core_requirements` cell into distinct
+// core-curriculum area ids (`SM`, `LA`, ...). Two feed spellings are accepted:
+// the app's comma list (`SM, QL`) and the registrar's parenthesized groups
+// (`(LA) (SM)`, possibly without a space between them). Parentheses are treated
+// as separators; the ids are carried through verbatim — schedule-core is
 // catalog-free, so the app compares them against the catalog's own lists.
 function coreReqList(cell) {
-  return commaList(cell)
+  const src = cellValue(cell)
+  if (!src) return []
+  const items = src
+    .replace(/[()]/g, ' ')
+    .split(/[\s,]+/)
+    .map((n) => n.trim())
+    .filter((n) => n && !/^null$/i.test(n))
+  return [...new Set(items)]
+}
+
+// The `PREFIX NUMBER [SECTION]` parts of a `cross_listed_parent_course` cell:
+// the registrar pads the cell (`CLA  251  A     `), so whitespace is collapsed;
+// a literal NULL or blank cell is no reference. The section is optional and
+// falls back to the referencing row's own section.
+function parentRef(cell) {
+  const s = cellValue(cell).replace(/\s+/g, ' ')
+  if (!s) return null
+  const [prefix, number, section] = s.split(' ')
+  if (!prefix || !number) return null
+  return { code: `${prefix} ${number}`, section: section || '' }
+}
+
+// Applies the registrar's cross-listing parent notation to parsed rows: a
+// version names its group's parent in `cross_listed_parent_course`, while the
+// parent's own cell is NULL. From our point of view every version is equivalent,
+// so the notation only says which rows form one group. Each row is linked to the
+// code its parent cell names (keyed by code + section, so split sections stay
+// apart) and given the *materialized* sibling prefixes of its group — the
+// versions actually present in the file — exactly what an explicit `cross_listed`
+// cell carries. A parent absent from the file still connects two children (both
+// are versions of one group) but is not claimed itself. A row with an explicit
+// `cross_listed` cell keeps it; labs are never cross-listed.
+function applyCrossListParents(rows, records) {
+  const list = rows || []
+  const recs = records || []
+  const nodeOf = (code, section) => `${code}|${section || ''}`
+  const edges = []
+  const present = []
+  const prefixByNode = new Map()
+  for (let i = 0; i < list.length; i++) {
+    const r = list[i]
+    if (!r || r.lab) continue
+    const code = `${r.prefix || ''} ${r.number || ''}`.trim()
+    const node = nodeOf(code, r.section)
+    present.push(node)
+    if (!prefixByNode.has(node)) prefixByNode.set(node, String(r.prefix || ''))
+    const ref = parentRef(recs[i] && recs[i]['cross_listed_parent_course'])
+    if (ref) edges.push([node, nodeOf(ref.code, ref.section || r.section || '')])
+  }
+  if (!edges.length) return
+  // Union-find over node keys; absent parent codes are pseudo-nodes, so two
+  // children of an absent parent still land in one component.
+  const dsu = new Map()
+  const find = (x) => {
+    let root = x
+    while (dsu.get(root) !== root) root = dsu.get(root)
+    while (dsu.get(x) !== root) {
+      const next = dsu.get(x)
+      dsu.set(x, root)
+      x = next
+    }
+    return root
+  }
+  const union = (a, b) => {
+    if (!dsu.has(a)) dsu.set(a, a)
+    if (!dsu.has(b)) dsu.set(b, b)
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) dsu.set(ra, rb)
+  }
+  for (const [node, pnode] of edges) union(node, pnode)
+  const groups = new Map()
+  for (const node of present) {
+    if (!dsu.has(node)) dsu.set(node, node)
+    const root = find(node)
+    if (!groups.has(root)) groups.set(root, [])
+    groups.get(root).push(node)
+  }
+  for (let i = 0; i < list.length; i++) {
+    const r = list[i]
+    if (!r || r.lab) continue
+    if (r.crossListed && r.crossListed.length) continue
+    const node = nodeOf(`${r.prefix || ''} ${r.number || ''}`.trim(), r.section)
+    const prefixes = []
+    for (const m of groups.get(find(node)) || []) {
+      if (m === node) continue
+      const p = prefixByNode.get(m)
+      if (p && !prefixes.includes(p)) prefixes.push(p)
+    }
+    r.crossListed = prefixes
+  }
 }
 
 // The distinct instructors on an offering: the lead (`instructor`) followed by
@@ -321,7 +427,13 @@ export function instructorsOf(o) {
 // is header-driven (via csv-parse), so column order never matters and a UTF-8
 // BOM, CRLF line endings, quoted cells with embedded commas/newlines, and
 // ragged rows are all tolerated. A malformed file (e.g. an unterminated quote)
-// yields no rows rather than throwing. The optional
+// yields no rows rather than throwing.
+//
+// The registrar's feed renames some columns; each pair is accepted with the
+// round-trip name winning when both are present: `title`/`course_title`,
+// `seats`/`course_limit` (`course_max` is ignored), and
+// `core_reqs`/`core_requirements` (the registrar writes parenthesized area ids,
+// `(LA) (SM)`, which parse like the comma list). The optional
 // `title` column is the offering's own title (blank/NULL = none; consumers fall
 // back to the catalog name). The optional
 // `secondary_instr` column is a comma-separated list (quoted by the registrar)
@@ -333,7 +445,11 @@ export function instructorsOf(o) {
 // compares them against the catalog. The optional `cross_listed` column is a
 // comma-separated list of the other department prefixes this offering is
 // cross-listed with, carried through as `crossListed` (also catalog-resolved by
-// the app, never stored).
+// the app, never stored). A registrar file instead marks one version of each
+// group as the parent in `cross_listed_parent_course` (a padded
+// `PREFIX NUMBER SECTION` cell, NULL on the parent itself); `parseCsv` turns
+// that notation into the same `crossListed` sibling prefixes, considering only
+// versions present in the file (see `applyCrossListParents`).
 // The `instructor_name`/`secondary_instr_name` columns `renderCsv` writes are
 // display-only and ignored here; identity comes from the username columns, so a
 // feed without them imports with blank instructors.
@@ -377,13 +493,13 @@ export function parseCsv(text) {
       prefix: rec['dept_prefix'],
       number,
       section: rec['course_section'],
-      title: cellValue(rec['title']),
+      title: cellValue(firstCell(rec, 'title', 'course_title')),
       instructor: cellValue(rec['instructor']),
       secondaryInstructors: instructorList(rec['secondary_instr']),
       days,
       time,
-      seats: seatCount(rec['seats']),
-      coreReqs: coreReqList(rec['core_reqs']),
+      seats: seatCount(firstCell(rec, 'seats', 'course_limit')),
+      coreReqs: coreReqList(firstCell(rec, 'core_reqs', 'core_requirements')),
       crossListed: commaList(rec['cross_listed']),
     }
     // `166L` / `166l` -> number `166`, lab. The L is the only lab marker in
@@ -407,6 +523,9 @@ export function parseCsv(text) {
     if (rec['term'] != null && rec['term'] !== '') out.term = rec['term']
     rows.push(out)
   }
+  // The registrar's parent notation (if the column is present) fills each row's
+  // `crossListed` from the versions actually in the file, like an explicit cell.
+  applyCrossListParents(rows, records)
   // Deterministic labSeq: plain-letter lab sections default to 1, and
   // colliding rows (two identical `A1` rows for one lecture) are renumbered
   // in first-seen order so every lab record stays distinct.

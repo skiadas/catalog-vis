@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { parseCsv } from '@major-vis/schedule-core'
 import { crossListIssues } from '../src/crossCompare.js'
 
 const groups = [{ id: 'cs-263-engr-263', codes: ['CS 263', 'ENGR 263'] }]
@@ -75,4 +76,47 @@ test('different titles are allowed (cross-listed courses may title differently)'
     groups,
   )
   assert.deepEqual(issues.inconsistent, [])
+})
+
+// The registrar feed marks one version of each group as the parent in
+// `cross_listed_parent_course`; parseCsv turns that into the same sibling
+// prefixes the explicit column carries, so the validation below is unchanged.
+const registrarFile = (lines) => parseCsv(lines.join('\n'))
+
+test('a registrar parent group consistent with the catalog is clean', () => {
+  const rows = registrarFile([
+    'dept_prefix,course_number,course_section,instructor,days,times,cross_listed_parent_course',
+    'CLA,251,A,Smith,MWF,9:20-10:30,NULL',
+    'CS,251,A,Smith,MWF,9:20-10:30,CLA 251 A',
+    'ENG,251,A,Smith,MWF,9:20-10:30,CLA 251 A',
+  ])
+  const issues = crossListIssues(rows, [
+    { id: 'cla-251-cs-251-eng-251', codes: ['CLA 251', 'CS 251', 'ENG 251'] },
+  ])
+  assert.deepEqual(issues, { claims: [], inconsistent: [] })
+})
+
+test('a registrar parent the catalog does not list is flagged as extra', () => {
+  const rows = registrarFile([
+    'dept_prefix,course_number,course_section,instructor,days,times,cross_listed_parent_course',
+    'PHI,251,A,Smith,MWF,9:20-10:30,NULL',
+    'CS,251,A,Smith,MWF,9:20-10:30,PHI 251 A',
+  ])
+  const issues = crossListIssues(rows, [{ id: 'cs-251-eng-251', codes: ['CS 251', 'ENG 251'] }])
+  const cs = issues.claims.find((c) => c.code === 'CS 251')
+  assert.deepEqual(cs.extra, ['PHI'], 'PHI 251 is not in the catalog group for CS 251')
+})
+
+test('a present group member the registrar left unlinked is flagged as missing', () => {
+  const rows = registrarFile([
+    'dept_prefix,course_number,course_section,instructor,days,times,cross_listed_parent_course',
+    'CLA,251,A,Smith,MWF,9:20-10:30,NULL',
+    'CS,251,A,Smith,MWF,9:20-10:30,CLA 251 A',
+    'PHI,251,A,Smith,MWF,9:20-10:30,NULL',
+  ])
+  const issues = crossListIssues(rows, [
+    { id: 'cla-251-cs-251-phi-251', codes: ['CLA 251', 'CS 251', 'PHI 251'] },
+  ])
+  assert.deepEqual(issues.claims.find((c) => c.code === 'CLA 251').missing, ['PHI'])
+  assert.deepEqual(issues.claims.find((c) => c.code === 'CS 251').missing, ['PHI'])
 })

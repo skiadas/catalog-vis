@@ -189,7 +189,13 @@ file's own group rows). Blank
 `days`/`times` ⇒ unscheduled.
 `parseCsv` holds quoted-field + optional-column handling; `renderCsv`
 matches it. Rows with a `term` value land in that term part; rows without one
-land in the actively-open part. This doubles as the registrar-feed format.
+land in the actively-open part. The registrar's own feed is accepted too: it
+renames `title`→`course_title`, `seats`→`course_limit` (with an ignored
+`course_max`), and `core_reqs`→`core_requirements` (parenthesized area ids,
+`(LA) (SM)`), and replaces `cross_listed` with `cross_listed_parent_course` —
+one version of each group marked as the parent (a padded `PREFIX NUMBER SECTION`
+cell, `NULL` on the parent itself). The app reads the parent notation as the
+same sibling-prefix claims, considering only versions present in the file.
 
 ## Service configuration (item 1)
 

@@ -1667,6 +1667,67 @@ test('cross-listing: materialize versions and cascade an edit', async ({ page })
   assertClean(errors)
 })
 
+// The registrar's own export renames some columns and marks one version of a
+// cross-listed group as the parent. The parser accepts both spellings; the
+// parent notation becomes the same cross-listing claims the app validates.
+test('registrar CSV: renamed columns and parent notation', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'registrar-format-user')
+
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+
+  // A parent that disagrees with the catalog (MAT 131 is not in CS 263's group)
+  // is flagged, exactly like an explicit cross_listed cell would be.
+  await page.setInputFiles('.schedule-upload-input', {
+    name: 'registrar-bad.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'dept_prefix,course_number,course_section,course_title,instructor,instructor_name,secondary_instr,days,times,term,course_limit,course_max,core_requirements,cross_listed_parent_course\n' +
+        'MAT,131,A,Calculus I,Aydogan,"Aydogan, Ali",,MWF,14:20-16:05,F,24,99,,NULL\n' +
+        'CS,263,A,Special Topics: Film,Wahl,"Wahl, John",,MWF,9:20-10:30,F,30,99,,MAT 131 A\n',
+    ),
+  })
+  await expect(page.getByText(/2 cross-listing issue\(s\)/)).toBeVisible()
+  await expect(page.getByText(/CS 263 A: claims MAT/)).toBeVisible()
+
+  // The registrar's renamed columns (course_title, course_limit, parenthesized
+  // core_requirements) import cleanly when they agree with the catalog.
+  await page.setInputFiles('.schedule-upload-input', {
+    name: 'registrar.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'dept_prefix,course_number,course_section,course_title,instructor,instructor_name,secondary_instr,days,times,term,course_limit,course_max,core_requirements,cross_listed_parent_course\n' +
+        'CS,263,A,Special Topics: Film,Wahl,"Wahl, John",,MWF,9:20-10:30,F,30,99,"(PP) (W2)",\n' +
+        'ENGR,263,A,Special Topics: Film,Wahl,"Wahl, John",,MWF,9:20-10:30,F,30,99,"(PP) (W2)",CS  263  A     \n',
+    ),
+  })
+  await expect(page.getByText(/Imported 2 course row\(s\)/)).toBeVisible()
+  await expect(page.getByText(/cross-listing issue/)).toHaveCount(0)
+  await expect(page.getByText(/disagree with the catalog's core requirements/)).toHaveCount(0)
+  await page.locator('#schedule-create-name').fill('Registrar demo')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Registrar demo' }).first().waitFor({ timeout: 10000 })
+
+  // course_limit became the seat count; course_title the offering's own title.
+  await page.goto('/#/course/CS%20263', { waitUntil: 'networkidle' })
+  await expect(page.locator('.req-block').first()).toContainText('Seats: 30')
+  await expect(page.locator('.offering-title').first()).toHaveText('Special Topics: Film')
+
+  // Clean up.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Registrar demo' })
+    .getByRole('button', { name: 'Delete Registrar demo' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
 test('instructor full names resolve in the course view, the filter pills, and the editor', async ({
   page,
   request,

@@ -130,6 +130,12 @@ catalog stays the source of truth). The optional `cross_listed` column is the
 comma-separated other department prefixes whose versions are also present in
 the export; on import it is compared with the catalog and the file's own group
 rows (mismatches and disagreeing group rows are flagged), and it is not stored.
+The registrar's own feed renames a few columns — `course_title`, `course_limit`
+(`course_max` is ignored), and `core_requirements` with parenthesized ids like
+`(LA) (SM)` — and replaces `cross_listed` with `cross_listed_parent_course`,
+which marks one version of each group as the parent (`NULL` on the parent itself,
+a padded `PREFIX NUMBER SECTION` elsewhere); the app reads that as the same
+sibling claims, considering only versions present in the file.
 A trailing `L` on
 the course number with a digit in the section cell (`166L` + `A2`) becomes
 a lab section of its parent (and takes its lecture's title). The optional

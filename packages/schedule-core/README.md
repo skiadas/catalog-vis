@@ -112,7 +112,15 @@ renumbered deterministically. A lab also shares its lecture's `title`
   colliding rows, and lab titles mirrored from their lecture). The
   `instructor_name`/`secondary_instr_name` columns are **display-only and
   ignored**: identity comes from the username columns, so a feed that omits them
-  imports with blank instructors.
+  imports with blank instructors. The registrar's own feed renames some columns;
+  each pair is accepted with the round-trip name winning when both are present:
+  `title`/`course_title`, `seats`/`course_limit` (`course_max` is ignored), and
+  `core_reqs`/`core_requirements` (the registrar writes parenthesized area ids,
+  `(LA) (SM)`, parsed like the comma list). A registrar file instead marks one
+  version of each cross-listed group as the parent in
+  `cross_listed_parent_course` (a padded `PREFIX NUMBER SECTION` cell, `NULL` on
+  the parent itself); `parseCsv` turns that notation into the same `crossListed`
+  sibling prefixes, considering only versions present in the file.
 - `renderCsv(offerings, { fullName } = {})` → round-trip CSV written by
   `csv-stringify` from `CSV_COLUMNS` (plus `term` when any row carries one), so
   the header and cells can't drift apart: records are mapped by column name

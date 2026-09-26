@@ -1041,6 +1041,142 @@ test('renderCsv writes the title column (blank when a row has none) and round-tr
   )
 })
 
+test('parseCsv accepts the registrar course_title alias (round-trip title wins)', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,course_title,instructor,days,times',
+      'CS,220,A,Special Topics: Graphics,Wahl,MWF,9:20-10:30',
+      'CS,101,A,,Vosmeier,MWF,8:00-9:10',
+      'MAT,131,A,NULL,Aydogan,MWF,14:20-16:05',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.title),
+    ['Special Topics: Graphics', '', ''],
+  )
+  const [both] = parseCsv(
+    'dept_prefix,course_number,course_section,title,course_title,instructor,days,times\nCS,220,A,Round-trip name,Registrar name,Wahl,MWF,9:20-10:30\n',
+  )
+  assert.equal(both.title, 'Round-trip name', 'the round-trip column wins when both are present')
+})
+
+test('parseCsv reads the registrar course_limit as seats and ignores course_max', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times,course_limit,course_max',
+      'CS,101,A,Vosmeier,MWF,9:20-10:30,30,99',
+      'CS,101,B,Morgan,TR,10:00-11:45,,40',
+      'CS,101,C,Doe,MWF,8:00-9:10,NULL,40',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.seats),
+    [30, DEFAULT_SEATS, DEFAULT_SEATS],
+    'course_limit is the seat count; course_max is ignored; blank/NULL falls to the default',
+  )
+  const [both] = parseCsv(
+    'dept_prefix,course_number,course_section,instructor,days,times,seats,course_limit\nCS,101,A,Doe,MWF,9:20-10:30,12,30\n',
+  )
+  assert.equal(both.seats, 12, 'the round-trip seats column wins when both are present')
+})
+
+test('parseCsv reads registrar core_requirements as parenthesized area ids', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times,core_requirements',
+      'CS,220,A,Wahl,MWF,9:20-10:30,"(LA) (SM)"',
+      'MAT,131,A,Aydogan,MWF,14:20-16:05,(QL)(MW)',
+      'ENG,111,A,Doe,,,',
+      'HIS,101,A,Doe,,,NULL',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.coreReqs),
+    [['LA', 'SM'], ['QL', 'MW'], [], []],
+    'parentheses are separators, with or without spaces; blank/NULL is none',
+  )
+  const [both] = parseCsv(
+    'dept_prefix,course_number,course_section,instructor,days,times,core_reqs,core_requirements\nCS,220,A,Wahl,MWF,9:20-10:30,"SM, LA","(HS)"\n',
+  )
+  assert.deepEqual(both.coreReqs, ['SM', 'LA'], 'the round-trip core_reqs column wins when both are present')
+})
+
+test('parseCsv derives cross_listed from the registrar parent column (present versions only)', () => {
+  // CLA 251 A is the parent; CS 251 A and ENG 251 A name it. All three are
+  // present, so each claims the other two prefixes. The parent cell is padded.
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times,cross_listed_parent_course',
+      'CLA,251,A,Smith,MWF,9:20-10:30,NULL',
+      'CS,251,A,Smith,MWF,9:20-10:30,CLA  251  A     ',
+      'ENG,251,A,Smith,MWF,9:20-10:30,CLA 251 A',
+    ].join('\n'),
+  )
+  const byCode = new Map(rows.map((r) => [`${r.prefix} ${r.number}`, r.crossListed]))
+  assert.deepEqual(byCode.get('CLA 251'), ['CS', 'ENG'])
+  assert.deepEqual(byCode.get('CS 251'), ['CLA', 'ENG'])
+  assert.deepEqual(byCode.get('ENG 251'), ['CLA', 'CS'])
+})
+
+test('parseCsv connects two children of an absent parent but never claims the absent parent', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times,cross_listed_parent_course',
+      'CS,251,A,Smith,MWF,9:20-10:30,CLA 251 A',
+      'ENG,251,A,Smith,MWF,9:20-10:30,CLA 251 A',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.crossListed),
+    [['ENG'], ['CS']],
+  )
+})
+
+test('parseCsv falls back to the row section when the parent cell omits one', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times,cross_listed_parent_course',
+      'CLA,251,A,Smith,MWF,9:20-10:30,NULL',
+      'CS,251,A,Smith,MWF,9:20-10:30,CLA 251',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.crossListed),
+    [['CS'], ['CLA']],
+  )
+})
+
+test('parseCsv lets an explicit cross_listed cell win over the parent notation', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times,cross_listed,cross_listed_parent_course',
+      'CLA,251,A,Smith,MWF,9:20-10:30,,NULL',
+      'CS,251,A,Smith,MWF,9:20-10:30,ENGR,CLA 251 A',
+      'PHI,251,A,Smith,MWF,9:20-10:30,,"NULL"',
+    ].join('\n'),
+  )
+  assert.deepEqual(
+    rows.map((r) => r.crossListed),
+    [['CS'], ['ENGR'], []],
+    'CLA (the referenced parent) claims CS; CS keeps its explicit cell; PHI is unclaimed',
+  )
+})
+
+test('parseCsv ignores lab rows when deriving cross_listed from parent references', () => {
+  const rows = parseCsv(
+    [
+      'dept_prefix,course_number,course_section,instructor,days,times,cross_listed_parent_course',
+      'CLA,251,A,Smith,MWF,9:20-10:30,NULL',
+      'CS,251,A,Smith,MWF,9:20-10:30,CLA 251 A',
+      'CS,251L,A1,Smith,R,14:00-16:00,CLA 251 A',
+    ].join('\n'),
+  )
+  const lab = rows.find((r) => r.lab)
+  assert.deepEqual(lab.crossListed, [], 'labs are never cross-listed')
+  const lecture = rows.find((r) => !r.lab && r.prefix === 'CS')
+  assert.deepEqual(lecture.crossListed, ['CLA'])
+})
+
 test('lastFirst flips a "First Last" name and leaves comma/single-token names alone', () => {
   assert.equal(lastFirst('John Wahl'), 'Wahl, John')
   assert.equal(lastFirst('Charilaos Skiadas'), 'Skiadas, Charilaos')

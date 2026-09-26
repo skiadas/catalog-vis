@@ -38,3 +38,13 @@ without surprises.
 If a number differs between the two downloads, that is why: the summary shows
 what is on your screen, the registrar copy shows what is official.
 :::
+
+## Importing the registrar's file
+
+The registrar's own export uses a few different column names (`course_title`,
+`course_limit`, and parenthesized `core_requirements` such as `(LA) (SM)`) and
+marks one version of each cross-listed course as the "parent" instead of listing
+the siblings. Uploading it through **Your schedules → New schedule → Import CSV…**
+works the same way: the app reads the registrar's spellings, treats every
+cross-listed version as equivalent, and flags only genuine disagreements with the
+catalog.
