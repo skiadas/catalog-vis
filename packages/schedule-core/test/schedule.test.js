@@ -2135,6 +2135,61 @@ test('coreReqStats keeps distinct sections of a cross-listed group separate', ()
   assert.deepEqual(pp.terms.F, { offerings: 2, seats: 54 })
 })
 
+test("coreReqStats: an offering's own coreReqs is authoritative over the catalog", () => {
+  // The catalog lists BIO 161 under SM, but the imported row says QL, SL, SM —
+  // the row's own areas decide (and a row claiming only QL would not count
+  // toward SM even though the catalog lists it there).
+  const reqs = [
+    { id: 'SM', label: 'Science', courses: ['BIO 161'] },
+    { id: 'QL', label: 'Quantitative Literacy', courses: [] },
+    { id: 'SL', label: 'Lab', courses: [] },
+  ]
+  const [sm, ql, sl] = coreReqStats(
+    {
+      F: [
+        { prefix: 'BIO', number: '161', section: 'A', seats: 24, coreReqs: ['QL', 'SL', 'SM'] },
+        { prefix: 'BIO', number: '161', section: 'B', seats: 24, coreReqs: ['QL'] },
+      ],
+      W: [],
+      S: [],
+    },
+    reqs,
+  )
+  assert.deepEqual(sm.terms.F, { offerings: 1, seats: 24 }, 'section B claims QL only')
+  assert.deepEqual(ql.terms.F, { offerings: 2, seats: 48 })
+  assert.deepEqual(sl.terms.F, { offerings: 1, seats: 24 })
+})
+
+test('coreReqStats: an untagged offering falls back to the catalog membership', () => {
+  const reqs = [
+    { id: 'SM', label: 'Science', courses: ['CS 220'] },
+    { id: 'LA', label: 'Arts', courses: ['CS 220'] },
+  ]
+  const [sm, la] = coreReqStats(
+    { F: [{ prefix: 'CS', number: '220', section: 'A', seats: 30 }], W: [], S: [] },
+    reqs,
+  )
+  assert.deepEqual(sm.terms.F, { offerings: 1, seats: 30 })
+  assert.deepEqual(la.terms.F, { offerings: 1, seats: 30 })
+})
+
+test('coreReqsInSchedule: the areasOf resolver overrides catalog membership', () => {
+  const index = buildIndex([{ prefix: 'BIO', number: '161', section: 'A', days: 'MWF', time: '9:20-10:30' }])
+  const reqs = [
+    { id: 'SM', label: 'Science', courses: [] },
+    { id: 'QL', label: 'Quantitative Literacy', courses: ['BIO 161'] },
+  ]
+  // The catalog lists BIO 161 under QL; the schedule's own data says SM.
+  assert.deepEqual(
+    coreReqsInSchedule(index, reqs).map((r) => r.id),
+    ['QL'],
+  )
+  assert.deepEqual(
+    coreReqsInSchedule(index, reqs, (code) => (code === 'BIO 161' ? ['SM'] : [])).map((r) => r.id),
+    ['SM'],
+  )
+})
+
 test('proposeOverlay renders concurrent proposals independently with proposers', () => {
   const base = [
     { prefix: 'PHY', number: '121', section: 'A', days: 'MWF', time: '9:20-10:30' },

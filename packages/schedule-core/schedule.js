@@ -228,12 +228,14 @@ export function daySlotTimes(day) {
 // instructors rather than failing.
 //
 // `core_reqs` is the comma-separated list of core-curriculum area ids a course
-// satisfies (`SM`, `LA`, ...), a display/validation aid rather than offering
-// identity: `renderCsv` is catalog-free, so the app resolves the values from
-// the catalog and `parseCsv` just carries the cell through as `coreReqs`.
+// satisfies (`SM`, `LA`, ...), carried through as `coreReqs`. The app stores
+// the imported values on the offering (the registrar feed is the source of
+// truth for a row's areas) and falls back to the catalog for rows the feed
+// didn't tag; `renderCsv`/`parseCsv` stay catalog-free and just carry the cell.
 // `cross_listed` is the comma-separated list of the *other* department prefixes
 // this offering is cross-listed with (the sibling versions present in the
-// exported schedule), carried through as `crossListed`. `parseCsv` also accepts
+// exported schedule), carried through as `crossListed` for import-time
+// validation (the catalog owns the runtime groups). `parseCsv` also accepts
 // the registrar feed's renamed columns (`course_title`, `course_limit`,
 // `core_requirements`) and its `cross_listed_parent_course` notation.
 export const CSV_COLUMNS = [
@@ -441,10 +443,11 @@ export function instructorsOf(o) {
 // The optional `seats` column is the requested seat count (a positive integer,
 // default 24). Blank/NULL `days`/`times` mark an unscheduled offering.
 // The optional `core_reqs` column is a comma-separated list of core-curriculum
-// area ids (`SM`, `LA`, ...) carried through verbatim as `coreReqs` — the app
-// compares them against the catalog. The optional `cross_listed` column is a
+// area ids (`SM`, `LA`, ...) carried through verbatim as `coreReqs`; the app
+// stores them on the row and uses the catalog only as a fallback for untagged
+// rows. The optional `cross_listed` column is a
 // comma-separated list of the other department prefixes this offering is
-// cross-listed with, carried through as `crossListed` (also catalog-resolved by
+// cross-listed with, carried through as `crossListed` (catalog-resolved by
 // the app, never stored). A registrar file instead marks one version of each
 // group as the parent in `cross_listed_parent_course` (a padded
 // `PREFIX NUMBER SECTION` cell, NULL on the parent itself); `parseCsv` turns
@@ -1405,11 +1408,17 @@ export function departmentsInSchedule(index) {
 // The core-curriculum requirements satisfied by at least one course in the
 // schedule, in the order `reqs` supplies them (the catalog's canonical order).
 // `reqs` is the catalog's core-requirement list (`{ id, courses: [code] }`);
-// schedule-core is catalog-free, so the caller passes it in. Returns the
+// schedule-core is catalog-free, so the caller passes it in. `areasOf(code)` is
+// the caller's per-code resolver — the schedule's own `coreReqs` (with the
+// catalog as fallback) — so the feed's designations drive the result; without
+// it, membership falls back to the catalog's `courses` lists. Returns the
 // matching requirement records, so the caller keeps each one's label.
-export function coreReqsInSchedule(index, reqs) {
+export function coreReqsInSchedule(index, reqs, areasOf) {
   if (!index || !Array.isArray(reqs)) return []
   const codes = new Set(Object.keys(index.byCourse))
+  if (typeof areasOf === 'function') {
+    return reqs.filter((req) => [...codes].some((code) => (areasOf(code) || []).includes(req.id)))
+  }
   return reqs.filter((req) => (req.courses || []).some((code) => codes.has(code)))
 }
 
@@ -1600,7 +1609,13 @@ function offeringKeyOf(o) {
 // selected schedules' merged offerings for each term); `reqs` is the catalog's
 // core-requirement list (`{ id, label, courses: [code] }[]`); `crossGroups` is
 // the catalog's cross-listing groups (arrays of codes, or `{ codes }` records).
-// Both are passed in so schedule-core stays catalog-free.
+// All are passed in so schedule-core stays catalog-free.
+//
+// An offering's own `coreReqs` is authoritative: it counts toward an area when
+// its row carries that id (the imported registrar feed is the source of truth).
+// An offering with no `coreReqs` falls back to the catalog's membership — the
+// areas `reqs` lists its code under — so a feed that doesn't tag a row still
+// tabulates, and older stored schedules keep working.
 //
 // Lab rows never count: a lab is part of its lecture's offering, not a separate
 // one, and its seats are excluded. Split meetings (a section's rows across
@@ -1623,8 +1638,16 @@ export function coreReqStats(offeringsByTerm, reqs, crossGroups) {
     const id = (group && !Array.isArray(group) && group.id) || codes.join('|')
     for (const code of codes) groupOf.set(code, id)
   }
+  // The catalog fallback: the areas each code satisfies, for offerings whose
+  // own row carries no `coreReqs`.
+  const areasOfCode = new Map()
+  for (const req of reqs || []) {
+    for (const code of req.courses || []) {
+      if (!areasOfCode.has(code)) areasOfCode.set(code, new Set())
+      areasOfCode.get(code).add(req.id)
+    }
+  }
   return (reqs || []).map((req) => {
-    const courses = new Set(req.courses || [])
     const terms = {}
     let totalOfferings = 0
     let totalSeats = 0
@@ -1635,7 +1658,9 @@ export function coreReqStats(offeringsByTerm, reqs, crossGroups) {
       for (const o of byTerm[t] || []) {
         if (o.lab) continue
         const code = `${o.prefix || ''} ${o.number || ''}`.trim()
-        if (!courses.has(code)) continue
+        const own = Array.isArray(o.coreReqs) && o.coreReqs.length ? o.coreReqs : null
+        const areas = own ? new Set(own) : areasOfCode.get(code)
+        if (!areas || !areas.has(req.id)) continue
         const key = `${groupOf.get(code) || code}|${o.section || ''}`
         if (seen.has(key)) continue
         seen.add(key)

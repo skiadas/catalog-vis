@@ -40,6 +40,15 @@ is not part of an offering's identity (editing it never changes the content
 CSV carries it as the optional `seats` column (`parseCsv` reads it, `renderCsv`
 writes it).
 
+`coreReqs` is the offering's own core-curriculum area ids (`['SM', 'SL', 'QL']`),
+from the import's `core_reqs` column. The registrar feed is the source of truth
+for a row's areas, so the app stores them on the offering and the course view,
+core filter, CoreStats, and export read them back; an offering with no
+`coreReqs` (an untagged feed, or a schedule stored before this) falls back to
+the catalog's mapping. It is **per offering row** and not part of an offering's
+identity. `parseCsv` reads the optional `core_reqs` column (and the registrar's
+`core_requirements` spelling); `renderCsv` writes it.
+
 `crossListOwner` is the cross-list group's owning department prefix (`''` or
 absent = not grouped, or an imported group no one has claimed yet). It is
 app-state — not part of the offering's identity, and never serialized to CSV —
@@ -105,9 +114,12 @@ renumbered deterministically. A lab also shares its lecture's `title`
   is the offering's own title; the optional `seats` column
   is a positive integer defaulting to `DEFAULT_SEATS` (24) when absent/blank/
   invalid; the optional `core_reqs` column is a comma-separated list carried
-  through verbatim as `coreReqs` (always present, default `[]`); the optional
+  through verbatim as `coreReqs` (always present, default `[]`; the app stores
+  the imported values on the offering and falls back to the catalog for untagged
+  rows); the optional
   `cross_listed` column is a comma-separated list carried through as
-  `crossListed` (always present, default `[]`); `166L` +
+  `crossListed` (always present, default `[]`; import-time validation only, the
+  catalog owns the runtime groups); `166L` +
   section-cell lab digits with deterministic labSeq for
   colliding rows, and lab titles mirrored from their lecture). The
   `instructor_name`/`secondary_instr_name` columns are **display-only and
@@ -215,8 +227,10 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
   distinct lead + secondary list), `colorForDept(prefix)`,
   `colorForInstructor(name)`, `colorForSchedule(sid)` (deterministic palettes)
 - `instructorSortKey(name)`, `compareInstructors`, `instructorsInSchedule(index)`,
-  `departmentsInSchedule(index)`, `coreReqsInSchedule(index, reqs)` (the areas
-  any course in the schedule satisfies; `reqs` is the catalog's list, passed in)
+  `departmentsInSchedule(index)`, `coreReqsInSchedule(index, reqs, areasOf)` (the
+  areas any course in the schedule satisfies; `reqs` is the catalog's list and
+  `areasOf(code)` the caller's per-code resolver — the schedule's own `coreReqs`,
+  catalog fallback — both passed in)
 - `colorForCoreReq(id)` (the core filter's chip/block palette)
 - `buildFilter(mode, depts, instructors, coreReqs, reqsOf)` →
   `{ active, matches(item), color(item) }`; mode is `'dept'`, `'instructor'`, or
@@ -225,7 +239,9 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
 - `buildVisual(mode, depts, instructors, scheduleIds, colorSchedules, coreReqs, reqsOf)`
   → filter-first, then schedule coloring, else inactive
 - `coreReqStats(offeringsByTerm, reqs, crossGroups)` → per-area
-  `{ id, label, terms: { F, W, S }, totals }` offering/seat counts. Labs never
+  `{ id, label, terms: { F, W, S }, totals }` offering/seat counts. An
+  offering's own `coreReqs` is authoritative; one without them falls back to the
+  catalog membership `reqs` lists. Labs never
   count (not as an offering, not their seats); split meetings collapse to one;
   a section in more than one schedule counts once; cross-listed versions (same
   group, same section) collapse to one and share the first row's seats.
