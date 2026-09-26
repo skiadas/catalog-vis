@@ -644,7 +644,7 @@ test('updateOffering persists a seats change', async () => {
   })
 })
 
-test('updateOffering on a lecture cascades its title onto that lecture\'s labs', async () => {
+test("updateOffering on a lecture cascades its title onto that lecture's labs", async () => {
   await withRemote(async ({ store }) => {
     store.setRemote(false)
     const { setApiBase } = await import('../src/backend.js')
@@ -660,21 +660,13 @@ test('updateOffering on a lecture cascades its title onto that lecture\'s labs',
     )
     const lab = store.addLabSection(id, { prefix: 'BIO', number: '166', section: 'A' })
 
-    assert.ok(
-      store.updateOffering(
-        id,
-        { prefix: 'BIO', number: '166', section: 'A' },
-        { title: 'Genetics' },
-      ),
-    )
+    assert.ok(store.updateOffering(id, { prefix: 'BIO', number: '166', section: 'A' }, { title: 'Genetics' }))
     let rows = store.scheduleById(id).terms.F.offerings
     assert.equal(rows.find((o) => o.number === '166' && !o.lab).title, 'Genetics')
     assert.equal(rows.find((o) => o.id === lab.id).title, 'Genetics', 'lab follows the lecture')
 
     // Clearing the title on the lecture clears it on the lab too.
-    assert.ok(
-      store.updateOffering(id, { prefix: 'BIO', number: '166', section: 'A' }, { title: '' }),
-    )
+    assert.ok(store.updateOffering(id, { prefix: 'BIO', number: '166', section: 'A' }, { title: '' }))
     rows = store.scheduleById(id).terms.F.offerings
     assert.equal(rows.find((o) => o.id === lab.id).title, '', 'lab title cleared with the lecture')
   })
@@ -794,6 +786,69 @@ test('importCsvRows seeds term parts grouped by the term column on a local sched
     assert.equal(s.terms.W.offerings.length, 0)
     assert.equal(s.terms.S.offerings[0].lab, true)
     assert.equal(s.terms.S.offerings[0].term, undefined, 'term key never leaks into the offering')
+  } finally {
+    resetStore(store)
+  }
+})
+
+test("importCsvRows keeps a row's coreReqs and drops crossListed", async () => {
+  const store = await import('../src/scheduleStore.js')
+  const { setApiBase } = await import('../src/backend.js')
+  setApiBase(`http://127.0.0.1:${await freePort()}/api`)
+  try {
+    resetStore(store)
+    const id = await store.addSchedule('Areas', '', [])
+    store.importCsvRows(id, [
+      {
+        prefix: 'BIO',
+        number: '161',
+        section: 'A',
+        days: 'MWF',
+        time: '9:20-10:30',
+        term: 'F',
+        coreReqs: ['QL', 'SL', 'SM'],
+        crossListed: ['ENGR'],
+      },
+    ])
+    const o = store.scheduleById(id).terms.F.offerings[0]
+    assert.deepEqual(o.coreReqs, ['QL', 'SL', 'SM'], "the feed's areas are stored on the row")
+    assert.equal(o.crossListed, undefined, 'cross-listing stays catalog-driven')
+  } finally {
+    resetStore(store)
+  }
+})
+
+test("scheduleAreasOf reads the imported rows' own coreReqs", async () => {
+  const store = await import('../src/scheduleStore.js')
+  const { setApiBase } = await import('../src/backend.js')
+  setApiBase(`http://127.0.0.1:${await freePort()}/api`)
+  try {
+    resetStore(store)
+    const id = await store.addSchedule('Areas', '', [])
+    store.importCsvRows(id, [
+      {
+        prefix: 'BIO',
+        number: '161',
+        section: 'A',
+        days: 'MWF',
+        time: '9:20-10:30',
+        term: 'F',
+        coreReqs: ['QL', 'SL', 'SM'],
+      },
+      {
+        prefix: 'BIO',
+        number: '161',
+        section: 'B',
+        days: 'TR',
+        time: '10:00-11:45',
+        term: 'F',
+        coreReqs: ['SM'],
+      },
+    ])
+    store.selectedScheduleIds.value = [id]
+    store.activeTerm.value = 'F'
+    assert.deepEqual(store.scheduleAreasOf('BIO 161').sort(), ['QL', 'SL', 'SM'])
+    assert.deepEqual(store.scheduleAreasOf('CS 999'), [], 'a course not on the schedule has no areas')
   } finally {
     resetStore(store)
   }

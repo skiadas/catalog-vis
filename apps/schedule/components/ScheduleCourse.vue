@@ -103,14 +103,8 @@
 
 <script>
 import { useRoute } from 'vue-router'
-import { schedule, scheduleOfferings, instructorName } from '../src/scheduleStore.js'
-import {
-  courseByCode,
-  courseName,
-  coreReqLabel,
-  coreReqsByCode,
-  crossListOf,
-} from '@major-vis/catalog-client'
+import { schedule, scheduleOfferings, instructorName, scheduleAreasOf } from '../src/scheduleStore.js'
+import { courseByCode, courseName, coreReqLabel, crossListOf } from '@major-vis/catalog-client'
 import {
   conflictsForCourse,
   formatTime,
@@ -134,10 +128,11 @@ export default {
       schedule.value && code.value ? conflictsForCourse(code.value, schedule.value) : [],
     )
     const catalog = computed(() => courseByCode(code.value))
-    // The core-curriculum areas this course satisfies, resolved from the
-    // catalog (read-only; the schedule never stores the mapping).
+    // The core-curriculum areas this course satisfies on the displayed
+    // schedules — the imported rows' own designations, with the catalog as a
+    // fallback for rows the feed didn't tag.
     const coreReqs = computed(() =>
-      (coreReqsByCode().get(code.value) || []).map((id) => ({ id, label: coreReqLabel(id) })),
+      scheduleAreasOf(code.value).map((id) => ({ id, label: coreReqLabel(id) })),
     )
     // Cross-listing: the other catalog codes, and which of them are on this
     // term's schedule (the sibling versions). The owner comes from the row.

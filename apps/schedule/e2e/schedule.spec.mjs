@@ -1451,18 +1451,21 @@ test('core requirements: course view, import flags, filter, and quick stats', as
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page, 'core-user')
 
-  // Import a sheet whose core_reqs column disagrees with the catalog in two
-  // rows: BIO 161 omits QL and SL, and ANTH 160 claims LA though the catalog
-  // lists no areas for it. CS 220's SM agrees; MAT 131 is not a catalog course
-  // at all, so it is counted (not flagged); ENG 111's blank cell is not compared.
+  // Import a sheet whose core_reqs column differs from the catalog in two rows
+  // (noted informationally, never blocking): BIO 161 omits QL, and ANTH 160
+  // claims LA though the catalog lists no areas for it. CS 220's SM agrees;
+  // MAT 131 is not a catalog course at all, so it is counted (not noted); ENG
+  // 111's blank cell is not compared.
   await page.getByRole('button', { name: /Your schedules/ }).click()
   await page.getByRole('button', { name: '＋ New schedule' }).click()
   await page.getByRole('button', { name: 'Import CSV…' }).click()
   await page.setInputFiles('.schedule-upload-input', 'apps/schedule/e2e/import-core.csv')
   await expect(page.getByText(/Imported 5 course row\(s\)/)).toBeVisible()
-  await expect(page.getByText(/2 row\(s\) disagree with the catalog's core requirements/)).toBeVisible()
+  await expect(
+    page.getByText(/2 row\(s\) carry core requirements that differ from our catalog snapshot/),
+  ).toBeVisible()
   await expect(page.getByText(/\(1 course\(s\) not in the catalog\)/)).toBeVisible()
-  await expect(page.getByText(/BIO 161 A: file says SM · catalog says SM, SL, QL/)).toBeVisible()
+  await expect(page.getByText(/BIO 161 A: file says SM, SL · catalog says SM, SL, QL/)).toBeVisible()
   await expect(page.getByText(/ANTH 160 A: file says LA · catalog says —/)).toBeVisible()
   await page.locator('#schedule-create-name').fill('Core demo')
   await page.getByRole('button', { name: 'Import', exact: true }).click()
@@ -1577,7 +1580,7 @@ test('cross-listing: import flags and the export column', async ({ page }) => {
     ),
   })
   await expect(page.getByText(/Imported 2 course row\(s\)/)).toBeVisible()
-  await expect(page.getByText(/1 cross-listing issue\(s\)/)).toBeVisible()
+  await expect(page.getByText(/1 cross-listing note\(s\)/)).toBeVisible()
   await expect(page.getByText(/CS 263, ENGR 263 A disagree on shared fields/)).toBeVisible()
   await page.locator('#schedule-create-name').fill('Cross flags')
   await page.getByRole('button', { name: 'Import', exact: true }).click()
@@ -1694,7 +1697,7 @@ test('registrar CSV: renamed columns and parent notation', async ({ page }) => {
         'CS,263,A,Special Topics: Film,Wahl,"Wahl, John",,MWF,9:20-10:30,F,30,99,,MAT 131 A\n',
     ),
   })
-  await expect(page.getByText(/2 cross-listing issue\(s\)/)).toBeVisible()
+  await expect(page.getByText(/2 cross-listing note\(s\)/)).toBeVisible()
   await expect(page.getByText(/CS 263 A: claims MAT/)).toBeVisible()
 
   // The registrar's renamed columns (course_title, course_limit, parenthesized
@@ -1709,8 +1712,8 @@ test('registrar CSV: renamed columns and parent notation', async ({ page }) => {
     ),
   })
   await expect(page.getByText(/Imported 2 course row\(s\)/)).toBeVisible()
-  await expect(page.getByText(/cross-listing issue/)).toHaveCount(0)
-  await expect(page.getByText(/disagree with the catalog's core requirements/)).toHaveCount(0)
+  await expect(page.getByText(/cross-listing note/)).toHaveCount(0)
+  await expect(page.getByText(/differ from our catalog snapshot/)).toHaveCount(0)
   await page.locator('#schedule-create-name').fill('Registrar demo')
   await page.getByRole('button', { name: 'Import', exact: true }).click()
   await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
@@ -1727,6 +1730,51 @@ test('registrar CSV: renamed columns and parent notation', async ({ page }) => {
   await page
     .locator('.schedule-manage-row', { hasText: 'Registrar demo' })
     .getByRole('button', { name: 'Delete Registrar demo' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
+// The imported file is the source of truth for a row's core areas: a row whose
+// areas differ from the catalog drives the course view (the catalog only fills
+// in for untagged rows), and the import summary just notes the difference.
+test('imported core requirements drive the course view over the catalog', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'core-authority-user')
+
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  // The catalog lists HFA 048 under HW only; the file claims HW and AF.
+  await page.setInputFiles('.schedule-upload-input', {
+    name: 'authority.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'dept_prefix,course_number,course_section,course_title,instructor,instructor_name,secondary_instr,days,times,term,course_limit,course_max,core_requirements,cross_listed_parent_course\n' +
+        'HFA,048,A,Yoga and Pilates,Wahl,"Wahl, John",,MWF,9:20-10:30,F,12,99,"(HW) (AF)",\n',
+    ),
+  })
+  await expect(page.getByText(/Imported 1 course row\(s\)/)).toBeVisible()
+  await expect(
+    page.getByText(/1 row\(s\) carry core requirements that differ from our catalog snapshot/),
+  ).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Authority demo')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Authority demo' }).first().waitFor({ timeout: 10000 })
+
+  // The course view shows the file's areas (HW and AF), not the catalog's.
+  await page.goto('/#/course/HFA%20048', { waitUntil: 'networkidle' })
+  const aside = page.locator('.course-detail-aside')
+  await expect(aside.locator('.core-req-id')).toHaveText(['HW', 'AF'])
+
+  // Clean up.
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Authority demo' })
+    .getByRole('button', { name: 'Delete Authority demo' })
     .click()
   await closeManage(page)
   assertClean(errors)

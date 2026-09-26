@@ -181,11 +181,14 @@ optional `secondary_instr` column is the registrar's comma-separated list of
 other instructors (`"Xu, Ray"`, quoted because of the commas). The optional
 `seats` column is the requested seat count (a positive integer, default 24 when
 blank/absent). The optional `core_reqs` column is the comma-separated
-core-curriculum area ids the course satisfies (exports resolve them from the
-catalog; imports compare them against it). The optional `cross_listed` column
+core-curriculum area ids the course satisfies: the imported row's ids are stored
+on the offering and are authoritative (the course view, filter, CoreStats, and
+export read them back, with the catalog as a fallback for untagged rows); an
+import also notes informationally where a row differs from the catalog snapshot.
+The optional `cross_listed` column
 is the comma-separated other department prefixes whose cross-listed versions
-are also present (imports flag disagreements with the catalog and with the
-file's own group rows). Blank
+are also present (an import notes, informationally, differences with the catalog
+and with the file's own group rows; the catalog owns the runtime groups). Blank
 `days`/`times` ⇒ unscheduled.
 `parseCsv` holds quoted-field + optional-column handling; `renderCsv`
 matches it. Rows with a `term` value land in that term part; rows without one

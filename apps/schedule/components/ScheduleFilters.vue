@@ -71,6 +71,7 @@ import {
 import { coreRequirements } from '@major-vis/catalog-client'
 import {
   schedule,
+  scheduleAreasOf,
   filterMode,
   filterPanelOpen,
   selectedDepartments,
@@ -92,7 +93,9 @@ export default {
     const instructors = computed(() => instructorsInSchedule(schedule.value))
     // Only the areas some course in the schedule actually satisfies, so the
     // chip row stays a reflection of what is on screen (like depts/instructors).
-    const coreReqs = computed(() => coreReqsInSchedule(schedule.value, coreRequirements.value))
+    const coreReqs = computed(() =>
+      coreReqsInSchedule(schedule.value, coreRequirements.value, scheduleAreasOf),
+    )
 
     const toggleDept = (prefix) => {
       const i = selectedDepartments.value.indexOf(prefix)

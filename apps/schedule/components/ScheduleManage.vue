@@ -160,7 +160,8 @@
           </p>
           <p v-if="coreDisagreements.length || coreUnknown" class="schedule-upload-warning">
             <strong
-              >{{ coreDisagreements.length }} row(s) disagree with the catalog's core requirements</strong
+              >{{ coreDisagreements.length }} row(s) carry core requirements that differ from our catalog
+              snapshot</strong
             >
             <template v-if="coreUnknown">({{ coreUnknown }} course(s) not in the catalog)</template>:
             <span
@@ -171,7 +172,7 @@
             >
           </p>
           <p v-if="crossIssueCount" class="schedule-upload-warning">
-            <strong>{{ crossIssueCount }} cross-listing issue(s)</strong>:
+            <strong>{{ crossIssueCount }} cross-listing note(s)</strong>:
             <span
               v-for="c in crossIssues.claims"
               :key="'claim-' + c.code + c.section"
@@ -385,23 +386,25 @@ export default {
           label: `${r.prefix} ${r.number}L ${r.section}${r.labSeq || 1}`,
         }))
     })
-    // The catalog's core-requirement disagreements for the staged file: one
-    // entry per row whose `core_reqs` cell differs from the catalog's list.
-    // Rows for courses the catalog does not carry are counted, not flagged.
+    // Informational: the staged file's `core_reqs` cells that differ from our
+    // catalog snapshot. The file is authoritative — its areas are stored on the
+    // rows — so this is a heads-up about the catalog, not a problem with the
+    // file. Rows for courses the catalog does not carry are counted, not listed.
     const coreCompare = computed(() =>
       coreReqsDisagreements(csvRows.value || [], coreReqsByCode(), new Set(Object.keys(allCourses.value))),
     )
     const coreDisagreements = computed(() => coreCompare.value.disagreements)
     const coreUnknown = computed(() => coreCompare.value.unknown)
-    // One flagged row's summary: `CS 220 A: file says SM, LA · catalog says SM`.
+    // One noted row's summary: `CS 220 A: file says SM, LA · catalog says SM`.
     const coreRowLabel = (d) => {
       const file = d.file.length ? d.file.join(', ') : '—'
       const catalog = d.catalog.length ? d.catalog.join(', ') : '—'
       return `${d.code}${d.section ? ' ' + d.section : ''}: file says ${file} · catalog says ${catalog}`
     }
-    // Cross-listing issues in the staged file: a `cross_listed` cell that
-    // disagrees with the catalog or with the group rows present, and group rows
-    // that disagree on their shared scheduling fields.
+    // Informational: cross-listing notes for the staged file — a `cross_listed`
+    // cell that differs from the catalog or from the group rows present, and
+    // group rows that disagree on their shared scheduling fields. The catalog
+    // owns the runtime grouping, so this only describes the file's notation.
     const crossIssues = computed(() => crossListIssues(csvRows.value || [], crossListings.value))
     const crossIssueCount = computed(
       () => crossIssues.value.claims.length + crossIssues.value.inconsistent.length,

@@ -218,10 +218,15 @@ export default {
     // catalog lookups, so the app resolves it here).
     const effectiveTitle = (o) =>
       String((o && o.title) || '').trim() || catalogCourseName(`${o.prefix} ${o.number}`)
-    // The core-curriculum area ids a row's course satisfies, resolved fresh from
-    // the catalog (like the title): `renderCsv` stays catalog-free, so the app
-    // fills `coreReqs` on each row and the column is written from `CSV_COLUMNS`.
-    const coreReqsFor = (o) => coreReqsByCode.value.get(`${o.prefix} ${o.number}`) || []
+    // The core-curriculum area ids a row carries: the imported row's own
+    // designations win (the registrar feed is the source of truth); a row the
+    // feed didn't tag falls back to the catalog. `renderCsv` stays catalog-free,
+    // so the app fills `coreReqs` on each row and the column is written from
+    // `CSV_COLUMNS`.
+    const coreReqsFor = (o) => {
+      if (o.coreReqs && o.coreReqs.length) return o.coreReqs
+      return coreReqsByCode.value.get(`${o.prefix} ${o.number}`) || []
+    }
     // The other department prefixes this row is cross-listed with *and that are
     // materialized in the same term* (the export's "materialized versions only"
     // cross_listed column).

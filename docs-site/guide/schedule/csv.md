@@ -46,5 +46,7 @@ The registrar's own export uses a few different column names (`course_title`,
 marks one version of each cross-listed course as the "parent" instead of listing
 the siblings. Uploading it through **Your schedules → New schedule → Import CSV…**
 works the same way: the app reads the registrar's spellings, treats every
-cross-listed version as equivalent, and flags only genuine disagreements with the
-catalog.
+cross-listed version as equivalent, and uses the file's core requirements as the
+schedule's own — the course view, filter, and stats follow the file, and the
+import summary only notes (informationally) where a row differs from our catalog
+snapshot.

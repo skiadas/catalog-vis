@@ -1458,11 +1458,12 @@ export function importCsvRows(scheduleId, rows) {
     if (!byTerm[t]) byTerm[t] = []
     const offering = { ...r }
     delete offering.term
-    // `coreReqs`/`crossListed` are import-time validation only — the catalog
-    // owns the course's areas and cross-listing, so the sheet's claims are
-    // never stored. An imported cross-listed group starts unowned (no
-    // `crossListOwner`); the first edit claims it.
-    delete offering.coreReqs
+    // The row's `coreReqs` is kept: the imported registrar feed is the source of
+    // truth for a course's areas, and the views/filter/stats read it back (the
+    // catalog fills in only for rows the feed didn't tag). `crossListed` is
+    // import-time validation only — the catalog owns cross-listing, so the
+    // sheet's claims are never stored; an imported group starts unowned (no
+    // `crossListOwner`), and the first edit claims it.
     delete offering.crossListed
     byTerm[t].push(offering)
   }
@@ -1852,6 +1853,25 @@ export const scheduleOfferings = computed(() => {
 
 // The merged index over the selected schedules' active-term offerings.
 export const schedule = computed(() => buildIndex(scheduleOfferings.value))
+
+// The core-curriculum areas a course satisfies in this schedule collection: the
+// union of the selected schedules' active-term offerings' own `coreReqs` (the
+// imported registrar feed is the source of truth). An offering whose row carries
+// no areas falls back to the catalog's mapping, so an untagged feed and
+// schedules stored before the feed's areas were kept still resolve. Empty when
+// the course isn't on any selected schedule.
+export function scheduleAreasOf(code) {
+  const want = String(code || '').trim()
+  if (!want) return []
+  const out = new Set()
+  for (const o of scheduleOfferings.value) {
+    if (o.lab) continue
+    if (`${o.prefix || ''} ${o.number || ''}`.trim() !== want) continue
+    const own = o.coreReqs && o.coreReqs.length ? o.coreReqs : coreReqsByCode.value.get(want) || []
+    for (const id of own) out.add(id)
+  }
+  return [...out]
+}
 
 function persistSchedules() {
   // In remote mode the server holds the schedule collection; localStorage is

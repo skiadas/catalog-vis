@@ -107,7 +107,7 @@ import {
   scheduleOfferings,
   selectedScheduleIds,
   colorSchedules,
-  coreReqsByCode,
+  scheduleAreasOf,
   editingScheduleId,
   canTouchOffering,
   showPendingSuggestions,
@@ -181,7 +181,7 @@ export default {
     // proposals are shown, the view activates (pills + schedule colors) so the
     // proposed blocks are visible rather than hidden behind count summaries.
     // The core filter's resolver: a course code -> its core-area ids.
-    const reqsOf = (code) => coreReqsByCode.value.get(code) || []
+    const reqsOf = (code) => scheduleAreasOf(code)
     const filter = computed(() => {
       if (editingScheduleId.value) {
         return buildEditVisual(

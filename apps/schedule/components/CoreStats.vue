@@ -13,9 +13,10 @@
       </div>
       <div class="modal-body">
         <p class="modal-intro">
-          Offerings and total seats per core-curriculum area across the selected schedules. A lab is not a
-          separate offering and its seats are not counted, so a lecture with labs counts once. Cross-listed
-          versions of one course share a single seat pool, so they count once. Each cell shows
+          Offerings and total seats per core-curriculum area across the selected schedules, using each row's
+          own core requirements (the catalog fills in for rows the feed didn't tag). A lab is not a separate
+          offering and its seats are not counted, so a lecture with labs counts once. Cross-listed versions of
+          one course share a single seat pool, so they count once. Each cell shows
           <strong>offerings · seats</strong>.
         </p>
         <table class="courses-table core-stats-table">

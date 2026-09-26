@@ -1,13 +1,14 @@
-# Registrar CSV core-requirement conflicts
+# Registrar CSV core-requirement notes
 
-The schedule app's import validates each row's `core_requirements` cell against
-the catalog (`core_requirements.json`) and flags disagreements in both
-directions — areas the file adds, and areas it omits. Nothing is stored from the
-column; the catalog stays the source of truth.
+The schedule app now treats the imported registrar feed as authoritative: each
+row's `core_requirements` cell is stored on the offering and drives the course
+view, core filter, CoreStats, and export (the catalog only fills in for rows the
+feed didn't tag). The import summary still *notes* where a row differs from our
+catalog snapshot, but only informationally — nothing is blocked and the file is
+never overridden.
 
-After the catalog update that added SL and HW and merged description-confirmed
-designations into the area pools, the remaining disagreements are below. They
-are data issues on one side or the other, not app bugs.
+The notes below are therefore about data quality on one side or the other
+(useful to send to the registrar / catalog admins), not app problems.
 
 ## 1. The registrar file looks incomplete (catalog and descriptions agree)
 

@@ -56,7 +56,7 @@ import {
   scheduleOfferings,
   selectedScheduleIds,
   colorSchedules,
-  coreReqsByCode,
+  scheduleAreasOf,
   editingScheduleId,
   canTouchOffering,
   showPendingSuggestions,
@@ -106,7 +106,7 @@ export default {
     // In edit/suggest mode the filter is overridden (like the grid) so the
     // session schedule's courses are visible — an active filter still limits.
     // Pending proposals force the pill view so proposed blocks are visible.
-    const reqsOf = (code) => coreReqsByCode.value.get(code) || []
+    const reqsOf = (code) => scheduleAreasOf(code)
     const filter = computed(() => {
       if (editingScheduleId.value) {
         return buildEditVisual(

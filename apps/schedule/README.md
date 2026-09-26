@@ -122,14 +122,19 @@ title carries the catalog name. The optional
 `seats` column is the requested seat count (a positive integer, default 24
 when blank/absent); it is written back on export (blank when a row has none).
 The optional `core_reqs` column is the comma-separated core-curriculum area ids
-the course satisfies (`SM, LA`); the app resolves it from the catalog on export
-and, on import, compares it with the catalog's own list — **disagreements (in
-either direction) are flagged in the import summary** and rows for courses the
-catalog doesn't carry are counted, but nothing is stored from the column (the
-catalog stays the source of truth). The optional `cross_listed` column is the
-comma-separated other department prefixes whose versions are also present in
-the export; on import it is compared with the catalog and the file's own group
-rows (mismatches and disagreeing group rows are flagged), and it is not stored.
+the course satisfies (`SM, LA`). **The imported row's ids are stored on the
+offering and are authoritative** — the course view, core filter, CoreStats, and
+export all read them back, and the catalog fills in only for rows the feed left
+blank (so an untagged feed and schedules stored before this still resolve). On
+import the column is also compared with the catalog's own list, but only as an
+informational note in the import summary (`N row(s) carry core requirements that
+differ from our catalog snapshot`; rows for courses the catalog doesn't carry
+are counted) — the catalog is not the source of truth for a row's areas. The
+optional `cross_listed` column is the comma-separated other department prefixes
+whose versions are also present in the export; on import it is compared with the
+catalog and the file's own group rows (mismatches and disagreeing group rows are
+noted informationally), and it is **not** stored — the catalog owns the runtime
+cross-listing groups.
 The registrar's own feed renames a few columns — `course_title`, `course_limit`
 (`course_max` is ignored), and `core_requirements` with parenthesized ids like
 `(LA) (SM)` — and replaces `cross_listed` with `cross_listed_parent_course`,
