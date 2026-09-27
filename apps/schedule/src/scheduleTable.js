@@ -3,7 +3,7 @@
 // a DOM (see `test/scheduleTable.test.mjs`). The parsers return the canonical
 // value, `''` for a deliberately blank cell, or `null` for invalid input the
 // caller should revert.
-import { WEEKDAYS, normalizeBand } from '@major-vis/schedule-core'
+import { WEEKDAYS, normalizeBand, termConfig, termSlotOptions } from '@major-vis/schedule-core'
 
 // The department a row belongs to for the table's filter: its own course
 // prefix. (Cross-list ownership gates *editing*, not which department's list a
@@ -81,4 +81,39 @@ export function parseTimeInput(text) {
   const end = Number(m[3]) * 60 + Number(m[4])
   if (!(start < end)) return null
   return normalizeBand(s)
+}
+
+// The term's assignable standard bands, labeled by their day group and in the
+// term's order: Fall/Winter yield 10 (six MWF + four TR), Spring 7 (the four
+// MTWRF base slots plus the allowed two-slot runs).
+export function standardBands(termKey) {
+  const config = termConfig(termKey)
+  const out = []
+  for (const group of config.dayGroups) {
+    for (const slot of termSlotOptions(termKey, group.label[0])) {
+      out.push({ days: group.label, time: slot.time })
+    }
+  }
+  return out
+}
+
+// The standard band matching an exact days/time pair (time normalized), or null.
+export function standardBandFor(bands, days, time) {
+  if (!days || !time) return null
+  const want = normalizeBand(time)
+  return (bands || []).find((b) => b.days === days && b.time === want) || null
+}
+
+// Parse the table's one-field meeting input (`MW 8:00-9:10`) into
+// `{ days, time }` (both canonicalized), or null when it isn't a weekday set
+// followed by a valid band. A blank days set or blank band is rejected — the
+// caller commits "no meeting time" through the picker instead.
+export function parseMeetingInput(text) {
+  const s = String(text ?? '').trim()
+  const parts = s.split(/\s+/)
+  if (parts.length < 2) return null
+  const days = parseDaysInput(parts[0])
+  const time = parseTimeInput(parts.slice(1).join(''))
+  if (!days || !time) return null
+  return { days, time }
 }

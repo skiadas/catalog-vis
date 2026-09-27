@@ -328,8 +328,6 @@
 <script>
 import {
   WEEKDAYS,
-  compareInstructors,
-  instructorsOf,
   termConfig,
   termSlotOptions,
   normalizeBand,
@@ -354,7 +352,8 @@ import {
 } from '../src/scheduleStore.js'
 import { courseName as catalogCourseName, programs, allCourses } from '@major-vis/catalog-client'
 import { buildFacultyAndEligible } from '@major-vis/schedule-core/generate'
-import { directoryPeople, matchesDirectory, instructorLabel } from '../src/names.js'
+import { instructorLabel } from '../src/names.js'
+import { buildInstructorOptions } from '../src/instructorSuggest.js'
 import { useModalFocus } from '../src/modalFocus.js'
 import AirDatepicker from 'air-datepicker'
 import 'air-datepicker/air-datepicker.css'
@@ -500,7 +499,8 @@ export default {
     // (per-program `faculty` lists, mapped to course prefixes the same way the
     // schedule generator does) plus the whole *term* the course is in — so a
     // brand-new schedule still offers the department's faculty, and names that
-    // appear on the schedule are always pickable.
+    // appear on the schedule are always pickable. The pool builder is shared
+    // with the table view's inline instructor cell (`src/instructorSuggest.js`).
     const courseOfferings = computed(() => {
       const s = schedule.value
       const part = publishedPart(s, activeTerm.value)
@@ -511,57 +511,17 @@ export default {
     const facultyByPrefix = computed(
       () => buildFacultyAndEligible(programs.value, allCourses.value).facultyByPrefix,
     )
-    const allCatalogFaculty = computed(() =>
-      [...new Set(Object.values(facultyByPrefix.value).flat())].sort(compareInstructors),
-    )
 
-    const deptInstructors = computed(() => {
-      const set = new Set()
-      for (const x of courseOfferings.value) {
-        if (x.prefix !== o.prefix) continue
-        for (const n of instructorsOf(x)) set.add(n)
-      }
-      return Array.from(set)
-    })
-    const allInstructors = computed(() => {
-      const set = new Set()
-      for (const x of courseOfferings.value) for (const n of instructorsOf(x)) set.add(n)
-      return Array.from(set)
-    })
-
-    // Picker entries are `{ label, value }`: the label is what the user reads
-    // and types (the directory's full name when the account is known), the
-    // value is what gets stored (the short username). Directory people come
-    // first; the catalog's surname-only roster follows, minus anyone a
-    // directory person already covers; term instructors come last, labelled by
-    // their stored value.
-    const poolEntries = (catalogNames, storedValues, dirPeople) => {
-      const out = []
-      const seen = new Set()
-      const add = (label, value) => {
-        const key = String(value || '').toLowerCase()
-        if (!key || seen.has(key)) return
-        seen.add(key)
-        out.push({ label, value })
-      }
-      for (const p of dirPeople) add(p.label, p.value)
-      for (const name of catalogNames) {
-        if (matchesDirectory(name, directoryIndex.value)) continue
-        add(name, name)
-      }
-      for (const value of storedValues) add(instructorLabel(value, directoryIndex.value), value)
-      return out.sort((a, b) => compareInstructors(a.label, b.label))
-    }
-    const deptOptions = computed(() =>
-      poolEntries(
-        facultyByPrefix.value[o.prefix] || [],
-        deptInstructors.value,
-        directoryPeople(directoryIndex.value, o.prefix),
-      ),
+    const instructorPools = computed(() =>
+      buildInstructorOptions({
+        prefix: o.prefix,
+        facultyByPrefix: facultyByPrefix.value,
+        termOfferings: courseOfferings.value,
+        directoryIndex: directoryIndex.value,
+      }),
     )
-    const allOptions = computed(() =>
-      poolEntries(allCatalogFaculty.value, allInstructors.value, directoryPeople(directoryIndex.value)),
-    )
+    const deptOptions = computed(() => instructorPools.value.deptOptions)
+    const allOptions = computed(() => instructorPools.value.allOptions)
 
     const showAll = ref(
       Boolean(o.instructor) && !deptOptions.value.some((e) => e.value === instructorValue(o.instructor)),

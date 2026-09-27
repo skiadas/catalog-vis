@@ -118,6 +118,22 @@
   }
 }
 
+// The instructor combobox: the input anchors its suggestion dropdown (the
+// shared `.course-picker-dropdown`, made wide enough to read full names).
+.schedule-table-combo {
+  position: relative;
+  min-width: 160px;
+}
+
+.schedule-table-combo-dropdown {
+  right: auto;
+  min-width: 220px;
+}
+
+.schedule-table-select {
+  min-width: 170px;
+}
+
 .schedule-table-core,
 .schedule-table-source {
   color: var(--text-muted);

@@ -34,8 +34,7 @@
             <th scope="col">Course</th>
             <th scope="col">Title</th>
             <th scope="col">Instructor</th>
-            <th scope="col">Days</th>
-            <th scope="col">Time</th>
+            <th scope="col">Meeting</th>
             <th scope="col">Seats</th>
             <th scope="col">Core</th>
             <th scope="col">Schedule</th>
@@ -67,31 +66,111 @@
               empty-text="Add title"
               @commit="(v) => commitField(row, 'title', v)"
             />
-            <ScheduleTableCell
-              :value="row.o.instructor || ''"
-              :display="instructorsText(row.o)"
-              :editable="canEdit(row)"
-              label="Instructor"
-              :edit-label="`Edit instructor of ${row.code}`"
-              empty-text="Add instructor"
-              @commit="(v) => commitField(row, 'instructor', v)"
-            />
-            <ScheduleTableCell
-              :value="row.o.days || ''"
-              :display="row.o.days || ''"
-              :editable="canEdit(row)"
-              label="Days"
-              :edit-label="`Edit meeting days of ${row.code}`"
-              @commit="(v) => commitField(row, 'days', v)"
-            />
-            <ScheduleTableCell
-              :value="row.o.time || ''"
-              :display="row.o.time ? formatTime(row.o.time) : ''"
-              :editable="canEdit(row)"
-              label="Time"
-              :edit-label="`Edit meeting time of ${row.code}`"
-              @commit="(v) => commitField(row, 'time', v)"
-            />
+
+            <!-- Instructor: a combobox (directory + catalog roster + term). -->
+            <td class="schedule-table-cell schedule-table-instructor">
+              <div
+                v-if="editingInstructorKey === row.key"
+                ref="instructorSuggestEl"
+                class="schedule-table-combo"
+              >
+                <input
+                  ref="instructorInputEl"
+                  class="schedule-table-input"
+                  type="text"
+                  v-model="instructorText"
+                  :aria-label="`Instructor of ${row.code}`"
+                  @focus="instructorOpen = true"
+                  @blur="onInstructorBlur"
+                  @keydown.enter.prevent="commitInstructor"
+                  @keydown.esc.prevent="cancelInstructor"
+                />
+                <div
+                  v-if="instructorOpen && instructorSuggestions.length"
+                  class="course-picker-dropdown schedule-table-combo-dropdown"
+                >
+                  <button
+                    v-for="opt in instructorSuggestions"
+                    :key="opt.value"
+                    type="button"
+                    class="course-picker-option"
+                    :title="opt.value"
+                    :aria-label="opt.value === opt.label ? opt.label : `${opt.label} (${opt.value})`"
+                    @mousedown.prevent
+                    @click="pickInstructor(opt)"
+                  >
+                    <span class="planner-pick-code">{{ opt.label }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="course-picker-scope link-toggle"
+                    @mousedown.prevent
+                    @click="showAllInstructors = !showAllInstructors"
+                  >
+                    {{ showAllInstructors ? 'Limit to department' : 'Show all instructors' }}
+                  </button>
+                </div>
+              </div>
+              <button
+                v-else-if="canEdit(row)"
+                type="button"
+                class="schedule-table-value schedule-table-value-edit"
+                :class="{ 'is-empty': !instructorsText(row.o) }"
+                :aria-label="`Edit instructor of ${row.code}`"
+                @click="beginInstructor(row)"
+              >
+                {{ instructorsText(row.o) || 'Add instructor' }}
+              </button>
+              <span v-else class="schedule-table-value" :class="{ 'is-empty': !instructorsText(row.o) }">{{
+                instructorsText(row.o) || '—'
+              }}</span>
+            </td>
+
+            <!-- Meeting: a picker of the term's standard bands, plus custom. -->
+            <td class="schedule-table-cell schedule-table-meeting">
+              <template v-if="editingMeetingKey === row.key">
+                <input
+                  v-if="meetingCustom"
+                  ref="meetingInputEl"
+                  class="schedule-table-input"
+                  type="text"
+                  v-model="meetingCustomText"
+                  placeholder="e.g. MW 8:00-9:10"
+                  :aria-label="`Meeting of ${row.code}`"
+                  @keydown.enter.prevent="commitMeetingCustom(row)"
+                  @keydown.esc.prevent="cancelMeeting"
+                  @blur="commitMeetingCustom(row)"
+                />
+                <select
+                  v-else
+                  ref="meetingSelectEl"
+                  v-model="meetingValue"
+                  class="schedule-table-input schedule-table-select"
+                  :aria-label="`Meeting of ${row.code}`"
+                  @change="applyMeeting(row)"
+                >
+                  <option value="">No meeting time</option>
+                  <option v-for="b in bands" :key="b.days + '|' + b.time" :value="b.days + '|' + b.time">
+                    {{ b.days }} {{ b.time }}
+                  </option>
+                  <option value="__custom">Custom…</option>
+                </select>
+              </template>
+              <button
+                v-else-if="canEdit(row)"
+                type="button"
+                class="schedule-table-value schedule-table-value-edit"
+                :class="{ 'is-empty': !row.o.days || !row.o.time }"
+                :aria-label="`Edit meeting of ${row.code}`"
+                @click="beginMeeting(row)"
+              >
+                {{ meetingText(row) }}
+              </button>
+              <span v-else class="schedule-table-value" :class="{ 'is-empty': !row.o.days || !row.o.time }">{{
+                meetingText(row)
+              }}</span>
+            </td>
+
             <ScheduleTableCell
               :value="row.o.seats != null ? row.o.seats : DEFAULT_SEATS"
               :display="String(row.o.seats != null ? row.o.seats : DEFAULT_SEATS)"
@@ -135,12 +214,14 @@
 // schedules' active term, with a department selector and in-place editing.
 // When a session is active (owners edit; non-owners suggest) a row of a
 // department the user is in becomes editable — its cells commit through
-// `updateOffering`, so drafts, history, and cross-list rules come for free. A
-// row's pencil opens the full course editor for labs/cross-listing/custom
-// times; non-session schedules render dimmed as references.
+// `updateOffering`, so drafts, history, and cross-list rules come for free. The
+// instructor cell autocompletes from the same pools as the course editor
+// (`src/instructorSuggest.js`); the meeting cell picks from the term's standard
+// bands (with a custom fallback). A row's pencil opens the full course editor
+// for labs/cross-listing; non-session schedules render dimmed as references.
 
 import { goScheduleCourse } from '../router.js'
-import { courseName } from '@major-vis/catalog-client'
+import { allCourses, courseName, programs } from '@major-vis/catalog-client'
 import {
   DEFAULT_SEATS,
   TERM_LABELS,
@@ -150,10 +231,12 @@ import {
   offeringItemKey,
   offeringSectionLabel,
 } from '@major-vis/schedule-core'
+import { buildFacultyAndEligible } from '@major-vis/schedule-core/generate'
 import {
   activeTerm,
   canTouchOffering,
   coreReqsByCode,
+  directoryIndex,
   editingRole,
   editingScheduleId,
   instructorName,
@@ -166,17 +249,19 @@ import {
   scheduleOfferings,
   updateOffering,
 } from '../src/scheduleStore.js'
+import { buildInstructorOptions } from '../src/instructorSuggest.js'
 import {
   compareTableRows,
   departmentsInOfferings,
   inDepartment,
-  parseDaysInput,
+  parseMeetingInput,
   parseSeatsInput,
-  parseTimeInput,
+  standardBandFor,
+  standardBands,
 } from '../src/scheduleTable.js'
 import ScheduleTableCell from './ScheduleTableCell.vue'
 
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 export default {
   name: 'ScheduleTable',
@@ -232,9 +317,12 @@ export default {
       labSeq: o.labSeq,
       id: o.id,
     })
+    const rowByKey = (key) => rows.value.find((r) => r.key === key)
+    // Template refs inside a `v-for` collect into an array; only the editing
+    // row renders its input, so take the first element.
+    const elOf = (r) => (Array.isArray(r.value) ? r.value[0] : r.value)
 
-    // Parse one cell's draft and commit it. Invalid or unchanged input is a
-    // no-op (the cell reverts to the stored value on re-render).
+    // --- Title / seats (generic inline cells) ------------------------------
     const commitField = (row, field, value) => {
       const o = row.o
       let changes = null
@@ -242,18 +330,6 @@ export default {
         const title = String(value ?? '').trim()
         if (title === (o.title || '')) return
         changes = { title }
-      } else if (field === 'instructor') {
-        const instructor = instructorValue(String(value ?? '').trim())
-        if (instructor === (o.instructor || '')) return
-        changes = { instructor }
-      } else if (field === 'days') {
-        const days = parseDaysInput(value)
-        if (days == null || days === (o.days || '')) return
-        changes = { days }
-      } else if (field === 'time') {
-        const time = parseTimeInput(value)
-        if (time == null || time === (o.time || '')) return
-        changes = { time }
       } else if (field === 'seats') {
         const seats = parseSeatsInput(value)
         const current = o.seats != null ? o.seats : DEFAULT_SEATS
@@ -261,6 +337,132 @@ export default {
         changes = { seats }
       }
       if (changes) updateOffering(row.sid, curOf(o), changes)
+    }
+
+    // --- Instructor combobox ----------------------------------------------
+    const facultyByPrefix = computed(
+      () => buildFacultyAndEligible(programs.value, allCourses.value).facultyByPrefix,
+    )
+    const editingInstructorKey = ref(null)
+    const instructorText = ref('')
+    const instructorOpen = ref(false)
+    const showAllInstructors = ref(false)
+    const instructorInputEl = ref(null)
+    const instructorSuggestEl = ref(null)
+    const instructorPools = computed(() => {
+      const row = editingInstructorKey.value == null ? null : rowByKey(editingInstructorKey.value)
+      return buildInstructorOptions({
+        prefix: row ? row.o.prefix : '',
+        facultyByPrefix: facultyByPrefix.value,
+        termOfferings: scheduleOfferings.value,
+        directoryIndex: directoryIndex.value,
+      })
+    })
+    const instructorSuggestions = computed(() => {
+      if (!instructorOpen.value) return []
+      const pool = showAllInstructors.value
+        ? instructorPools.value.allOptions
+        : instructorPools.value.deptOptions
+      const token = instructorText.value.trim().toLowerCase()
+      const matched = token
+        ? pool.filter(
+            (e) => e.label.toLowerCase().startsWith(token) || e.value.toLowerCase().startsWith(token),
+          )
+        : pool
+      return matched.slice(0, 8)
+    })
+    const beginInstructor = (row) => {
+      editingInstructorKey.value = row.key
+      instructorText.value = row.o.instructor ? instructorName(row.o.instructor) : ''
+      instructorOpen.value = true
+      showAllInstructors.value = false
+      nextTick(() => {
+        const el = elOf(instructorInputEl)
+        if (el && el.focus) el.focus()
+      })
+    }
+    const commitInstructor = () => {
+      const key = editingInstructorKey.value
+      if (key == null) return
+      const row = rowByKey(key)
+      const text = instructorText.value.trim()
+      editingInstructorKey.value = null
+      instructorOpen.value = false
+      if (!row) return
+      const instructor = instructorValue(text)
+      if (instructor === (row.o.instructor || '')) return
+      updateOffering(row.sid, curOf(row.o), { instructor })
+    }
+    const cancelInstructor = () => {
+      editingInstructorKey.value = null
+      instructorOpen.value = false
+    }
+    const pickInstructor = (entry) => {
+      instructorText.value = entry.label
+      commitInstructor()
+    }
+    const onInstructorBlur = (e) => {
+      const next = e.relatedTarget
+      if (next && elOf(instructorSuggestEl) && elOf(instructorSuggestEl).contains(next)) return
+      commitInstructor()
+    }
+
+    // --- Meeting picker ----------------------------------------------------
+    const bands = computed(() => standardBands(activeTerm.value))
+    const editingMeetingKey = ref(null)
+    const meetingCustom = ref(false)
+    const meetingValue = ref('')
+    const meetingCustomText = ref('')
+    const meetingSelectEl = ref(null)
+    const meetingInputEl = ref(null)
+    const meetingText = (row) =>
+      row.o.days && row.o.time ? `${row.o.days} · ${formatTime(row.o.time)}` : 'No meeting time'
+    const meetingSelectValue = (row) => {
+      if (!row.o.days || !row.o.time) return ''
+      const band = standardBandFor(bands.value, row.o.days, row.o.time)
+      return band ? `${band.days}|${band.time}` : '__custom'
+    }
+    const beginMeeting = (row) => {
+      editingMeetingKey.value = row.key
+      meetingCustom.value = false
+      meetingValue.value = meetingSelectValue(row)
+      nextTick(() => {
+        const el = elOf(meetingSelectEl)
+        if (el && el.focus) el.focus()
+      })
+    }
+    const commitMeeting = (row, changes) => {
+      editingMeetingKey.value = null
+      meetingCustom.value = false
+      if (!changes) return
+      if (changes.days === (row.o.days || '') && changes.time === (row.o.time || '')) return
+      updateOffering(row.sid, curOf(row.o), changes)
+    }
+    const applyMeeting = (row) => {
+      const value = meetingValue.value
+      if (value === '__custom') {
+        meetingCustom.value = true
+        meetingCustomText.value = `${row.o.days || ''} ${row.o.time || ''}`.trim()
+        nextTick(() => {
+          const el = elOf(meetingInputEl)
+          if (el && el.focus) el.focus()
+        })
+        return
+      }
+      if (!value) {
+        commitMeeting(row, { days: '', time: '' })
+        return
+      }
+      const [days, time] = value.split('|')
+      commitMeeting(row, { days, time })
+    }
+    const commitMeetingCustom = (row) => {
+      const parsed = parseMeetingInput(meetingCustomText.value)
+      commitMeeting(row, parsed)
+    }
+    const cancelMeeting = () => {
+      editingMeetingKey.value = null
+      meetingCustom.value = false
     }
 
     const openEditor = (row) => openCourseEdit({ o: row.o, code: row.code, sid: row.sid })
@@ -275,6 +477,7 @@ export default {
       dept,
       departments,
       rows,
+      bands,
       TERM_LABELS,
       DEFAULT_SEATS,
       activeTerm,
@@ -290,6 +493,29 @@ export default {
       instructorsText,
       areasText,
       commitField,
+      editingInstructorKey,
+      instructorText,
+      instructorOpen,
+      showAllInstructors,
+      instructorInputEl,
+      instructorSuggestEl,
+      instructorSuggestions,
+      beginInstructor,
+      commitInstructor,
+      cancelInstructor,
+      pickInstructor,
+      onInstructorBlur,
+      editingMeetingKey,
+      meetingCustom,
+      meetingValue,
+      meetingCustomText,
+      meetingSelectEl,
+      meetingInputEl,
+      meetingText,
+      beginMeeting,
+      applyMeeting,
+      commitMeetingCustom,
+      cancelMeeting,
       openEditor,
       removeRow,
       formatTime,

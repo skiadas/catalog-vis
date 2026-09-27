@@ -999,6 +999,29 @@ test('table view: department filter, inline edit, add and remove', async ({ page
   await live.locator('.schedule-table-input').press('Enter')
   await expect(live.locator('button[aria-label^="Edit seats of"]')).toHaveText('99')
 
+  // The meeting picker offers the term's standard bands; pick one.
+  await live.locator('button[aria-label^="Edit meeting of"]').click()
+  await live.locator('select[aria-label^="Meeting of"]').selectOption('TR|10:00-11:45')
+  await expect(live.locator('button[aria-label^="Edit meeting of"]')).toContainText(
+    'TR · 10:00 AM - 11:45 AM',
+  )
+
+  // Custom falls back to one typed field ("MW 14:00-15:00").
+  await live.locator('button[aria-label^="Edit meeting of"]').click()
+  await live.locator('select[aria-label^="Meeting of"]').selectOption('__custom')
+  await live.locator('input[aria-label^="Meeting of"]').fill('MW 14:00-15:00')
+  await live.locator('input[aria-label^="Meeting of"]').press('Enter')
+  await expect(live.locator('button[aria-label^="Edit meeting of"]')).toContainText('MW · 2:00 PM - 3:00 PM')
+
+  // The instructor cell autocompletes; picking a suggestion commits it.
+  await live.locator('button[aria-label^="Edit instructor of"]').click()
+  const suggests = live.locator('.schedule-table-combo-dropdown .course-picker-option')
+  await suggests.first().waitFor({ timeout: 5000 })
+  expect(await suggests.count()).toBeGreaterThan(0)
+  const picked = (await suggests.first().innerText()).trim()
+  await suggests.first().click()
+  await expect(live.locator('button[aria-label^="Edit instructor of"]')).toContainText(picked)
+
   // The row pencil opens the full course editor; Cancel returns to the table.
   await live.locator('.schedule-table-action').first().click()
   const em = page.locator('.modal[aria-labelledby="course-edit-title"]')

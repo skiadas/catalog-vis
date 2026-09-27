@@ -34,11 +34,13 @@ side by side.
 ## Table — one row per offering
 
 Every offering of the selected schedules' term as a compact, spreadsheet-like
-row: course and section, title, instructor, days, time, seats, core areas, and
-the schedule it came from. A **Department** selector narrows the table to one
+row: course and section, title, instructor, meeting, seats, core areas, and the
+schedule it came from. A **Department** selector narrows the table to one
 department. When you start editing (or suggesting), the cells you are allowed
-to change become editable in place — Enter or click away to commit, Esc to
-cancel. The row's pencil opens the full
+to change become editable in place: the instructor cell suggests names as you
+type, and the meeting cell picks from the term's standard time slots (with a
+**Custom…** field when a course meets at another time). Enter or click away
+commits a cell, Esc cancels. The row's pencil opens the full
 [course editor](/guide/schedule/edit-course) for labs and cross-listing, and
 **＋ Add course** adds a section. Rows from the other selected schedules are
 dimmed as references, just like in the Grid.

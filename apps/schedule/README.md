@@ -108,17 +108,19 @@ scale. Every top and height is multiplied by the same factor, so vertical size
 stays proportional to the clock.
 
 The **table view** (`#/table`) lists the selected schedules' active term as one
-compact row per offering — course and section, title, instructor, days, time,
-seats, core areas, and the source schedule — with a **Department** selector
-over the prefixes present. Inside a session the cells a user may touch (owners
-anywhere; a non-owner only their departments, per `canTouchOffering`) edit in
-place: title/instructor/days/time/seats commit through `updateOffering`, so
-drafts, history, and cross-list rules apply unchanged; invalid input (a bad day
-set or time band, a non-positive seat count) is ignored. The row pencil opens
-the full course editor for labs/cross-listing/custom times, and **＋ Add
-course** opens the add dialog. Rows from other selected schedules render dimmed
-as references. Row grouping/ordering and the inline-cell parsers live in
-`src/scheduleTable.js`.
+compact row per offering — course and section, title, instructor, meeting, seats,
+core areas, and the source schedule — with a **Department** selector over the
+prefixes present. Inside a session the cells a user may touch (owners anywhere;
+a non-owner only their departments, per `canTouchOffering`) edit in place: title
+and seats commit through `updateOffering`, so drafts, history, and cross-list
+rules apply unchanged; invalid input (a non-positive seat count) is ignored. The
+**instructor** cell is a combobox drawing on the same pools as the course editor
+(`src/instructorSuggest.js`); the **meeting** cell picks from the term's
+standard bands (10 in Fall/Winter, 7 in Spring) with a **Custom…** fallback that
+parses one field (`MW 8:00-9:10`). The row pencil opens the full course editor
+for labs/cross-listing, and **＋ Add course** opens the add dialog. Rows from
+other selected schedules render dimmed as references. Row grouping/ordering and
+the inline-cell parsers live in `src/scheduleTable.js`.
 
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format
