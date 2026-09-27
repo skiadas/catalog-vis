@@ -22,10 +22,18 @@ export function departmentsInOfferings(offerings) {
   return [...set].sort()
 }
 
-// Whether a row is in `dept`; '' is the "All departments" view (every row).
-export function inDepartment(o, dept) {
-  const want = String(dept || '').toUpperCase()
-  return !want || departmentOf(o) === want
+// Whether a row passes the table's filters: it shows when its prefix is among
+// the selected departments (or none are selected) AND any of its instructors —
+// lead or co-teacher — is among the selected ones (or none are selected).
+export function rowMatchesFilters(o, depts = [], instructors = []) {
+  const wantedDepts = (depts || []).map((d) => String(d).toUpperCase())
+  if (wantedDepts.length && !wantedDepts.includes(departmentOf(o))) return false
+  const wanted = (instructors || []).map((n) => String(n))
+  if (wanted.length) {
+    const roster = instructorsOf(o).map((n) => String(n))
+    if (!roster.some((n) => wanted.includes(n))) return false
+  }
+  return true
 }
 
 // The table's instructor cell shows only the lead — the one instructor the cell

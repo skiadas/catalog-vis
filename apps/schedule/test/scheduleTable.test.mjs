@@ -8,12 +8,12 @@ import {
   compareTableRows,
   departmentOf,
   departmentsInOfferings,
-  inDepartment,
   leadInstructorText,
   parseDaysInput,
   parseMeetingInput,
   parseSeatsInput,
   parseTimeInput,
+  rowMatchesFilters,
   standardBandFor,
   standardBands,
 } from '../src/scheduleTable.js'
@@ -37,10 +37,22 @@ test('departmentsInOfferings lists distinct prefixes, sorted', () => {
   assert.deepEqual(depts, ['BIO', 'CS', 'MAT'])
 })
 
-test('inDepartment matches case-insensitively; blank matches everything', () => {
-  assert.equal(inDepartment(row({ prefix: 'CS' }), 'cs'), true)
-  assert.equal(inDepartment(row({ prefix: 'CS' }), 'MAT'), false)
-  assert.equal(inDepartment(row({ prefix: 'CS' }), ''), true)
+test('rowMatchesFilters combines department and instructor filters', () => {
+  const cs = row({ prefix: 'CS', instructor: 'Jones', secondaryInstructors: ['Lee'] })
+  const mat = row({ prefix: 'MAT', instructor: 'Smith' })
+  // No filters: everything shows.
+  assert.equal(rowMatchesFilters(cs, [], []), true)
+  // Department only (case-insensitive, multi).
+  assert.equal(rowMatchesFilters(cs, ['cs'], []), true)
+  assert.equal(rowMatchesFilters(mat, ['CS'], []), false)
+  assert.equal(rowMatchesFilters(mat, ['CS', 'MAT'], []), true)
+  // Instructor only — matched against the full roster (lead or co-teacher).
+  assert.equal(rowMatchesFilters(cs, [], ['Jones']), true)
+  assert.equal(rowMatchesFilters(cs, [], ['Lee']), true)
+  assert.equal(rowMatchesFilters(cs, [], ['Smith']), false)
+  // Both must hold.
+  assert.equal(rowMatchesFilters(cs, ['MAT'], ['Jones']), false)
+  assert.equal(rowMatchesFilters(cs, ['CS'], ['Jones']), true)
 })
 
 test('compareTableRows orders by department, numeric number, section, then labs', () => {

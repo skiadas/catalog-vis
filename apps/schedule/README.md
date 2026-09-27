@@ -109,8 +109,11 @@ stays proportional to the clock.
 
 The **table view** (`#/table`) lists the selected schedules' active term as one
 compact row per offering — course and section, title, instructor, meeting, seats,
-core areas, and the source schedule — with a **Department** selector over the
-prefixes present. Inside a session the cells a user may touch (owners anywhere;
+core areas, and the source schedule — with **Departments** and **Instructors**
+chip rows that *hide* non-matching rows (a row shows when its prefix is among
+the selected departments and any of its instructors is among the selected ones;
+instructors match the full roster, lead or co-teacher). Inside a session the
+cells a user may touch (owners anywhere;
 a non-owner only their departments, per `canTouchOffering`) edit in place: title
 and seats commit through `updateOffering`, so drafts, history, and cross-list
 rules apply unchanged; invalid input (a non-positive seat count) is ignored. The
@@ -121,9 +124,10 @@ the **meeting** cell picks from the term's standard bands (10 in Fall/Winter, 7
 in Spring) with a **Custom…** fallback that parses one field (`MW 8:00-9:10`). The row pencil opens the full course editor
 for labs/cross-listing, and **＋ Add course** opens the add dialog. Rows from
 other selected schedules render dimmed as references. Row grouping/ordering and
-the inline-cell parsers live in `src/scheduleTable.js`. The department filter
-rides in the URL (`#/table?dept=CS`), so a detour — a course link, the Table tab,
-the browser back button — returns to the same department.
+the inline-cell parsers live in `src/scheduleTable.js`. The filters ride in the
+URL as repeated params (`#/table?dept=CS&dept=MAT&instructor=jsmith`), so a
+detour — a course link, the Table tab, the browser back button — returns to the
+same filtered view.
 
 **CSV**: import a file via "Your schedules" → **New schedule** → **Import
 CSV…** — the file is the same round-trip / registrar format

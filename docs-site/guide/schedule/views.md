@@ -35,10 +35,11 @@ side by side.
 
 Every offering of the selected schedules' term as a compact, spreadsheet-like
 row: course and section, title, instructor, meeting, seats, core areas, and the
-schedule it came from. A **Department** selector narrows the table to one
-department — and that choice lives in the address (`#/table?dept=CS`), so
+schedule it came from. **Departments** and **Instructors** chips hide everything
+that does not match — pick several chips to widen, **Clear** to reset — and the
+choice lives in the address (`#/table?dept=CS&dept=MAT&instructor=jsmith`), so
 clicking a course link and coming back (or the browser Back button) keeps the
-department. When you start editing (or suggesting), the cells you are allowed
+filters. When you start editing (or suggesting), the cells you are allowed
 to change become editable in place: the instructor cell suggests names as you
 type (and shows just the lead, with a **+N** when co-teachers are attached —
 the full editor manages those), and the meeting cell picks from the term's

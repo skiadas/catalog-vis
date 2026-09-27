@@ -1,14 +1,6 @@
 <template>
   <div class="schedule-table">
     <div class="schedule-table-tools">
-      <label class="schedule-table-dept-label" for="schedule-table-dept">Department</label>
-      <select id="schedule-table-dept" v-model="dept" class="search-input schedule-table-dept">
-        <option value="">All departments</option>
-        <option v-if="dept && !departments.includes(dept)" :value="dept">{{ dept }} (no offerings)</option>
-        <option v-for="d in departments" :key="d" :value="d">
-          {{ d }}{{ myDepartments.includes(d) ? ' (mine)' : '' }}
-        </option>
-      </select>
       <span class="schedule-table-count">{{ rows.length }} offering{{ rows.length === 1 ? '' : 's' }}</span>
       <span v-if="!editingScheduleId" class="schedule-table-hint"
         >Read-only — start editing to change offerings.</span
@@ -25,8 +17,48 @@
       </button>
     </div>
 
+    <div class="schedule-table-filters">
+      <div v-if="departments.length" class="schedule-table-filter-row">
+        <span class="schedule-table-filter-label">Departments</span>
+        <button
+          v-for="d in departments"
+          :key="d"
+          type="button"
+          class="filter-chip"
+          :class="{ active: selectedDepts.includes(d) }"
+          :style="selectedDepts.includes(d) ? { backgroundColor: colorForDept(d) } : {}"
+          :aria-pressed="selectedDepts.includes(d)"
+          @click="toggleDept(d)"
+        >
+          {{ d }}{{ myDepartments.includes(d) ? ' (mine)' : '' }}
+        </button>
+      </div>
+      <div v-if="instructors.length" class="schedule-table-filter-row">
+        <span class="schedule-table-filter-label">Instructors</span>
+        <button
+          v-for="n in instructors"
+          :key="n"
+          type="button"
+          class="filter-chip"
+          :class="{ active: selectedInstructors.includes(n) }"
+          :style="selectedInstructors.includes(n) ? { backgroundColor: colorForInstructor(n) } : {}"
+          :aria-pressed="selectedInstructors.includes(n)"
+          @click="toggleInstructor(n)"
+        >
+          {{ instructorName(n) }}
+        </button>
+      </div>
+      <button
+        v-if="selectedDepts.length || selectedInstructors.length"
+        class="filter-clear"
+        @click="clearFilters"
+      >
+        Clear
+      </button>
+    </div>
+
     <div v-if="!rows.length" class="schedule-table-empty">
-      No {{ dept ? dept + ' ' : '' }}offerings in {{ TERM_LABELS[activeTerm] }}.
+      No {{ filterActive ? 'matching ' : '' }}offerings in {{ TERM_LABELS[activeTerm] }}.
     </div>
     <div v-else class="schedule-table-scroll">
       <table class="courses-table schedule-table-grid">
@@ -228,7 +260,11 @@ import { allCourses, courseName, programs } from '@major-vis/catalog-client'
 import {
   DEFAULT_SEATS,
   TERM_LABELS,
+  colorForDept,
+  colorForInstructor,
+  compareInstructors,
   formatTime,
+  instructorsInSchedule,
   offeringCodeLabel,
   offeringItemKey,
   offeringSectionLabel,
@@ -247,6 +283,7 @@ import {
   myDepartments,
   openCourseEdit,
   removeCourseFromSchedule,
+  schedule,
   scheduleById,
   scheduleOfferings,
   updateOffering,
@@ -255,10 +292,10 @@ import { buildInstructorOptions } from '../src/instructorSuggest.js'
 import {
   compareTableRows,
   departmentsInOfferings,
-  inDepartment,
   leadInstructorText,
   parseMeetingInput,
   parseSeatsInput,
+  rowMatchesFilters,
   standardBandFor,
   standardBands,
 } from '../src/scheduleTable.js'
@@ -274,29 +311,69 @@ export default {
   setup() {
     const route = useRoute()
     const router = useRouter()
-    // The department filter is the route's `dept` query: it survives a detour
-    // (a course link, say) and the Table tab, and a shared/deep link restores
-    // it. The select writes it back; an external query change updates the
-    // select. Both watchers guard against each other.
-    const dept = ref(String(route.query.dept || '').toUpperCase())
-    watch(dept, (v) => {
-      const want = String(v || '').toUpperCase()
-      if (String(route.query.dept || '').toUpperCase() === want) return
+    // The table's filters (departments and instructors) are the route's `dept`
+    // and `instructor` query params — multi-value, so `?dept=CS&dept=MAT`. They
+    // survive a detour (a course link, say) and the Table tab, and a shared/
+    // deep link restores them. The chips write them back; an external query
+    // change updates the chips. Both watchers guard against each other.
+    const queryList = (v) => (Array.isArray(v) ? v.map(String) : v == null || v === '' ? [] : [String(v)])
+    const sameList = (a, b) => a.length === b.length && a.every((x, i) => x === b[i])
+    const selectedDepts = ref(queryList(route.query.dept).map((d) => d.toUpperCase()))
+    const selectedInstructors = ref(queryList(route.query.instructor))
+    watch([selectedDepts, selectedInstructors], () => {
+      const depts = selectedDepts.value
+      const instructors = selectedInstructors.value
+      const curDepts = queryList(route.query.dept).map((d) => d.toUpperCase())
+      const curInstructors = queryList(route.query.instructor)
+      if (sameList(depts, curDepts) && sameList(instructors, curInstructors)) return
       const query = { ...route.query }
-      if (want) query.dept = want
+      if (depts.length) query.dept = depts
       else delete query.dept
+      if (instructors.length) query.instructor = instructors
+      else delete query.instructor
       router.replace({ query })
     })
     watch(
-      () => String(route.query.dept || '').toUpperCase(),
-      (v) => {
-        if (v !== dept.value) dept.value = v
+      () => [route.query.dept, route.query.instructor],
+      ([deptQ, instructorQ]) => {
+        const depts = queryList(deptQ).map((d) => d.toUpperCase())
+        const instructors = queryList(instructorQ)
+        if (!sameList(depts, selectedDepts.value)) selectedDepts.value = depts
+        if (!sameList(instructors, selectedInstructors.value)) selectedInstructors.value = instructors
       },
     )
-    const departments = computed(() => departmentsInOfferings(scheduleOfferings.value))
+    // The selectable chips, unioned with any URL-selected value so a
+    // stale-but-valid selection stays toggleable (and clearable).
+    const departments = computed(() => {
+      const set = new Set(departmentsInOfferings(scheduleOfferings.value))
+      for (const d of selectedDepts.value) set.add(d)
+      return [...set].sort()
+    })
+    const instructors = computed(() => {
+      const set = new Set(instructorsInSchedule(schedule.value))
+      for (const n of selectedInstructors.value) set.add(n)
+      return [...set].sort(compareInstructors)
+    })
+    const filterActive = computed(
+      () => selectedDepts.value.length > 0 || selectedInstructors.value.length > 0,
+    )
+    const toggleDept = (d) => {
+      selectedDepts.value = selectedDepts.value.includes(d)
+        ? selectedDepts.value.filter((x) => x !== d)
+        : [...selectedDepts.value, d]
+    }
+    const toggleInstructor = (n) => {
+      selectedInstructors.value = selectedInstructors.value.includes(n)
+        ? selectedInstructors.value.filter((x) => x !== n)
+        : [...selectedInstructors.value, n]
+    }
+    const clearFilters = () => {
+      selectedDepts.value = []
+      selectedInstructors.value = []
+    }
     const rows = computed(() =>
       scheduleOfferings.value
-        .filter((o) => inDepartment(o, dept.value))
+        .filter((o) => rowMatchesFilters(o, selectedDepts.value, selectedInstructors.value))
         .map((o) => ({
           o,
           sid: o.$sid,
@@ -515,8 +592,16 @@ export default {
     }
 
     return {
-      dept,
       departments,
+      instructors,
+      selectedDepts,
+      selectedInstructors,
+      filterActive,
+      toggleDept,
+      toggleInstructor,
+      clearFilters,
+      colorForDept,
+      colorForInstructor,
       rows,
       bands,
       TERM_LABELS,
@@ -532,6 +617,7 @@ export default {
       canOpen,
       effectiveTitle,
       instructorCellText,
+      instructorName,
       areasText,
       commitField,
       editingInstructorKey,

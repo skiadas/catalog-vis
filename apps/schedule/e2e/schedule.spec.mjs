@@ -968,27 +968,64 @@ test('table view: department filter, inline edit, add and remove', async ({ page
   const initialCount = await rows.count()
   expect(initialCount).toBeGreaterThan(0)
 
-  // The department selector narrows to one department's prefix; All restores.
-  const deptSel = page.locator('#schedule-table-dept')
-  const dept = await deptSel.locator('option').nth(1).getAttribute('value')
-  await deptSel.selectOption(dept)
-  const codes = await table.locator('.schedule-table-code .course-code-cell').allTextContents()
-  expect(codes.length).toBeGreaterThan(0)
-  for (const c of codes) expect(c.trim().startsWith(`${dept} `)).toBeTruthy()
+  // Chip rows filter the table (non-matching rows are hidden). Pick two
+  // departments and check every remaining row belongs to one of them.
+  const deptRow = table.locator('.schedule-table-filter-row', { hasText: 'Departments' })
+  const deptChips = deptRow.locator('.filter-chip')
+  const chipLabel = async (chip) => (await chip.innerText()).trim().replace(/\s*\(mine\)$/, '')
+  const deptA = await chipLabel(deptChips.nth(0))
+  await deptChips.nth(0).click()
+  const codesA = await table.locator('.schedule-table-code .course-code-cell').allTextContents()
+  expect(codesA.length).toBeGreaterThan(0)
+  for (const c of codesA) expect(c.trim().startsWith(`${deptA} `)).toBeTruthy()
+  await expect(page).toHaveURL(new RegExp(`dept=${deptA}`))
 
-  // The filter rides in the URL, so a detour to the course view and back via
-  // the Table tab returns to the same department (not All).
-  await expect(page).toHaveURL(new RegExp(`dept=${dept}`))
+  let deptB = deptA
+  if ((await deptChips.count()) > 1) {
+    deptB = await chipLabel(deptChips.nth(1))
+    await deptChips.nth(1).click()
+    const codesAB = await table.locator('.schedule-table-code .course-code-cell').allTextContents()
+    const prefixes = new Set(codesAB.map((c) => c.trim().split(' ')[0]))
+    for (const p of prefixes) expect([deptA, deptB]).toContain(p)
+    expect(codesAB.length).toBeGreaterThanOrEqual(codesA.length)
+    await expect(page).toHaveURL(new RegExp(`dept=${deptA}`))
+    await expect(page).toHaveURL(new RegExp(`dept=${deptB}`))
+  }
+
+  // Instructor chips narrow further. Pick one that leads a visible row, so the
+  // result is non-empty; full-roster matching is unit-tested.
+  const instrRow = table.locator('.schedule-table-filter-row', { hasText: 'Instructors' })
+  const instrChips = instrRow.locator('.filter-chip')
+  const leadTexts = await table.locator('.schedule-table-instructor .schedule-table-value').allTextContents()
+  const chipCount = await instrChips.count()
+  let instrIndex = 0
+  for (let i = 0; i < chipCount; i++) {
+    const label = (await instrChips.nth(i).innerText()).trim()
+    if (leadTexts.some((t) => t.trim().startsWith(label))) {
+      instrIndex = i
+      break
+    }
+  }
+  const beforeInstr = await rows.count()
+  await instrChips.nth(instrIndex).click()
+  await expect(page).toHaveURL(/instructor=/)
+  const afterInstr = await rows.count()
+  expect(afterInstr).toBeGreaterThan(0)
+  expect(afterInstr).toBeLessThanOrEqual(beforeInstr)
+
+  // The filters ride in the URL, so a detour to the course view and back via
+  // the Table tab restores them.
   await table.locator('.schedule-table-code .course-code-cell').first().click()
   await expect(page).toHaveURL(/#\/course\//)
   await page.getByRole('button', { name: 'Table', exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`#\\/table\\?.*dept=${dept}`))
-  await expect(deptSel).toHaveValue(dept)
-  const backCodes = await table.locator('.schedule-table-code .course-code-cell').allTextContents()
-  expect(backCodes.length).toBeGreaterThan(0)
-  for (const c of backCodes) expect(c.trim().startsWith(`${dept} `)).toBeTruthy()
+  await expect(page).toHaveURL(/instructor=/)
+  await expect(page).toHaveURL(new RegExp(`dept=${deptA}`))
+  await expect(deptChips.nth(0)).toHaveAttribute('aria-pressed', 'true')
+  expect(await rows.count()).toBe(afterInstr)
 
-  await deptSel.selectOption('')
+  // Clear restores every row and drops the query.
+  await table.locator('.filter-clear').click()
+  await expect(page).not.toHaveURL(/dept=|instructor=/)
   expect(await rows.count()).toBe(initialCount)
 
   // Outside a session the table is read-only: values render as spans.

@@ -107,8 +107,9 @@ the surface you came from — `#/schedule/<id>/access`,
 `#/schedule/<id>/course/<code>/edit`. The edit/suggest session is orthogonal
 to the view, so it rides in the query (`#/day/M?mode=edit&id=<id>`) rather
 than the path — the view routes keep their own params and the session survives
-view switches; the table's department filter rides the same way
-(`#/table?dept=CS`), so a detour and return keep it. Overlays are
+view switches; the table's filters ride the same way as repeated params
+(`#/table?dept=CS&dept=MAT&instructor=jsmith`), so a detour and return keep
+them. Overlays are
 **session-transparent**: they neither end nor are
 ended by a session, so the proposals panel keeps a suggest session's draft
 available. The route-redesign plan (`docs/ROUTE_REDESIGN_PLAN.md`) extends

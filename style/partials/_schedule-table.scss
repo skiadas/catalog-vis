@@ -15,14 +15,22 @@
   margin-bottom: var(--space-3);
 }
 
-.schedule-table-dept-label {
-  @include text-label-sm;
-  color: var(--text-muted);
+.schedule-table-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--space-3);
 }
 
-.schedule-table-dept {
-  width: auto;
-  min-width: 160px;
+.schedule-table-filter-row {
+  @include flex-row(6px);
+  align-items: center;
+}
+
+.schedule-table-filter-label {
+  @include text-label-sm;
+  color: var(--text-muted);
+  margin-right: 2px;
 }
 
 .schedule-table-count,
