@@ -3,7 +3,7 @@
 // a DOM (see `test/scheduleTable.test.mjs`). The parsers return the canonical
 // value, `''` for a deliberately blank cell, or `null` for invalid input the
 // caller should revert.
-import { WEEKDAYS, normalizeBand, termConfig, termSlotOptions } from '@major-vis/schedule-core'
+import { WEEKDAYS, instructorsOf, normalizeBand, termConfig, termSlotOptions } from '@major-vis/schedule-core'
 
 // The department a row belongs to for the table's filter: its own course
 // prefix. (Cross-list ownership gates *editing*, not which department's list a
@@ -26,6 +26,20 @@ export function departmentsInOfferings(offerings) {
 export function inDepartment(o, dept) {
   const want = String(dept || '').toUpperCase()
   return !want || departmentOf(o) === want
+}
+
+// The table's instructor cell shows only the lead — the one instructor the cell
+// can edit — with a `+N` count for the co-teachers attached to the row (the
+// pencil/editor manages those). `nameOf` resolves a stored value to its display
+// label. A row with only co-teachers (no lead) reads as a bare `+N`; the count
+// comes from the deduped roster, so a lead repeated among the co-teachers
+// doesn't inflate it.
+export function leadInstructorText(o, nameOf = (v) => v) {
+  const lead = String((o && o.instructor) || '').trim()
+  const extra = Math.max(0, instructorsOf(o).length - (lead ? 1 : 0))
+  const label = lead ? nameOf(lead) : ''
+  if (extra > 0) return `${label}${label ? ' ' : ''}+${extra}`
+  return label
 }
 
 // The table's stable order: department, then course number (numeric), then

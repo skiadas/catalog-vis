@@ -9,6 +9,7 @@ import {
   departmentOf,
   departmentsInOfferings,
   inDepartment,
+  leadInstructorText,
   parseDaysInput,
   parseMeetingInput,
   parseSeatsInput,
@@ -54,6 +55,22 @@ test('compareTableRows orders by department, numeric number, section, then labs'
   assert.deepEqual(
     sorted.map((o) => `${o.prefix} ${o.number}${o.lab ? 'L' : ''} ${o.section}${o.labSeq || ''}`),
     ['BIO 161 A', 'CS 99 A', 'CS 220 A', 'CS 220L A2', 'CS 220 B'],
+  )
+})
+
+test('leadInstructorText shows the lead with a +N co-teacher count', () => {
+  const nameOf = (v) => `[${v}]`
+  assert.equal(leadInstructorText({ instructor: 'Smith', secondaryInstructors: [] }, nameOf), '[Smith]')
+  assert.equal(
+    leadInstructorText({ instructor: 'Smith', secondaryInstructors: ['Jones', 'Lee'] }, nameOf),
+    '[Smith] +2',
+  )
+  assert.equal(leadInstructorText({ instructor: '', secondaryInstructors: ['Jones'] }, nameOf), '+1')
+  assert.equal(leadInstructorText({ instructor: '', secondaryInstructors: [] }, nameOf), '')
+  // A lead repeated among the co-teachers is deduped, so it isn't counted twice.
+  assert.equal(
+    leadInstructorText({ instructor: 'Smith', secondaryInstructors: ['Smith'] }, nameOf),
+    '[Smith]',
   )
 })
 

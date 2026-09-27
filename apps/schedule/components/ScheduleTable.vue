@@ -115,14 +115,14 @@
                 v-else-if="canEdit(row)"
                 type="button"
                 class="schedule-table-value schedule-table-value-edit"
-                :class="{ 'is-empty': !instructorsText(row.o) }"
+                :class="{ 'is-empty': !instructorCellText(row.o) }"
                 :aria-label="`Edit instructor of ${row.code}`"
                 @click="beginInstructor(row)"
               >
-                {{ instructorsText(row.o) || 'Add instructor' }}
+                {{ instructorCellText(row.o) || 'Add instructor' }}
               </button>
-              <span v-else class="schedule-table-value" :class="{ 'is-empty': !instructorsText(row.o) }">{{
-                instructorsText(row.o) || '—'
+              <span v-else class="schedule-table-value" :class="{ 'is-empty': !instructorCellText(row.o) }">{{
+                instructorCellText(row.o) || '—'
               }}</span>
             </td>
 
@@ -228,7 +228,6 @@ import {
   DEFAULT_SEATS,
   TERM_LABELS,
   formatTime,
-  instructorsOf,
   offeringCodeLabel,
   offeringItemKey,
   offeringSectionLabel,
@@ -256,6 +255,7 @@ import {
   compareTableRows,
   departmentsInOfferings,
   inDepartment,
+  leadInstructorText,
   parseMeetingInput,
   parseSeatsInput,
   standardBandFor,
@@ -302,7 +302,9 @@ export default {
     const canOpen = (row) => canEdit(row) || canRemove(row)
 
     const effectiveTitle = (row) => row.o.title || courseName(row.code)
-    const instructorsText = (o) => instructorsOf(o).map(instructorName).join(', ')
+    // The cell edits only the lead, so it displays only the lead (plus a `+N`
+    // co-teacher count) — the pencil/editor manages the rest of the roster.
+    const instructorCellText = (o) => leadInstructorText(o, instructorName)
     const areasText = (o) => {
       if (o.lab) return ''
       const own =
@@ -507,7 +509,7 @@ export default {
       canRemove,
       canOpen,
       effectiveTitle,
-      instructorsText,
+      instructorCellText,
       areasText,
       commitField,
       editingInstructorKey,

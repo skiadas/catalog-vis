@@ -115,9 +115,10 @@ a non-owner only their departments, per `canTouchOffering`) edit in place: title
 and seats commit through `updateOffering`, so drafts, history, and cross-list
 rules apply unchanged; invalid input (a non-positive seat count) is ignored. The
 **instructor** cell is a combobox drawing on the same pools as the course editor
-(`src/instructorSuggest.js`); the **meeting** cell picks from the term's
-standard bands (10 in Fall/Winter, 7 in Spring) with a **Custom…** fallback that
-parses one field (`MW 8:00-9:10`). The row pencil opens the full course editor
+(`src/instructorSuggest.js`) and shows only the lead instructor — the one the
+cell edits — with a `+N` count of any co-teachers (managed in the full editor);
+the **meeting** cell picks from the term's standard bands (10 in Fall/Winter, 7
+in Spring) with a **Custom…** fallback that parses one field (`MW 8:00-9:10`). The row pencil opens the full course editor
 for labs/cross-listing, and **＋ Add course** opens the add dialog. Rows from
 other selected schedules render dimmed as references. Row grouping/ordering and
 the inline-cell parsers live in `src/scheduleTable.js`.
@@ -172,7 +173,7 @@ chips narrow the grid/day/slot views to courses satisfying the selected areas
 (labs filter with their lecture, like every other view). A **Core stats**
 button in the picker's right cluster (beside CSV) opens a table of offering and
 seat counts per area across the selected schedules: one column each for
-Fall/Winter/Spring plus **Total**, with each cell showing *offerings · seats*.
+Fall/Winter/Spring plus **Total**, with each cell showing _offerings · seats_.
 A lab is never a separate offering and its seats never count, split meetings
 collapse to one, and unscheduled offerings still count. Cross-listed versions of
 one course (same group and section) collapse to a single offering sharing one
@@ -224,7 +225,7 @@ app to that schedule: the edited schedule's courses are live, the **other
 selected schedules stay visible as dimmed, read-only references** (your current
 selection is the reference set — a CS/ENGR/MATH comparison carries straight
 into editing CS), the picker reduces to the schedule pills (the edited one
-tagged *Editing* or *Suggesting*, references removable with their eye), and
+tagged _Editing_ or _Suggesting_, references removable with their eye), and
 manage/CSV/color are out of reach. The session bar carries an **Editing**/**Suggesting** chip, the
 schedule's rename field, and the session's actions right-aligned (Add course ·
 History · Propose changes · Done). Leaving — Done, browser back, or a header link
@@ -262,8 +263,8 @@ with click.
 
 **Owners control their schedule's access.** Each of your rows carries an
 **Access** button opening the `#/schedule/<id>/access` overlay route, which
-floats over the manage page and sets who can see the schedule (*only you* /
-*listed users* / *everyone*) and who can suggest changes (the same three
+floats over the manage page and sets who can see the schedule (_only you_ /
+_listed users_ / _everyone_) and who can suggest changes (the same three
 choices), with per-user lists whose username inputs autocomplete from the user
 directory. New schedules start private (only the owner) with owner-only
 suggestions. Each row summarizes the sharing as owner · year · visibility
@@ -273,8 +274,8 @@ own). Reaching the URL for a schedule you don't own shows a denial state
 instead of the form.
 
 **The manage page (`#/schedules`, reached from "Your schedules") lists the
-collection in three sections: your own schedules, then *Shared with you* (the
-ones naming you in their viewers or suggesters), then *Public* (visible to
+collection in three sections: your own schedules, then _Shared with you_ (the
+ones naming you in their viewers or suggesters), then _Public_ (visible to
 every signed-in user).** The visible collection loads in full (a schedule
 shared with nobody else simply isn't in it), a search matches name _or owner
 username_, and a year filter narrows all sections. The selection defaults to

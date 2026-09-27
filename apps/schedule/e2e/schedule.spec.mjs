@@ -1036,6 +1036,23 @@ test('table view: department filter, inline edit, add and remove', async ({ page
   await suggests.first().click()
   await expect(live.locator('button[aria-label^="Edit instructor of"]')).toContainText(picked)
 
+  // Co-teachers aren't editable in the cell, so it shows the lead + a count;
+  // the editor manages the rest. Add one via the pencil, then check the cell.
+  await live.locator('.schedule-table-action').first().click()
+  const coEm = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await coEm.waitFor({ state: 'visible', timeout: 5000 })
+  await ensureOtherInstructors(coEm)
+  await coEm.getByPlaceholder('e.g. Smith, Jones').fill('Co Teacher')
+  await coEm.getByRole('button', { name: 'Save changes' }).click()
+  await coEm.waitFor({ state: 'detached', timeout: 5000 })
+  const instructorBtn = live.locator('button[aria-label^="Edit instructor of"]')
+  await expect(instructorBtn).toContainText('+1')
+  // The cell's editor shows only the lead, not the co-teacher.
+  const leadOnly = (await instructorBtn.innerText()).trim().replace(/\s*\+1$/, '')
+  await instructorBtn.click()
+  await expect(live.locator('input[aria-label^="Instructor of"]')).toHaveValue(leadOnly)
+  await live.locator('input[aria-label^="Instructor of"]').press('Escape')
+
   // The row pencil opens the full course editor; Cancel returns to the table.
   await live.locator('.schedule-table-action').first().click()
   const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
