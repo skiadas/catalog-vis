@@ -1000,6 +1000,20 @@ test('table view: department filter, inline edit, add and remove', async ({ page
   await expect(live.locator('button[aria-label^="Edit seats of"]')).toHaveText('99')
 
   // The meeting picker offers the term's standard bands; pick one.
+  // First: opening and cancelling (Esc, or clicking away) leaves it untouched.
+  const originalMeeting = (await live.locator('button[aria-label^="Edit meeting of"]').innerText()).trim()
+  await live.locator('button[aria-label^="Edit meeting of"]').click()
+  await live.locator('select[aria-label^="Meeting of"]').waitFor({ state: 'visible', timeout: 5000 })
+  await live.locator('select[aria-label^="Meeting of"]').press('Escape')
+  await expect(live.locator('select[aria-label^="Meeting of"]')).toHaveCount(0)
+  await expect(live.locator('button[aria-label^="Edit meeting of"]')).toHaveText(originalMeeting)
+
+  await live.locator('button[aria-label^="Edit meeting of"]').click()
+  await live.locator('select[aria-label^="Meeting of"]').waitFor({ state: 'visible', timeout: 5000 })
+  await table.locator('.schedule-table-count').click()
+  await expect(live.locator('select[aria-label^="Meeting of"]')).toHaveCount(0)
+  await expect(live.locator('button[aria-label^="Edit meeting of"]')).toHaveText(originalMeeting)
+
   await live.locator('button[aria-label^="Edit meeting of"]').click()
   await live.locator('select[aria-label^="Meeting of"]').selectOption('TR|10:00-11:45')
   await expect(live.locator('button[aria-label^="Edit meeting of"]')).toContainText(

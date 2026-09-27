@@ -148,12 +148,14 @@
                   class="schedule-table-input schedule-table-select"
                   :aria-label="`Meeting of ${row.code}`"
                   @change="applyMeeting(row)"
+                  @keydown.esc.prevent="cancelMeeting"
+                  @blur="onMeetingBlur(row)"
                 >
                   <option value="">No meeting time</option>
                   <option v-for="b in bands" :key="b.days + '|' + b.time" :value="b.days + '|' + b.time">
                     {{ b.days }} {{ b.time }}
                   </option>
-                  <option value="__custom">Custom…</option>
+                  <option value="__custom">{{ customOptionLabel(row) }}</option>
                 </select>
               </template>
               <button
@@ -422,6 +424,13 @@ export default {
       const band = standardBandFor(bands.value, row.o.days, row.o.time)
       return band ? `${band.days}|${band.time}` : '__custom'
     }
+    // The custom option's label names the row's off-pattern meeting, so opening
+    // the picker on a custom row reads as that value rather than a blank
+    // "Custom…" — and Esc / clicking away cancels back to it.
+    const customOptionLabel = (row) =>
+      meetingSelectValue(row) === '__custom'
+        ? `Custom: ${row.o.days || ''} ${row.o.time || ''}`.trim()
+        : 'Custom…'
     const beginMeeting = (row) => {
       editingMeetingKey.value = row.key
       meetingCustom.value = false
@@ -463,6 +472,14 @@ export default {
     const cancelMeeting = () => {
       editingMeetingKey.value = null
       meetingCustom.value = false
+    }
+    // Clicking away without choosing cancels (its own Esc path handles the
+    // keyboard). Deferred a tick so an option pick's `change` lands first —
+    // that commits and clears the editing key, making this a no-op.
+    const onMeetingBlur = (row) => {
+      nextTick(() => {
+        if (editingMeetingKey.value === row.key && !meetingCustom.value) cancelMeeting()
+      })
     }
 
     const openEditor = (row) => openCourseEdit({ o: row.o, code: row.code, sid: row.sid })
@@ -512,10 +529,12 @@ export default {
       meetingSelectEl,
       meetingInputEl,
       meetingText,
+      customOptionLabel,
       beginMeeting,
       applyMeeting,
       commitMeetingCustom,
       cancelMeeting,
+      onMeetingBlur,
       openEditor,
       removeRow,
       formatTime,
