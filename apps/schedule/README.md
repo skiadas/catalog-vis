@@ -114,9 +114,10 @@ chip rows that *hide* non-matching rows (a row shows when its prefix is among
 the selected departments and any of its instructors is among the selected ones;
 instructors match the full roster, lead or co-teacher). The rows collapse
 (Instructors closed by default; a deep link that carries instructor filters
-arrives expanded) and you can collapse a row even with selections — the header
-shows the `N selected` count, and Clear stays available. Their chips share one
-width per row so a long name ellipsizes instead of stretching the list. Inside a
+arrives expanded) and you can collapse a row even with selections — the
+selected chips stay visible (click one to remove it) and the header shows the
+`N selected` count, with Clear always available. Their chips share one width per
+row so a long name ellipsizes instead of stretching the list. Inside a
 session the
 cells a user may touch (owners anywhere;
 a non-owner only their departments, per `canTouchOffering`) edit in place: title

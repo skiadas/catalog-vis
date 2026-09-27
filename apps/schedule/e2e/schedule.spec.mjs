@@ -1019,6 +1019,7 @@ test('table view: department filter, inline edit, add and remove', async ({ page
     }
   }
   const beforeInstr = await rows.count()
+  const instrLabel = (await instrChips.nth(instrIndex).innerText()).trim()
   await instrChips.nth(instrIndex).click()
   await expect(page).toHaveURL(/instructor=/)
   const afterInstr = await rows.count()
@@ -1035,15 +1036,21 @@ test('table view: department filter, inline edit, add and remove', async ({ page
   await expect(deptChips.nth(0)).toHaveAttribute('aria-pressed', 'true')
   expect(await rows.count()).toBe(afterInstr)
 
-  // The remount (deep-link arrival) opens the instructor row, but it can be
-  // collapsed with the selections intact — the header reports them.
+  // The remount (deep-link arrival) opens the instructor row. Collapsing it
+  // keeps the selected chip visible (the rest hide), so the filter is clear.
   await expect(instrToggle).toHaveAttribute('aria-expanded', 'true')
   await instrToggle.click()
   await expect(instrToggle).toHaveAttribute('aria-expanded', 'false')
-  await expect(instrChips.first()).toBeHidden()
+  await expect(instrGroup.locator('.filter-chip:visible')).toHaveCount(1)
+  await expect(instrGroup.locator('.schedule-table-filter-selected .filter-chip')).toContainText(instrLabel)
   await expect(instrToggle).toContainText('1 selected')
   await expect(page).toHaveURL(/instructor=/)
   expect(await rows.count()).toBe(afterInstr)
+
+  // The visible selected chip removes its filter (rows grow back).
+  await instrGroup.locator('.schedule-table-filter-selected .filter-chip').click()
+  await expect(page).not.toHaveURL(/instructor=/)
+  expect(await rows.count()).toBeGreaterThan(afterInstr)
 
   // Clear restores every row and drops the query.
   await table.locator('.filter-clear').click()

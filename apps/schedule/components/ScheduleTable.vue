@@ -30,6 +30,24 @@
             selectedDepts.length ? `${selectedDepts.length} selected` : departments.length
           }}</span>
         </button>
+        <!-- Collapsed: keep the selected chips visible (click one to remove). -->
+        <div
+          v-if="!deptOpen && selectedDepts.length"
+          class="schedule-table-filter-row schedule-table-chip-grid schedule-table-chip-grid-dept schedule-table-filter-selected"
+        >
+          <button
+            v-for="d in selectedDepts"
+            :key="d"
+            type="button"
+            class="filter-chip active"
+            :style="{ backgroundColor: colorForDept(d) }"
+            :aria-pressed="true"
+            :title="d"
+            @click="toggleDept(d)"
+          >
+            {{ d }}{{ myDepartments.includes(d) ? ' (mine)' : '' }}
+          </button>
+        </div>
         <div
           v-show="deptOpen"
           class="schedule-table-filter-row schedule-table-chip-grid schedule-table-chip-grid-dept"
@@ -61,6 +79,24 @@
             selectedInstructors.length ? `${selectedInstructors.length} selected` : instructors.length
           }}</span>
         </button>
+        <!-- Collapsed: keep the selected chips visible (click one to remove). -->
+        <div
+          v-if="!instrOpen && selectedInstructors.length"
+          class="schedule-table-filter-row schedule-table-chip-grid schedule-table-chip-grid-instr schedule-table-filter-selected"
+        >
+          <button
+            v-for="n in selectedInstructors"
+            :key="n"
+            type="button"
+            class="filter-chip active"
+            :style="{ backgroundColor: colorForInstructor(n) }"
+            :aria-pressed="true"
+            :title="instructorName(n)"
+            @click="toggleInstructor(n)"
+          >
+            {{ instructorName(n) }}
+          </button>
+        </div>
         <div
           v-show="instrOpen"
           class="schedule-table-filter-row schedule-table-chip-grid schedule-table-chip-grid-instr"

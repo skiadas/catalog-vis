@@ -38,9 +38,9 @@ row: course and section, title, instructor, meeting, seats, core areas, and the
 schedule it came from. **Departments** and **Instructors** chips hide everything
 that does not match — pick several chips to widen, **Clear** to reset. The
 Instructors row starts collapsed (expand it from its header); you can collapse a
-row again even with chips selected — the header then shows how many are selected
-— and each row's chips are one uniform width so long names don't make the list
-ragged. The choice lives
+row again even with chips selected — the selected chips stay visible (click one
+to remove it) and the header shows how many are selected — and each row's chips
+are one uniform width so long names don't make the list ragged. The choice lives
 in the address (`#/table?dept=CS&dept=MAT&instructor=jsmith`), so clicking a
 course link and coming back (or the browser Back button) keeps the filters. When
 you start editing (or suggesting), the cells you are allowed
