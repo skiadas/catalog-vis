@@ -22,15 +22,63 @@
   margin-bottom: var(--space-3);
 }
 
-.schedule-table-filter-row {
-  @include flex-row(6px);
+.schedule-table-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+// The group's disclosure header: label + count, chips beneath.
+.schedule-table-filter-toggle {
+  @include button-reset;
+  display: inline-flex;
   align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 24px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+
+  &:hover {
+    background: var(--primary-light);
+  }
 }
 
 .schedule-table-filter-label {
   @include text-label-sm;
+}
+
+.schedule-table-filter-count {
+  @include text-caption;
+  font-weight: var(--weight-normal);
   color: var(--text-muted);
-  margin-right: 2px;
+}
+
+// Uniform chip grid: every chip fills an equal-width cell (so a long name
+// ellipsizes instead of stretching the row), making the list easy to scan.
+.schedule-table-chip-grid {
+  display: grid;
+  gap: 6px;
+
+  .filter-chip {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 24px;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.schedule-table-chip-grid-dept {
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+}
+
+.schedule-table-chip-grid-instr {
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
 }
 
 .schedule-table-count,

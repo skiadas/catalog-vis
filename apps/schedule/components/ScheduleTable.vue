@@ -18,35 +18,67 @@
     </div>
 
     <div class="schedule-table-filters">
-      <div v-if="departments.length" class="schedule-table-filter-row">
-        <span class="schedule-table-filter-label">Departments</span>
+      <div v-if="departments.length" class="schedule-table-filter-group">
         <button
-          v-for="d in departments"
-          :key="d"
           type="button"
-          class="filter-chip"
-          :class="{ active: selectedDepts.includes(d) }"
-          :style="selectedDepts.includes(d) ? { backgroundColor: colorForDept(d) } : {}"
-          :aria-pressed="selectedDepts.includes(d)"
-          @click="toggleDept(d)"
+          class="schedule-table-filter-toggle"
+          :aria-expanded="deptOpen || selectedDepts.length > 0"
+          @click="deptOpen = !deptOpen"
         >
-          {{ d }}{{ myDepartments.includes(d) ? ' (mine)' : '' }}
+          <span class="schedule-table-filter-label">Departments</span>
+          <span class="schedule-table-filter-count">{{
+            selectedDepts.length ? `${selectedDepts.length} selected` : departments.length
+          }}</span>
         </button>
+        <div
+          v-show="deptOpen || selectedDepts.length > 0"
+          class="schedule-table-filter-row schedule-table-chip-grid schedule-table-chip-grid-dept"
+        >
+          <button
+            v-for="d in departments"
+            :key="d"
+            type="button"
+            class="filter-chip"
+            :class="{ active: selectedDepts.includes(d) }"
+            :style="selectedDepts.includes(d) ? { backgroundColor: colorForDept(d) } : {}"
+            :aria-pressed="selectedDepts.includes(d)"
+            :title="d"
+            @click="toggleDept(d)"
+          >
+            {{ d }}{{ myDepartments.includes(d) ? ' (mine)' : '' }}
+          </button>
+        </div>
       </div>
-      <div v-if="instructors.length" class="schedule-table-filter-row">
-        <span class="schedule-table-filter-label">Instructors</span>
+      <div v-if="instructors.length" class="schedule-table-filter-group">
         <button
-          v-for="n in instructors"
-          :key="n"
           type="button"
-          class="filter-chip"
-          :class="{ active: selectedInstructors.includes(n) }"
-          :style="selectedInstructors.includes(n) ? { backgroundColor: colorForInstructor(n) } : {}"
-          :aria-pressed="selectedInstructors.includes(n)"
-          @click="toggleInstructor(n)"
+          class="schedule-table-filter-toggle"
+          :aria-expanded="instrOpen || selectedInstructors.length > 0"
+          @click="instrOpen = !instrOpen"
         >
-          {{ instructorName(n) }}
+          <span class="schedule-table-filter-label">Instructors</span>
+          <span class="schedule-table-filter-count">{{
+            selectedInstructors.length ? `${selectedInstructors.length} selected` : instructors.length
+          }}</span>
         </button>
+        <div
+          v-show="instrOpen || selectedInstructors.length > 0"
+          class="schedule-table-filter-row schedule-table-chip-grid schedule-table-chip-grid-instr"
+        >
+          <button
+            v-for="n in instructors"
+            :key="n"
+            type="button"
+            class="filter-chip"
+            :class="{ active: selectedInstructors.includes(n) }"
+            :style="selectedInstructors.includes(n) ? { backgroundColor: colorForInstructor(n) } : {}"
+            :aria-pressed="selectedInstructors.includes(n)"
+            :title="instructorName(n)"
+            @click="toggleInstructor(n)"
+          >
+            {{ instructorName(n) }}
+          </button>
+        </div>
       </div>
       <button
         v-if="selectedDepts.length || selectedInstructors.length"
@@ -371,6 +403,10 @@ export default {
       selectedDepts.value = []
       selectedInstructors.value = []
     }
+    // Departments are few (expanded by default); instructors can be many, so
+    // that row starts collapsed. Either stays open while it has selections.
+    const deptOpen = ref(true)
+    const instrOpen = ref(false)
     const rows = computed(() =>
       scheduleOfferings.value
         .filter((o) => rowMatchesFilters(o, selectedDepts.value, selectedInstructors.value))
@@ -597,6 +633,8 @@ export default {
       selectedDepts,
       selectedInstructors,
       filterActive,
+      deptOpen,
+      instrOpen,
       toggleDept,
       toggleInstructor,
       clearFilters,

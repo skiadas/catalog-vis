@@ -968,10 +968,20 @@ test('table view: department filter, inline edit, add and remove', async ({ page
   const initialCount = await rows.count()
   expect(initialCount).toBeGreaterThan(0)
 
-  // Chip rows filter the table (non-matching rows are hidden). Pick two
-  // departments and check every remaining row belongs to one of them.
-  const deptRow = table.locator('.schedule-table-filter-row', { hasText: 'Departments' })
-  const deptChips = deptRow.locator('.filter-chip')
+  // The filter rows are collapsible: Departments open, Instructors closed by
+  // default. Non-matching rows are hidden.
+  const deptGroup = table.locator('.schedule-table-filter-group', { hasText: 'Departments' })
+  const deptToggle = deptGroup.locator('.schedule-table-filter-toggle')
+  const deptChips = deptGroup.locator('.filter-chip')
+  const instrGroup = table.locator('.schedule-table-filter-group', { hasText: 'Instructors' })
+  const instrToggle = instrGroup.locator('.schedule-table-filter-toggle')
+  const instrChips = instrGroup.locator('.filter-chip')
+  await expect(deptToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(deptChips.first()).toBeVisible()
+  await expect(instrToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(instrChips.first()).toBeHidden()
+
+  // Pick two departments and check every remaining row belongs to one of them.
   const chipLabel = async (chip) => (await chip.innerText()).trim().replace(/\s*\(mine\)$/, '')
   const deptA = await chipLabel(deptChips.nth(0))
   await deptChips.nth(0).click()
@@ -992,10 +1002,12 @@ test('table view: department filter, inline edit, add and remove', async ({ page
     await expect(page).toHaveURL(new RegExp(`dept=${deptB}`))
   }
 
-  // Instructor chips narrow further. Pick one that leads a visible row, so the
-  // result is non-empty; full-roster matching is unit-tested.
-  const instrRow = table.locator('.schedule-table-filter-row', { hasText: 'Instructors' })
-  const instrChips = instrRow.locator('.filter-chip')
+  // Instructor chips narrow further; expand the row first. Pick one that leads
+  // a visible row, so the result is non-empty (full-roster matching is
+  // unit-tested).
+  await instrToggle.click()
+  await expect(instrToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(instrChips.first()).toBeVisible()
   const leadTexts = await table.locator('.schedule-table-instructor .schedule-table-value').allTextContents()
   const chipCount = await instrChips.count()
   let instrIndex = 0
