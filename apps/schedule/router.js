@@ -91,10 +91,17 @@ function modeQuery() {
   const q = router.currentRoute.value.query
   return (q.mode === 'edit' || q.mode === 'suggest') && q.id != null ? { mode: q.mode, id: q.id } : null
 }
+// The table view's department filter, carried like the session so a detour
+// (clicking a course link, say) and the Table tab return to the same filter.
+function deptQuery() {
+  const d = router.currentRoute.value.query.dept
+  return d ? { dept: String(d) } : null
+}
 function go(location) {
   const mode = modeQuery()
-  if (mode) router.replace({ ...location, query: { ...location.query, ...mode } })
-  else router.push(location)
+  const carry = { ...mode, ...deptQuery() }
+  if (carry.mode) router.replace({ ...location, query: { ...location.query, ...carry } })
+  else router.push({ ...location, query: { ...location.query, ...carry } })
 }
 export function goSchedule() {
   go({ name: 'schedule-grid' })
@@ -141,7 +148,10 @@ export function goMode(id, role = 'edit') {
   const cur = router.currentRoute.value
   const onView = cur.meta.scheduleView && !cur.meta.page && !cur.meta.overlay
   const base = onView ? { name: cur.name, params: { ...cur.params } } : { name: 'schedule-grid' }
-  router.push({ ...base, query: { mode: role === 'suggest' ? 'suggest' : 'edit', id: String(id) } })
+  router.push({
+    ...base,
+    query: { ...(deptQuery() || {}), mode: role === 'suggest' ? 'suggest' : 'edit', id: String(id) },
+  })
 }
 // Leaves the session, staying on the current view (strips the mode query).
 export function exitMode() {

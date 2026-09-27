@@ -4,6 +4,7 @@
       <label class="schedule-table-dept-label" for="schedule-table-dept">Department</label>
       <select id="schedule-table-dept" v-model="dept" class="search-input schedule-table-dept">
         <option value="">All departments</option>
+        <option v-if="dept && !departments.includes(dept)" :value="dept">{{ dept }} (no offerings)</option>
         <option v-for="d in departments" :key="d" :value="d">
           {{ d }}{{ myDepartments.includes(d) ? ' (mine)' : '' }}
         </option>
@@ -263,14 +264,35 @@ import {
 } from '../src/scheduleTable.js'
 import ScheduleTableCell from './ScheduleTableCell.vue'
 
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 export default {
   name: 'ScheduleTable',
   components: { ScheduleTableCell },
   emits: ['add-course'],
   setup() {
-    const dept = ref('')
+    const route = useRoute()
+    const router = useRouter()
+    // The department filter is the route's `dept` query: it survives a detour
+    // (a course link, say) and the Table tab, and a shared/deep link restores
+    // it. The select writes it back; an external query change updates the
+    // select. Both watchers guard against each other.
+    const dept = ref(String(route.query.dept || '').toUpperCase())
+    watch(dept, (v) => {
+      const want = String(v || '').toUpperCase()
+      if (String(route.query.dept || '').toUpperCase() === want) return
+      const query = { ...route.query }
+      if (want) query.dept = want
+      else delete query.dept
+      router.replace({ query })
+    })
+    watch(
+      () => String(route.query.dept || '').toUpperCase(),
+      (v) => {
+        if (v !== dept.value) dept.value = v
+      },
+    )
     const departments = computed(() => departmentsInOfferings(scheduleOfferings.value))
     const rows = computed(() =>
       scheduleOfferings.value

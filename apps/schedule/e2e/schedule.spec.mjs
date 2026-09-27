@@ -975,6 +975,19 @@ test('table view: department filter, inline edit, add and remove', async ({ page
   const codes = await table.locator('.schedule-table-code .course-code-cell').allTextContents()
   expect(codes.length).toBeGreaterThan(0)
   for (const c of codes) expect(c.trim().startsWith(`${dept} `)).toBeTruthy()
+
+  // The filter rides in the URL, so a detour to the course view and back via
+  // the Table tab returns to the same department (not All).
+  await expect(page).toHaveURL(new RegExp(`dept=${dept}`))
+  await table.locator('.schedule-table-code .course-code-cell').first().click()
+  await expect(page).toHaveURL(/#\/course\//)
+  await page.getByRole('button', { name: 'Table', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`#\\/table\\?.*dept=${dept}`))
+  await expect(deptSel).toHaveValue(dept)
+  const backCodes = await table.locator('.schedule-table-code .course-code-cell').allTextContents()
+  expect(backCodes.length).toBeGreaterThan(0)
+  for (const c of backCodes) expect(c.trim().startsWith(`${dept} `)).toBeTruthy()
+
   await deptSel.selectOption('')
   expect(await rows.count()).toBe(initialCount)
 

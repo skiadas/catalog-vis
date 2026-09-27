@@ -102,12 +102,14 @@ The schedule app also treats its own internal surfaces as deep links (hash
 history, `apps/schedule/router.js`): the grid (`#/`), the table/spreadsheet
 view (`#/table`), day/slot/course/instructor views, the `#/schedules`
 management page, and `#/admin`, plus three **overlay** routes that render over
-the surface you came from —
-`#/schedule/<id>/access`, `#/schedule/<id>/proposals`, and the course editor
+the surface you came from — `#/schedule/<id>/access`,
+`#/schedule/<id>/proposals`, and the course editor
 `#/schedule/<id>/course/<code>/edit`. The edit/suggest session is orthogonal
 to the view, so it rides in the query (`#/day/M?mode=edit&id=<id>`) rather
 than the path — the view routes keep their own params and the session survives
-view switches. Overlays are **session-transparent**: they neither end nor are
+view switches; the table's department filter rides the same way
+(`#/table?dept=CS`), so a detour and return keep it. Overlays are
+**session-transparent**: they neither end nor are
 ended by a session, so the proposals panel keeps a suggest session's draft
 available. The route-redesign plan (`docs/ROUTE_REDESIGN_PLAN.md`) extends
 this deliberately: a navigational hub is a page, a surface that operates on
