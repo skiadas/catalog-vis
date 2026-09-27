@@ -35,25 +35,10 @@ side by side.
 
 Every offering of the selected schedules' term as a compact, spreadsheet-like
 row: course and section, title, instructor, meeting, seats, core areas, and the
-schedule it came from. **Departments** and **Instructors** chips hide everything
-that does not match — pick several chips to widen, **Clear** to reset. The
-Instructors row starts collapsed (expand it from its header); you can collapse a
-row again even with chips selected — the selected chips stay visible (click one
-to remove it) and the header shows how many are selected — and each row's chips
-are one uniform width so long names don't make the list ragged. The choice lives
-in the address (`#/table?dept=CS&dept=MAT&instructor=jsmith`), so clicking a
-course link and coming back (or the browser Back button) keeps the filters. When
-you start editing (or suggesting), the cells you are allowed
-to change become editable in place: the instructor cell suggests names as you
-type (and shows just the lead, with a **+N** when co-teachers are attached —
-the full editor manages those), and the meeting cell picks from the term's
-standard time slots (with a **Custom…** field when a course meets at another
-time). Enter or click away commits a cell, Esc cancels. The row's pencil opens
-the full [course editor](/guide/schedule/edit-course) for labs and
-cross-listing, and **＋ Add course** adds a section. Rows from the other selected
-schedules are dimmed as references, just like in the Grid.
-
-<Shot file="schedule-table.png" />
+schedule it came from. **Departments** and **Instructors** chips narrow the
+list, and during an edit or suggest session the cells you may change are
+editable in place. See
+[Working with the table view](/guide/schedule/table-view).
 
 ## Course conflicts — follow one course
 
@@ -74,8 +59,8 @@ Pick a teacher to see their week and any double-bookings. See
 On the **Grid**, **Day**, and **Slot** views, the **Departments** and
 **Instructors** buttons open a row of chips. Click chips to pick departments or
 teachers; matching classes are highlighted and colored, and everything else is
-dimmed. **Clear** resets it. (The **Table** view has its own **Department**
-selector instead.)
+dimmed. **Clear** resets it. (The **Table** view has its own chips instead —
+see [Working with the table view](/guide/schedule/table-view).)
 
 ::: tip
 Filters make matching classes stand out — they do not remove the others from

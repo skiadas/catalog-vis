@@ -106,8 +106,9 @@ regeneration is one command and the mapping is reviewable.
 
 - `docs-site/index.md` — landing.
 - `docs-site/guide/schedule/` — the walkthroughs, aimed at non-technical
-  readers (plain language, exact UI labels in bold): getting around; your
-  schedules; sharing; the views; conflicts; where a course can hide;
+  readers (plain language, exact UI labels in bold): getting around; a
+  department chair's first session; your schedules; sharing; the views;
+  working with the table view; conflicts; where a course can hide;
   editing vs suggesting; adding a course; changing a course; adding a lab;
   submitting changes; downloading a CSV; a glossary.
 - `docs-site/guide/admin.md` — directory + CSV import (still a skeleton).

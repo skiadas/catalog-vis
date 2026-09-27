@@ -56,12 +56,16 @@ different one.
 
 ## A quick tour
 
+- [A department chair's first session](/guide/schedule/chair-first-session) —
+  the whole loop in one page, sign-in to proposals.
 - [Your schedules](/guide/schedule/your-schedules) — create one, find one
   shared with you, show or hide it.
 - [Sharing a schedule](/guide/schedule/sharing) — who can see it, who can
   suggest changes.
 - [The views at a glance](/guide/schedule/views) — grid, day, slot, and the
   rest.
+- [Working with the table view](/guide/schedule/table-view) — one row per
+  offering, with filters and in-place edits.
 - [Checking for conflicts](/guide/schedule/conflicts) — find classes that
   collide.
 - [Where a course can hide](/guide/schedule/hiding) — the places people miss.

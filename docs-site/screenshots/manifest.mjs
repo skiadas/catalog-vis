@@ -170,8 +170,23 @@ export const entries = [
     route: '/#/table',
     seed: 'populated',
     steps: [{ act: 'assert', text: 'Read-only' }],
-    alt: 'The table view: one compact row per offering with a Department selector and columns for title, instructor, days, time, seats, core areas, and schedule',
+    alt: 'The table view: one compact row per offering with departments and instructors filters and columns for title, instructor, meeting, seats, core areas, and schedule',
     caption: 'The table view — one row per offering, ready for in-place edits.',
+  },
+  {
+    file: 'schedule-table-edit.png',
+    app: 'schedule',
+    as: 'advisor',
+    route: '/#/table?mode=suggest&id=<id>',
+    seed: 'suggest',
+    steps: [
+      {
+        act: 'assert',
+        text: 'Suggesting — edits are limited to your departments and become proposals.',
+      },
+    ],
+    alt: "The table view in a suggest session: editable cells on the advisor's department rows and Add course in the header",
+    caption: "The table view in a suggest session — your department's cells edit in place.",
   },
   {
     file: 'schedule-proposals.png',

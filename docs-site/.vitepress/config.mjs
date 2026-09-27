@@ -22,9 +22,11 @@ export default defineConfig({
         text: 'Schedule guide',
         items: [
           { text: 'Getting around', link: '/guide/schedule/' },
+          { text: 'Your first session', link: '/guide/schedule/chair-first-session' },
           { text: 'Your schedules', link: '/guide/schedule/your-schedules' },
           { text: 'Sharing a schedule', link: '/guide/schedule/sharing' },
           { text: 'The views at a glance', link: '/guide/schedule/views' },
+          { text: 'Working with the table view', link: '/guide/schedule/table-view' },
           { text: 'Checking for conflicts', link: '/guide/schedule/conflicts' },
           { text: 'Where a course can hide', link: '/guide/schedule/hiding' },
           { text: 'Editing vs suggesting', link: '/guide/schedule/edit-vs-suggest' },

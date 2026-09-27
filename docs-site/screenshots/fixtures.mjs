@@ -147,7 +147,8 @@ export const fixtures = {
     return { id: schedule.id, code: 'BIO 165' }
   },
 
-  // A public schedule the advisor may propose on, for the suggest-session shot.
+  // A public schedule the advisor may propose on, for the suggest-session and
+  // table-session shots. The advisor's departments make their rows editable.
   suggest: async (request) => {
     const schedule = await createSchedule(request, {
       name: 'Fall 2026',
@@ -157,6 +158,7 @@ export const fixtures = {
       suggestMode: 'public',
       offerings: POPULATED,
     })
+    await setDirectory(request, 'advisor', { displayName: 'A. Advisor', departments: ['MAT', 'CS'] })
     return { id: schedule.id }
   },
 
