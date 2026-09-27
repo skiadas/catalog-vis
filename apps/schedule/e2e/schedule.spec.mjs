@@ -1035,6 +1035,16 @@ test('table view: department filter, inline edit, add and remove', async ({ page
   await expect(deptChips.nth(0)).toHaveAttribute('aria-pressed', 'true')
   expect(await rows.count()).toBe(afterInstr)
 
+  // The remount (deep-link arrival) opens the instructor row, but it can be
+  // collapsed with the selections intact — the header reports them.
+  await expect(instrToggle).toHaveAttribute('aria-expanded', 'true')
+  await instrToggle.click()
+  await expect(instrToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(instrChips.first()).toBeHidden()
+  await expect(instrToggle).toContainText('1 selected')
+  await expect(page).toHaveURL(/instructor=/)
+  expect(await rows.count()).toBe(afterInstr)
+
   // Clear restores every row and drops the query.
   await table.locator('.filter-clear').click()
   await expect(page).not.toHaveURL(/dept=|instructor=/)

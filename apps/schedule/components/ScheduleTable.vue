@@ -22,7 +22,7 @@
         <button
           type="button"
           class="schedule-table-filter-toggle"
-          :aria-expanded="deptOpen || selectedDepts.length > 0"
+          :aria-expanded="deptOpen"
           @click="deptOpen = !deptOpen"
         >
           <span class="schedule-table-filter-label">Departments</span>
@@ -31,7 +31,7 @@
           }}</span>
         </button>
         <div
-          v-show="deptOpen || selectedDepts.length > 0"
+          v-show="deptOpen"
           class="schedule-table-filter-row schedule-table-chip-grid schedule-table-chip-grid-dept"
         >
           <button
@@ -53,7 +53,7 @@
         <button
           type="button"
           class="schedule-table-filter-toggle"
-          :aria-expanded="instrOpen || selectedInstructors.length > 0"
+          :aria-expanded="instrOpen"
           @click="instrOpen = !instrOpen"
         >
           <span class="schedule-table-filter-label">Instructors</span>
@@ -62,7 +62,7 @@
           }}</span>
         </button>
         <div
-          v-show="instrOpen || selectedInstructors.length > 0"
+          v-show="instrOpen"
           class="schedule-table-filter-row schedule-table-chip-grid schedule-table-chip-grid-instr"
         >
           <button
@@ -404,9 +404,11 @@ export default {
       selectedInstructors.value = []
     }
     // Departments are few (expanded by default); instructors can be many, so
-    // that row starts collapsed. Either stays open while it has selections.
+    // that row starts collapsed — except when a deep link already carries
+    // instructor filters, which arrive expanded. The toggle then fully controls
+    // visibility either way; a collapsed row still shows its "N selected" count.
     const deptOpen = ref(true)
-    const instrOpen = ref(false)
+    const instrOpen = ref(queryList(route.query.instructor).length > 0)
     const rows = computed(() =>
       scheduleOfferings.value
         .filter((o) => rowMatchesFilters(o, selectedDepts.value, selectedInstructors.value))

@@ -113,9 +113,11 @@ core areas, and the source schedule — with **Departments** and **Instructors**
 chip rows that *hide* non-matching rows (a row shows when its prefix is among
 the selected departments and any of its instructors is among the selected ones;
 instructors match the full roster, lead or co-teacher). The rows collapse
-(Instructors closed by default, and any row with a selection stays open) and
-their chips share one width per row so a long name ellipsizes instead of
-stretching the list. Inside a session the
+(Instructors closed by default; a deep link that carries instructor filters
+arrives expanded) and you can collapse a row even with selections — the header
+shows the `N selected` count, and Clear stays available. Their chips share one
+width per row so a long name ellipsizes instead of stretching the list. Inside a
+session the
 cells a user may touch (owners anywhere;
 a non-owner only their departments, per `canTouchOffering`) edit in place: title
 and seats commit through `updateOffering`, so drafts, history, and cross-list
