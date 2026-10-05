@@ -34,6 +34,11 @@ checked in CI (`npm run typecheck` / `npm test`). When the contract changes,
 update `schemas/`, the invariants, **and** `types.d.ts` together — the two
 witnesses are the tripwires.
 
+One trap when touching those types: a JSON module's inferred type widens string
+literals (a `type: "course"` field becomes `string`), so `types.witness.ts`
+casts the imported JSON through `unknown` before asserting the declared shape —
+match that pattern rather than fixing the widening with `as`.
+
 ### Validate
 
 ```sh

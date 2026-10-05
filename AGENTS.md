@@ -4,7 +4,9 @@ Orientation for working in this repo, not a reference vault. Each package and
 app ships a README that is its contract (inputs, outputs, persistence shapes,
 cross-app links); when a task touches a specific piece, read that piece's README
 or the docs listed under "Where to dig in". This file holds only what stays true
-no matter which part of the app you tackle.
+no matter which part of the app you tackle. It is operational — how things work,
+not a roadmap; unscheduled ideas and future-work lists live in the untracked
+scratchpad (`TODO.md`), not here.
 
 ## What this is
 
@@ -236,5 +238,21 @@ When a task touches a specific piece, read its README (map above) plus:
   `router.beforeEach` guards the unsaved suggest draft). **Overlays are
   session-transparent** — they neither end nor are ended by a session; the
   course editor syncs `courseEditTarget` ↔ its route and auto-enters a session
-  on a deep link. The remaining dialogs (add-course, history) still use the
-  `isOpen` prop pattern.
+   on a deep link. The remaining dialogs (add-course, history) still use the
+   `isOpen` prop pattern.
+- **Tooling gotchas.** A pipeline like `npm run lint | tail` reports the last
+  command's exit status, so a failing check can look green — run gate legs
+  unpiped or under `set -o pipefail`. ESLint's browser-globals `**/*.js` rule
+  also flags root Node configs (`playwright.config.js`); give those a
+  node-globals block rather than silencing. The shared ESLint config needs
+  `ecmaVersion: 2025` for import attributes (`with { type: 'json' }`); tsc and
+  Vite handle those without config. Prettier covers `js/html/css/scss/vue`,
+  **not** `.mjs` (keep its trailing newline manually) and not `.ts`/`.d.ts`.
+  `node --test` (Node 24+) discovers `.ts` files under a `test/` dir and tries
+  to run them — keep compile-only witnesses outside `test/` (that is why
+  `types.witness.ts` sits at the package root).
+- **One root lockfile.** npm workspaces keeps a single root
+  `package-lock.json`; deps land there even when added with `-w <workspace>`.
+- **Dev catalog comes from a plugin.** `npm run dev` (localhost:5173) serves
+  the catalog JSONs through a Vite dev plugin, not the repo files — a schedule
+  that looks empty in dev usually means that plugin is broken.
