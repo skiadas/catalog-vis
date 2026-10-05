@@ -47,6 +47,8 @@ class meeting.
 - Click a day name (for example **M Monday**) to see that whole day in order.
 - Click a block to open it, then **View slot** to list everything meeting at
   that exact time.
+- Click **Grid** (the tab at the top left) to come back to the whole week — it
+  always returns you to the top level.
 
 <Shot file="schedule-overview.png" />
 
@@ -141,9 +143,20 @@ Finer details: [Submitting changes](/guide/schedule/proposals).
 
 ## 8. See what other departments proposed
 
-Suggestions run both ways. The toolbar's **Suggested changes** button opens
-the shared record for the schedule: every live proposal, who made it, and the
-history of what was approved, rejected, or withdrawn.
+Suggestions run both ways, and you can see them two ways.
+
+**On the week.** Pending proposals are drawn over the grid itself (the week
+switches to showing individual classes so they stand out): a class someone
+proposes to add or move carries a **dashed outline** — a move leaves the
+current block in place and dashes the proposed one beside it — and a class a
+proposal would remove is shown **struck through**. A **Show proposals** button
+on the toolbar switches this overlay on and off.
+
+<Shot file="schedule-proposals-grid.png" />
+
+**As a list.** The toolbar's **Suggested changes** button opens the shared
+record for the schedule: every live proposal, who made it, and the history of
+what was approved, rejected, or withdrawn.
 
 <Shot file="schedule-proposals.png" />
 

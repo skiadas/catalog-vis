@@ -199,6 +199,25 @@ export const entries = [
     caption: 'The owner reviews each proposed change.',
   },
   {
+    file: 'schedule-proposals-grid.png',
+    app: 'schedule',
+    as: 'registrar',
+    route: '/#/',
+    seed: 'suggest-pending',
+    steps: [
+      { act: 'assert', role: 'button', name: 'Show proposals' },
+      {
+        act: 'custom',
+        run: async (page) => {
+          await page.locator('.filter-offering.proposed').first().waitFor({ timeout: 10_000 })
+          await page.locator('.filter-offering.removed').first().waitFor({ timeout: 10_000 })
+        },
+      },
+    ],
+    alt: 'The weekly grid with pending proposals overlaid: proposed classes dashed and a class a proposal would remove struck through',
+    caption: 'Pending proposals on the week — proposed classes are dashed, removals struck through.',
+  },
+  {
     file: 'schedule-csv.png',
     app: 'schedule',
     as: 'registrar',

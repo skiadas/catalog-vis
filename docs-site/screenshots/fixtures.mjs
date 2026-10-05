@@ -163,7 +163,8 @@ export const fixtures = {
   },
 
   // Registrar's schedule with a pending proposal from the advisor, so the
-  // owner's suggestions panel has something to review.
+  // owner's suggestions panel — and the grid's proposal overlay — have an add,
+  // a move, and a removal to show.
   'suggest-pending': async (request) => {
     const schedule = await createSchedule(request, {
       name: 'Fall 2026',
@@ -179,7 +180,7 @@ export const fixtures = {
       data: {
         term: TERM,
         baseVersion: 0,
-        note: 'MAT 121 to TR, and add CS 223.',
+        note: 'MAT 121 to TR, add CS 223, drop CS 220.',
         operations: [
           {
             kind: 'update',
@@ -189,6 +190,10 @@ export const fixtures = {
           {
             kind: 'add',
             offering: offering('CS', '223', 'A', 'TR', '12:20-14:05', 'Jones'),
+          },
+          {
+            kind: 'remove',
+            cur: { prefix: 'CS', number: '220', section: 'A' },
           },
         ],
       },

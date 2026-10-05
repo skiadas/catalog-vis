@@ -14,8 +14,8 @@ the owner.
 ## If you own the schedule
 
 Open the **Suggested changes** panel from the toolbar (the **Suggested
-changes** button, or **Show proposals** to lay them over the week). Each
-proposed change is listed on its own, with **Approve** and **Reject**.
+changes** button). Each proposed change is listed on its own, with **Approve**
+and **Reject**.
 
 <Shot file="schedule-proposals.png" />
 
@@ -24,6 +24,17 @@ proposed change is listed on its own, with **Approve** and **Reject**.
 - Every change keeps its history, including ones that were withdrawn or are no
   longer needed, so the trail stays complete.
 - **Export (markdown)** saves the whole trail as a document you can share.
+
+## Seeing proposals on the week
+
+Pending suggestions are also drawn over the calendar itself: a class someone
+proposes to add or move appears with a **dashed outline** (a move leaves the
+current block in place and dashes the proposed one beside it), and a class a
+proposal would remove is shown **struck through**. Proposed blocks are never
+draggable. The **Show proposals** button on the toolbar switches this overlay
+on and off; it only appears when the term has pending proposals.
+
+<Shot file="schedule-proposals-grid.png" />
 
 ## The words you will see
 
