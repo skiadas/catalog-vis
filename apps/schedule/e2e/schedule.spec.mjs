@@ -545,6 +545,86 @@ test('course editor overlay route: section switcher saves the section you leave'
   assertClean(errors)
 })
 
+// Split meetings: one section can carry more than one meeting band. The
+// editor's "Add another meeting time" creates a same-section sibling, shows the
+// section's other meeting inline (and lets you jump to it), and removing one
+// meeting keeps the rest.
+test('split meetings: add another meeting time, jump between meetings, remove one', async ({
+  page,
+}) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'split-meeting-user')
+
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.getByRole('button', { name: 'Import CSV…' }).click()
+  await page.setInputFiles('.schedule-upload-input', {
+    name: 'split.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'dept_prefix,course_number,course_section,instructor,days,times,term\n' +
+        'CS,220,A,Smith,MWF,9:20-10:30,F\n',
+    ),
+  })
+  await expect(page.getByText(/Imported 1 course row\(s\)/)).toBeVisible()
+  await page.locator('#schedule-create-name').fill('Split meetings')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+  await closeManage(page)
+  await page.locator('.schedule-pill', { hasText: 'Split meetings' }).first().waitFor({ timeout: 10000 })
+
+  // Enter edit mode and open the editor.
+  await page.locator('.schedule-pill-edit').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+
+  // Add a second meeting: the editor switches to the new unscheduled row and
+  // shows the original band as the section's other meeting.
+  await em.getByRole('button', { name: '＋ Add another meeting time' }).click()
+  await expect(em.getByText('This section also meets:')).toBeVisible()
+  await expect(em.locator('.meeting-sibling-link')).toHaveText(/MWF · 9:20 AM - 10:30 AM/)
+  await expect(em.locator('select[aria-label="Section"] option')).toHaveCount(2)
+
+  // Give it a different band: R only, custom 1:00-2:30 PM.
+  await em.getByRole('button', { name: 'Custom time' }).click()
+  await em.locator('.slot-time-group-name', { hasText: 'TR' }).click()
+  await em.locator('.day-chip', { hasText: /^T$/ }).click()
+  await em.locator('input[aria-label="Start time"]').fill('13:00')
+  await em.locator('input[aria-label="End time"]').fill('14:30')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Reopen the section: the inline note lists the other band, and following it
+  // switches the editor to that meeting (which meeting opens first is not
+  // order-dependent — assert the note flips).
+  await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  const otherBand = await em.locator('.meeting-sibling-link').innerText()
+  await em.locator('.meeting-sibling-link').click()
+  await expect(em.locator('.meeting-sibling-link')).not.toHaveText(otherBand)
+
+  // Remove this meeting: the editor stays open on the surviving meeting.
+  await expect(em.getByRole('button', { name: 'Remove this meeting time' })).toBeVisible()
+  await em.getByRole('button', { name: 'Remove this meeting time' }).click()
+  await expect(em).toBeVisible()
+  await expect(em.locator('.meeting-sibling-link')).toHaveCount(0)
+
+  // Clean up: leave the session and delete the schedule.
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Split meetings' })
+    .getByRole('button', { name: 'Delete Split meetings' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
 test('history panel lists session edits; Cancel removes one change, Restore brings it back, Edit jumps', async ({
   page,
 }) => {

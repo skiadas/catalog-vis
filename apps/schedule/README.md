@@ -52,7 +52,8 @@ a section that appears as two rows with different meeting bands (split
 meetings, e.g. MUS 001 A on MW and R at two custom times) keeps them as
 distinct, independently editable offerings — edit/drag/undo on one never
 touches its sibling, and history/suggestion diffs never invent cross-row
-changes. Domain logic lives in `@major-vis/schedule-core`.
+changes. The course editor's **"＋ Add another meeting time"** creates one (see
+the editor section below). Domain logic lives in `@major-vis/schedule-core`.
 
 **Lab sections** are flagged offerings of a parent lecture: `lab: true`
 (with `number` already the parent's, e.g. `'166'`) and a 1-based `labSeq`
@@ -254,6 +255,19 @@ falls back to a discard ask — the safe action is never the destructive one).
 Closing the editor still asks before discarding unsaved changes. Opening the
 editor from a pencil, from add-course, or from the history panel all navigate
 the same way.
+
+A section may carry **split meetings** — the same section meeting at different
+days/times (e.g. MW at one band, R at another). **"＋ Add another meeting
+time"** clones the section as a blank same-section sibling (unscheduled, in the
+"No meeting times" strip) and switches the editor to it to set its days/time;
+an inline **"This section also meets:"** note lists the section's other
+meetings, each a link that jumps the editor to that row, and the header
+switcher labels every row with its meeting. A cross-listed group stays
+parallel: the new meeting is mirrored onto every present version, edits follow
+the matching band (never the section's other rows), and removing a meeting
+removes just that band — the footer reads **"Remove this meeting time"** and
+the editor stays open on the surviving meeting, leaving the section's other
+meetings and its labs alone.
 
 **Suggestions are department-scoped.** A non-owner's session only lets them
 touch courses in the departments their directory entry lists (no pencil, no

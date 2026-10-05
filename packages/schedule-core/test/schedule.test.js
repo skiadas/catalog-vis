@@ -9,6 +9,7 @@ import {
   parseCsv,
   renderCsv,
   offeringIdFor,
+  uniqueOfferingId,
   assignOfferingIds,
   buildIndex,
   conflictsBetween,
@@ -1733,6 +1734,21 @@ test('assignOfferingIds fills only missing ids and never rewrites existing ones'
   assignOfferingIds(rows)
   assert.equal(rows[1].id, 'keep-me')
   assert.ok(rows[0].id && rows[0].id !== 'keep-me')
+})
+
+test('uniqueOfferingId suffixes only on collision with an existing id', () => {
+  const row = { prefix: 'BIO', number: '166', section: 'A', days: '', time: '' }
+  // A free base id is returned verbatim.
+  assert.equal(uniqueOfferingId([], row), offeringIdFor(row))
+  // A split-meeting sibling already holding the blank-row id forces a suffix,
+  // and a third blank row takes the next free suffix.
+  const base = offeringIdFor(row)
+  const first = { ...row, id: base }
+  assert.equal(uniqueOfferingId([first], row), `${base}-2`)
+  const second = { ...row, id: `${base}-2` }
+  assert.equal(uniqueOfferingId([first, second], row), `${base}-3`)
+  // Ids on rows that don't match the base never shift the result.
+  assert.equal(uniqueOfferingId([{ ...row, id: 'other' }], row), base)
 })
 
 test('buildIndex tags each item with its schedule id', () => {

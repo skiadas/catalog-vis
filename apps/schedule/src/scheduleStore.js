@@ -23,6 +23,7 @@ import {
   removeOfferingFromSchedule,
   TERM_KEYS,
   offeringIdFor,
+  uniqueOfferingId,
   assignOfferingIds,
   offeringCodeLabel,
   offeringSectionLabel,
@@ -345,6 +346,17 @@ function crossListSiblingRows(offerings, cur) {
   const others = new Set(crossListOf(code))
   if (!others.size) return []
   return (offerings || []).filter((o) => !o.lab && o.section === cur.section && others.has(offeringCode(o)))
+}
+
+// The sibling version rows carrying the same meeting band as `band` (the source
+// row's current `{ days, time }`). A cross-listed group is kept identical band
+// by band, so a split-meeting edit must mirror onto the matching band in each
+// version — not every row at the section (which would overwrite the other
+// meetings). A blank band matches blank siblings (a freshly added meeting).
+function crossListBandSiblings(offerings, cur, band) {
+  return crossListSiblingRows(offerings, cur).filter(
+    (o) => (o.days || '') === band.days && (o.time || '') === band.time,
+  )
 }
 
 // Gives an unowned cross-listed group an owner: when `cur` names a row whose
@@ -1614,14 +1626,17 @@ export function moveOffering(id, prefix, number, section, move, lab = false, lab
   if (!part) return false
   const before = part.offerings || []
   const cur = { prefix, number, section, lab, labSeq, id: offeringId || undefined }
+  const oldSource = before.find((o) => matchOffering(o, cur))
   let next = claimCrossListOwnership(before, cur)
   next = moveOfferingSmart(next, cur, move, activeTerm.value)
-  // Keep a cross-listed group identical: the sibling versions take the moved
-  // row's meeting days/time.
+  // Keep a cross-listed group identical: the moved row's matching band in each
+  // sibling version takes its new meeting days/time (split meetings stay
+  // aligned band by band; never every row at the section).
   if (!lab) {
     const moved = next.find((o) => matchOffering(o, cur))
     if (moved) {
-      for (const sib of crossListSiblingRows(next, cur)) {
+      const band = { days: oldSource?.days || '', time: oldSource?.time || '' }
+      for (const sib of crossListBandSiblings(next, cur, band)) {
         next = updateOfferingInSchedule(next, sib, { days: moved.days, time: moved.time })
       }
     }
@@ -1654,7 +1669,11 @@ export function updateOffering(id, cur, changes) {
   if (!part) return false
   const before = part.offerings || []
   let next = claimCrossListOwnership(before, cur)
-  const siblings = !cur.lab && isCrossListed(offeringCode(cur)) ? crossListSiblingRows(next, cur) : []
+  const source = next.find((o) => matchOffering(o, cur))
+  const siblings =
+    !cur.lab && source && isCrossListed(offeringCode(cur))
+      ? crossListBandSiblings(next, cur, { days: source.days || '', time: source.time || '' })
+      : []
   next = updateOfferingInSchedule(next, cur, changes)
   for (const sib of siblings) next = updateOfferingInSchedule(next, sib, changes)
   // A save that rewrites nothing (the editor's "Save changes" on an untouched
@@ -1790,12 +1809,80 @@ export function addLabSection(id, cur) {
   return lab
 }
 
-// Removes the offering matching `cur` (prefix/number/section) from the
-// schedule's active term. Removing the version owned by the group's owner
-// removes the whole cross-listed group (every version at the same section, with
-// their labs); removing another version leaves the rest in place. Also closes
-// the editor if the edited course was the one removed. In a suggest session the
-// removal lands in the draft.
+// Adds a further meeting band to an existing lecture section as a same-section
+// sibling row — split meetings are how one section carries different days/times
+// (e.g. MW at one band, R at another). The new row starts unscheduled (blank
+// days/time, so it lands in the "No meeting times" strip, matching a new lab)
+// and copies the section's title / instructors / seats. A cross-listed group
+// stays parallel: one mirror row is added per present sibling version (deduped
+// by code), and an unowned group is claimed. Returns the created row for
+// `cur`'s own code so the editor can switch to it, or null when `cur` names a
+// lab or an unknown row. In a suggest session the row lands in the draft.
+export function addMeetingToSchedule(id, cur) {
+  const s = scheduleById(id)
+  if (!s || !cur || cur.lab) return null
+  const { part, draft } = mutablePart(id)
+  if (!part) return null
+  const offerings = part.offerings || []
+  // Match the lecture by its content `id` when given (split-meeting rows), else
+  // by the section tuple.
+  const source = offerings.find((o) => !o.lab && matchOffering(o, cur))
+  if (!source) return null
+  // The present versions of the cross-listed group at this section, deduped by
+  // code: the source row's code plus every sibling actually on the term.
+  const codes = []
+  for (const o of [source, ...crossListSiblingRows(offerings, source)]) {
+    const code = offeringCode(o)
+    if (code && !codes.includes(code)) codes.push(code)
+  }
+  // Claim an unowned group first, then read the owner the new rows carry.
+  let list = claimCrossListOwnership(offerings, source)
+  const stamped = list.find((o) => !o.lab && matchOffering(o, source)) || source
+  const owner = crossListOwnerOf(stamped)
+  let created = null
+  for (const code of codes) {
+    const [prefix, number] = code.split(' ')
+    const row = {
+      prefix,
+      number,
+      section: source.section,
+      title: source.title || '',
+      instructor: source.instructor || '',
+      secondaryInstructors: [...(source.secondaryInstructors || [])],
+      days: '',
+      time: '',
+      seats: source.seats != null ? source.seats : DEFAULT_SEATS,
+      id: '',
+    }
+    if (isCrossListed(code)) row.crossListOwner = owner || String(prefix).toUpperCase()
+    row.id = uniqueOfferingId(list, row)
+    list = addOfferingToSchedule(list, row)
+    if (code === offeringCode(source)) created = row
+  }
+  if (!created) return null
+  const before = part.offerings
+  part.offerings = list
+  recordHistory(part, before, id)
+  if (draft) {
+    part.dirty = true
+    touchDraft()
+    return created
+  }
+  part.version = (part.version || 0) + 1
+  schedules.value = [...schedules.value]
+  syncTerm(id)
+  persistSchedules()
+  return created
+}
+
+// Removes the offering matching `cur` (its content `id` when present, else the
+// section tuple) from the schedule's active term. For a split-meeting section
+// (more than one lecture row for the row's code), this removes that one band
+// across the group's versions and leaves the section's other meetings and its
+// labs alone; a lab, or the section's last meeting, takes the existing path
+// (removing the group owner's version removes the whole cross-listed group with
+// its labs). Also closes the editor if the edited row was the one removed. In a
+// suggest session the removal lands in the draft.
 export function removeCourseFromSchedule(id, cur) {
   const s = scheduleById(id)
   if (!s) return false
@@ -1803,8 +1890,26 @@ export function removeCourseFromSchedule(id, cur) {
   if (!part) return false
   const before = part.offerings || []
   const target = before.find((o) => matchOffering(o, cur))
+  const ownCode = target ? offeringCode(target) : ''
+  const meetingCount = before.filter(
+    (o) => !o.lab && o.section === target?.section && offeringCode(o) === ownCode,
+  ).length
+  const isSplit = Boolean(target) && !target.lab && meetingCount > 1
   let next
-  if (
+  if (isSplit) {
+    // One meeting band gone: drop the matching rows across every version of the
+    // group (identified by code) at the section, keyed by the band's days/time
+    // since content ids differ per version. Labs and other meetings survive.
+    const codes = new Set([ownCode, ...crossListOf(ownCode)])
+    next = before.filter(
+      (o) =>
+        o.lab ||
+        o.section !== target.section ||
+        !codes.has(offeringCode(o)) ||
+        o.days !== target.days ||
+        o.time !== target.time,
+    )
+  } else if (
     target &&
     !target.lab &&
     crossListOwnerOf(target) &&
@@ -1831,9 +1936,14 @@ export function removeCourseFromSchedule(id, cur) {
   }
   if (courseEditTarget.value) {
     const o = courseEditTarget.value.o
-    if (o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section) {
-      courseEditTarget.value = null
-    }
+    // Clear only the exact row being removed — a split-meeting sibling at the
+    // same section must keep the editor open.
+    const sameRow =
+      o.prefix === cur.prefix &&
+      o.number === cur.number &&
+      o.section === cur.section &&
+      (cur.id == null || cur.id === '' || o.id === cur.id)
+    if (sameRow) courseEditTarget.value = null
   }
   return true
 }

@@ -280,12 +280,26 @@
   margin: 0 0 var(--space-3);
 }
 .add-lab-btn,
-.add-others-btn {
+.add-others-btn,
+.add-meeting-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: var(--primary);
   border-color: var(--primary-35);
+}
+.add-meeting-btn {
+  margin-left: var(--space-2);
+}
+.meeting-siblings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 var(--space-3);
+}
+.meeting-sibling-link {
+  font: inherit;
 }
 .add-lab-confirm {
   @include text-caption;

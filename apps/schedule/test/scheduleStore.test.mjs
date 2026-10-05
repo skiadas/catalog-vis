@@ -717,6 +717,150 @@ test('addLabSection creates an unscheduled lab that mirrors the lecture and copi
   })
 })
 
+test('addMeetingToSchedule adds a blank same-section sibling that copies the lecture', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Split', '2026-27', [])
+    store.addCourseToSchedule(id, 'BIO 166')
+    store.updateOffering(
+      id,
+      { prefix: 'BIO', number: '166', section: 'A' },
+      {
+        title: 'Genetics',
+        instructor: 'Patterson',
+        secondaryInstructors: ['Xu'],
+        days: 'MW',
+        time: '9:00-10:10',
+      },
+    )
+    const source = store.scheduleById(id).terms.F.offerings[0]
+
+    const second = store.addMeetingToSchedule(id, {
+      prefix: 'BIO',
+      number: '166',
+      section: 'A',
+      id: source.id,
+    })
+    assert.ok(second)
+    assert.equal(second.section, 'A')
+    assert.equal(second.days, '', 'a new meeting starts unscheduled')
+    assert.equal(second.time, '')
+    assert.equal(second.instructor, 'Patterson', 'copies the lecture instructor as it stands')
+    assert.deepEqual(second.secondaryInstructors, ['Xu'])
+    assert.equal(second.title, 'Genetics')
+    assert.equal(second.seats, 24)
+    assert.notEqual(second.id, source.id, 'a distinct content id beside its sibling')
+
+    const rows = store.scheduleById(id).terms.F.offerings
+    assert.equal(rows.length, 2)
+    const first = rows.find((o) => o.id === source.id)
+    assert.equal(first.days, 'MW', 'the source row is untouched')
+    assert.equal(first.time, '9:00-10:10')
+
+    // A third meeting gets its own id again; no collision with either sibling.
+    const third = store.addMeetingToSchedule(id, {
+      prefix: 'BIO',
+      number: '166',
+      section: 'A',
+      id: second.id,
+    })
+    assert.ok(third)
+    assert.equal(new Set(store.scheduleById(id).terms.F.offerings.map((o) => o.id)).size, 3)
+  })
+})
+
+test('addMeetingToSchedule mirrors across cross-listed versions and removal mirrors back', async () => {
+  const { crossListings } = await import('@major-vis/catalog-client')
+  const prev = crossListings.value
+  crossListings.value = /** @type {any} */ ([{ id: 'anth-222-soc-222', codes: ['ANTH 222', 'SOC 222'] }])
+  try {
+    await withRemote(async ({ store }) => {
+      store.setRemote(false)
+      const { setApiBase } = await import('../src/backend.js')
+      setApiBase('../../api')
+
+      const id = await store.addSchedule('XL', '2026-27', [])
+      store.setTermOfferings(id, 'F', [
+        { prefix: 'ANTH', number: '222', section: 'A', days: 'MW', time: '9:00-10:10' },
+        { prefix: 'SOC', number: '222', section: 'A', days: 'MW', time: '9:00-10:10' },
+      ])
+      const source = store.scheduleById(id).terms.F.offerings.find((o) => o.prefix === 'ANTH')
+
+      const created = store.addMeetingToSchedule(id, {
+        prefix: 'ANTH',
+        number: '222',
+        section: 'A',
+        id: source.id,
+      })
+      assert.ok(created)
+      let rows = store.scheduleById(id).terms.F.offerings
+      assert.equal(rows.length, 4, 'one mirror row per version')
+      assert.ok(rows.some((o) => o.prefix === 'SOC' && o.days === '' && o.time === ''))
+      assert.ok(
+        rows.every((o) => o.crossListOwner === 'ANTH'),
+        'the group is claimed and stamped',
+      )
+
+      // Setting the new band on one version mirrors onto the matching band of
+      // the other — and leaves the original MW band alone.
+      store.updateOffering(
+        id,
+        { prefix: 'ANTH', number: '222', section: 'A', id: created.id },
+        { days: 'R', time: '13:00-14:30' },
+      )
+      rows = store.scheduleById(id).terms.F.offerings
+      assert.equal(rows.filter((o) => o.days === 'R' && o.time === '13:00-14:30').length, 2)
+      assert.equal(rows.filter((o) => o.days === 'MW' && o.time === '9:00-10:10').length, 2)
+
+      // Removing that band removes it from both versions, leaving the MW pair.
+      const rRow = rows.find((o) => o.prefix === 'ANTH' && o.days === 'R')
+      assert.ok(
+        store.removeCourseFromSchedule(id, {
+          prefix: 'ANTH',
+          number: '222',
+          section: 'A',
+          id: rRow.id,
+        }),
+      )
+      rows = store.scheduleById(id).terms.F.offerings
+      assert.equal(rows.length, 2)
+      assert.ok(rows.every((o) => o.days === 'MW'))
+    })
+  } finally {
+    crossListings.value = prev
+  }
+})
+
+test('removeCourseFromSchedule removes one split meeting, keeping the sibling and the labs', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('SplitRm', '2026-27', [])
+    store.setTermOfferings(id, 'F', [
+      { prefix: 'MUS', number: '001', section: 'A', days: 'MW', time: '16:00-16:50' },
+      { prefix: 'MUS', number: '001', section: 'A', days: 'R', time: '16:10-17:00' },
+      { prefix: 'MUS', number: '001', section: 'A', lab: true, labSeq: 1, days: '', time: '' },
+    ])
+    const rRow = store.scheduleById(id).terms.F.offerings.find((o) => o.days === 'R')
+    assert.ok(store.removeCourseFromSchedule(id, { prefix: 'MUS', number: '001', section: 'A', id: rRow.id }))
+    const rows = store.scheduleById(id).terms.F.offerings
+    assert.equal(rows.length, 2)
+    assert.ok(
+      rows.some((o) => o.days === 'MW'),
+      'the other meeting survives',
+    )
+    assert.ok(
+      rows.some((o) => o.lab),
+      'the section lab survives',
+    )
+  })
+})
+
 test('moveOffering drags a lab row without disturbing the lecture at the same letter', async () => {
   await withRemote(async ({ store }) => {
     store.setRemote(false)

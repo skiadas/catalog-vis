@@ -271,6 +271,19 @@
             </p>
           </div>
 
+          <p v-if="hasSiblings" class="field-hint meeting-siblings">
+            This section also meets:
+            <button
+              v-for="sib in siblingMeetings"
+              :key="offeringItemKey(sib.item)"
+              type="button"
+              class="link-toggle meeting-sibling-link"
+              @click="requestSwitch(sib.item)"
+            >
+              {{ sib.label }}
+            </button>
+          </p>
+
           <div v-if="!isLab" class="add-lab-row">
             <button v-if="!labAdded" class="filter-btn add-lab-btn" @click="addLab">
               <IconFlaskConical :size="13" :stroke-width="2.2" />
@@ -280,6 +293,9 @@
               Lab added — <strong>{{ labLabel }}</strong
               >. It's in the <strong>No meeting times</strong> strip; drag it onto a slot to schedule it.
             </p>
+            <button class="filter-btn add-meeting-btn" @click="addMeeting">
+              ＋ Add another meeting time
+            </button>
           </div>
         </template>
 
@@ -334,6 +350,7 @@ import {
   offeringCodeLabel,
   offeringSectionLabel,
   offeringItemKey,
+  formatTime,
   DEFAULT_SEATS,
 } from '@major-vis/schedule-core'
 import {
@@ -341,6 +358,7 @@ import {
   updateOffering,
   removeCourseFromSchedule,
   addLabSection,
+  addMeetingToSchedule,
   materializeCrossListVersions,
   crossListState,
   canTouchOffering,
@@ -385,31 +403,49 @@ export default {
 
     // --- Section switcher ------------------------------------------------
     const offeringKey = computed(() => offeringItemKey(props.offering))
-    const sectionOptionLabel = (s) => `${offeringCodeLabel(s.o)} · ${offeringSectionLabel(s.o)}`
+    // The meeting a row shows, compactly, for the switcher option and the
+    // sibling indicator (`MW · 9:20 AM - 10:30 AM`, or `No meeting time`).
+    const meetingLabel = (row) =>
+      row.days && row.time ? `${row.days} · ${formatTime(row.time)}` : 'No meeting time'
+    const sectionOptionLabel = (s) =>
+      `${offeringCodeLabel(s.o)} · ${offeringSectionLabel(s.o)} · ${meetingLabel(s.o)}`
+    // The other meeting rows of this same section (split meetings): what this
+    // form is not editing, shown so a user knows the section carries more than
+    // one meeting and can jump to it. Labs are not meetings.
+    const siblingMeetings = computed(() => {
+      const sections = /** @type {Array<any>} */ (props.sections || [])
+      return sections
+        .filter((s) => offeringItemKey(s) !== offeringKey.value && !s.o.lab && s.o.section === o.section)
+        .map((s) => ({ item: s, label: meetingLabel(s.o) }))
+    })
+    const hasSiblings = computed(() => siblingMeetings.value.length > 0)
     // The section a confirmed discard should switch to; null means "close".
     const discardTarget = ref(null)
-    const onSwitch = (e) => {
-      const target = props.sections.find((s) => offeringItemKey(s) === e.target.value)
-      if (!target || offeringItemKey(target) === offeringKey.value) return
+    // Switches the editor to `target` (a merged item), committing this form's
+    // edits first when it can be saved; an unsavable form falls back to the
+    // discard ask and keeps showing the section actually being edited. Returns
+    // false when the switch was deferred to the ask.
+    const requestSwitch = (target) => {
+      if (!target || offeringItemKey(target) === offeringKey.value) return true
       if (hasPendingChanges.value) {
-        // Leaving a section commits what you edited there — switching must
-        // never throw work away. Only a form that cannot be saved (an
-        // incomplete time pattern) falls back to the discard ask, and then the
-        // header keeps showing the section actually being edited.
         if (canSave.value) {
           commit()
           emit('switch', target)
-          return
+          return true
         }
-        e.target.value = offeringKey.value
         discardTarget.value = target
         confirmDiscard.value = true
         nextTick(() => {
           if (keepEditEl.value) keepEditEl.value.focus()
         })
-        return
+        return false
       }
       emit('switch', target)
+      return true
+    }
+    const onSwitch = (e) => {
+      const target = props.sections.find((s) => offeringItemKey(s) === e.target.value)
+      if (!requestSwitch(target)) e.target.value = offeringKey.value
     }
 
     // --- Guarded dismissal ---------------------------------------------
@@ -493,7 +529,12 @@ export default {
     const isOwnerRow = computed(
       () => Boolean(crossState.value) && crossState.value.owner === String(o.prefix || '').toUpperCase(),
     )
-    const removeLabel = computed(() => (isOwnerRow.value ? 'Remove all versions' : 'Remove course'))
+    const removeLabel = computed(() => {
+      // A split-meeting row removes just its own band (mirrored across the
+      // group's versions); an only meeting removes the course/group.
+      if (hasSiblings.value) return 'Remove this meeting time'
+      return isOwnerRow.value ? 'Remove all versions' : 'Remove course'
+    })
 
     // Instructor dropdowns are drawn from the catalog faculty rosters
     // (per-program `faculty` lists, mapped to course prefixes the same way the
@@ -678,6 +719,26 @@ export default {
       if (!created) return ''
       return `${props.offering.code}L ${created.section}${created.labSeq}`
     })
+
+    // Adds another meeting band to this section as a same-section sibling row
+    // (split meetings: e.g. MW at one time, R at another). This form's edits are
+    // committed first so the new row copies the section's latest content; then
+    // the editor switches to the new (unscheduled) row to set its days/time.
+    const addMeeting = () => {
+      if (isLab.value) return
+      if (hasPendingChanges.value) {
+        if (!canSave.value) return
+        commit()
+      }
+      const created = addMeetingToSchedule(props.scheduleId, {
+        prefix: o.prefix,
+        number: o.number,
+        section: o.section,
+        id: o.id,
+      })
+      if (!created) return
+      emit('switch', { o: created, code: offeringCodeLabel(created), sid: props.scheduleId })
+    }
 
     // Whether any form field differs from the offering's current values (the
     // "pending changes" that keep the editor open after adding a lab). Matches
@@ -890,6 +951,7 @@ export default {
 
     const removeCourse = () => {
       if (
+        !hasSiblings.value &&
         isOwnerRow.value &&
         crossState.value &&
         crossState.value.present.length &&
@@ -899,7 +961,10 @@ export default {
       ) {
         return
       }
-      removeCourseFromSchedule(props.scheduleId, {
+      // When this row is one of several meetings, keep the editor open on the
+      // remaining meeting instead of closing it.
+      const survivor = siblingMeetings.value[0] ? siblingMeetings.value[0].item : null
+      const removed = removeCourseFromSchedule(props.scheduleId, {
         prefix: o.prefix,
         number: o.number,
         section: o.section,
@@ -907,7 +972,9 @@ export default {
         labSeq: o.labSeq,
         id: o.id,
       })
-      emit('close')
+      if (!removed) return
+      if (survivor) emit('switch', survivor)
+      else emit('close')
     }
 
     return {
@@ -917,6 +984,9 @@ export default {
       offeringKey,
       sectionOptionLabel,
       onSwitch,
+      requestSwitch,
+      siblingMeetings,
+      hasSiblings,
       offeringItemKey,
       instructorSel,
       instructorSuggestOpen,
@@ -942,6 +1012,7 @@ export default {
       labAdded,
       labLabel,
       addLab,
+      addMeeting,
       hasPendingChanges,
       confirmDiscard,
       keepEditEl,

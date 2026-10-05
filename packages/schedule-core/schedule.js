@@ -720,31 +720,33 @@ export function offeringIdFor(o) {
   return 'o' + (h >>> 0).toString(36)
 }
 
+// A content id that is unique within `offerings`: `offeringIdFor(row)` when
+// that is free, else the next free `-2`/`-3`… suffix. This is the single-row
+// form for adding a row to an existing schedule — unlike the bulk legacy
+// backfill below, it respects ids already present, so a blank split-meeting row
+// never collides with the sibling it was added beside.
+export function uniqueOfferingId(offerings, row) {
+  const taken = new Set()
+  for (const o of offerings || []) {
+    if (o && o.id != null && o.id !== '') taken.add(o.id)
+  }
+  const base = offeringIdFor(row)
+  if (!taken.has(base)) return base
+  let n = 2
+  while (taken.has(`${base}-${n}`)) n++
+  return `${base}-${n}`
+}
+
 // Fills `id` on rows that don't carry one (legacy data loaded from storage or
 // a feed), deterministically from the row's content. Rows that hash the same
-// (two identical rows for one section) get a first-seen `-1`/`-2` suffix so
-// every row stays a distinct identity; existing ids are never rewritten, so
-// editing a row keeps its id across sessions and re-syncs. Mutates `rows` and
-// returns it.
+// (two identical rows for one section) get a suffix so every row stays a
+// distinct identity; existing ids are never rewritten, so editing a row keeps
+// its id across sessions and re-syncs. Mutates `rows` and returns it.
 export function assignOfferingIds(rows) {
   if (!Array.isArray(rows)) return rows
-  const missing = rows.filter((r) => !r || r.id == null || r.id === '')
-  if (!missing.length) return rows
-  const counts = new Map()
-  for (const r of missing) {
-    const base = offeringIdFor(r)
-    counts.set(base, (counts.get(base) || 0) + 1)
-  }
-  const seen = new Map()
-  for (const r of missing) {
-    const base = offeringIdFor(r)
-    if (counts.get(base) > 1) {
-      const n = (seen.get(base) || 0) + 1
-      seen.set(base, n)
-      r.id = `${base}-${n}`
-    } else {
-      r.id = base
-    }
+  for (const r of rows) {
+    if (!r || (r.id != null && r.id !== '')) continue
+    r.id = uniqueOfferingId(rows, r)
   }
   return rows
 }
