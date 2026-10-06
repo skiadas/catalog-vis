@@ -110,7 +110,45 @@ function keyOf(o) {
   const k = { prefix: o.prefix, number: o.number, section: o.section, lab: o.lab, labSeq: o.labSeq }
   if (o.crossListOwner) k.crossListOwner = o.crossListOwner
   if (o.id != null && o.id !== '') k.id = o.id
+  // The meeting band rides along as display metadata only — matching ignores it
+  // (the id wins, and the tuple key excludes days/time) — so a history or
+  // proposal label can name which meeting a split-meeting op touches.
+  k.days = o.days || ''
+  k.time = o.time || ''
   return k
+}
+
+// The raw meeting band of an offering (`R 13:00-14:30`), or '' for an
+// unscheduled row. Labels split-meeting ops only.
+export function meetingBand(o) {
+  if (!o || !o.days || !o.time) return ''
+  return `${o.days} ${o.time}`
+}
+
+// The `${prefix}|${number}|${section}` group key of an op's row: the added
+// offering, or the course an update/remove targets.
+export function opGroupKey(op) {
+  if (!op) return ''
+  const o = op.kind === 'add' ? op.offering : op.cur
+  if (!o) return ''
+  return `${o.prefix || ''}|${o.number || ''}|${o.section || ''}`
+}
+
+// The section keys carrying split meetings in `offerings`: a non-lab section
+// with more than one distinct row (same course code). History/proposal labels
+// name the meeting only where it actually disambiguates.
+export function splitGroups(offerings) {
+  const bySection = new Map()
+  for (const o of offerings || []) {
+    if (!o || o.lab) continue
+    const key = `${o.prefix || ''}|${o.number || ''}|${o.section || ''}`
+    const id = o.id != null && o.id !== '' ? o.id : `${o.days || ''}|${o.time || ''}`
+    if (!bySection.has(key)) bySection.set(key, new Set())
+    bySection.get(key).add(id)
+  }
+  const out = new Set()
+  for (const [key, ids] of bySection) if (ids.size > 1) out.add(key)
+  return out
 }
 
 function normalize(v) {
@@ -176,15 +214,24 @@ export function suggestionStatus(entries) {
 //   "CS 220: other instructors from Xu to Xu, Ray"
 //   "add CS 101 A"
 //   "remove BIO 161 A"
-export function describeChange(op) {
+// With `showMeeting`, a split-meeting op's subject names its band so two rows
+// for one section read apart: "add CS 220 A · R 13:00-14:30". Callers pass it
+// only for sections that actually carry more than one meeting (`splitGroups`).
+export function describeChange(op, { showMeeting = false } = {}) {
   if (!op) return ''
   if (op.kind === 'add') {
-    return `add ${fmtCode(op.offering)}`
+    return `add ${fmtCode(op.offering)}${bandSuffix(op.offering, showMeeting)}`
   }
   if (op.kind === 'remove') {
-    return `remove ${fmtCode(op.cur)}`
+    return `remove ${fmtCode(op.cur)}${bandSuffix(op.cur, showMeeting)}`
   }
   if (op.kind === 'update') {
+    // Name the meeting the change lands on, using the new band when the edit
+    // changed it (else the row's current band).
+    const after = {
+      days: op.changes && op.changes.days !== undefined ? op.changes.days : op.cur && op.cur.days,
+      time: op.changes && op.changes.time !== undefined ? op.changes.time : op.cur && op.cur.time,
+    }
     let parts
     if (op.diff && op.diff.length) {
       parts = op.diff.map((d) => {
@@ -201,9 +248,17 @@ export function describeChange(op) {
         ([field, to]) => `${FIELD_LABEL[field] || field} set to ${fmtValue(to)}`,
       )
     }
-    return `${fmtCode(op.cur)}: ${parts.join(', ') || 'no changes'}`
+    return `${fmtCode(op.cur)}${bandSuffix(after, showMeeting)}: ${parts.join(', ') || 'no changes'}`
   }
   return JSON.stringify(op)
+}
+
+// The ` · <band>` suffix for a split-meeting label, or '' when the label isn't
+// naming a meeting (unsplit sections, or an unscheduled row).
+function bandSuffix(o, showMeeting) {
+  if (!showMeeting) return ''
+  const band = meetingBand(o)
+  return band ? ` · ${band}` : ''
 }
 
 // Readable field names for the diff detail (arrays join as a comma list).
@@ -221,9 +276,17 @@ function fmtCode(o) {
 }
 
 // Render a list of operations as plain lines, markdown bullets, or CSV.
-// `format`: 'text' | 'md' | 'csv'.
-export function renderChanges(operations, format = 'text') {
-  const lines = (operations || []).map(describeChange)
+// `format`: 'text' | 'md' | 'csv'. `options.splitGroups` (a `splitGroups` set)
+// names the meeting on split-meeting rows so they read apart.
+/**
+ * @param {Array<any>} operations
+ * @param {'text' | 'md' | 'csv'} [format]
+ * @param {{ splitGroups?: Set<string> }} [options]
+ */
+export function renderChanges(operations, format = 'text', { splitGroups: groups } = {}) {
+  const lines = (operations || []).map((op) =>
+    describeChange(op, { showMeeting: Boolean(groups && groups.has(opGroupKey(op))) }),
+  )
   if (format === 'md') return lines.map((l) => `- ${l}`).join('\n') || '_No changes._'
   if (format === 'csv') {
     const rows = [['change']]

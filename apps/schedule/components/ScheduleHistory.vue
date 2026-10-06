@@ -14,10 +14,10 @@
       <div class="modal-body">
         <p v-if="feedback" class="suggested-feedback" role="status">{{ feedback }}</p>
         <p class="modal-intro">
-          This session's changes, compared with where the term started: one row per course, so moving a course
-          twice nets to one change (moving it back removes it from the list entirely). <em>Cancel</em> undoes
-          just that one change; the rest of the session stays put. Cancelled changes stay listed and can be
-          restored.
+          This session's changes, compared with where the term started: one row per offering, so moving a
+          course twice nets to one change (moving it back removes it from the list entirely); a split section
+          shows one row per meeting. <em>Cancel</em> undoes just that one change; the rest of the session
+          stays put. Cancelled changes stay listed and can be restored.
         </p>
 
         <div v-if="!entries.length" class="schedule-manage-empty">No changes yet this session.</div>

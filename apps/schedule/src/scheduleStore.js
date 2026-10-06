@@ -42,6 +42,8 @@ import {
   pureOps,
   suggestionStatus,
   describeChange,
+  splitGroups,
+  opGroupKey,
 } from '@major-vis/schedule-core/diff'
 import * as backend from './backend.js'
 import { buildNameIndex, instructorLabel, canonicalInstructor } from './names.js'
@@ -883,6 +885,9 @@ export const historyEntries = computed(() => {
   if (!s) return []
   const part = viewPart(scheduleById(id), activeTerm.value)
   const offers = part.offerings || []
+  // Split sections are read from the base ∪ current rows, so a meeting that was
+  // removed this session still labels as split (its row is gone from current).
+  const groups = splitGroups([...s.base, ...offers])
   const net = new Map(diffOfferings(s.base, offers).map((op) => [opKeyOf(op), op]))
   const present = new Set(offers.map(identityKeyOf))
   const rows = []
@@ -894,7 +899,7 @@ export const historyEntries = computed(() => {
     rows.push({
       key,
       op,
-      label: describeChange(op),
+      label: describeChange(op, { showMeeting: groups.has(opGroupKey(op)) }),
       seq: t.seq,
       cancelled,
       editable: present.has(key),
@@ -903,12 +908,57 @@ export const historyEntries = computed(() => {
   return rows.sort((a, b) => b.seq - a.seq)
 })
 
+// The split-meeting section keys for a list of ops (entries or bare ops) against
+// `scheduleId`'s published term, unioned with the ops' own rows so a newly added
+// meeting counts. The suggest panel feeds the result to `describeChange`'s
+// `showMeeting` so a split-meeting proposal reads apart.
+export function splitGroupsFor(ops, scheduleId = editingScheduleId.value) {
+  const s = scheduleId != null ? scheduleById(scheduleId) : null
+  const part = s ? publishedPart(s, activeTerm.value) : null
+  const published = (part && part.offerings) || []
+  const rows = []
+  for (const e of ops || []) {
+    const op = e && e.op ? e.op : e
+    if (!op) continue
+    const row = op.kind === 'add' ? op.offering : op.cur
+    if (row) rows.push(row)
+  }
+  return splitGroups([...published, ...rows])
+}
+
+// The net ops a cancel of `targetOp` removes: the op itself, plus — for a
+// split-meeting op in a cross-listed group — the matching-band op in every
+// sibling version, so cancelling a mirrored band keeps the group parallel.
+function opsToCancel(current, targetOp, groups) {
+  if (!targetOp || !groups.has(opGroupKey(targetOp))) return [targetOp]
+  const row = targetOp.kind === 'add' ? targetOp.offering : targetOp.cur
+  if (!row) return [targetOp]
+  const ownCode = offeringCode(row)
+  const sibs = crossListOf(ownCode)
+  if (!sibs.length) return [targetOp]
+  const codes = new Set([ownCode, ...sibs])
+  const days = row.days || ''
+  const time = row.time || ''
+  return current.filter((op) => {
+    const p = op.kind === 'add' ? op.offering : op.cur
+    return (
+      Boolean(p) &&
+      codes.has(offeringCode(p)) &&
+      p.section === row.section &&
+      (p.days || '') === days &&
+      (p.time || '') === time
+    )
+  })
+}
+
 // Cancels one change of the active session by key (the row's `key` from
 // `historyEntries`): its op leaves the net diff — the state is recomputed as
 // base + every other change, which is always conflict-free because each op
-// targets a distinct course — and the row flips to cancelled (restorable).
-// Returns the cancelled change's label, or null when there is nothing to
-// cancel (unknown key, already cancelled, or no session).
+// targets a distinct course — and the row flips to cancelled (restorable). A
+// split-meeting op in a cross-listed group cancels its matching band across
+// every version, keeping the group parallel. Returns the cancelled change's
+// label, or null when there is nothing to cancel (unknown key, already
+// cancelled, or no session).
 export function cancelChange(key) {
   const id = editingScheduleId.value
   const s = id && activeSession()
@@ -918,14 +968,21 @@ export function cancelChange(key) {
   const current = netOps(s, part)
   const targetOp = current.find((op) => opKeyOf(op) === key)
   if (!targetOp) return null
+  const groups = splitGroups([...s.base, ...(part.offerings || [])])
+  const drop = new Set(opsToCancel(current, targetOp, groups))
   part.offerings = applyOperations(
     s.base,
-    current.filter((op) => op !== targetOp),
+    current.filter((op) => !drop.has(op)),
   )
-  if (!s.cancelled[key]) s.cancelled = { ...s.cancelled, [key]: true }
+  let cancelled = s.cancelled
+  for (const op of drop) {
+    const k = opKeyOf(op)
+    if (!cancelled[k]) cancelled = { ...cancelled, [k]: true }
+  }
+  s.cancelled = cancelled
   sessionState.value = { ...sessionState.value }
   finalizeHistoryWrite(part, draft, id, activeTerm.value)
-  return describeChange(targetOp)
+  return describeChange(targetOp, { showMeeting: groups.has(opGroupKey(targetOp)) })
 }
 
 // Cancels the most recently touched *live* change of the active session — the

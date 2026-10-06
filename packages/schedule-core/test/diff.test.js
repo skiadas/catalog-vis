@@ -8,6 +8,8 @@ import {
   offeringKey,
   pureOps,
   suggestionStatus,
+  splitGroups,
+  opGroupKey,
 } from '../diff.js'
 
 const OFF = (id, extra = {}) => ({
@@ -49,7 +51,15 @@ test('diffOfferings: add, update (with per-field diff), remove', () => {
   assert.deepEqual(upd.changes, { instructor: 'Skiadas' })
   assert.deepEqual(upd.diff, [{ field: 'instructor', from: 'Wahl', to: 'Skiadas' }])
   assert.deepEqual(add.offering.number, '330')
-  assert.deepEqual(rem.cur, { prefix: 'CS', number: '101', section: 'A', lab: undefined, labSeq: undefined })
+  assert.deepEqual(rem.cur, {
+    prefix: 'CS',
+    number: '101',
+    section: 'A',
+    lab: undefined,
+    labSeq: undefined,
+    days: 'MWF',
+    time: '9:20-10:30',
+  })
 })
 
 test('a cross-list ownership claim rides in changes but stays out of the readable diff', () => {
@@ -200,6 +210,72 @@ test('describeChange reads naturally', () => {
       diff: [{ field: 'time', from: '', to: '8:00-9:10' }],
     }),
     'CS 101 A: time set to 8:00-9:10',
+  )
+})
+
+test('describeChange names the meeting for split rows only when asked', () => {
+  const add = {
+    kind: 'add',
+    offering: { prefix: 'MUS', number: '001', section: 'A', days: 'R', time: '16:10-17:00', id: 'r' },
+  }
+  const rem = {
+    kind: 'remove',
+    cur: { prefix: 'MUS', number: '001', section: 'A', days: 'MW', time: '16:00-16:50', id: 'mw' },
+  }
+  const upd = {
+    kind: 'update',
+    cur: { prefix: 'MUS', number: '001', section: 'A', days: 'R', time: '16:10-17:00', id: 'r' },
+    changes: { days: 'T', time: '14:15-16:00' },
+    diff: [
+      { field: 'days', from: 'R', to: 'T' },
+      { field: 'time', from: '16:10-17:00', to: '14:15-16:00' },
+    ],
+  }
+  // Default labels are exactly as before (no band).
+  assert.equal(describeChange(add), 'add MUS 001 A')
+  assert.equal(describeChange(rem), 'remove MUS 001 A')
+  assert.equal(describeChange(upd), 'MUS 001 A: days from R to T, time from 16:10-17:00 to 14:15-16:00')
+  // showMeeting names the band; an update uses the band it moves to.
+  assert.equal(describeChange(add, { showMeeting: true }), 'add MUS 001 A · R 16:10-17:00')
+  assert.equal(describeChange(rem, { showMeeting: true }), 'remove MUS 001 A · MW 16:00-16:50')
+  assert.equal(
+    describeChange(upd, { showMeeting: true }),
+    'MUS 001 A · T 14:15-16:00: days from R to T, time from 16:10-17:00 to 14:15-16:00',
+  )
+})
+
+test('splitGroups marks only sections with more than one meeting', () => {
+  const rows = [
+    { prefix: 'MUS', number: '001', section: 'A', id: 'mw', days: 'MW', time: '16:00-16:50' },
+    { prefix: 'MUS', number: '001', section: 'A', id: 'r', days: 'R', time: '16:10-17:00' },
+    { prefix: 'CS', number: '220', section: 'A', id: 'cs', days: 'MWF', time: '9:20-10:30' },
+    { prefix: 'BIO', number: '166', section: 'A', id: 'lab', lab: true, labSeq: 1 },
+  ]
+  const groups = splitGroups(rows)
+  assert.equal(groups.has('MUS|001|A'), true)
+  assert.equal(groups.has('CS|220|A'), false, 'a single meeting is not split')
+  assert.equal(groups.has('BIO|166|A'), false, 'a lab never makes its section split')
+  assert.equal(
+    opGroupKey({ kind: 'add', offering: { prefix: 'MUS', number: '001', section: 'A' } }),
+    'MUS|001|A',
+  )
+  assert.equal(opGroupKey({ kind: 'remove', cur: { prefix: 'CS', number: '220', section: 'A' } }), 'CS|220|A')
+})
+
+test('renderChanges names the meeting for split rows when given the split set', () => {
+  const ops = [
+    {
+      kind: 'add',
+      offering: { prefix: 'MUS', number: '001', section: 'A', days: 'R', time: '16:10-17:00', id: 'r' },
+    },
+    {
+      kind: 'add',
+      offering: { prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '9:20-10:30', id: 'cs' },
+    },
+  ]
+  assert.equal(
+    renderChanges(ops, 'text', { splitGroups: new Set(['MUS|001|A']) }),
+    'add MUS 001 A · R 16:10-17:00\nadd CS 220 A',
   )
 })
 

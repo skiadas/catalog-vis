@@ -1416,7 +1416,7 @@ test('split-section rows edit, move, and cancel independently with a single net 
     assert.equal(rows()[0].instructor, 'Smith', 'MW sibling untouched')
     assert.equal(rows()[1].instructor, 'Wahl')
     assert.equal(store.historyEntries.value.length, 1)
-    assert.match(store.historyEntries.value[0].label, /MUS 001 A: instructor/)
+    assert.match(store.historyEntries.value[0].label, /^MUS 001 A · R 16:10-17:00: instructor/)
 
     // Dragging the R meeting moves only it (the id rides in the drag payload);
     // still one net row for the course.
@@ -1456,6 +1456,84 @@ test('split-section rows edit, move, and cancel independently with a single net 
     assert.ok(store.cancelChange(store.historyEntries.value[0].key))
     assert.equal(rows()[1].instructor, 'Smith')
   })
+})
+
+test('history names the meeting band for a split row', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('SplitLabels', '2026-27', [])
+    store.setTermOfferings(id, 'F', [
+      { prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '9:20-10:30' },
+    ])
+    await store.setEditingSchedule(id, 'edit')
+    const first = store.viewOfferings(store.scheduleById(id))[0]
+    const second = store.addMeetingToSchedule(id, {
+      prefix: 'CS',
+      number: '220',
+      section: 'A',
+      id: first.id,
+    })
+    store.updateOffering(
+      id,
+      { prefix: 'CS', number: '220', section: 'A', id: second.id },
+      { days: 'R', time: '13:00-14:30' },
+    )
+    const entry = store.historyEntries.value.find(
+      (e) => e.op.kind === 'add' && e.op.offering.id === second.id,
+    )
+    assert.ok(entry, 'the added meeting is its own history row')
+    assert.equal(entry.label, 'add CS 220 A · R 13:00-14:30')
+  })
+})
+
+test('cancelling a mirrored split-meeting add keeps the cross-list group parallel', async () => {
+  const { crossListings } = await import('@major-vis/catalog-client')
+  const prev = crossListings.value
+  crossListings.value = /** @type {any} */ ([{ id: 'anth-222-soc-222', codes: ['ANTH 222', 'SOC 222'] }])
+  try {
+    await withRemote(async ({ store }) => {
+      store.setRemote(false)
+      const { setApiBase } = await import('../src/backend.js')
+      setApiBase('../../api')
+
+      const id = await store.addSchedule('XLCancel', '2026-27', [])
+      store.setTermOfferings(id, 'F', [
+        {
+          prefix: 'ANTH',
+          number: '222',
+          section: 'A',
+          days: 'MW',
+          time: '9:00-10:10',
+          crossListOwner: 'ANTH',
+        },
+        {
+          prefix: 'SOC',
+          number: '222',
+          section: 'A',
+          days: 'MW',
+          time: '9:00-10:10',
+          crossListOwner: 'ANTH',
+        },
+      ])
+      await store.setEditingSchedule(id, 'edit')
+      const source = store.viewOfferings(store.scheduleById(id)).find((o) => o.prefix === 'ANTH')
+      store.addMeetingToSchedule(id, { prefix: 'ANTH', number: '222', section: 'A', id: source.id })
+      let rows = store.viewOfferings(store.scheduleById(id))
+      assert.equal(rows.length, 4)
+      assert.equal(store.historyEntries.value.length, 2, 'one row per mirrored version')
+
+      // Cancelling one version's add cancels the whole band across the group.
+      assert.ok(store.cancelChange(store.historyEntries.value[0].key))
+      rows = store.viewOfferings(store.scheduleById(id))
+      assert.equal(rows.length, 2, 'both mirrored rows are gone')
+      assert.ok(rows.every((o) => o.days === 'MW'))
+    })
+  } finally {
+    crossListings.value = prev
+  }
 })
 
 test('history: rows expose editability and jump-to-edit opens the course editor', async () => {

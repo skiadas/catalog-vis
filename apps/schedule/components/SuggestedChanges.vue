@@ -69,7 +69,7 @@
               </div>
               <div v-if="(owned || isMine(s)) && s.status === 'pending'" class="suggested-ops">
                 <div v-for="e in s.operations" :key="e.id" class="suggested-op" :class="'op-' + opStatus(e)">
-                  <span class="suggested-op-text">{{ describeChange(e.op) || '(empty change)' }}</span>
+                  <span class="suggested-op-text">{{ opLabel(s, e) || '(empty change)' }}</span>
                   <span v-if="opStatus(e) !== 'pending'" class="suggested-op-status">{{ opStatus(e) }}</span>
                   <span v-else class="suggested-op-actions">
                     <template v-if="owned">
@@ -135,9 +135,10 @@ import {
   myDepartments,
   remote,
   activeTerm,
+  splitGroupsFor,
 } from '../src/scheduleStore.js'
 import { TERM_LABELS } from '@major-vis/schedule-core'
-import { renderChanges, describeChange } from '@major-vis/schedule-core/diff'
+import { renderChanges, describeChange, opGroupKey } from '@major-vis/schedule-core/diff'
 import { useModalFocus } from '../src/modalFocus.js'
 import { displayName } from '../src/names.js'
 
@@ -172,7 +173,12 @@ export default {
     const draftOps = computed(() =>
       props.scheduleId ? draftOperations(props.scheduleId, activeTerm.value) : [],
     )
-    const draftText = computed(() => renderChanges(draftOps.value, 'text') || '(no changes yet)')
+    const draftText = computed(
+      () =>
+        renderChanges(draftOps.value, 'text', {
+          splitGroups: splitGroupsFor(draftOps.value, props.scheduleId),
+        }) || '(no changes yet)',
+    )
 
     // Refresh suggestions on mount and whenever the panel's schedule changes.
     const load = async () => {
@@ -183,6 +189,14 @@ export default {
 
     const opStatus = (e) => (e && e.resolution && e.resolution.status) || 'pending'
     const hasPending = (s) => (s.operations || []).some((e) => opStatus(e) === 'pending')
+
+    // One op's readable label, naming the meeting when its section is split
+    // (the split set comes from the schedule's published term plus the row's
+    // own ops, so a newly added meeting counts too).
+    const opLabel = (s, e) => {
+      const groups = splitGroupsFor(s.operations || [], props.scheduleId)
+      return describeChange(e.op, { showMeeting: groups.has(opGroupKey(e.op)) })
+    }
 
     // The row status pill: final states verbatim; a live row under review shows
     // how much of it is settled ("pending · accepted 1 of 3").
@@ -201,7 +215,7 @@ export default {
       (s.operations || [])
         .map((e) => {
           const label = opStatus(e)
-          const text = describeChange(e.op)
+          const text = opLabel(s, e)
           return label === 'pending' ? text : `${text} [${label}]`
         })
         .join('\n') || '(no changes)'
@@ -264,9 +278,9 @@ export default {
       draftText,
       draftOps,
       changeText,
-      describeChange,
       displayName,
       opStatus,
+      opLabel,
       hasPending,
       rowLabel,
       isMine,

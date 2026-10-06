@@ -597,6 +597,15 @@ test('split meetings: add another meeting time, jump between meetings, remove on
   await em.getByRole('button', { name: 'Save changes' }).click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
 
+  // The session's change list names the meeting band for the split row, so the
+  // second meeting reads apart from the section it was added beside.
+  await page.getByRole('button', { name: 'History' }).click()
+  const history = page.locator('.modal[aria-labelledby="history-title"]')
+  await history.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(history.getByText('add CS 220 A · R 13:00-14:30')).toBeVisible()
+  await history.getByRole('button', { name: 'OK' }).click()
+  await history.waitFor({ state: 'detached', timeout: 5000 })
+
   // Reopen the section: the inline note lists the other band, and following it
   // switches the editor to that meeting (which meeting opens first is not
   // order-dependent — assert the note flips).
