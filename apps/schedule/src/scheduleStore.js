@@ -1544,6 +1544,19 @@ export function importCsvRows(scheduleId, rows) {
   return written
 }
 
+// A stable identity for a candidate row in the copy dialog's review list: the
+// row's content `id` when it has one, else its code/section/lab/band, plus the
+// row's position so exact duplicates still get distinct keys. The position
+// makes keys order-dependent, which is fine — the candidate list is fixed while
+// the user reviews it.
+function copyCandidateKey(o, index) {
+  const base =
+    o && o.id
+      ? `id:${o.id}`
+      : `k:${o.prefix || ''}|${o.number || ''}|${o.section || ''}|${o.lab ? `L${o.labSeq || 0}` : ''}|${o.days || ''}|${o.time || ''}`
+  return `${base}#${index}`
+}
+
 // The source rows a copy carries for `prefixes`: every row whose department
 // prefix is selected, plus — when `includeSiblings` — the sibling versions of
 // those codes that are present in the source (catalog cross-list groups).
@@ -1604,13 +1617,32 @@ function copyOutsideDeptCodes(rows) {
 // upserted onto the target's current active term. Pure read — returns the merged
 // offerings plus counts and warnings for the dialog preview, or a zeroed plan
 // when the source/target is missing or they are the same schedule.
+//
+// `candidates` is the full filtered row list (independent of the selection),
+// each annotated with a stable `key`, display fields, and the `action` the copy
+// will take ('added' | 'updated' | 'unchanged') — the dialog's review step. When
+// `selectedKeys` is a non-null iterable, only those candidate keys are merged;
+// passing null/undefined selects every candidate (the historical behavior).
 /**
  * @param {string | number} targetId
  * @param {string | number} sourceId
- * @param {{ prefixes?: string[]; includeSiblings?: boolean }} [opts]
+ * @param {{ prefixes?: string[]; includeSiblings?: boolean; selectedKeys?: Iterable<string> | null }} [opts]
  */
-export function planCourseCopy(targetId, sourceId, { prefixes = [], includeSiblings = false } = {}) {
-  const empty = { added: 0, updated: 0, unchanged: 0, rows: 0, orphans: [], outside: [], offerings: null }
+export function planCourseCopy(
+  targetId,
+  sourceId,
+  { prefixes = [], includeSiblings = false, selectedKeys = null } = {},
+) {
+  const empty = {
+    added: 0,
+    updated: 0,
+    unchanged: 0,
+    rows: 0,
+    candidates: [],
+    orphans: [],
+    outside: [],
+    offerings: null,
+  }
   const target = scheduleById(targetId)
   const source = scheduleById(sourceId)
   if (!target || !source || String(target.id) === String(source.id)) return empty
@@ -1618,13 +1650,27 @@ export function planCourseCopy(targetId, sourceId, { prefixes = [], includeSibli
   const part = viewPart(target, term)
   const base = (part && part.offerings) || []
   const sourcePart = source.terms && source.terms[term]
-  const selected = filterCopyRows((sourcePart && sourcePart.offerings) || [], prefixes, includeSiblings)
-  const plan = mergeOfferings(base, selected)
+  const all = filterCopyRows((sourcePart && sourcePart.offerings) || [], prefixes, includeSiblings)
+  const preview = mergeOfferings(base, all)
+  const candidates = all.map((o, i) => ({
+    key: copyCandidateKey(o, i),
+    code: offeringCodeLabel(o),
+    section: offeringSectionLabel(o),
+    title: o.title || '',
+    instructor: instructorName(o.instructor),
+    days: o.days || '',
+    time: o.time || '',
+    action: preview.outcomes[i] || 'added',
+  }))
+  const keys = selectedKeys == null ? null : new Set(selectedKeys)
+  const selected = keys ? all.filter((o, i) => keys.has(copyCandidateKey(o, i))) : all
+  const plan = keys ? mergeOfferings(base, selected) : preview
   return {
     added: plan.added,
     updated: plan.updated,
     unchanged: plan.unchanged,
     rows: selected.length,
+    candidates,
     orphans: copyOrphanLabs(selected),
     outside: copyOutsideDeptCodes(selected),
     offerings: plan.offerings,
@@ -1638,10 +1684,13 @@ export function planCourseCopy(targetId, sourceId, { prefixes = [], includeSibli
 // applied counts, or null when the write was refused.
 /**
  * @param {string | number} targetId
- * @param {{ sourceId: string | number; prefixes?: string[]; includeSiblings?: boolean }} opts
+ * @param {{ sourceId: string | number; prefixes?: string[]; includeSiblings?: boolean; selectedKeys?: Iterable<string> | null }} opts
  */
-export function copyCoursesInto(targetId, { sourceId, prefixes = [], includeSiblings = false }) {
-  const plan = planCourseCopy(targetId, sourceId, { prefixes, includeSiblings })
+export function copyCoursesInto(
+  targetId,
+  { sourceId, prefixes = [], includeSiblings = false, selectedKeys = null },
+) {
+  const plan = planCourseCopy(targetId, sourceId, { prefixes, includeSiblings, selectedKeys })
   if (!plan.offerings) return null
   if (plan.added === 0 && plan.updated === 0) {
     return { added: 0, updated: 0, unchanged: plan.unchanged }

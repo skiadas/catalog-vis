@@ -956,7 +956,9 @@ function copyFieldsChanged(a, b) {
 // is appended with the source's fields. A row's `crossListOwner` travels with a
 // copy (a matched row keeps the target's, an added row keeps the source's), so
 // the cross-list permission exception still applies to the copied group.
-// Returns a new array plus added/updated/unchanged counts.
+// Returns a new array plus added/updated/unchanged counts. `outcomes` is
+// aligned to `incoming` (one 'added' | 'updated' | 'unchanged' per row), so a
+// caller previewing a copy can label each candidate row with what it will do.
 export function mergeOfferings(base, incoming) {
   const list = (base || []).map((o) => ({ ...o }))
   const byKey = new Map()
@@ -968,6 +970,7 @@ export function mergeOfferings(base, incoming) {
   let added = 0
   let updated = 0
   let unchanged = 0
+  const outcomes = []
   for (const src of incoming || []) {
     const k = copyMatchKey(src)
     const idxs = byKey.get(k) || []
@@ -989,8 +992,10 @@ export function mergeOfferings(base, incoming) {
       if (copyFieldsChanged(list[target], row)) {
         list[target] = row
         updated++
+        outcomes.push('updated')
       } else {
         unchanged++
+        outcomes.push('unchanged')
       }
     } else {
       // A copied row is new to the target: drop the source id so the target
@@ -1000,9 +1005,10 @@ export function mergeOfferings(base, incoming) {
       if (!byKey.has(k)) byKey.set(k, [])
       byKey.get(k).push(list.length - 1)
       added++
+      outcomes.push('added')
     }
   }
-  return { offerings: list, added, updated, unchanged }
+  return { offerings: list, added, updated, unchanged, outcomes }
 }
 
 // Removes the offering matching `cur` (its full identity — the content `id`

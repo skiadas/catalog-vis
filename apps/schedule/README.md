@@ -247,14 +247,16 @@ to edit a schedule you don't own (or that no longer exists) bounces back to the
 view.
 
 **Copy courses…** bulk-upserts a filtered slice of another viewable schedule's
-**active term** into the schedule being edited — e.g. bring a department's
-offerings forward from an old schedule. Pick the source, the departments
-(prefixes) to carry over, and optionally its cross-listed versions. A live
-preview shows how many rows are **new** vs **updated** (a matching section is
-updated to the source, a missing one is added) plus lab and department
-warnings; confirming writes through the normal edit path, so an owner's copy
-lands in History (cancellable) and a suggester's lands in the draft as a
-proposal the server still scopes to their departments (cross-listing is the
+**active term** into the schedule being edited — e.g. copy a department's
+courses from a past schedule. A two-step wizard picks the source and the
+departments (prefixes) to carry over, plus optionally its cross-listed versions,
+then lists every candidate course with a checkbox (and **Select all** /
+**Deselect all**), each tagged **new** or **update**, so individual rows can be
+left out. A live preview shows how many rows are **new** vs **updated** (a
+matching section is updated to the source, a missing one is added) plus lab and
+department warnings; confirming writes through the normal edit path, so an
+owner's copy lands in History (cancellable) and a suggester's lands in the draft
+as a proposal the server still scopes to their departments (cross-listing is the
 one exception). Copying another term means switching term and repeating.
 
 **The course editor and the proposals panel are overlay routes**, so they are

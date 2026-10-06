@@ -436,6 +436,7 @@ test('mergeOfferings upserts by section tuple, keeping the target id', () => {
   assert.equal(out.added, 1)
   assert.equal(out.updated, 1)
   assert.equal(out.unchanged, 0)
+  assert.deepEqual(out.outcomes, ['updated', 'added'], 'one outcome per incoming row, in order')
   assert.equal(out.offerings.length, 3)
   const updated = out.offerings.find((o) => o.number === '101')
   assert.equal(updated.id, 't1', 'the target row keeps its id')
@@ -463,11 +464,13 @@ test('mergeOfferings is a no-op for identical rows and matches split sections by
   assert.equal(same.added, 0)
   assert.equal(same.updated, 0)
   assert.equal(same.unchanged, 2)
+  assert.deepEqual(same.outcomes, ['unchanged', 'unchanged'])
   // A changed R band updates only the R row; the MW sibling is untouched.
   const moved = mergeOfferings(base, [
     { prefix: 'MUS', number: '001', section: 'A', days: 'R', time: '14:15-16:00' },
   ])
   assert.equal(moved.updated, 1)
+  assert.deepEqual(moved.outcomes, ['updated'])
   assert.equal(moved.offerings.find((o) => o.id === 'r').time, '14:15-16:00')
   assert.equal(moved.offerings.find((o) => o.id === 'mw').time, '16:00-16:50')
   // A band with no match is a new split meeting.
@@ -475,6 +478,7 @@ test('mergeOfferings is a no-op for identical rows and matches split sections by
     { prefix: 'MUS', number: '001', section: 'A', days: 'T', time: '10:00-11:45' },
   ])
   assert.equal(third.added, 1)
+  assert.deepEqual(third.outcomes, ['added'])
   assert.equal(third.offerings.length, 3)
 })
 

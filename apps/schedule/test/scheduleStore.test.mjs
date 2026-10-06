@@ -1791,6 +1791,64 @@ test('copyCoursesInto upserts a filtered prefix from another schedule into the a
   })
 })
 
+test('planCourseCopy previews candidates and copies only the selected subset', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const target = await store.addSchedule('This year', '2026-27', [
+      { prefix: 'MUS', number: '101', section: 'A', instructor: 'Old', days: 'MWF', time: '9:20-10:30' },
+    ])
+    const source = await store.addSchedule('Two years ago', '2024-25', [
+      { prefix: 'MUS', number: '101', section: 'A', instructor: 'New', days: 'MWF', time: '9:20-10:30' },
+      { prefix: 'MUS', number: '102', section: 'B', instructor: 'Fresh', days: 'TR', time: '10:00-11:45' },
+    ])
+
+    const full = store.planCourseCopy(target, source, { prefixes: ['MUS'] })
+    assert.equal(full.candidates.length, 2, 'the full filtered list is the review set')
+    assert.deepEqual(
+      full.candidates.map((c) => c.code),
+      ['MUS 101', 'MUS 102'],
+    )
+    assert.deepEqual(
+      full.candidates.map((c) => c.action),
+      ['updated', 'added'],
+      'each candidate carries what the copy will do to it',
+    )
+    assert.deepEqual([full.added, full.updated], [1, 1])
+
+    const onlyNew = full.candidates.filter((c) => c.action === 'added').map((c) => c.key)
+    const subset = store.planCourseCopy(target, source, { prefixes: ['MUS'], selectedKeys: onlyNew })
+    assert.equal(subset.rows, 1)
+    assert.deepEqual([subset.added, subset.updated], [1, 0])
+
+    const applied = store.copyCoursesInto(target, {
+      sourceId: source,
+      prefixes: ['MUS'],
+      selectedKeys: onlyNew,
+    })
+    assert.deepEqual(applied, { added: 1, updated: 0, unchanged: 0 })
+    const rows = store.scheduleById(target).terms.F.offerings
+    assert.equal(rows.length, 2)
+    assert.equal(
+      rows.find((o) => o.number === '101').instructor,
+      'Old',
+      'the unticked update did not land',
+    )
+    assert.ok(
+      rows.some((o) => o.number === '102'),
+      'the ticked new section landed',
+    )
+
+    assert.deepEqual(
+      store.copyCoursesInto(target, { sourceId: source, prefixes: ['MUS'], selectedKeys: [] }),
+      { added: 0, updated: 0, unchanged: 0 },
+      'selecting nothing writes nothing',
+    )
+  })
+})
+
 test('copyCoursesInto writes the suggest draft, leaving the published term untouched', async () => {
   await withRemote(async ({ store }) => {
     store.setRemote(false)

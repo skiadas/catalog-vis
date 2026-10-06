@@ -185,15 +185,18 @@ export const entries = [
       {
         act: 'custom',
         run: async (page) => {
-          // Show the department choice at work: untick CS, leaving MUS.
+          // Leave MUS selected (untick CS) and open the review step, so the shot
+          // shows the candidate list with its new/update tags and bulk select.
           const modal = page.locator('.modal[aria-labelledby="schedule-copy-title"]')
           await modal.locator('.schedule-copy-prefixes button', { hasText: 'CS' }).click()
           await modal.getByText('1 new · 1 updated').waitFor({ timeout: 10_000 })
+          await modal.getByRole('button', { name: 'Review 2 courses' }).click()
+          await modal.getByText('2 of 2 selected').waitFor({ timeout: 10_000 })
         },
       },
     ],
-    alt: 'The Copy courses dialog: a source schedule, department choices, and a summary of how many courses are new or updated',
-    caption: 'Copy courses — bring a department’s offerings over from another schedule.',
+    alt: 'The Copy courses review step: each matching course with a checkbox and a new or update tag, plus Select all and Deselect all',
+    caption: 'Copy courses — review the courses from a past schedule before copying them.',
   },
   {
     file: 'schedule-table.png',

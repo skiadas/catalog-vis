@@ -203,8 +203,8 @@ export const fixtures = {
   },
 
   // Two schedules for the "copy courses" walkthrough: this year's target (a
-  // department's courses plus another) and an older source to bring a
-  // department forward from.
+  // department's courses plus another) and a past source schedule to copy a
+  // department from.
   copy: async (request) => {
     const target = await createSchedule(request, {
       name: 'Fall 2026',

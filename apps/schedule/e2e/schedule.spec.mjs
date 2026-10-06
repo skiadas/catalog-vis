@@ -670,9 +670,28 @@ test('copy courses from another schedule upserts a filtered department', async (
   const copy = page.locator('.modal[aria-labelledby="schedule-copy-title"]')
   await copy.waitFor({ state: 'visible', timeout: 5000 })
 
-  // The only other schedule is the source; the preview reports the upsert.
+  // The only other schedule is the source; the choose step previews the upsert.
   await copy.locator('#schedule-copy-source').selectOption({ label: 'Two years ago' })
   await expect(copy.locator('.schedule-copy-counts')).toHaveText('1 new · 1 updated')
+
+  // Review step: both candidates are listed and ticked, with bulk controls.
+  await copy.getByRole('button', { name: 'Review 2 courses' }).click()
+  await expect(copy.locator('.schedule-copy-item')).toHaveCount(2)
+  await expect(copy.locator('.schedule-copy-list-count')).toHaveText('2 of 2 selected')
+
+  // Deselect all disables the copy; Select all brings both back.
+  await copy.getByRole('button', { name: 'Deselect all', exact: true }).click()
+  await expect(copy.locator('.schedule-copy-list-count')).toHaveText('0 of 2 selected')
+  await expect(copy.getByRole('button', { name: 'Copy', exact: true })).toBeDisabled()
+  await copy.getByRole('button', { name: 'Select all', exact: true }).click()
+  await expect(copy.locator('.schedule-copy-list-count')).toHaveText('2 of 2 selected')
+
+  // Unticking the update narrows the copy to the new section; put it back.
+  await copy.locator('.schedule-copy-item', { hasText: 'MUS 101' }).getByRole('checkbox').uncheck()
+  await expect(copy.locator('.schedule-copy-list-count')).toHaveText('1 of 2 selected')
+  await expect(copy.getByRole('button', { name: 'Copy 1 course' })).toBeEnabled()
+  await copy.locator('.schedule-copy-item', { hasText: 'MUS 101' }).getByRole('checkbox').check()
+
   await copy.getByRole('button', { name: 'Copy 2 courses' }).click()
   await copy.waitFor({ state: 'detached', timeout: 5000 })
 
@@ -1479,6 +1498,30 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await editDialog.waitFor({ state: 'detached', timeout: 5000 })
 
   await blockTime.click()
+  await page.getByRole('button', { name: 'Done' }).click()
+
+  // The copy-courses wizard: edit the empty "Axe schedule" and source the
+  // populated "Axe create", then scan the review step's checkbox list and its
+  // add/update tags.
+  await page
+    .locator('.schedule-pill', { hasText: 'Axe schedule' })
+    .locator('.schedule-pill-edit')
+    .first()
+    .click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: /Copy courses/ }).click()
+  const copyDialog = page.locator('.modal[aria-labelledby="schedule-copy-title"]')
+  await copyDialog.waitFor({ state: 'visible', timeout: 5000 })
+  await copyDialog.locator('#schedule-copy-source').selectOption({ label: 'Axe create' })
+  await copyDialog.getByRole('button', { name: /Review \d+ course/ }).click()
+  await settle(page)
+  const copyViolations = await seriousViolations(
+    page,
+    '.modal[aria-labelledby="schedule-copy-title"]',
+  )
+  expect(brief(copyViolations), 'copy courses review step').toEqual([])
+  await copyDialog.getByRole('button', { name: 'Cancel' }).click()
+  await copyDialog.waitFor({ state: 'detached', timeout: 5000 })
   await page.getByRole('button', { name: 'Done' }).click()
 
   // The core-requirements quick-stats dialog (opened from the picker cluster).
