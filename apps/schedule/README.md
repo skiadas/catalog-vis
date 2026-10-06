@@ -241,10 +241,21 @@ into editing CS), the picker reduces to the schedule pills (the edited one
 tagged _Editing_ or _Suggesting_, references removable with their eye), and
 manage/CSV/color are out of reach. The session bar carries an **Editing**/**Suggesting** chip, the
 schedule's rename field, and the session's actions right-aligned (Add course ·
-History · Propose changes · Done). Leaving — Done, browser back, or a header link
+Copy courses · History · Propose changes · Done). Leaving — Done, browser back, or a header link
 — ends the session; an unsaved suggest draft asks before discarding. A deep link
 to edit a schedule you don't own (or that no longer exists) bounces back to the
 view.
+
+**Copy courses…** bulk-upserts a filtered slice of another viewable schedule's
+**active term** into the schedule being edited — e.g. bring a department's
+offerings forward from an old schedule. Pick the source, the departments
+(prefixes) to carry over, and optionally its cross-listed versions. A live
+preview shows how many rows are **new** vs **updated** (a matching section is
+updated to the source, a missing one is added) plus lab and department
+warnings; confirming writes through the normal edit path, so an owner's copy
+lands in History (cancellable) and a suggester's lands in the draft as a
+proposal the server still scopes to their departments (cross-listing is the
+one exception). Copying another term means switching term and repeating.
 
 **The course editor and the proposals panel are overlay routes**, so they are
 deep-linkable and back closes them without leaving the session. The editor is

@@ -634,6 +634,73 @@ test('split meetings: add another meeting time, jump between meetings, remove on
   assertClean(errors)
 })
 
+// Bulk copy: another schedule's filtered courses upsert into the schedule being
+// edited, previewed before the write and landed in History.
+test('copy courses from another schedule upserts a filtered department', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'copy-user')
+
+  const importCsv = async (name, rows) => {
+    await page.getByRole('button', { name: /Your schedules/ }).click()
+    await page.getByRole('button', { name: '＋ New schedule' }).click()
+    await page.getByRole('button', { name: 'Import CSV…' }).click()
+    await page.setInputFiles('.schedule-upload-input', {
+      name: name + '.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(
+        'dept_prefix,course_number,course_section,instructor,days,times,term\n' + rows.join('\n') + '\n',
+      ),
+    })
+    await expect(page.getByText(/Imported \d+ course row\(s\)/)).toBeVisible()
+    await page.locator('#schedule-create-name').fill(name)
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
+    await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+    await closeManage(page)
+    await page.locator('.schedule-pill', { hasText: name }).first().waitFor({ timeout: 10000 })
+  }
+
+  await importCsv('This year', ['MUS,101,A,Old,MWF,9:20-10:30,F', 'CS,220,A,Jones,MWF,9:20-10:30,F'])
+  await importCsv('Two years ago', ['MUS,101,A,New,MWF,9:20-10:30,F', 'MUS,102,B,Fresh,TR,10:00-11:45,F'])
+
+  // Edit "This year" and open the copy dialog.
+  await page.locator('.schedule-pill', { hasText: 'This year' }).locator('.schedule-pill-edit').click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: /Copy courses/ }).click()
+  const copy = page.locator('.modal[aria-labelledby="schedule-copy-title"]')
+  await copy.waitFor({ state: 'visible', timeout: 5000 })
+
+  // The only other schedule is the source; the preview reports the upsert.
+  await copy.locator('#schedule-copy-source').selectOption({ label: 'Two years ago' })
+  await expect(copy.locator('.schedule-copy-counts')).toHaveText('1 new · 1 updated')
+  await copy.getByRole('button', { name: 'Copy 2 courses' }).click()
+  await copy.waitFor({ state: 'detached', timeout: 5000 })
+
+  // The missing section is now on the grid, and the change list names both rows.
+  await expect(page.getByText('MUS 102').first()).toBeVisible()
+  await page.getByRole('button', { name: /History/ }).click()
+  const history = page.locator('.modal[aria-labelledby="history-title"]')
+  await history.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(history.getByText('add MUS 102 B')).toBeVisible()
+  await expect(history.getByText('MUS 101 A: instructor from Old to New')).toBeVisible()
+  await history.getByRole('button', { name: 'OK' }).click()
+  await history.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Clean up: leave the session and delete both schedules.
+  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'This year' })
+    .getByRole('button', { name: 'Delete This year' })
+    .click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Two years ago' })
+    .getByRole('button', { name: 'Delete Two years ago' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
 test('history panel lists session edits; Cancel removes one change, Restore brings it back, Edit jumps', async ({
   page,
 }) => {

@@ -920,6 +920,91 @@ export function addOfferingToSchedule(offerings, offering) {
   return [...(offerings || []), offering]
 }
 
+// The editable fields a copy carries from a source row onto a target row. It
+// excludes `crossListOwner` (group ownership is the target's own concern) and
+// the identity fields (matched, never overwritten).
+const COPY_FIELDS = ['title', 'instructor', 'secondaryInstructors', 'days', 'time', 'seats', 'coreReqs']
+
+// The section a copy matches on: prefix/number/section plus the lab marker and
+// sequence, so a lab never matches the lecture it mirrors.
+function copyMatchKey(o) {
+  const lab = o.lab ? `|L${o.labSeq || 0}` : ''
+  return `${o.prefix || ''}|${o.number || ''}|${o.section || ''}${lab}`
+}
+
+// A row's meeting band, used to disambiguate a split section (several rows
+// sharing the section tuple).
+function copyBand(o) {
+  return `${o.days || ''}|${o.time || ''}`
+}
+
+function copyCanonical(v) {
+  if (Array.isArray(v)) return v.map((n) => String(n || '').trim()).join('|')
+  if (v == null) return ''
+  return String(v).trim()
+}
+
+function copyFieldsChanged(a, b) {
+  return COPY_FIELDS.some((f) => copyCanonical(a[f]) !== copyCanonical(b[f]))
+}
+
+// Upserts `incoming` offerings into `base`: a row is matched by its section
+// tuple (prefix/number/section + lab marker), and — when the section carries
+// split meetings (several base rows share the tuple) — by its meeting days,
+// then its full band. A matched row takes the incoming row's editable fields
+// but keeps its own `id` (so history/diff identity is stable); an unmatched row
+// is appended with the source's fields. A row's `crossListOwner` travels with a
+// copy (a matched row keeps the target's, an added row keeps the source's), so
+// the cross-list permission exception still applies to the copied group.
+// Returns a new array plus added/updated/unchanged counts.
+export function mergeOfferings(base, incoming) {
+  const list = (base || []).map((o) => ({ ...o }))
+  const byKey = new Map()
+  for (let i = 0; i < list.length; i++) {
+    const k = copyMatchKey(list[i])
+    if (!byKey.has(k)) byKey.set(k, [])
+    byKey.get(k).push(i)
+  }
+  let added = 0
+  let updated = 0
+  let unchanged = 0
+  for (const src of incoming || []) {
+    const k = copyMatchKey(src)
+    const idxs = byKey.get(k) || []
+    let target = -1
+    if (idxs.length === 1) {
+      target = idxs[0]
+    } else if (idxs.length > 1) {
+      // Split section: prefer the row with the same meeting days (a changed
+      // time still matches its band), then the exact band.
+      const sameDays = idxs.filter((i) => (list[i].days || '') === (src.days || ''))
+      if (sameDays.length === 1) target = sameDays[0]
+      else if (sameDays.length > 1) target = sameDays.find((i) => copyBand(list[i]) === copyBand(src)) ?? -1
+    }
+    if (target >= 0) {
+      const row = { ...list[target] }
+      for (const f of COPY_FIELDS) {
+        if (src[f] !== undefined) row[f] = Array.isArray(src[f]) ? [...src[f]] : src[f]
+      }
+      if (copyFieldsChanged(list[target], row)) {
+        list[target] = row
+        updated++
+      } else {
+        unchanged++
+      }
+    } else {
+      // A copied row is new to the target: drop the source id so the target
+      // assigns a fresh (collision-free) content id.
+      const row = { ...src, id: '' }
+      list.push(row)
+      if (!byKey.has(k)) byKey.set(k, [])
+      byKey.get(k).push(list.length - 1)
+      added++
+    }
+  }
+  return { offerings: list, added, updated, unchanged }
+}
+
 // Removes the offering matching `cur` (its full identity — the content `id`
 // when present, else prefix/number/section and the lab marker) from a
 // schedule's `offerings` array. Removing a lecture section also removes its

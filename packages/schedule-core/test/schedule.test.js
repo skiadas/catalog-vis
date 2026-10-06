@@ -44,6 +44,7 @@ import {
   nextSectionLetter,
   addOfferingToSchedule,
   removeOfferingFromSchedule,
+  mergeOfferings,
   TERM_CONFIGS,
   TERM_KEYS,
   TERM_LABELS,
@@ -394,6 +395,96 @@ test('removeOfferingFromSchedule removes a single lab without touching its lectu
     next.some((o) => !o.lab),
     true,
   )
+})
+
+test('mergeOfferings upserts by section tuple, keeping the target id', () => {
+  const base = [
+    {
+      prefix: 'MUS',
+      number: '101',
+      section: 'A',
+      id: 't1',
+      instructor: 'Old',
+      days: 'MWF',
+      time: '9:20-10:30',
+      seats: 20,
+    },
+    {
+      prefix: 'MUS',
+      number: '102',
+      section: 'A',
+      id: 't2',
+      instructor: 'Keep',
+      days: 'TR',
+      time: '10:00-11:45',
+    },
+  ]
+  const incoming = [
+    {
+      prefix: 'MUS',
+      number: '101',
+      section: 'A',
+      instructor: 'New',
+      days: 'MWF',
+      time: '9:20-10:30',
+      seats: 30,
+      coreReqs: ['LA'],
+    },
+    { prefix: 'MUS', number: '103', section: 'B', instructor: 'Fresh', days: 'MWF', time: '8:00-9:10' },
+  ]
+  const out = mergeOfferings(base, incoming)
+  assert.equal(out.added, 1)
+  assert.equal(out.updated, 1)
+  assert.equal(out.unchanged, 0)
+  assert.equal(out.offerings.length, 3)
+  const updated = out.offerings.find((o) => o.number === '101')
+  assert.equal(updated.id, 't1', 'the target row keeps its id')
+  assert.equal(updated.instructor, 'New')
+  assert.equal(updated.seats, 30)
+  assert.deepEqual(updated.coreReqs, ['LA'])
+  assert.deepEqual(
+    out.offerings.find((o) => o.number === '102'),
+    base[1],
+    'untouched row preserved',
+  )
+  assert.equal(out.offerings.find((o) => o.number === '103').instructor, 'Fresh', 'new row appended')
+})
+
+test('mergeOfferings is a no-op for identical rows and matches split sections by band', () => {
+  const base = [
+    { prefix: 'MUS', number: '001', section: 'A', id: 'mw', days: 'MW', time: '16:00-16:50' },
+    { prefix: 'MUS', number: '001', section: 'A', id: 'r', days: 'R', time: '16:10-17:00' },
+  ]
+  // Identical incoming -> unchanged, no rewrite.
+  const same = mergeOfferings(
+    base,
+    base.map((o) => ({ ...o })),
+  )
+  assert.equal(same.added, 0)
+  assert.equal(same.updated, 0)
+  assert.equal(same.unchanged, 2)
+  // A changed R band updates only the R row; the MW sibling is untouched.
+  const moved = mergeOfferings(base, [
+    { prefix: 'MUS', number: '001', section: 'A', days: 'R', time: '14:15-16:00' },
+  ])
+  assert.equal(moved.updated, 1)
+  assert.equal(moved.offerings.find((o) => o.id === 'r').time, '14:15-16:00')
+  assert.equal(moved.offerings.find((o) => o.id === 'mw').time, '16:00-16:50')
+  // A band with no match is a new split meeting.
+  const third = mergeOfferings(base, [
+    { prefix: 'MUS', number: '001', section: 'A', days: 'T', time: '10:00-11:45' },
+  ])
+  assert.equal(third.added, 1)
+  assert.equal(third.offerings.length, 3)
+})
+
+test('mergeOfferings carries a source crossListOwner onto a new row', () => {
+  const out = mergeOfferings(
+    [],
+    [{ prefix: 'ANTH', number: '222', section: 'A', days: 'MW', time: '9:00-10:10', crossListOwner: 'ANTH' }],
+  )
+  assert.equal(out.added, 1)
+  assert.equal(out.offerings[0].crossListOwner, 'ANTH', 'the group owner travels with the copy')
 })
 
 test('moveOfferingSmart moves a lab, not the lecture with the same section letter', () => {

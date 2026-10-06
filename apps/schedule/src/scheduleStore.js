@@ -21,6 +21,7 @@ import {
   nextLabSeq,
   addOfferingToSchedule,
   removeOfferingFromSchedule,
+  mergeOfferings,
   TERM_KEYS,
   offeringIdFor,
   uniqueOfferingId,
@@ -1541,6 +1542,112 @@ export function importCsvRows(scheduleId, rows) {
     if (setTermOfferings(scheduleId, t, byTerm[t])) written[t] = byTerm[t].length
   }
   return written
+}
+
+// The source rows a copy carries for `prefixes`: every row whose department
+// prefix is selected, plus — when `includeSiblings` — the sibling versions of
+// those codes that are present in the source (catalog cross-list groups).
+function filterCopyRows(rows, prefixes, includeSiblings) {
+  const want = new Set((prefixes || []).map((p) => String(p).toUpperCase()))
+  const list = rows || []
+  const out = []
+  const chosen = new Set()
+  for (const o of list) {
+    if (!want.has(String(o.prefix || '').toUpperCase())) continue
+    chosen.add(offeringCode(o))
+    out.push(o)
+  }
+  if (!includeSiblings) return out
+  const extra = []
+  for (const code of chosen) {
+    for (const sib of crossListOf(code)) {
+      if (chosen.has(sib)) continue
+      chosen.add(sib)
+      for (const o of list) if (offeringCode(o) === sib) extra.push(o)
+    }
+  }
+  return [...out, ...extra]
+}
+
+// The labels of selected lab rows whose lecture section isn't among them — a
+// copy that would leave an orphan lab (kept, but flagged in the preview).
+function copyOrphanLabs(rows) {
+  const lectures = new Set()
+  for (const o of rows || []) if (!o.lab) lectures.add(`${o.prefix}|${o.number}|${o.section}`)
+  const out = []
+  for (const o of rows || []) {
+    if (o.lab && !lectures.has(`${o.prefix}|${o.number}|${o.section}`)) {
+      out.push(`${o.prefix} ${o.number}L ${o.section}${o.labSeq || ''}`)
+    }
+  }
+  return out
+}
+
+// The selected codes a non-owner's suggest session could not propose: outside
+// the user's departments and not owned by one of them (the cross-list owner
+// exception). The server would refuse the whole proposal, so the dialog warns.
+function copyOutsideDeptCodes(rows) {
+  if (editingRole.value !== 'suggest') return []
+  const mine = new Set(myDepartments.value.map((d) => String(d).toUpperCase()))
+  if (!mine.size) return []
+  const out = new Set()
+  for (const o of rows || []) {
+    const prefix = String(o.prefix || '').toUpperCase()
+    const owner = String(o.crossListOwner || '').toUpperCase()
+    if (!mine.has(prefix) && !mine.has(owner)) out.add(`${o.prefix} ${o.number}`)
+  }
+  return [...out]
+}
+
+// Plans a bulk copy of another schedule's active-term offerings into `targetId`:
+// the source rows matching `prefixes` (plus cross-list siblings when asked) are
+// upserted onto the target's current active term. Pure read — returns the merged
+// offerings plus counts and warnings for the dialog preview, or a zeroed plan
+// when the source/target is missing or they are the same schedule.
+/**
+ * @param {string | number} targetId
+ * @param {string | number} sourceId
+ * @param {{ prefixes?: string[]; includeSiblings?: boolean }} [opts]
+ */
+export function planCourseCopy(targetId, sourceId, { prefixes = [], includeSiblings = false } = {}) {
+  const empty = { added: 0, updated: 0, unchanged: 0, rows: 0, orphans: [], outside: [], offerings: null }
+  const target = scheduleById(targetId)
+  const source = scheduleById(sourceId)
+  if (!target || !source || String(target.id) === String(source.id)) return empty
+  const term = activeTerm.value
+  const part = viewPart(target, term)
+  const base = (part && part.offerings) || []
+  const sourcePart = source.terms && source.terms[term]
+  const selected = filterCopyRows((sourcePart && sourcePart.offerings) || [], prefixes, includeSiblings)
+  const plan = mergeOfferings(base, selected)
+  return {
+    added: plan.added,
+    updated: plan.updated,
+    unchanged: plan.unchanged,
+    rows: selected.length,
+    orphans: copyOrphanLabs(selected),
+    outside: copyOutsideDeptCodes(selected),
+    offerings: plan.offerings,
+  }
+}
+
+// Applies a planned copy to `targetId`'s active term. A no-op (null) when the
+// plan can't be built or changes nothing; otherwise writes through
+// `setTermOfferings` — the owner's direct write, or the suggest session's draft
+// (where the server still enforces the department scope on propose). Returns the
+// applied counts, or null when the write was refused.
+/**
+ * @param {string | number} targetId
+ * @param {{ sourceId: string | number; prefixes?: string[]; includeSiblings?: boolean }} opts
+ */
+export function copyCoursesInto(targetId, { sourceId, prefixes = [], includeSiblings = false }) {
+  const plan = planCourseCopy(targetId, sourceId, { prefixes, includeSiblings })
+  if (!plan.offerings) return null
+  if (plan.added === 0 && plan.updated === 0) {
+    return { added: 0, updated: 0, unchanged: plan.unchanged }
+  }
+  if (!setTermOfferings(targetId, activeTerm.value, plan.offerings)) return null
+  return { added: plan.added, updated: plan.updated, unchanged: plan.unchanged }
 }
 
 // Removes a schedule and deselects it if it was visible. Remote: the server

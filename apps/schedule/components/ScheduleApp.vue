@@ -182,6 +182,7 @@
       />
       <div class="schedule-edit-actions">
         <button class="filter-btn primary" @click="showAddCourse = true">＋ Add course</button>
+        <button class="filter-btn" @click="showCopyCourses = true">Copy courses…</button>
         <button
           class="filter-btn schedule-history-btn"
           :class="{ active: showHistory }"
@@ -274,6 +275,7 @@
   <div v-else class="loading" role="status">Loading schedule...</div>
 
   <ScheduleAddCourse :is-open="showAddCourse" @close="showAddCourse = false" />
+  <ScheduleCopyCourses :is-open="showCopyCourses" :schedule-id="editingId" @close="showCopyCourses = false" />
   <SuggestedChanges v-if="overlay === 'proposals'" :schedule-id="proposalsScheduleId" @close="goBackOrGrid" />
   <ScheduleHistory :is-open="showHistory" @close="showHistory = false" @edit-course="onEditCourse" />
 </template>
@@ -349,6 +351,7 @@ import ScheduleFilters from './ScheduleFilters.vue'
 import ScheduleManage from './ScheduleManage.vue'
 import ScheduleAccess from './ScheduleAccess.vue'
 import ScheduleAddCourse from './ScheduleAddCourse.vue'
+import ScheduleCopyCourses from './ScheduleCopyCourses.vue'
 import SuggestedChanges from './SuggestedChanges.vue'
 import ScheduleHistory from './ScheduleHistory.vue'
 
@@ -369,6 +372,7 @@ export default {
     ScheduleManage,
     ScheduleAccess,
     ScheduleAddCourse,
+    ScheduleCopyCourses,
     SuggestedChanges,
     ScheduleHistory,
   },
@@ -467,6 +471,7 @@ export default {
     // gate whether each is open. (Manage, access, proposals, and the course
     // editor are routes now, not modals.)
     const showAddCourse = ref(false)
+    const showCopyCourses = ref(false)
     const showHistory = ref(false)
 
     // The schedule the suggestions panel acts on: the one being edited, else the
@@ -645,6 +650,7 @@ export default {
       goCourseEdit,
       goBackOrGrid,
       showAddCourse,
+      showCopyCourses,
       showHistory,
       suggestionsScheduleId,
       editingId,

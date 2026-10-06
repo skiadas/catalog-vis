@@ -1749,3 +1749,87 @@ test('proposeDraft surfaces the dept scoping refusal and keeps the draft dirty',
     { adminUsernames: new Set(['registrar']) },
   )
 })
+
+test('copyCoursesInto upserts a filtered prefix from another schedule into the active term', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const target = await store.addSchedule('This year', '2026-27', [
+      { prefix: 'MUS', number: '101', section: 'A', instructor: 'Old', days: 'MWF', time: '9:20-10:30', seats: 20 },
+      { prefix: 'CS', number: '220', section: 'A', instructor: 'Jones', days: 'MWF', time: '9:20-10:30' },
+    ])
+    const source = await store.addSchedule('Two years ago', '2024-25', [
+      { prefix: 'MUS', number: '101', section: 'A', instructor: 'New', days: 'MWF', time: '9:20-10:30', seats: 30 },
+      { prefix: 'MUS', number: '102', section: 'B', instructor: 'Fresh', days: 'TR', time: '10:00-11:45' },
+      { prefix: 'CS', number: '330', section: 'A', instructor: 'Wahl', days: 'MWF', time: '12:00-13:10' },
+    ])
+
+    const plan = store.planCourseCopy(target, source, { prefixes: ['MUS'] })
+    assert.equal(plan.rows, 2, 'only the MUS rows are selected')
+    assert.equal(plan.added, 1)
+    assert.equal(plan.updated, 1)
+    assert.equal(plan.unchanged, 0)
+
+    const applied = store.copyCoursesInto(target, { sourceId: source, prefixes: ['MUS'] })
+    assert.deepEqual(applied, { added: 1, updated: 1, unchanged: 0 })
+
+    const rows = store.scheduleById(target).terms.F.offerings
+    assert.equal(rows.length, 3)
+    const mus101 = rows.find((o) => o.number === '101')
+    assert.equal(mus101.instructor, 'New', 'the existing section is updated')
+    assert.equal(mus101.seats, 30)
+    assert.ok(
+      rows.some((o) => o.number === '102'),
+      'the missing section is added',
+    )
+    assert.ok(
+      !rows.some((o) => o.number === '330'),
+      'another department is not copied',
+    )
+  })
+})
+
+test('copyCoursesInto writes the suggest draft, leaving the published term untouched', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const target = await store.addSchedule('Shared', '2026-27', [
+      { prefix: 'MUS', number: '101', section: 'A', instructor: 'Old', days: 'MWF', time: '9:20-10:30' },
+    ])
+    const source = await store.addSchedule('Old', '2024-25', [
+      { prefix: 'MUS', number: '102', section: 'A', instructor: 'New', days: 'MWF', time: '8:00-9:10' },
+    ])
+    await store.setEditingSchedule(target, 'suggest')
+    const applied = store.copyCoursesInto(target, { sourceId: source, prefixes: ['MUS'] })
+    assert.deepEqual(applied, { added: 1, updated: 0, unchanged: 0 })
+    assert.equal(store.publishedOfferings(store.scheduleById(target)).length, 1, 'published is untouched')
+    assert.equal(store.viewOfferings(store.scheduleById(target)).length, 2, 'the draft carries the copy')
+    assert.equal(store.draftOperations(target).length, 1, 'the copy shows up as one proposal op')
+  })
+})
+
+test('planCourseCopy flags orphan labs and is a no-op against itself', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const target = await store.addSchedule('T', '2026-27', [])
+    const source = await store.addSchedule('S', '2024-25', [
+      { prefix: 'MUS', number: '166', section: 'A', lab: true, labSeq: 1, days: '', time: '' },
+    ])
+    const plan = store.planCourseCopy(target, source, { prefixes: ['MUS'] })
+    assert.equal(plan.orphans.length, 1, 'a lab with no lecture in the selection is flagged')
+    assert.equal(store.planCourseCopy(target, target, { prefixes: ['MUS'] }).offerings, null)
+    assert.deepEqual(store.copyCoursesInto(target, { sourceId: target, prefixes: ['MUS'] }), null)
+    assert.deepEqual(store.copyCoursesInto(target, { sourceId: source, prefixes: ['NOPE'] }), {
+      added: 0,
+      updated: 0,
+      unchanged: 0,
+    })
+  })
+})
