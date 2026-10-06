@@ -79,6 +79,11 @@ works on it too.
    immediately — as a draft only you can see until you propose it.
 5. Add the rest of your courses the same way.
 
+If your department ran this schedule before, you do not have to retype every
+course: **Copy courses…** in the session bar brings a whole department's
+offerings over from an older schedule in one go. See
+[Copying courses from another schedule](/guide/schedule/copy-courses).
+
 Finer details: [Adding a course](/guide/schedule/add-course) and
 [Editing vs suggesting](/guide/schedule/edit-vs-suggest).
 
@@ -94,6 +99,9 @@ to open the editor for that section. It holds everything:
 - **Instructor** — start typing, then pick from the name suggestions.
 - **Meeting time** — pick a standard **Time slot**, type a **Custom time**, or
   choose **No meeting time**.
+- **A second meeting time** — a class that meets more than once a week at
+  different times can hold more than one meeting time. Click **＋ Add another
+  meeting time** and set each one on its own.
 
 <Shot file="schedule-course-editor.png" />
 
@@ -179,6 +187,8 @@ Finer details:
 - [Where a course can hide](/guide/schedule/hiding) — no-meeting courses and
   unusual times.
 - [Adding a lab](/guide/schedule/labs) — attach a lab section to its lecture.
+- [Copying courses from another schedule](/guide/schedule/copy-courses) — bring
+  a department's courses forward from an older schedule.
 - [Downloading a CSV](/guide/schedule/csv) — the current week or a whole
   schedule.
 - [Sharing a schedule](/guide/schedule/sharing) — who can see and suggest.

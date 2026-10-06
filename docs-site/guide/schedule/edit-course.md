@@ -43,3 +43,24 @@ You can also give a course **no meeting time**; it then moves to the strip below
 the grid. From there you can drag it onto a time slot later, or open it again
 with its pencil.
 :::
+
+## Giving a section a second meeting time
+
+Some classes meet more than once a week at different times — for example Monday
+and Wednesday at 9:20, and Thursday at 1:00. A section can hold as many meeting
+times as you need.
+
+1. Open the section's editor and click **＋ Add another meeting time**, beside
+   **Add lab section**.
+2. The editor switches to the new meeting. It starts with **no meeting time**,
+   so give it its own days and time exactly as above, then **Save changes**.
+
+A note under the meeting-time choices — **This section also meets:** — lists the
+section's other meeting times and lets you jump straight to one. The switcher at
+the top of the editor names each meeting too, so you can tell them apart.
+
+<Shot file="schedule-split-meeting.png" />
+
+To take a meeting time away again, open it and click **Remove this meeting
+time** — the section's other meeting times, and any labs, are left alone. If the
+course is cross-listed, the change is kept the same across its versions.

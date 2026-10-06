@@ -50,3 +50,9 @@ cross-listed version as equivalent, and uses the file's core requirements as the
 schedule's own — the course view, filter, and stats follow the file, and the
 import summary only notes (informationally) where a row differs from our catalog
 snapshot.
+
+::: tip
+To bring a department's courses into a schedule you are already editing, rather
+than making a new one, see
+[Copying courses from another schedule](/guide/schedule/copy-courses).
+:::

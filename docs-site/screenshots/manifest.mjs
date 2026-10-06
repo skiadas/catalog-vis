@@ -145,6 +145,16 @@ export const entries = [
     caption: 'The course editor — every setting for one section.',
   },
   {
+    file: 'schedule-split-meeting.png',
+    app: 'schedule',
+    as: 'registrar',
+    route: '/#/schedule/<id>/course/MUS%20001/edit',
+    seed: 'split-meeting',
+    steps: [{ act: 'assert', text: 'This section also meets:' }],
+    alt: 'A section editor with two meeting times: an Add another meeting time button and a note listing the other meeting',
+    caption: 'A section can meet more than once — add another meeting time and set each separately.',
+  },
+  {
     file: 'schedule-add-lab.png',
     app: 'schedule',
     as: 'registrar',
@@ -162,6 +172,28 @@ export const entries = [
     fullPage: true,
     alt: 'The grid after adding a lab section, with the attached lab in the strip below',
     caption: 'Adding a lab: a lab section is attached to its lecture.',
+  },
+  {
+    file: 'schedule-copy-courses.png',
+    app: 'schedule',
+    as: 'registrar',
+    route: '/#/?mode=edit&id=<id>',
+    seed: 'copy',
+    steps: [
+      { act: 'click', role: 'button', name: 'Copy courses…' },
+      { act: 'assert', text: 'Copy courses into' },
+      {
+        act: 'custom',
+        run: async (page) => {
+          // Show the department choice at work: untick CS, leaving MUS.
+          const modal = page.locator('.modal[aria-labelledby="schedule-copy-title"]')
+          await modal.locator('.schedule-copy-prefixes button', { hasText: 'CS' }).click()
+          await modal.getByText('1 new · 1 updated').waitFor({ timeout: 10_000 })
+        },
+      },
+    ],
+    alt: 'The Copy courses dialog: a source schedule, department choices, and a summary of how many courses are new or updated',
+    caption: 'Copy courses — bring a department’s offerings over from another schedule.',
   },
   {
     file: 'schedule-table.png',

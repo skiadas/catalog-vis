@@ -6,6 +6,7 @@ Plain-language definitions of the labels you will see on screen.
 | --- | --- |
 | **offering** | One section or lab of a course. The word appears in headings like **Offerings (3)**. |
 | **section** | A single class meeting of a course, identified by a letter (A, B, …). |
+| **split meeting** | One section that meets at more than one time — for example Monday/Wednesday at 9:20 and Thursday at 1:00. Each meeting is its own row. |
 | **lab** | A section attached to a lecture. It shares the course, adds an **L** to the number (**BIO 165L**), and numbers its own sections (**A1**, **A2**). |
 | **term** | One of **Fall**, **Winter**, or **Spring**. A schedule holds all three; the app shows one at a time. |
 | **R** | Thursday. The week is labelled **M T W R F**, and R is Thursday's shorthand. |

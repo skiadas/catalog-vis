@@ -33,6 +33,10 @@ export default defineConfig({
           { text: 'Adding a course', link: '/guide/schedule/add-course' },
           { text: 'Changing a course', link: '/guide/schedule/edit-course' },
           { text: 'Adding a lab', link: '/guide/schedule/labs' },
+          {
+            text: 'Copying courses from another schedule',
+            link: '/guide/schedule/copy-courses',
+          },
           { text: 'Submitting changes', link: '/guide/schedule/proposals' },
           { text: 'Downloading a CSV', link: '/guide/schedule/csv' },
           { text: 'Words used in this app', link: '/guide/schedule/glossary' },

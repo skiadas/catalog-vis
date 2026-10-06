@@ -201,4 +201,45 @@ export const fixtures = {
     if (!res.ok()) throw new Error(`propose on "${schedule.name}" failed: ${res.status()}`)
     return { id: schedule.id }
   },
+
+  // Two schedules for the "copy courses" walkthrough: this year's target (a
+  // department's courses plus another) and an older source to bring a
+  // department forward from.
+  copy: async (request) => {
+    const target = await createSchedule(request, {
+      name: 'Fall 2026',
+      year: '2026-27',
+      owner: 'registrar',
+      offerings: [
+        offering('MUS', '101', 'A', 'MWF', '9:20-10:30', 'Old'),
+        offering('CS', '220', 'A', 'MWF', '9:20-10:30', 'Jones'),
+      ],
+    })
+    await createSchedule(request, {
+      name: 'Fall 2024',
+      year: '2024-25',
+      owner: 'registrar',
+      offerings: [
+        offering('MUS', '101', 'A', 'MWF', '9:20-10:30', 'New'),
+        offering('MUS', '102', 'B', 'TR', '10:00-11:45', 'Fresh'),
+        offering('CS', '330', 'A', 'MWF', '12:00-13:10', 'Wahl'),
+      ],
+    })
+    return { id: target.id }
+  },
+
+  // One section with two meeting bands (a split meeting), for the editor's
+  // "This section also meets" note.
+  'split-meeting': async (request) => {
+    const schedule = await createSchedule(request, {
+      name: 'Fall 2026',
+      year: '2026-27',
+      owner: 'registrar',
+      offerings: [
+        offering('MUS', '001', 'A', 'MW', '16:00-16:50', 'Smith'),
+        offering('MUS', '001', 'A', 'R', '16:10-17:00', 'Smith'),
+      ],
+    })
+    return { id: schedule.id, code: 'MUS 001' }
+  },
 }
