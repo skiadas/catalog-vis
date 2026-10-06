@@ -3,11 +3,11 @@
 This walkthrough is for a department chair who has been handed a schedule to
 fill in for next year: the registrar made it, added your name, and now it is
 your job to say what your department will teach. Follow it top to bottom once
-and you will have done the whole loop — signed in, brought the schedule into
-your week, added and adjusted courses, sent your suggestions, and seen what
-other departments are asking for. Each step is enough to do the task; pages
-with the finer details are linked at the bottom of the step and listed at the
-end.
+and you will have done the whole loop — signed in, shown the schedule in your
+week, copied your courses from a past schedule, adjusted them, sent your
+suggestions, and seen what other departments are asking for. Each step is
+enough to do the task; pages with the finer details are linked at the bottom of
+the step and listed at the end.
 
 ## 1. Sign in
 
@@ -54,40 +54,55 @@ class meeting.
 
 Finer details: [The views at a glance](/guide/schedule/views).
 
-## 4. Add your courses
+## 4. Copy courses from a past schedule
 
 You do not own this schedule, so you cannot change it directly — you
 **suggest** changes and the owner approves them. That is how everyone else
 works on it too.
 
+If your department ran a schedule before, this is likely your main starting
+point: do not retype every course. Copy them in.
+
 1. On the schedule's colored **pill**, click the **speech bubble** to start
-   suggesting. A bar appears with **＋ Add course**, **History**,
-   **Propose changes**, and **Done**.
+   suggesting. A bar appears with **＋ Add course**, **Copy courses…**,
+   **History**, **Propose changes**, and **Done**.
 
 <Shot file="schedule-suggest-session.png" />
 
-2. Click **＋ Add course** and start typing a course **code or name** — for
+2. Click **Copy courses…**. Pick the **Source schedule** — an older schedule
+   your department taught — and tick the **departments** to copy.
+3. Click **Review N courses**. Every course is ticked; untick any you do not
+   want, or use **Select all** / **Deselect all**. Each row is tagged **new**
+   or **update**.
+4. Click **Copy N courses**. A section already in this schedule is **updated**
+   to match the source; a missing one is **added**.
+
+<Shot file="schedule-copy-courses.png" />
+
+Finer details: [Copying courses from another schedule](/guide/schedule/copy-courses).
+
+## 5. Add a course one at a time
+
+For a course that is not on the old schedule — a brand-new offering, say — add
+it by hand instead:
+
+1. Click **＋ Add course** and start typing a course **code or name** — for
    example `CS 220` or `statistics`. The list narrows as you type. Searches
    lean toward the departments you belong to, but any course can be found.
-3. Click the section you want (for example **CS 220 A**). The course editor
+2. Click the section you want (for example **CS 220 A**). The course editor
    opens with sensible defaults.
 
 <Shot file="schedule-add-course.png" />
 
-4. Adjust the teacher, meeting time, and seats if the defaults are not right
+3. Adjust the teacher, meeting time, and seats if the defaults are not right
    (see the next step), then **Save changes**. The course appears in your week
    immediately — as a draft only you can see until you propose it.
-5. Add the rest of your courses the same way.
-
-If your department ran this schedule before, you do not have to retype every
-course: **Copy courses…** in the session bar brings a whole department's
-offerings over from an older schedule in one go. See
-[Copying courses from another schedule](/guide/schedule/copy-courses).
+4. Add the rest of your courses the same way.
 
 Finer details: [Adding a course](/guide/schedule/add-course) and
 [Editing vs suggesting](/guide/schedule/edit-vs-suggest).
 
-## 5. Adjust an existing course
+## 6. Adjust an existing course
 
 Click the **pencil** on any course block — or on its row in the table view —
 to open the editor for that section. It holds everything:
@@ -113,7 +128,7 @@ time slot for TR** before it will save — and the same the other way around.
 Finer details: [Changing a course](/guide/schedule/edit-course), including
 labs, co-teachers, and custom times.
 
-## 6. Review your department in the table view
+## 7. Review your department in the table view
 
 Switch to the **Table** tab to see every offering of the term as one compact
 row: course, title, instructor, meeting, seats, core areas, and which schedule
@@ -132,7 +147,7 @@ it came from. It is the fastest way to check that your department adds up.
 
 Finer details: [Working with the table view](/guide/schedule/table-view).
 
-## 7. Send your suggestions
+## 8. Send your suggestions
 
 Nothing you have done so far has reached the schedule. Your edits sit in a
 private draft until you send them:
@@ -149,7 +164,7 @@ to the schedule until they approve.
 
 Finer details: [Submitting changes](/guide/schedule/proposals).
 
-## 8. See what other departments proposed
+## 9. See what other departments proposed
 
 Suggestions run both ways, and you can see them two ways.
 
@@ -187,8 +202,8 @@ Finer details:
 - [Where a course can hide](/guide/schedule/hiding) — no-meeting courses and
   unusual times.
 - [Adding a lab](/guide/schedule/labs) — attach a lab section to its lecture.
-- [Copying courses from another schedule](/guide/schedule/copy-courses) — bring
-  a department's courses forward from an older schedule.
+- [Copying courses from another schedule](/guide/schedule/copy-courses) — copy
+  a department's courses from a past schedule.
 - [Downloading a CSV](/guide/schedule/csv) — the current week or a whole
   schedule.
 - [Sharing a schedule](/guide/schedule/sharing) — who can see and suggest.

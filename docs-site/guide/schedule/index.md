@@ -74,8 +74,8 @@ different one.
 - [Adding a course](/guide/schedule/add-course),
   [changing a course](/guide/schedule/edit-course), and
   [adding a lab](/guide/schedule/labs).
-- [Copying courses from another schedule](/guide/schedule/copy-courses) — bring
-  a department's courses forward.
+- [Copying courses from another schedule](/guide/schedule/copy-courses) — copy
+  a department's courses from a past schedule.
 - [Submitting changes](/guide/schedule/proposals) — send them, review them.
 - [Downloading a CSV](/guide/schedule/csv).
 - [Words used in this app](/guide/schedule/glossary) — a plain-language

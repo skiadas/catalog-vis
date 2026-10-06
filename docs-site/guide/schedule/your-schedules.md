@@ -50,7 +50,7 @@ Each row has small buttons on the right:
 - **Speech bubble** — propose changes (schedules you are allowed to suggest
   on).
 - **Copy** — duplicate the whole schedule, which is handy as a starting point.
-  (To bring one department's courses into a schedule you are already editing,
+  (To copy one department's courses into a schedule you are already editing,
   use **Copy courses…** inside a session instead — see
   [Copying courses from another schedule](/guide/schedule/copy-courses).)
 - **Trash** — delete it (your own schedules).

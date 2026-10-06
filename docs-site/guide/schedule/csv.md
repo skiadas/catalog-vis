@@ -52,7 +52,7 @@ import summary only notes (informationally) where a row differs from our catalog
 snapshot.
 
 ::: tip
-To bring a department's courses into a schedule you are already editing, rather
+To copy a department's courses into a schedule you are already editing, rather
 than making a new one, see
 [Copying courses from another schedule](/guide/schedule/copy-courses).
 :::
