@@ -202,14 +202,17 @@ export const fixtures = {
     return { id: schedule.id }
   },
 
-  // Two schedules for the "copy courses" walkthrough: this year's target (a
-  // department's courses plus another) and a past source schedule to copy a
-  // department from.
-  copy: async (request) => {
+  // Two schedules for the "copy courses" suggest-session walkthrough: a public
+  // target the advisor may suggest on (a department's courses plus another) and
+  // a public past source to copy a department from. The advisor's departments
+  // cover both rows, so the copy stays in scope.
+  'copy-suggest': async (request) => {
     const target = await createSchedule(request, {
       name: 'Fall 2026',
       year: '2026-27',
       owner: 'registrar',
+      visibility: 'public',
+      suggestMode: 'public',
       offerings: [
         offering('MUS', '101', 'A', 'MWF', '9:20-10:30', 'Old'),
         offering('CS', '220', 'A', 'MWF', '9:20-10:30', 'Jones'),
@@ -219,12 +222,14 @@ export const fixtures = {
       name: 'Fall 2024',
       year: '2024-25',
       owner: 'registrar',
+      visibility: 'public',
       offerings: [
         offering('MUS', '101', 'A', 'MWF', '9:20-10:30', 'New'),
         offering('MUS', '102', 'B', 'TR', '10:00-11:45', 'Fresh'),
         offering('CS', '330', 'A', 'MWF', '12:00-13:10', 'Wahl'),
       ],
     })
+    await setDirectory(request, 'advisor', { displayName: 'A. Advisor', departments: ['MUS', 'CS'] })
     return { id: target.id }
   },
 

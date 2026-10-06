@@ -176,9 +176,9 @@ export const entries = [
   {
     file: 'schedule-copy-courses.png',
     app: 'schedule',
-    as: 'registrar',
-    route: '/#/?mode=edit&id=<id>',
-    seed: 'copy',
+    as: 'advisor',
+    route: '/#/?mode=suggest&id=<id>',
+    seed: 'copy-suggest',
     steps: [
       { act: 'click', role: 'button', name: 'Copy courses…' },
       { act: 'assert', text: 'Copy courses into' },
@@ -195,7 +195,7 @@ export const entries = [
         },
       },
     ],
-    alt: 'The Copy courses review step: each matching course with a checkbox and a new or update tag, plus Select all and Deselect all',
+    alt: 'The Copy courses review step in a suggest session: each matching course with a checkbox and a new or update tag, plus Select all and Deselect all',
     caption: 'Copy courses — review the courses from a past schedule before copying them.',
   },
   {
