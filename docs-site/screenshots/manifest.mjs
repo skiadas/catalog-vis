@@ -124,9 +124,9 @@ export const entries = [
       // Show the public (registrar-owned) schedule, then return to the grid so
       // the pill — with the suggest bubble, and no pencil (not the owner) —
       // renders. A non-owned schedule is not selected by default.
-      { act: 'click', role: 'button', name: 'Show Fall 2026' },
+      { act: 'click', role: 'button', name: 'Show All depts 2027-2028' },
       { act: 'goto', route: '/#/' },
-      { act: 'assert', role: 'button', name: 'Suggest changes for Fall 2026' },
+      { act: 'assert', role: 'button', name: 'Suggest changes for All depts 2027-2028' },
     ],
     selector: '.schedule-pill',
     padding: 8,

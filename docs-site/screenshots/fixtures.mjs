@@ -151,8 +151,8 @@ export const fixtures = {
   // table-session shots. The advisor's departments make their rows editable.
   suggest: async (request) => {
     const schedule = await createSchedule(request, {
-      name: 'Fall 2026',
-      year: '2026-27',
+      name: 'All depts 2027-2028',
+      year: '2027-28',
       owner: 'registrar',
       visibility: 'public',
       suggestMode: 'public',
