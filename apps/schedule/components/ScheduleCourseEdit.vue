@@ -285,14 +285,10 @@
           </p>
 
           <div v-if="!isLab" class="add-lab-row">
-            <button v-if="!labAdded" class="filter-btn add-lab-btn" @click="addLab">
+            <button class="filter-btn add-lab-btn" @click="addLab">
               <IconFlaskConical :size="13" :stroke-width="2.2" />
               Add lab section
             </button>
-            <p v-else class="add-lab-confirm" role="status">
-              Lab added — <strong>{{ labLabel }}</strong
-              >. It's in the <strong>No meeting times</strong> strip; drag it onto a slot to schedule it.
-            </p>
             <button class="filter-btn add-meeting-btn" @click="addMeeting">
               ＋ Add another meeting time
             </button>
@@ -411,8 +407,11 @@ export default {
       `${offeringCodeLabel(s.o)} · ${offeringSectionLabel(s.o)} · ${meetingLabel(s.o)}`
     // The other meeting rows of this same section (split meetings): what this
     // form is not editing, shown so a user knows the section carries more than
-    // one meeting and can jump to it. Labs are not meetings.
+    // one meeting and can jump to it. A lab has no meeting siblings — its
+    // letter mirrors the lecture's, which is a different row, not a second
+    // meeting of the lab.
     const siblingMeetings = computed(() => {
+      if (o.lab) return []
       const sections = /** @type {Array<any>} */ (props.sections || [])
       return sections
         .filter((s) => offeringItemKey(s) !== offeringKey.value && !s.o.lab && s.o.section === o.section)
@@ -691,16 +690,19 @@ export default {
     // names the offering exactly as the registrar writes it.
     const codeLabel = computed(() => offeringCodeLabel(o))
     const sectionLabel = computed(() => offeringSectionLabel(o))
-    const labAdded = ref(null)
-    const closeTimer = ref(null)
 
-    // Creates the lab (unscheduled, mirroring the lecture's section letter
-    // and copying its current instructor). Confirmation lives in the editor:
-    // the button flips to a success note, and — when the user hadn't started
-    // editing anything else — the editor closes itself after a beat, since
-    // creating the lab was almost certainly the only reason they came here.
+    // Creates the lab (unscheduled, mirroring the lecture's section letter and
+    // copying its instructor) and switches the editor to it, so the user can
+    // give it a time right away — a lab's meeting time is set in the editor,
+    // not by dragging (the grid is behind the modal). Mirrors `addMeeting`:
+    // this form's edits are committed first so the lab copies the section's
+    // latest content, and an unsavable form blocks the add.
     const addLab = () => {
-      if (labAdded.value || isLab.value) return
+      if (isLab.value) return
+      if (hasPendingChanges.value) {
+        if (!canSave.value) return
+        commit()
+      }
       const created = addLabSection(props.scheduleId, {
         prefix: o.prefix,
         number: o.number,
@@ -708,17 +710,8 @@ export default {
         id: o.id,
       })
       if (!created) return
-      labAdded.value = created
-      if (!hasPendingChanges.value) {
-        closeTimer.value = setTimeout(() => emit('close'), 1200)
-      }
+      emit('switch', { o: created, code: offeringCodeLabel(created), sid: props.scheduleId })
     }
-
-    const labLabel = computed(() => {
-      const created = labAdded.value
-      if (!created) return ''
-      return `${props.offering.code}L ${created.section}${created.labSeq}`
-    })
 
     // Adds another meeting band to this section as a same-section sibling row
     // (split meetings: e.g. MW at one time, R at another). This form's edits are
@@ -896,7 +889,6 @@ export default {
       { immediate: true, flush: 'post' },
     )
     onBeforeUnmount(() => {
-      if (closeTimer.value) clearTimeout(closeTimer.value)
       if (startPicker.value) startPicker.value.destroy()
       if (endPicker.value) endPicker.value.destroy()
     })
@@ -1009,8 +1001,6 @@ export default {
       isLab,
       codeLabel,
       sectionLabel,
-      labAdded,
-      labLabel,
       addLab,
       addMeeting,
       hasPendingChanges,

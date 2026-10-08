@@ -301,14 +301,6 @@
 .meeting-sibling-link {
   font: inherit;
 }
-.add-lab-confirm {
-  @include text-caption;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius);
-  background: var(--success-bg);
-  color: var(--success);
-  border: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
-}
 .conflict-course-name {
   margin-left: 6px;
   font-size: var(--font-md);

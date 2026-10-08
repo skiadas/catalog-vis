@@ -186,15 +186,12 @@ export const entries = [
     steps: [
       { act: 'assert', text: 'Edit BIO 165' },
       { act: 'click', role: 'button', name: 'Add lab section' },
-      { act: 'assert', text: 'Lab added' },
-      // The editor auto-closes after adding; the new lab (unscheduled, so
-      // attached but not yet on the calendar) shows up in the strip below.
-      { act: 'detach', selector: '.modal[aria-labelledby="course-edit-title"]' },
-      { act: 'assert', text: 'BIO 165L' },
+      // The editor switches to the new lab so its meeting time can be set
+      // right away — no dragging (the grid is behind the modal).
+      { act: 'assert', text: 'Edit BIO 165L A1' },
     ],
-    fullPage: true,
-    alt: 'The grid after adding a lab section, with the attached lab in the strip below',
-    caption: 'Adding a lab: a lab section is attached to its lecture.',
+    alt: "The lab's own editor after adding it: section A1, ready for a meeting time",
+    caption: 'Adding a lab opens its editor — give it a time and save.',
   },
   {
     file: 'schedule-copy-courses.png',

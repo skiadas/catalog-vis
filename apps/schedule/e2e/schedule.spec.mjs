@@ -958,7 +958,7 @@ test('instructor combobox suggests catalog faculty on a fresh schedule and accep
   assertClean(errors)
 })
 
-test('lab sections: add lab from the editor (auto-close), strip lab chip, schedule it, cascade remove', async ({
+test('lab sections: add lab from the editor, strip lab chip, schedule it, cascade remove', async ({
   page,
 }) => {
   const errors = trackErrors(page)
@@ -980,30 +980,20 @@ test('lab sections: add lab from the editor (auto-close), strip lab chip, schedu
   const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
   await em.waitFor({ state: 'visible', timeout: 5000 })
 
-  // "Add lab section": the button flips to an in-editor confirmation and —
-  // with no other edits pending — the editor closes itself.
+  // "Add lab section" switches the editor to the new lab so its time can be
+  // set right away — the grid is behind the modal, so dragging isn't an
+  // option. A lab cannot spawn labs, so the action disappears.
   await em.getByRole('button', { name: 'Add lab section' }).click()
-  await em
-    .getByText(/Lab added — ANTH 160L A1/)
-    .first()
-    .waitFor({ timeout: 5000 })
-  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(em.locator('#course-edit-title')).toHaveText('Edit ANTH 160L A1')
+  await expect(em.getByRole('button', { name: 'Add lab section' })).toHaveCount(0)
 
-  // The lab is unscheduled: it sits in the strip, identified by the
-  // registrar's shapes (course number 160L, section A1) — no LAB chip.
+  // The lab is unscheduled: it sits in the strip behind the modal, identified
+  // by the registrar's shapes (course number 160L, section A1) — no LAB chip.
   const strip = page.locator('.no-meeting-strip')
   const labPill = strip.locator('.slot-pill', { hasText: 'ANTH 160L' })
   await labPill.first().waitFor({ timeout: 5000 })
   await expect(labPill.first()).toContainText('ANTH 160L')
   await expect(labPill.first()).toContainText('A1')
-
-  // Reopen the lab from the strip: the editor marks it as a lab and offers no
-  // "Add lab section" (a lab cannot spawn labs). Its title names the offering
-  // by the registrar shapes, not a LAB label.
-  await labPill.first().locator('.slot-pill-edit').click()
-  await em.waitFor({ state: 'visible', timeout: 5000 })
-  await expect(em.locator('#course-edit-title')).toHaveText('Edit ANTH 160L A1')
-  await expect(em.getByRole('button', { name: 'Add lab section' })).toHaveCount(0)
 
   // Give it a meeting time and save: it leaves the strip for the grid. The
   // unscheduled lab opens in "No meeting time" mode, so switch to Time slot
@@ -1047,8 +1037,9 @@ test('no-meeting strip keys a lecture and its labs apart and survives filter tog
   await signIn(page)
   await createSchedule(page, 'Strip test')
 
-  // Edit mode; add ANTH 160 (pre-slotted) with a lab (auto-close lands the
-  // unscheduled lab in the strip), then a second department's course.
+  // Edit mode; add ANTH 160 (pre-slotted) with a lab (the editor switches to
+  // the lab; saving it unscheduled lands it in the strip), then a second
+  // department's course.
   await page.locator('.schedule-pill-edit').first().click()
   await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
   const addCourse = async (code) => {
@@ -1075,17 +1066,12 @@ test('no-meeting strip keys a lecture and its labs apart and survives filter tog
   }
 
   await addCourse('ANTH 160')
-  await page
-    .locator('.modal[aria-labelledby="course-edit-title"]')
-    .getByRole('button', { name: 'Add lab section' })
-    .click()
-  await page
-    .getByText(/Lab added — ANTH 160L A1/)
-    .first()
-    .waitFor({ timeout: 5000 })
-  await page
-    .locator('.modal[aria-labelledby="course-edit-title"]')
-    .waitFor({ state: 'detached', timeout: 5000 })
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.getByRole('button', { name: 'Add lab section' }).click()
+  // The editor switched to the new lab; save it unscheduled to close it.
+  await expect(em.locator('#course-edit-title')).toHaveText('Edit ANTH 160L A1')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
   await addCourse('BIO 160')
   await saveAndClose()
   // Unschedule both lectures: the lecture + lab now share the strip (the

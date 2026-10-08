@@ -9,18 +9,18 @@ When you remove the lecture, its labs go with it.
 
 1. Open the **lecture's** editor (its pencil).
 2. Click **Add lab section** near the bottom.
-3. A short confirmation appears, and the editor closes itself — a lab was almost
-   certainly the only reason you opened it.
+3. The editor switches to the new lab (for example **BIO 165L A1**) so you can
+   give it a **Time slot** or **Custom time** right away, then **Save changes**.
 
-The new lab starts with **no meeting time**, so it appears in the strip below
-the grid until you give it a time.
+The new lab starts with **no meeting time**; if you save it that way it waits in
+the strip below the grid until you schedule it.
 
 <Shot file="schedule-add-lab.png" />
 
 ## Give the lab a time
 
-Open the lab's own editor from its pencil and choose a **Time slot** or
-**Custom time** exactly as for any other course. See
+Open the lab's own editor from its pencil (or from the strip) and choose a
+**Time slot** or **Custom time** exactly as for any other course. See
 [Changing a course](/guide/schedule/edit-course).
 
 ::: tip
