@@ -64,10 +64,12 @@ If your department ran a schedule before, this is likely your main starting
 point: do not retype every course. Copy them in.
 
 1. On the schedule's colored **pill**, click the **speech bubble** to start
-   suggesting. A bar appears with **＋ Add course**, **Copy courses…**,
-   **History**, **Propose changes**, and **Done**.
+   suggesting.
 
 <Shot file="schedule-pill-bubble.png" />
+
+A bar appears with **＋ Add course**, **Copy courses…**, **History**,
+**Propose changes**, and **Done**.
 
 <Shot file="schedule-suggest-session.png" />
 
