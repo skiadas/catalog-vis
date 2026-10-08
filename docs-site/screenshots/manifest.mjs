@@ -15,6 +15,9 @@
 //   seed      named DATA fixture (fixtures.mjs)
 //   steps     declarative UI state that is not in the URL (dialogs, menus)
 //   fullPage  capture the whole scrollable page, not just the viewport
+//   selector  crop the shot to this element (a zoom-in), instead of the viewport
+//   padding   px of margin around `selector` (default 12)
+//   deviceScaleFactor  device-pixel ratio, for a crisp small crop (default 1)
 //   alt       accessible description (rendered by <Shot>)
 //   caption   figure caption
 //
@@ -110,6 +113,26 @@ export const entries = [
     fullPage: true,
     alt: 'The grid showing a dashed custom rail, with the No meeting times strip below it',
     caption: 'Courses that fall outside the standard times: a dashed "custom" rail, or the strip below.',
+  },
+  {
+    file: 'schedule-pill-bubble.png',
+    app: 'schedule',
+    as: 'advisor',
+    route: '/#/schedules',
+    seed: 'suggest',
+    steps: [
+      // Show the public (registrar-owned) schedule, then return to the grid so
+      // the pill — with the suggest bubble, and no pencil (not the owner) —
+      // renders. A non-owned schedule is not selected by default.
+      { act: 'click', role: 'button', name: 'Show Fall 2026' },
+      { act: 'goto', route: '/#/' },
+      { act: 'assert', role: 'button', name: 'Suggest changes for Fall 2026' },
+    ],
+    selector: '.schedule-pill',
+    padding: 8,
+    deviceScaleFactor: 3,
+    alt: 'A close-up of the schedule pill, with the speech-bubble button that starts a suggest session',
+    caption: 'The speech bubble on the schedule pill starts a suggest session.',
   },
   {
     file: 'schedule-suggest-session.png',

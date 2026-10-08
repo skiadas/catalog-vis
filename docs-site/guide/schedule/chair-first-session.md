@@ -67,6 +67,8 @@ point: do not retype every course. Copy them in.
    suggesting. A bar appears with **＋ Add course**, **Copy courses…**,
    **History**, **Propose changes**, and **Done**.
 
+<Shot file="schedule-pill-bubble.png" />
+
 <Shot file="schedule-suggest-session.png" />
 
 2. Click **Copy courses…**. Pick the **Source schedule** — an older schedule

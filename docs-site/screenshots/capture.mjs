@@ -95,11 +95,30 @@ async function runStep(page, step) {
   await page.waitForTimeout(step.ms || SETTLE_MS)
 }
 
+// The viewport-relative crop around `selector`, grown by `padding` and clamped
+// to the viewport — the "zoom in on this control" shot. Routes load at the top,
+// where the viewport-relative bounding box and the document-relative clip
+// coincide. Throws when the element isn't present, so a missing target fails
+// the entry instead of writing a bogus PNG.
+async function clipAround(page, selector, padding = 12) {
+  const box = await page.locator(selector).first().boundingBox()
+  if (!box) throw new Error(`selector "${selector}" has no bounding box`)
+  const viewport = page.viewportSize()
+  const x = Math.max(0, box.x - padding)
+  const y = Math.max(0, box.y - padding)
+  return {
+    x,
+    y,
+    width: Math.min(viewport.width - x, box.width + padding * 2),
+    height: Math.min(viewport.height - y, box.height + padding * 2),
+  }
+}
+
 async function captureEntry(browser, entry, baseURL) {
   const context = await browser.newContext({
     baseURL,
     viewport: { width: 1280, height: 900 },
-    deviceScaleFactor: 1,
+    deviceScaleFactor: entry.deviceScaleFactor || 1,
     colorScheme: 'light',
   })
   try {
@@ -112,7 +131,10 @@ async function captureEntry(browser, entry, baseURL) {
     await page.goto(fillTokens(entry.route, tokens), { waitUntil: 'networkidle' })
     for (const step of entry.steps || []) await runStep(page, step)
     await page.waitForTimeout(SETTLE_MS)
-    await page.screenshot({ path: join(SHOT_DIR, entry.file), fullPage: Boolean(entry.fullPage) })
+    const options = { path: join(SHOT_DIR, entry.file) }
+    if (entry.selector) options.clip = await clipAround(page, entry.selector, entry.padding)
+    else options.fullPage = Boolean(entry.fullPage)
+    await page.screenshot(options)
     return entry.file
   } finally {
     await context.close()

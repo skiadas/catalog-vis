@@ -15,9 +15,11 @@ On the schedule's colored pill, or on its row in **Your schedules**:
 - The **speech bubble** starts **Suggesting**. You see this where you are
   allowed to propose changes — see [Sharing a schedule](/guide/schedule/sharing).
 
+<Shot file="schedule-pill-bubble.png" />
+
 Either way, a bar appears under the toolbar with a chip that says **EDITING** or
 **SUGGESTING**, followed by the schedule name and these buttons: **＋ Add
-course**, **History**, **Propose changes**, and **Done**.
+course**, **Copy courses…**, **History**, **Propose changes**, and **Done**.
 
 <Shot file="schedule-suggest-session.png" />
 
