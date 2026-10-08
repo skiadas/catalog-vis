@@ -497,9 +497,13 @@ test('course editor overlay route: section switcher saves the section you leave'
   // A single-section course has no switcher yet.
   await expect(em.locator('select[aria-label="Section"]')).toHaveCount(0)
 
-  // Add a lab (the editor closes itself when nothing else was edited), then
-  // reopen: the course now has two sections and the header offers a switcher.
+  // Add a lab: the editor switches to it, and the course now has two sections
+  // (the lecture and its lab), so the header offers a switcher. Close the lab
+  // and reopen the lecture to keep editing it below.
   await em.getByRole('button', { name: 'Add lab section' }).click()
+  await expect(em.locator('#course-edit-title')).toContainText('CS 220L')
+  await expect(em.locator('select[aria-label="Section"] option')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Cancel' }).click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
   await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
   await em.waitFor({ state: 'visible', timeout: 5000 })

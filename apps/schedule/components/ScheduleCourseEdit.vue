@@ -37,262 +37,270 @@
         </p>
 
         <template v-if="canEdit">
-          <div class="field-row">
-            <div class="field">
-              <label for="course-edit-offering-title">Title</label>
-              <input
-                id="course-edit-offering-title"
-                class="search-input"
-                type="text"
-                v-model="titleSel"
-                :disabled="isLab"
-                :placeholder="courseName"
-              />
-            </div>
-
-            <div class="field field-fit">
-              <label for="course-edit-section">Section</label>
-              <input
-                id="course-edit-section"
-                class="search-input"
-                type="text"
-                maxlength="4"
-                v-model="sectionSel"
-                placeholder="A"
-              />
-            </div>
-
-            <div class="field field-fit">
-              <label for="course-edit-seats">Seats</label>
-              <input
-                id="course-edit-seats"
-                class="search-input"
-                type="number"
-                min="1"
-                step="1"
-                v-model.number="seatsSel"
-                placeholder="24"
-              />
-            </div>
-          </div>
-          <p class="field-hint">
-            <template v-if="isLab"
-              >Labs share their lecture's title — edit it on the lecture section.</template
-            >
-            <template v-else>Leave blank to use the catalog name ({{ courseName }}).</template>
-          </p>
-
-          <div class="field-row">
-            <div class="field">
-              <label for="course-edit-instructor">Instructor</label>
-              <div class="secondary-suggest-wrap" ref="instructorSuggestEl">
+          <section class="field-section">
+            <h4 class="field-section-title">Course</h4>
+            <div class="field-row">
+              <div class="field">
+                <label for="course-edit-offering-title">Title</label>
                 <input
-                  id="course-edit-instructor"
-                  ref="instructorEl"
+                  id="course-edit-offering-title"
                   class="search-input"
                   type="text"
-                  v-model="instructorSel"
-                  placeholder="Type or pick a name…"
-                  @focus="instructorSuggestOpen = true"
-                  @blur="onInstructorBlur"
-                  @keydown.esc="instructorSuggestOpen = false"
+                  v-model="titleSel"
+                  :disabled="isLab"
+                  :placeholder="courseName"
                 />
-                <div
-                  v-if="instructorSuggestOpen && instructorSuggestions.length"
-                  class="course-picker-dropdown"
-                >
-                  <button
-                    v-for="opt in instructorSuggestions"
-                    :key="opt.value"
-                    type="button"
-                    class="course-picker-option"
-                    :title="opt.value"
-                    :aria-label="opt.value === opt.label ? opt.label : opt.label + ' (' + opt.value + ')'"
-                    @mousedown.prevent
-                    @click="pickInstructor(opt)"
-                  >
-                    <span class="planner-pick-code">{{ opt.label }}</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="course-picker-scope link-toggle"
-                    @mousedown.prevent
-                    @click="showAll = !showAll"
-                  >
-                    {{ showAll ? 'Limit to department' : 'Show all instructors' }}
-                  </button>
-                </div>
+              </div>
+
+              <div class="field field-fit">
+                <label for="course-edit-section">Section</label>
+                <input
+                  id="course-edit-section"
+                  class="search-input"
+                  type="text"
+                  maxlength="4"
+                  v-model="sectionSel"
+                  placeholder="A"
+                />
+              </div>
+
+              <div class="field field-fit">
+                <label for="course-edit-seats">Seats</label>
+                <input
+                  id="course-edit-seats"
+                  class="search-input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  v-model.number="seatsSel"
+                  placeholder="24"
+                />
               </div>
             </div>
+            <p class="field-hint">
+              <template v-if="isLab"
+                >Labs share their lecture's title — edit it on the lecture section.</template
+              >
+              <template v-else>Leave blank to use the catalog name ({{ courseName }}).</template>
+            </p>
+          </section>
 
-            <div class="field">
-              <template v-if="secondaryOpen">
-                <label for="course-edit-secondary">Other instructors</label>
-                <div class="secondary-suggest-wrap" ref="secondarySuggestEl">
+          <section class="field-section">
+            <h4 class="field-section-title">Instructors</h4>
+            <div class="field-row">
+              <div class="field">
+                <label for="course-edit-instructor">Instructor</label>
+                <div class="secondary-suggest-wrap" ref="instructorSuggestEl">
                   <input
-                    id="course-edit-secondary"
+                    id="course-edit-instructor"
+                    ref="instructorEl"
                     class="search-input"
                     type="text"
-                    v-model="secondaryText"
-                    placeholder="e.g. Smith, Jones"
-                    @focus="suggestOpen = true"
-                    @blur="onSecondaryBlur"
-                    @keydown.esc="suggestOpen = false"
+                    v-model="instructorSel"
+                    placeholder="Type or pick a name…"
+                    @focus="instructorSuggestOpen = true"
+                    @blur="onInstructorBlur"
+                    @keydown.esc="instructorSuggestOpen = false"
                   />
-                  <div v-if="suggestOpen && secondarySuggestions.length" class="course-picker-dropdown">
+                  <div
+                    v-if="instructorSuggestOpen && instructorSuggestions.length"
+                    class="course-picker-dropdown"
+                  >
                     <button
-                      v-for="opt in secondarySuggestions"
+                      v-for="opt in instructorSuggestions"
                       :key="opt.value"
                       type="button"
                       class="course-picker-option"
                       :title="opt.value"
                       :aria-label="opt.value === opt.label ? opt.label : opt.label + ' (' + opt.value + ')'"
                       @mousedown.prevent
-                      @click="pickSecondary(opt)"
+                      @click="pickInstructor(opt)"
                     >
                       <span class="planner-pick-code">{{ opt.label }}</span>
                     </button>
+                    <button
+                      type="button"
+                      class="course-picker-scope link-toggle"
+                      @mousedown.prevent
+                      @click="showAll = !showAll"
+                    >
+                      {{ showAll ? 'Limit to department' : 'Show all instructors' }}
+                    </button>
                   </div>
                 </div>
-              </template>
-              <template v-else>
-                <span class="field-label">Other instructors</span>
-                <button
-                  type="button"
-                  class="filter-btn add-others-btn"
-                  aria-label="Add other instructors"
-                  @click="secondaryOpen = true"
-                >
-                  ＋ Add
-                </button>
-              </template>
-            </div>
-          </div>
-          <p v-if="secondaryOpen" class="field-hint">Comma-separated; leave blank for none.</p>
-
-          <div class="field">
-            <span class="field-label">Meeting time</span>
-            <div class="seg" role="group" aria-label="Meeting time">
-              <button
-                class="seg-btn"
-                :class="{ active: timeMode === 'slot' }"
-                :aria-pressed="timeMode === 'slot'"
-                @click="timeMode = 'slot'"
-              >
-                Time slot
-              </button>
-              <button
-                class="seg-btn"
-                :class="{ active: timeMode === 'custom' }"
-                :aria-pressed="timeMode === 'custom'"
-                @click="timeMode = 'custom'"
-              >
-                Custom time
-              </button>
-              <button
-                class="seg-btn"
-                :class="{ active: timeMode === 'none' }"
-                :aria-pressed="timeMode === 'none'"
-                @click="timeMode = 'none'"
-              >
-                No meeting time
-              </button>
-            </div>
-
-            <div v-if="timeMode !== 'none'" class="slot-time-groups">
-              <div
-                class="slot-time-group"
-                v-for="g in dayGroups"
-                :key="g.label"
-                :class="{ inactive: timeGroupSel !== g.label }"
-              >
-                <button
-                  class="slot-time-group-name"
-                  :class="{ active: timeGroupSel === g.label }"
-                  :aria-pressed="timeGroupSel === g.label"
-                  @click="pickGroup(g.label)"
-                >
-                  {{ g.label }}
-                </button>
-                <div class="slot-time-group-days">
-                  <button
-                    v-for="d in g.days"
-                    :key="d"
-                    type="button"
-                    class="day-chip"
-                    :class="{ active: daysSel.includes(d), disabled: timeGroupSel !== g.label }"
-                    :disabled="timeGroupSel !== g.label"
-                    :aria-pressed="daysSel.includes(d)"
-                    @click="timeGroupSel === g.label && toggleDay(d)"
-                  >
-                    {{ d }}
-                  </button>
-                </div>
-                <div v-if="timeMode === 'slot'" class="slot-time-opts">
-                  <button
-                    v-for="s in slotsForGroup(g.label)"
-                    :key="s"
-                    type="button"
-                    class="filter-btn slot-time-btn"
-                    :class="{ active: timeSel === s }"
-                    :disabled="timeGroupSel !== g.label"
-                    @click="timeGroupSel === g.label && (timeSel = s)"
-                  >
-                    {{ s }}
-                  </button>
-                </div>
               </div>
 
-              <div v-if="timeMode === 'custom'" class="custom-time-row">
-                <input
-                  ref="startTimeEl"
-                  class="search-input"
-                  type="text"
-                  placeholder="e.g. 09:00"
-                  :value="customStart"
-                  aria-label="Start time"
-                  @change="onStartTimeInput"
-                />
-                <span class="custom-time-sep">to</span>
-                <input
-                  ref="endTimeEl"
-                  class="search-input"
-                  type="text"
-                  placeholder="e.g. 10:00"
-                  :value="customEnd"
-                  aria-label="End time"
-                  @change="onEndTimeInput"
-                />
+              <div class="field">
+                <template v-if="secondaryOpen">
+                  <label for="course-edit-secondary">Other instructors</label>
+                  <div class="secondary-suggest-wrap" ref="secondarySuggestEl">
+                    <input
+                      id="course-edit-secondary"
+                      class="search-input"
+                      type="text"
+                      v-model="secondaryText"
+                      placeholder="e.g. Smith, Jones"
+                      @focus="suggestOpen = true"
+                      @blur="onSecondaryBlur"
+                      @keydown.esc="suggestOpen = false"
+                    />
+                    <div v-if="suggestOpen && secondarySuggestions.length" class="course-picker-dropdown">
+                      <button
+                        v-for="opt in secondarySuggestions"
+                        :key="opt.value"
+                        type="button"
+                        class="course-picker-option"
+                        :title="opt.value"
+                        :aria-label="opt.value === opt.label ? opt.label : opt.label + ' (' + opt.value + ')'"
+                        @mousedown.prevent
+                        @click="pickSecondary(opt)"
+                      >
+                        <span class="planner-pick-code">{{ opt.label }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="field-label">Other instructors</span>
+                  <button
+                    type="button"
+                    class="filter-btn add-others-btn"
+                    aria-label="Add other instructors"
+                    @click="secondaryOpen = true"
+                  >
+                    ＋ Add
+                  </button>
+                </template>
               </div>
-              <p v-if="timeHint" class="field-hint">{{ timeHint }}</p>
             </div>
-            <p v-else class="field-hint">
-              Independent studies and the like can sit in the schedule without a meeting time.
+            <p v-if="secondaryOpen" class="field-hint">Comma-separated; leave blank for none.</p>
+          </section>
+
+          <section class="field-section">
+            <h4 class="field-section-title">Meeting time</h4>
+            <div class="field">
+              <div class="seg" role="group" aria-label="Meeting time">
+                <button
+                  class="seg-btn"
+                  :class="{ active: timeMode === 'slot' }"
+                  :aria-pressed="timeMode === 'slot'"
+                  @click="timeMode = 'slot'"
+                >
+                  Time slot
+                </button>
+                <button
+                  class="seg-btn"
+                  :class="{ active: timeMode === 'custom' }"
+                  :aria-pressed="timeMode === 'custom'"
+                  @click="timeMode = 'custom'"
+                >
+                  Custom time
+                </button>
+                <button
+                  class="seg-btn"
+                  :class="{ active: timeMode === 'none' }"
+                  :aria-pressed="timeMode === 'none'"
+                  @click="timeMode = 'none'"
+                >
+                  No meeting time
+                </button>
+              </div>
+
+              <div v-if="timeMode !== 'none'" class="slot-time-groups">
+                <div
+                  class="slot-time-group"
+                  v-for="g in dayGroups"
+                  :key="g.label"
+                  :class="{ inactive: timeGroupSel !== g.label }"
+                >
+                  <button
+                    class="slot-time-group-name"
+                    :class="{ active: timeGroupSel === g.label }"
+                    :aria-pressed="timeGroupSel === g.label"
+                    @click="pickGroup(g.label)"
+                  >
+                    {{ g.label }}
+                  </button>
+                  <div class="slot-time-group-days">
+                    <button
+                      v-for="d in g.days"
+                      :key="d"
+                      type="button"
+                      class="day-chip"
+                      :class="{ active: daysSel.includes(d), disabled: timeGroupSel !== g.label }"
+                      :disabled="timeGroupSel !== g.label"
+                      :aria-pressed="daysSel.includes(d)"
+                      @click="timeGroupSel === g.label && toggleDay(d)"
+                    >
+                      {{ d }}
+                    </button>
+                  </div>
+                  <div v-if="timeMode === 'slot'" class="slot-time-opts">
+                    <button
+                      v-for="s in slotsForGroup(g.label)"
+                      :key="s"
+                      type="button"
+                      class="filter-btn slot-time-btn"
+                      :class="{ active: timeSel === s }"
+                      :disabled="timeGroupSel !== g.label"
+                      @click="timeGroupSel === g.label && (timeSel = s)"
+                    >
+                      {{ s }}
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="timeMode === 'custom'" class="custom-time-row">
+                  <input
+                    ref="startTimeEl"
+                    class="search-input"
+                    type="text"
+                    placeholder="e.g. 09:00"
+                    :value="customStart"
+                    aria-label="Start time"
+                    @change="onStartTimeInput"
+                  />
+                  <span class="custom-time-sep">to</span>
+                  <input
+                    ref="endTimeEl"
+                    class="search-input"
+                    type="text"
+                    placeholder="e.g. 10:00"
+                    :value="customEnd"
+                    aria-label="End time"
+                    @change="onEndTimeInput"
+                  />
+                </div>
+                <p v-if="timeHint" class="field-hint">{{ timeHint }}</p>
+              </div>
+              <p v-else class="field-hint">
+                Independent studies and the like can sit in the schedule without a meeting time.
+              </p>
+            </div>
+
+            <p v-if="hasSiblings" class="field-hint meeting-siblings">
+              This section also meets:
+              <button
+                v-for="sib in siblingMeetings"
+                :key="offeringItemKey(sib.item)"
+                type="button"
+                class="link-toggle meeting-sibling-link"
+                @click="requestSwitch(sib.item)"
+              >
+                {{ sib.label }}
+              </button>
             </p>
-          </div>
 
-          <p v-if="hasSiblings" class="field-hint meeting-siblings">
-            This section also meets:
-            <button
-              v-for="sib in siblingMeetings"
-              :key="offeringItemKey(sib.item)"
-              type="button"
-              class="link-toggle meeting-sibling-link"
-              @click="requestSwitch(sib.item)"
-            >
-              {{ sib.label }}
-            </button>
-          </p>
-
-          <div v-if="!isLab || labParent" class="add-lab-row">
-            <button class="filter-btn add-lab-btn" @click="addLab">
-              <IconFlaskConical :size="13" :stroke-width="2.2" />
-              {{ isLab ? 'Add another lab section' : 'Add lab section' }}
-            </button>
-            <button v-if="!isLab" class="filter-btn add-meeting-btn" @click="addMeeting">
-              ＋ Add another meeting time
-            </button>
-          </div>
+            <div v-if="!isLab || labParent" class="add-lab-row">
+              <button class="filter-btn add-lab-btn" @click="addLab">
+                <IconFlaskConical :size="13" :stroke-width="2.2" />
+                {{ isLab ? 'Add another lab section' : 'Add lab section' }}
+              </button>
+              <button v-if="!isLab" class="filter-btn add-meeting-btn" @click="addMeeting">
+                ＋ Add another meeting time
+              </button>
+            </div>
+          </section>
         </template>
 
         <div v-if="crossState && crossState.crossListed" class="cross-list-block">
@@ -877,6 +885,9 @@ export default {
         timeFormat: 'HH:mm',
         dateFormat: 'HH:mm',
         autoClose: true,
+        // Open upward: the custom-time inputs sit low in the tall editor, and a
+        // downward popover would cover the pinned Save/Cancel footer.
+        position: 'top left',
         selectedDates: [timeToDate(initial)],
         onSelect: ({ formattedDate }) => onPick(snapToFive(formattedDate)),
       })

@@ -577,6 +577,19 @@ body {
   width: 100%;
   min-width: 0;
 }
+// Grouped form sections (the course editor): an eyebrow heading over each block
+// of related fields, with a divider between blocks so the groups read apart.
+// The first section sits directly under the modal intro (no divider).
+.field-section + .field-section {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.field-section-title {
+  @include text-eyebrow;
+  margin: 0 0 var(--space-2);
+  color: var(--text);
+}
 .modal-overlay {
   position: fixed;
   inset: 0;
