@@ -15,6 +15,10 @@ When you remove the lecture, its labs go with it.
 The new lab starts with **no meeting time**; if you save it that way it waits in
 the strip below the grid until you schedule it.
 
+Need a second lab for the same lecture? From a lab's editor, click **Add another
+lab section** — it copies that lab's time, instructor, and seats into the next
+lab (**A2**, **A3**, …) and switches you to it.
+
 <Shot file="schedule-add-lab.png" />
 
 ## Give the lab a time

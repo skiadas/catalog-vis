@@ -284,12 +284,12 @@
             </button>
           </p>
 
-          <div v-if="!isLab" class="add-lab-row">
+          <div v-if="!isLab || labParent" class="add-lab-row">
             <button class="filter-btn add-lab-btn" @click="addLab">
               <IconFlaskConical :size="13" :stroke-width="2.2" />
-              Add lab section
+              {{ isLab ? 'Add another lab section' : 'Add lab section' }}
             </button>
-            <button class="filter-btn add-meeting-btn" @click="addMeeting">
+            <button v-if="!isLab" class="filter-btn add-meeting-btn" @click="addMeeting">
               ＋ Add another meeting time
             </button>
           </div>
@@ -690,15 +690,27 @@ export default {
     // names the offering exactly as the registrar writes it.
     const codeLabel = computed(() => offeringCodeLabel(o))
     const sectionLabel = computed(() => offeringSectionLabel(o))
+    // When editing a lab, the lecture it attaches to (same prefix/number/
+    // section) — the anchor for "Add another lab section". Null for an orphan
+    // lab, which hides the action rather than offering a dead button.
+    const labParent = computed(() =>
+      isLab.value
+        ? /** @type {Array<any>} */ (props.sections || []).find(
+            (s) =>
+              !s.o.lab && s.o.prefix === o.prefix && s.o.number === o.number && s.o.section === o.section,
+          ) || null
+        : null,
+    )
 
-    // Creates the lab (unscheduled, mirroring the lecture's section letter and
-    // copying its instructor) and switches the editor to it, so the user can
-    // give it a time right away — a lab's meeting time is set in the editor,
-    // not by dragging (the grid is behind the modal). Mirrors `addMeeting`:
-    // this form's edits are committed first so the lab copies the section's
-    // latest content, and an unsavable form blocks the add.
+    // Creates a lab and switches the editor to it, so the user can give it a
+    // time right away — a lab's meeting time is set in the editor, not by
+    // dragging (the grid is behind the modal). From a lecture it adds that
+    // lecture's first lab (unscheduled); from a lab it adds the next lab
+    // section, duplicating this lab's meeting pattern. Mirrors `addMeeting`:
+    // this form's edits are committed first so the new lab copies the latest
+    // content, and an unsavable form blocks the add.
     const addLab = () => {
-      if (isLab.value) return
+      if (isLab.value && !labParent.value) return
       if (hasPendingChanges.value) {
         if (!canSave.value) return
         commit()
@@ -707,6 +719,8 @@ export default {
         prefix: o.prefix,
         number: o.number,
         section: o.section,
+        lab: o.lab,
+        labSeq: o.labSeq,
         id: o.id,
       })
       if (!created) return
@@ -1001,6 +1015,7 @@ export default {
       isLab,
       codeLabel,
       sectionLabel,
+      labParent,
       addLab,
       addMeeting,
       hasPendingChanges,

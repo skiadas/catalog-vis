@@ -1031,6 +1031,46 @@ test('lab sections: add lab from the editor, strip lab chip, schedule it, cascad
   assertClean(errors)
 })
 
+test('lab sections: add another lab from a lab editor (copies the lab)', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+  await createSchedule(page, 'Lab siblings')
+
+  // Edit mode; add a lecture (its editor opens pre-slotted).
+  await page.locator('.schedule-pill-edit').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: '＋ Add course' }).click()
+  const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
+  await addm.waitFor({ state: 'visible', timeout: 5000 })
+  await addm.getByPlaceholder('Search code or name…').fill('ANTH 160')
+  await addm.locator('.schedule-add-option', { hasText: 'ANTH 160' }).first().click()
+
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+
+  // First lab from the lecture: the editor switches to it.
+  await em.getByRole('button', { name: 'Add lab section' }).click()
+  await expect(em.locator('#course-edit-title')).toHaveText('Edit ANTH 160L A1')
+
+  // From the lab, "Add another lab section" makes the next lab and switches to
+  // it; a lab has no "Add another meeting time" (labs are not meetings).
+  await expect(em.getByRole('button', { name: 'Add another meeting time' })).toHaveCount(0)
+  await em.getByRole('button', { name: 'Add another lab section' }).click()
+  await expect(em.locator('#course-edit-title')).toHaveText('Edit ANTH 160L A2')
+
+  // Saving the unscheduled pair leaves both labs in the strip, keyed apart.
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  const strip = page.locator('.no-meeting-strip')
+  const labPills = strip.locator('.slot-pill', { hasText: 'ANTH 160L' })
+  await expect(labPills).toHaveCount(2)
+  await expect(labPills.filter({ hasText: 'A1' })).toHaveCount(1)
+  await expect(labPills.filter({ hasText: 'A2' })).toHaveCount(1)
+
+  assertClean(errors)
+})
+
 test('no-meeting strip keys a lecture and its labs apart and survives filter toggles', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })

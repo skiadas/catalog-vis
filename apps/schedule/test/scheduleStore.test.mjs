@@ -734,12 +734,38 @@ test('addLabSection creates an unscheduled lab that mirrors the lecture and copi
     assert.equal(rows.length, 3)
     assert.equal(rows.filter((o) => o.lab).length, 2)
 
-    // A lab cannot spawn a lab; unknown lectures return null (no orphan labs).
+    // A lab's editor can add the next lab section: it duplicates that lab's
+    // meeting pattern, instructor, and seats onto the next sequence, attached
+    // to the same lecture letter.
+    assert.ok(
+      store.updateOffering(
+        id,
+        { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 2 },
+        { instructor: 'Doe', days: 'TR', time: '10:00-11:45', seats: 12 },
+      ),
+    )
+    const lab3 = store.addLabSection(id, {
+      prefix: 'BIO',
+      number: '166',
+      section: 'A',
+      lab: true,
+      labSeq: 2,
+      id: lab2.id,
+    })
+    assert.ok(lab3)
+    assert.equal(lab3.labSeq, 3)
+    assert.equal(lab3.section, 'A', 'attaches to the same lecture letter')
+    assert.equal(lab3.days, 'TR')
+    assert.equal(lab3.time, '10:00-11:45', 'copies the source lab meeting pattern')
+    assert.equal(lab3.instructor, 'Doe', 'copies the source lab instructor')
+    assert.equal(lab3.seats, 12, 'copies the source lab seat count')
+
+    // Unknown lectures and unknown source labs return null (no orphan labs).
+    assert.equal(store.addLabSection(id, { prefix: 'MAT', number: '131', section: 'A' }), null)
     assert.equal(
-      store.addLabSection(id, { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 1 }),
+      store.addLabSection(id, { prefix: 'BIO', number: '166', section: 'A', lab: true, labSeq: 9 }),
       null,
     )
-    assert.equal(store.addLabSection(id, { prefix: 'MAT', number: '131', section: 'A' }), null)
   })
 })
 

@@ -1975,23 +1975,33 @@ export function addCourseToSchedule(id, code) {
 // and starts unscheduled (no meeting time) so it lands in the "No meeting
 // times" strip and is dragged onto a slot. `labSeq` is the next free one for
 // that lecture, so a second lab on the same letter stays a distinct row.
-// Returns the new offering (or null when the lecture or schedule can't be
-// found, or `cur` is itself a lab). In a suggest session the lab lands in the
-// draft.
+//
+// `cur` may also be a lab (its editor's "Add another lab section"): the new lab
+// then duplicates that lab's meeting pattern (days/time) and instructor/seats,
+// still attached to the same lecture and taking the next `labSeq`, so a
+// scheduled lab spawns a scheduled sibling. Returns the new offering (or null
+// when the lecture/source lab or schedule can't be found). In a suggest session
+// the lab lands in the draft.
 export function addLabSection(id, cur) {
   const s = scheduleById(id)
-  if (!s || cur.lab) return null
+  if (!s) return null
   const { part, draft } = mutablePart(id)
   if (!part) return null
   const offerings = part.offerings || []
+  // Duplicating a lab: find the row being copied first, so its (current)
+  // section resolves the lecture it attaches to.
+  const source = cur.lab ? offerings.find((o) => o.lab && matchOffering(o, cur)) || null : null
+  if (cur.lab && !source) return null
   // Match the lecture by its content `id` when given (split-meeting rows),
   // else by the section tuple as before.
   const parent = offerings.find(
     (o) =>
       !o.lab &&
-      (cur.id != null && cur.id !== ''
-        ? o.id === cur.id
-        : o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section),
+      (source
+        ? o.prefix === source.prefix && o.number === source.number && o.section === source.section
+        : cur.id != null && cur.id !== ''
+          ? o.id === cur.id
+          : o.prefix === cur.prefix && o.number === cur.number && o.section === cur.section),
   )
   if (!parent) return null
   const lab = {
@@ -1999,13 +2009,13 @@ export function addLabSection(id, cur) {
     number: parent.number,
     section: parent.section,
     title: parent.title || '',
-    instructor: parent.instructor || '',
-    secondaryInstructors: parent.secondaryInstructors || [],
+    instructor: (source ? source.instructor : parent.instructor) || '',
+    secondaryInstructors: [...((source ? source.secondaryInstructors : parent.secondaryInstructors) || [])],
     lab: true,
     labSeq: nextLabSeq(offerings, parent.prefix, parent.number, parent.section),
-    days: '',
-    time: '',
-    seats: DEFAULT_SEATS,
+    days: source ? source.days || '' : '',
+    time: source ? source.time || '' : '',
+    seats: source && source.seats != null ? source.seats : DEFAULT_SEATS,
     id: '',
   }
   lab.id = offeringIdFor(lab)
