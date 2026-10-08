@@ -70,7 +70,10 @@ drill-down, and conflict treatment).
 Term slot sets are provided by `@major-vis/schedule-core`'s `TERM_CONFIGS`:
 Fall/Winter share a standard MWF/TR set; Spring has a single MTWRF group of four
 slots, and a course may occupy up to two consecutive slots. Custom start/end
-times are allowed; an offering can also be set to "No meeting time".
+times are allowed; an offering can also be set to "No meeting time". A
+newly-added course's section letter comes from the active term's range — Fall
+A–I, Winter J–R, Spring S–Z, then that range doubled (`AA`, `BB`, …) once the
+single letters are used — so sections never collide across terms.
 
 **Patterns the grid distinguishes:** the calendar is anchored to the term's
 standard hours — one early/late class never stretches or hides the normal

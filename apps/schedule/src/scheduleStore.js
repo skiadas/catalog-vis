@@ -433,7 +433,7 @@ export function materializeCrossListVersions(id, cur) {
     if (list.some((o) => !o.lab && o.prefix === prefix && o.number === number)) continue
     const section = sectionIsFree(list, prefix, number, source.section)
       ? source.section
-      : nextSectionLetter(list, prefix, number)
+      : nextSectionLetter(list, prefix, number, activeTerm.value)
     const offering = {
       prefix,
       number,
@@ -1907,7 +1907,9 @@ export function updateOffering(id, cur, changes) {
 }
 
 // Adds a catalog course (by code) to the schedule's active term, landing it in
-// the default slot with the first free section letter. A cross-listed course
+// the default slot with the first free section letter in the active term's
+// range (Fall A–I, Winter J–R, Spring S–Z; doubled once the range is exhausted).
+// A cross-listed course
 // joins its group: if a sibling version is already on the term the new row
 // adopts the sibling's section (when free) and copies its scheduling fields,
 // keeping the group's owner (or staying unowned when it came from an import);
@@ -1933,7 +1935,7 @@ export function addCourseToSchedule(id, code) {
   const section =
     existing && sectionIsFree(offerings, prefix, number, existing.section)
       ? existing.section
-      : nextSectionLetter(offerings, prefix, number)
+      : nextSectionLetter(offerings, prefix, number, activeTerm.value)
   const offering = {
     prefix,
     number,

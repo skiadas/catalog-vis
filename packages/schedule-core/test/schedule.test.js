@@ -251,6 +251,38 @@ test('nextSectionLetter picks the first free section letter per course', () => {
   assert.equal(nextSectionLetter(undefined, 'MAT', '120'), 'A')
 })
 
+test('nextSectionLetter starts at each term range (Fall A, Winter J, Spring S)', () => {
+  assert.equal(nextSectionLetter([], 'MAT', '120', 'F'), 'A')
+  assert.equal(nextSectionLetter([], 'MAT', '120', 'W'), 'J')
+  assert.equal(nextSectionLetter([], 'MAT', '120', 'S'), 'S')
+  // unknown term falls back to Fall's range
+  assert.equal(nextSectionLetter([], 'MAT', '120', 'Z'), 'A')
+})
+
+test('nextSectionLetter skips used letters within the term range only', () => {
+  const winter = [
+    { prefix: 'MAT', number: '120', section: 'J' },
+    { prefix: 'MAT', number: '120', section: 'K' },
+  ]
+  assert.equal(nextSectionLetter(winter, 'MAT', '120', 'W'), 'L')
+  // letters below the range never consume a Winter slot
+  const fallLetters = [
+    { prefix: 'MAT', number: '120', section: 'A' },
+    { prefix: 'MAT', number: '120', section: 'B' },
+  ]
+  assert.equal(nextSectionLetter(fallLetters, 'MAT', '120', 'W'), 'J')
+})
+
+test('nextSectionLetter doubles letters once the term range is exhausted', () => {
+  const fallFull = 'ABCDEFGHI'.split('').map((section) => ({ prefix: 'MAT', number: '120', section }))
+  assert.equal(nextSectionLetter(fallFull, 'MAT', '120', 'F'), 'AA')
+  const fallDblA = [...fallFull, { prefix: 'MAT', number: '120', section: 'AA' }]
+  assert.equal(nextSectionLetter(fallDblA, 'MAT', '120', 'F'), 'BB')
+  // Winter doubles its own letters (J–R), not Fall's
+  const winterFull = 'JKLMNOPQR'.split('').map((section) => ({ prefix: 'MAT', number: '120', section }))
+  assert.equal(nextSectionLetter(winterFull, 'MAT', '120', 'W'), 'JJ')
+})
+
 test('addOfferingToSchedule appends to the offerings array', () => {
   const offerings = [{ prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '9:20-10:30' }]
   const added = { prefix: 'CS', number: '101', section: 'B', days: 'MWF', time: '8:00-9:10' }

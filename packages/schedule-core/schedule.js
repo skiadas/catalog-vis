@@ -65,14 +65,37 @@ export const SLOT_BLOCKS = [
 // base slot block), the calendar's day range, and how many consecutive base
 // slots a course may span (`maxConsecutiveSlots`). Fall and Winter share the
 // standard MWF/TR set; Spring has one MTWRF group of four slots that courses may
-// occupy in pairs. `termConfig(key)` is the lookup the app views use.
+// occupy in pairs. It also carries the term's section-letter range
+// (`sectionStart`..`sectionEnd`): the alphabet is partitioned across the three
+// terms (Fall A–I, Winter J–R, Spring S–Z) so a course's sections never collide
+// across terms. `termConfig(key)` is the lookup the app views use.
 const SPRING_SLOTS = SPRING_BLOCK.map(([days, time, start, end]) => ({ days, time, start, end }))
 export const TERM_CONFIGS = [
-  { key: 'F', label: 'Fall', dayGroups: SLOT_BLOCKS, dayStart: 480, dayEnd: 960, maxConsecutiveSlots: 1 },
-  { key: 'W', label: 'Winter', dayGroups: SLOT_BLOCKS, dayStart: 480, dayEnd: 960, maxConsecutiveSlots: 1 },
+  {
+    key: 'F',
+    label: 'Fall',
+    sectionStart: 'A',
+    sectionEnd: 'I',
+    dayGroups: SLOT_BLOCKS,
+    dayStart: 480,
+    dayEnd: 960,
+    maxConsecutiveSlots: 1,
+  },
+  {
+    key: 'W',
+    label: 'Winter',
+    sectionStart: 'J',
+    sectionEnd: 'R',
+    dayGroups: SLOT_BLOCKS,
+    dayStart: 480,
+    dayEnd: 960,
+    maxConsecutiveSlots: 1,
+  },
   {
     key: 'S',
     label: 'Spring',
+    sectionStart: 'S',
+    sectionEnd: 'Z',
     dayGroups: [{ label: 'MTWRF', slots: SPRING_SLOTS }],
     dayStart: 480,
     dayEnd: 1020,
@@ -899,20 +922,30 @@ export const DEFAULT_SLOT = {
   time: SLOT_BLOCKS[0].slots[0].time,
 }
 
-// The first unused section letter for a course, so a hand-added section never
-// collides with an existing one of the same course. Lab sections are ignored —
-// their letters mirror the lecture's, so they never consume a lecture letter.
-export function nextSectionLetter(offerings, prefix, number) {
+// The first unused section letter for a course in a term, so a hand-added
+// section never collides with an existing one of the same course. Lab sections
+// are ignored — their letters mirror the lecture's, so they never consume a
+// lecture letter. The term fixes the letter pool: its `sectionStart`..`sectionEnd`
+// range first (Fall A–I, Winter J–R, Spring S–Z), then that same range doubled
+// (`AA`, `BB`, …) once every single letter is taken. `termKey` defaults to Fall.
+export function nextSectionLetter(offerings, prefix, number, termKey = 'F') {
   const used = new Set()
   for (const o of offerings || []) {
     if (o.lab) continue
     if (o.prefix === prefix && o.number === number) used.add(o.section)
   }
-  for (let i = 0; i < 26; i++) {
-    const letter = String.fromCharCode(65 + i)
-    if (!used.has(letter)) return letter
+  const config = termConfig(termKey)
+  const start = (config.sectionStart || 'A').charCodeAt(0)
+  const end = (config.sectionEnd || 'Z').charCodeAt(0)
+  let last = String.fromCharCode(end)
+  for (let repeat = 1; repeat <= 2; repeat++) {
+    for (let c = start; c <= end; c++) {
+      const letter = String.fromCharCode(c).repeat(repeat)
+      last = letter
+      if (!used.has(letter)) return letter
+    }
   }
-  return 'Z'
+  return last
 }
 
 // Appends a brand-new offering to a schedule's `offerings` array.

@@ -453,6 +453,32 @@ test('offline trail mirrors the lifecycle: propose, withdraw, propose again, sel
   })
 })
 
+test('addCourseToSchedule letters new sections by the active term range', async () => {
+  await withRemote(async ({ store }) => {
+    // Make the store offline for this test (same process, remote back off).
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const id = await store.addSchedule('Local', '2026-27', [])
+
+    store.setActiveTerm('W')
+    const winter = store.addCourseToSchedule(id, 'CS 101')
+    assert.equal(winter.o.section, 'J', 'Winter starts at J')
+    assert.equal(store.scheduleById(id).terms.W.offerings.length, 1, 'lands in the Winter part')
+
+    store.setActiveTerm('S')
+    const spring = store.addCourseToSchedule(id, 'CS 101')
+    assert.equal(spring.o.section, 'S', 'Spring starts at S')
+    assert.equal(store.scheduleById(id).terms.S.offerings.length, 1)
+
+    store.setActiveTerm('F')
+    const fall = store.addCourseToSchedule(id, 'CS 101')
+    assert.equal(fall.o.section, 'A', 'Fall still starts at A')
+    assert.equal(store.scheduleById(id).terms.F.offerings.length, 1)
+  })
+})
+
 test('publishedOfferings stays published during a suggest session; viewOfferings shows the draft', async () => {
   await withRemote(async ({ store }) => {
     // Make the store offline for this test (same process, remote back off).

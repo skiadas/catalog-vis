@@ -191,8 +191,10 @@ unscheduled }`; each list is sorted (`compareItems`) and items carry
 - `addOfferingToSchedule(offerings, offering)`, `removeOfferingFromSchedule(offerings, cur)`
   (removing a lecture also removes its labs — a lab without its lecture is
   meaningless)
-- `nextSectionLetter(offerings, prefix, number)` → first free section letter
-  (lab rows are ignored — their letters mirror the lecture's)
+- `nextSectionLetter(offerings, prefix, number, termKey = 'F')` → first free
+  section letter in the term's range (Fall A–I, Winter J–R, Spring S–Z), then
+  that range doubled (`AA`, `BB`, …) once every single letter is taken; lab rows
+  are ignored — their letters mirror the lecture's
 - `offerKey(o)` → the stable identity tuple (`prefix|number|section|L|seq`),
   the one key every identity match uses; `offeringItemKey(it)` → the render
   identity of an indexed item (record identity + content id + source
