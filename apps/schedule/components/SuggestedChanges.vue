@@ -40,8 +40,8 @@
           <div class="controls">
             <span class="controls-spacer"></span>
             <button class="filter-btn" @click="$emit('close')">Close</button>
-            <button class="filter-btn primary" :disabled="!draftOps.length" @click="doPropose">
-              {{ draftOps.length ? 'Propose changes' : 'Nothing to propose yet' }}
+            <button class="filter-btn primary" :disabled="!canPropose" @click="doPropose">
+              {{ proposeLabel }}
             </button>
           </div>
         </div>
@@ -127,6 +127,7 @@ import {
   withdrawSuggestion,
   proposeDraft,
   draftOperations,
+  editingDraft,
   isOwner,
   canSuggest,
   isSuggestSessionFor,
@@ -149,7 +150,7 @@ export default {
   props: {
     scheduleId: { type: [String, Number], default: null },
   },
-  emits: ['close'],
+  emits: ['close', 'sent'],
   setup(props, { emit }) {
     // The overlay only exists while its route is active, so the trap is always
     // on for its lifetime (the caller gates it with `v-if`).
@@ -178,6 +179,20 @@ export default {
         renderChanges(draftOps.value, 'text', {
           splitGroups: splitGroupsFor(draftOps.value, props.scheduleId),
         }) || '(no changes yet)',
+    )
+
+    // The draft keeps the sent changes (it is the session's working copy), so
+    // "draft differs from published" is not "there is something new to send".
+    // `dirty` is the unsent-changes flag; re-proposing unchanged ops is a store
+    // no-op, so the button stays disabled until a new edit re-dirties the draft.
+    const isDirty = computed(() => !!(editingDraft.value && editingDraft.value.dirty))
+    const canPropose = computed(() => isDirty.value && draftOps.value.length > 0)
+    const proposeLabel = computed(() =>
+      canPropose.value
+        ? 'Propose changes'
+        : draftOps.value.length
+          ? 'Nothing new to propose'
+          : 'Nothing to propose yet',
     )
 
     // Refresh suggestions on mount and whenever the panel's schedule changes.
@@ -241,7 +256,9 @@ export default {
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
 
-    // Non-owner/suggestor: propose the active term's draft as a suggestion.
+    // Non-owner/suggestor: propose the active term's draft as a suggestion. A
+    // successful send is finished by the parent (it owns the session + flash);
+    // refusals and no-ops leave the session and draft in place for fixing.
     const doPropose = async () => {
       if (!props.scheduleId) return
       const created = await proposeDraft(props.scheduleId, noteDraft.value)
@@ -252,11 +269,12 @@ export default {
             : 'Could not propose — please try again.'
         return
       }
-      feedback.value = created
-        ? `Proposed ${TERM_LABELS[activeTerm.value]} changes.`
-        : 'Nothing new to propose (no changes since the last proposal).'
+      if (!created) {
+        feedback.value = 'Nothing new to propose (no changes since the last proposal).'
+        return
+      }
       noteDraft.value = ''
-      if (props.scheduleId) await refreshSuggestions(props.scheduleId)
+      emit('sent', activeTerm.value)
     }
 
     const exportUrl = computed(() =>
@@ -277,6 +295,8 @@ export default {
       feedback,
       draftText,
       draftOps,
+      canPropose,
+      proposeLabel,
       changeText,
       displayName,
       opStatus,

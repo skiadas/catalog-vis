@@ -56,6 +56,10 @@
 
   <ScheduleHelp :is-open="showHelp" @close="showHelp = false" />
   <AuthPrompt />
+
+  <!-- App-level flash confirmations (see src/notify.js); mounted once here so
+       a toast survives the route/overlay change that triggers it. -->
+  <Toaster position="top-right" :close-button="true" />
 </template>
 
 <script>
@@ -79,12 +83,14 @@ import {
 import ScheduleHelp from './components/ScheduleHelp.vue'
 import AuthPrompt from './components/AuthPrompt.vue'
 import { displayName } from './src/names.js'
+import { Toaster } from 'vue-sonner'
+import 'vue-sonner/style.css'
 
 import { computed, ref } from 'vue'
 
 export default {
   name: 'ScheduleAppRoot',
-  components: { ScheduleHelp, AuthPrompt },
+  components: { ScheduleHelp, AuthPrompt, Toaster },
   setup() {
     // Remote sign-in: username self-identify or an OIDC redirect, per the
     // server's /api/config. The shared schedules, pending suggestions, and

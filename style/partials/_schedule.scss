@@ -2090,3 +2090,19 @@ a.filter-btn {
   font-size: 12.5px;
   color: var(--danger, #b3261e);
 }
+
+/* Flash confirmations (vue-sonner). Recolor the library's light theme onto our
+   tokens and put it on our own toast layer instead of its 999999999. */
+[data-sonner-toaster] {
+  z-index: var(--z-toast);
+  font-family: inherit;
+  --normal-bg: var(--surface);
+  --normal-border: var(--border);
+  --normal-text: var(--text);
+  --success-bg: var(--success-bg);
+  --success-border: color-mix(in srgb, var(--success) 35%, transparent);
+  --success-text: var(--success);
+  --error-bg: var(--danger-bg);
+  --error-border: color-mix(in srgb, var(--danger) 35%, transparent);
+  --error-text: var(--danger);
+}

@@ -127,6 +127,8 @@
   // ---- Z-index layers ----
   --z-dropdown: 20;
   --z-modal: 100;
-  // Anchored dropdowns float above a modal (the editor's comboboxes).
+  // Anchored dropdowns float above a modal (the editor's comboboxes); flash
+  // toasts float above those.
   --z-popover: 130;
+  --z-toast: 200;
 }

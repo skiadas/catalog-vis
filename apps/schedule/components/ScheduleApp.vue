@@ -285,7 +285,12 @@
 
   <ScheduleAddCourse :is-open="showAddCourse" @close="showAddCourse = false" />
   <ScheduleCopyCourses :is-open="showCopyCourses" :schedule-id="editingId" @close="showCopyCourses = false" />
-  <SuggestedChanges v-if="overlay === 'proposals'" :schedule-id="proposalsScheduleId" @close="goBackOrGrid" />
+  <SuggestedChanges
+    v-if="overlay === 'proposals'"
+    :schedule-id="proposalsScheduleId"
+    @close="goBackOrGrid"
+    @sent="onProposed"
+  />
   <ScheduleHistory :is-open="showHistory" @close="showHistory = false" @edit-course="onEditCourse" />
 </template>
 
@@ -296,7 +301,7 @@
 // modals read the schedule store directly; picker/filters take the pieces of
 // view state they need as props.
 
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   goScheduleGrid,
   goScheduleTable,
@@ -349,6 +354,7 @@ import {
 } from '../src/scheduleStore.js'
 import { TERM_KEYS, TERM_LABELS, offeringItemKey } from '@major-vis/schedule-core'
 import { useAnchoredDropdown } from '../src/useAnchoredDropdown.js'
+import { notify } from '../src/notify.js'
 import ScheduleGrid from './ScheduleGrid.vue'
 import ScheduleDay from './ScheduleDay.vue'
 import ScheduleSlot from './ScheduleSlot.vue'
@@ -388,6 +394,7 @@ export default {
   },
   setup() {
     const route = useRoute()
+    const router = useRouter()
     // Overlay routes (`.../access`, and later mode/proposals/editor) render
     // their dialog on top of the surface the user came from, so context (and
     // instance state like the manage search) survives. Remember that surface
@@ -546,6 +553,17 @@ export default {
       exitMode()
     }
 
+    // A suggestion was sent: confirm with a flash, then end the session (its
+    // work now lives in the pending suggestion, not the draft) and land on the
+    // grid so the change draws as a real dashed proposal.
+    const onProposed = (term) => {
+      const id = editingScheduleId.value
+      notify.success(`Proposed your ${TERM_LABELS[term] || term} changes — waiting for the owner to approve.`)
+      if (id != null) clearDraft(id, term || activeTerm.value)
+      setEditingSchedule(null)
+      router.replace({ name: 'schedule-grid' })
+    }
+
     // --- Course editor overlay -------------------------------------------
     // The store's `courseEditTarget` stays the single "editor is open on this
     // offering" signal; the route mirrors it. Setting the target (grid pencils,
@@ -681,6 +699,7 @@ export default {
       nameDraft,
       enterEdit,
       exitEdit,
+      onProposed,
       commitRename,
       activeTerm,
       setActiveTerm,

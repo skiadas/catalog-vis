@@ -489,17 +489,19 @@ test("re-entering a suggest session doesn't double-draw the proposer's own addit
       .locator('.filter-offering', { hasText: 'ANTH 160' }),
   ).toHaveCount(1)
 
-  // Propose it, leave the session, then come back to keep editing.
+  // Propose it: sending ends the session (the change becomes a pending
+  // proposal), closes the panel, and flashes a confirmation.
   await page.getByRole('button', { name: /Propose changes/ }).click()
   const panel = page.locator('.modal[aria-labelledby="suggested-title"]')
   await panel.waitFor({ state: 'visible', timeout: 5000 })
   await panel.getByRole('button', { name: 'Propose changes' }).click()
-  await panel.locator('.filter-btn', { hasText: 'Close' }).click()
   await panel.waitFor({ state: 'detached', timeout: 5000 })
-  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.locator('[data-sonner-toast]')).toContainText('waiting for the owner')
   await page
     .locator('.schedule-edit-chip', { hasText: 'Suggesting' })
     .waitFor({ state: 'detached', timeout: 5000 })
+  // Out of the session, the proposal draws as a pending (dashed) block.
+  await expect(page.locator('.filter-offering.proposed', { hasText: 'ANTH 160' }).first()).toBeVisible()
 
   await page.locator('.schedule-pill-suggest').first().click()
   await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
@@ -521,8 +523,8 @@ test('pending suggestions show on the table, instructor, and course views', asyn
   await signIn(page)
   await createSchedule(page, 'Proposals everywhere')
 
-  // Suggest an addition (with an instructor) and propose it, then leave the
-  // session so the pending proposal is drawn on top of the schedule.
+  // Suggest an addition (with an instructor) and propose it; sending ends the
+  // session with a flash, leaving the pending proposal drawn on top.
   await page.locator('.schedule-pill-suggest').first().click()
   await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
   await page.getByRole('button', { name: '＋ Add course' }).click()
@@ -540,9 +542,8 @@ test('pending suggestions show on the table, instructor, and course views', asyn
   const panel = page.locator('.modal[aria-labelledby="suggested-title"]')
   await panel.waitFor({ state: 'visible', timeout: 5000 })
   await panel.getByRole('button', { name: 'Propose changes' }).click()
-  await panel.locator('.filter-btn', { hasText: 'Close' }).click()
   await panel.waitFor({ state: 'detached', timeout: 5000 })
-  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.locator('[data-sonner-toast]')).toContainText('waiting for the owner')
   await page
     .locator('.schedule-edit-chip', { hasText: 'Suggesting' })
     .waitFor({ state: 'detached', timeout: 5000 })
