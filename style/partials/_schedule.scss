@@ -340,7 +340,10 @@
 
 .calendar-scroll {
   @include surface;
-  overflow: auto;
+  // Sideways only (a narrow viewport scrolls the week); the page, not the grid,
+  // is the vertical scroller — the calendar is exactly as tall as its range.
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 .calendar {
   min-width: 640px;
@@ -391,6 +394,12 @@
   font-size: var(--font-xs);
   color: var(--text-muted);
   transform: translateY(-4px);
+}
+// The final mark sits on the grid's bottom line; anchoring its box above the
+// line keeps the label inside the calendar. A centered label would spill ~half
+// a line past the box and give `.calendar-scroll` a spurious scrollbar.
+.cal-ruler .cal-hour.cal-hour-end {
+  transform: translateY(-100%);
 }
 .cal-daycol {
   flex: 1;

@@ -2634,6 +2634,22 @@ test('day view: a crowded slot lays courses side by side and the scale control r
   await scaleGroup.getByRole('button', { name: 'Auto' }).click()
   await expect.poll(calHeight).toBe('1440px')
 
+  // The week grid shares the control and the height var, and (like the day
+  // view) must not grow its own vertical scrollbar — the page is the scroller.
+  // Toggling re-lays the axis: the grid's calendar height used to freeze at the
+  // first render, so 2× left the box at 1× and the hour labels overflowed it.
+  await page.getByRole('button', { name: 'Grid', exact: true }).click()
+  const grid = page.locator('.calendar-scroll')
+  await grid.waitFor({ state: 'visible', timeout: 5000 })
+  const gridHeight = () =>
+    page.locator('.calendar').evaluate((el) => el.style.getPropertyValue('--cal-height'))
+  await scaleGroup.getByRole('button', { name: '1×' }).click()
+  await expect.poll(gridHeight).toBe('720px')
+  expect(await grid.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(2)
+  await scaleGroup.getByRole('button', { name: '2×' }).click()
+  await expect.poll(gridHeight).toBe('1440px')
+  expect(await grid.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(2)
+
   // Clean up the imported schedule.
   await page.getByRole('button', { name: /Your schedules/ }).click()
   await page

@@ -8,7 +8,8 @@
               v-for="h in hours"
               :key="h.min"
               class="cal-hour"
-              :style="{ top: topOffset(h.min), height: hourHeight }"
+              :class="{ 'cal-hour-end': h.min === dayRange.end }"
+              :style="{ top: topOffset(h.min) }"
             >
               {{ h.label }}
             </div>
@@ -188,7 +189,6 @@ export default {
     const dayRange = computed(() => dayTimelineRange(activeTerm.value, shownIndex.value, day.value))
     const hours = computed(() => hourMarks(dayRange.value.start, dayRange.value.end))
     const topOffset = (min) => px(min - dayRange.value.start) + 'px'
-    const hourHeight = computed(() => px(60) + 'px')
     const calStyle = computed(() => ({
       '--cal-height': px(dayRange.value.end - dayRange.value.start) + 'px',
     }))
@@ -312,7 +312,7 @@ export default {
       day,
       hours,
       topOffset,
-      hourHeight,
+      dayRange,
       calStyle,
       stdZones,
       dropZones,
