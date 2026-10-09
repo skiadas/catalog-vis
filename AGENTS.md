@@ -149,8 +149,18 @@ e2e suite is the only net for them. Rules learned the hard way:
   running: private-by-default silently broke every test that relied on
   everyone seeing everyone's schedules.
 - **A UI change invalidates the walkthrough screenshots.** The guide's PNGs
-  are committed and manifest-bound; re-run `npm run docs:shots` when a change
-  alters what they show, or the guide silently depicts the old app.
+  are committed and manifest-bound, and are otherwise captured only on demand,
+  so a stale PNG silently depicts the old app. Regenerate **only the shots your
+  change can affect**: name the surface you touched, find the manifest entries
+  that depict it (`docs-site/screenshots/manifest.mjs` — a `mode=edit|suggest`
+  entry shows the session bar, a grid/day/instructor entry shows the calendar,
+  a modal-over-grid entry shows it as a backdrop), then run
+  `npm run docs:shots -- <file-name substrings>` (e.g. `npm run docs:shots --
+  suggest-session table-edit`) and commit exactly those PNGs. The filter is the
+  selector — don't regenerate the whole suite and pixel-diff afterward to find
+  "your" files (that rewrites unrelated shots with churn, and rendering is only
+  ~deterministic, so re-captures are not guaranteed byte-identical). Run
+  `npm run build:docs` after; it enforces the manifest ↔ `<Shot>` binding.
 - **Instrument before theorizing.** A failing interaction that contradicts
   your mental model gets a DOM dump first (`page.evaluate(() =>
   document.body.innerText)` / the dialog's `outerHTML`) — guessing at
