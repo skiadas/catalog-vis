@@ -24,6 +24,9 @@
           class="seg-btn"
           :class="{ active: view === 'course' }"
           :aria-pressed="view === 'course'"
+          :disabled="!hasCourses"
+          :title="hasCourses ? undefined : 'No courses in this term'"
+          :aria-label="hasCourses ? undefined : 'Course conflicts (no courses in this term)'"
           @click="goScheduleCourse(selectedCode || sortedCourses[0])"
         >
           Course conflicts
@@ -32,6 +35,9 @@
           class="seg-btn"
           :class="{ active: view === 'instructor' }"
           :aria-pressed="view === 'instructor'"
+          :disabled="!hasInstructors"
+          :title="hasInstructors ? undefined : 'No instructors assigned in this term'"
+          :aria-label="hasInstructors ? undefined : 'Instructor (no instructors assigned in this term)'"
           @click="goScheduleInstructor(Object.keys(schedule.byInstructor)[0])"
         >
           Instructor
@@ -409,6 +415,13 @@ export default {
       if (!schedule.value) return []
       return Object.keys(schedule.value.byCourse).sort()
     })
+    // The Course conflicts / Instructor tabs lead with the first course or
+    // instructor; with none in the active term there is nothing to show, so
+    // they disable (and explain why) rather than throwing on the missing param.
+    const hasCourses = computed(() => sortedCourses.value.length > 0)
+    const hasInstructors = computed(() =>
+      schedule.value ? Object.keys(schedule.value.byInstructor).length > 0 : false,
+    )
     const selectedCode = computed(() => String(route.params.code || ''))
     const accessScheduleId = computed(() => String(route.params.id || ''))
     // Route params are strings; remote schedule ids are numbers. Match loosely.
@@ -620,6 +633,8 @@ export default {
     return {
       view,
       sortedCourses,
+      hasCourses,
+      hasInstructors,
       selectedCode,
       showFilter,
       remote,

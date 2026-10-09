@@ -227,6 +227,16 @@
 .seg .seg-btn:not(.active):hover {
   background: var(--primary-light);
 }
+/* A view tab with nothing to show (an empty term has no first course, a term
+   with no assigned instructors has no first instructor) is disabled rather
+   than silently doing nothing on click. */
+.seg .seg-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.seg .seg-btn:disabled:not(.active):hover {
+  background: transparent;
+}
 .filter-count {
   margin-left: 4px;
   font-size: var(--font-xs);

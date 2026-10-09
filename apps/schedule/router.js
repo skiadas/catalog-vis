@@ -123,9 +123,13 @@ export function goScheduleSlot(day, time) {
   if (time) go({ name: 'schedule-slot', params: { day, time } })
 }
 export function goScheduleCourse(code) {
+  // Guard the required param: it can be absent (an empty term has no first
+  // course), which would throw in vue-router rather than no-op.
+  if (!code) return
   go({ name: 'schedule-course', params: { code } })
 }
 export function goScheduleInstructor(name) {
+  if (!name) return
   go({ name: 'schedule-instructor', params: { instructor: name } })
 }
 export function goManage() {

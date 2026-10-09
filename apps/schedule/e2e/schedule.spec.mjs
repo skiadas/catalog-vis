@@ -160,6 +160,45 @@ test('sign-in and schedule creation', async ({ page }) => {
   assertClean(errors)
 })
 
+test('view tabs disable when the term has no courses or instructors', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'tabs-user')
+  await createSchedule(page, 'Empty term tabs')
+
+  const viewTabs = page.locator('.schedule-toolbar .seg[aria-label="View"]')
+  const courseTab = viewTabs.getByRole('button', { name: /^Course conflicts/ })
+  const instructorTab = viewTabs.getByRole('button', { name: /^Instructor/ })
+
+  // An empty term has no first course or instructor. The tabs explain why they
+  // are unavailable (title + accessible name) and are off, rather than throwing
+  // on the missing route param and silently doing nothing.
+  await expect(courseTab).toBeDisabled()
+  await expect(instructorTab).toBeDisabled()
+  await expect(courseTab).toHaveAttribute('title', 'No courses in this term')
+  await expect(instructorTab).toHaveAttribute('title', 'No instructors assigned in this term')
+  await expect(courseTab).toHaveAttribute('aria-label', 'Course conflicts (no courses in this term)')
+  await expect(instructorTab).toHaveAttribute(
+    'aria-label',
+    'Instructor (no instructors assigned in this term)',
+  )
+
+  // Populating a second schedule lights the tabs up, and each click reaches its
+  // view (no thrown missing-param error).
+  await createPopulatedSchedule(page, 'Populated term tabs')
+  await expect(courseTab).toBeEnabled()
+  await expect(instructorTab).toBeEnabled()
+  await courseTab.click()
+  await page.waitForURL(/#\/course\//, { timeout: 5000 })
+  await expect(page.locator('.course-detail-main')).toBeVisible()
+  await page.getByRole('button', { name: 'Grid', exact: true }).click()
+  await instructorTab.click()
+  await page.waitForURL(/#\/instructor\//, { timeout: 5000 })
+  await expect(page.getByText('Weekly timetable')).toBeVisible()
+
+  assertClean(errors)
+})
+
 test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
