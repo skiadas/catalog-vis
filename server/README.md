@@ -169,7 +169,10 @@ pre-created (`POST /api/admin/users`) before the person ever signs in; the
 departments are the scope used to decide whose suggestions may touch which
 courses (see below). Any signed-in user can autocomplete against the directory
 (`GET /api/users?q=`, matching username or display name, bounded) for the
-access lists. The admin app reaches all of this on its own page (`#/admin`).
+access lists, and read the full roster (`GET /api/users/roster`) — every
+account's username, display name, and departments — for rendering human names
+and scoping the schedule app's instructor picker by department. The admin app
+reaches all of this on its own page (`#/admin`).
 
 The directory also bulk-imports from a CSV (`POST /api/admin/users/import`,
 raw `text/csv` body) so a roster can be loaded in one go and the per-account UI

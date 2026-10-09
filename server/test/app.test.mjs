@@ -1246,7 +1246,7 @@ test('the session user carries the directory display name', async () => {
   }
 })
 
-test('the roster endpoint returns every account name for any signed-in user', async () => {
+test('the roster endpoint returns every account name and departments for any signed-in user', async () => {
   const database = await openDb(':memory:')
   const app = createApp({
     database,
@@ -1257,19 +1257,24 @@ test('the roster endpoint returns every account name for any signed-in user', as
   try {
     const alice = srv.newClient()
     assert.equal((await alice.post('/api/auth/login', { username: 'alice' })).status, 200)
-    await alice.post('/api/admin/users', { username: 'wahl', displayName: 'John Wahl' })
+    await alice.post('/api/admin/users', {
+      username: 'wahl',
+      displayName: 'John Wahl',
+      departments: ['CS', 'MAT'],
+    })
     await alice.post('/api/admin/users', { username: 'bob', displayName: 'Bob Skiadas' })
 
     const carol = srv.newClient()
     assert.equal((await carol.post('/api/auth/login', { username: 'carol' })).status, 200)
     const roster = await carol.get('/api/users/roster')
     assert.equal(roster.status, 200)
-    // Every account, names only, sorted by username (the repo's listUsers order).
+    // Every account, sorted by username (the repo's listUsers order); the
+    // departments ride along so the client can scope the instructor picker.
     assert.deepEqual(roster.json.users, [
-      { username: 'alice', displayName: null },
-      { username: 'bob', displayName: 'Bob Skiadas' },
-      { username: 'carol', displayName: null },
-      { username: 'wahl', displayName: 'John Wahl' },
+      { username: 'alice', displayName: null, departments: [] },
+      { username: 'bob', displayName: 'Bob Skiadas', departments: [] },
+      { username: 'carol', displayName: null, departments: [] },
+      { username: 'wahl', displayName: 'John Wahl', departments: ['CS', 'MAT'] },
     ])
     // Anonymous is refused.
     assert.equal((await srv.newClient().get('/api/users/roster')).status, 401)

@@ -333,13 +333,18 @@ export function createApp({
     },
   )
 
-  // The full directory as a `{ username, displayName }` roster: the same
-  // accounts the access autocomplete searches, unfiltered. Any signed-in user
-  // may read it (names only — no schedule data) — consumers render human names
-  // from it, e.g. the schedule CSV export's "Last, First" columns.
+  // The full directory as a `{ username, displayName, departments }` roster:
+  // the same accounts the access autocomplete searches, unfiltered. Any
+  // signed-in user may read it (directory metadata only — no schedule data);
+  // consumers render human names from it (e.g. the schedule CSV export's
+  // "Last, First" columns) and scope the instructor picker by department.
   app.get('/api/users/roster', requireAuth, (req, res) => {
     res.json({
-      users: db.listUsers(database).map((u) => ({ username: u.username, displayName: u.displayName })),
+      users: db.listUsers(database).map((u) => ({
+        username: u.username,
+        displayName: u.displayName,
+        departments: u.departments,
+      })),
     })
   })
 
