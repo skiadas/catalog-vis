@@ -234,3 +234,21 @@
     color: var(--text-muted);
   }
 }
+
+// Pending-suggestion rows: a proposed row reads as a suggestion (dashed side,
+// proposer in the source column); a live row whose removal is proposed is
+// struck through.
+.schedule-table-row.proposed {
+  box-shadow: inset 3px 0 0 var(--primary);
+  background: var(--primary-light);
+
+  .schedule-table-source {
+    color: var(--primary);
+    font-style: italic;
+  }
+}
+.schedule-table-row.removed .schedule-table-code .course-code-cell,
+.schedule-table-row.removed .schedule-table-value {
+  text-decoration: line-through;
+  opacity: 0.85;
+}

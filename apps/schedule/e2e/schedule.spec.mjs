@@ -511,6 +511,53 @@ test("re-entering a suggest session doesn't double-draw the proposer's own addit
   assertClean(errors)
 })
 
+test('pending suggestions show on the table, instructor, and course views', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+  await createSchedule(page, 'Proposals everywhere')
+
+  // Suggest an addition (with an instructor) and propose it, then leave the
+  // session so the pending proposal is drawn on top of the schedule.
+  await page.locator('.schedule-pill-suggest').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: '＋ Add course' }).click()
+  const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
+  await addm.waitFor({ state: 'visible', timeout: 5000 })
+  await addm.getByPlaceholder('Search code or name…').fill('ANTH 160')
+  await addm.locator('.schedule-add-option', { hasText: 'ANTH 160' }).first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await em.locator('#course-edit-instructor').fill('Wahl')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+
+  await page.getByRole('button', { name: /Propose changes/ }).click()
+  const panel = page.locator('.modal[aria-labelledby="suggested-title"]')
+  await panel.waitFor({ state: 'visible', timeout: 5000 })
+  await panel.getByRole('button', { name: 'Propose changes' }).click()
+  await panel.locator('.filter-btn', { hasText: 'Close' }).click()
+  await panel.waitFor({ state: 'detached', timeout: 5000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+  await page
+    .locator('.schedule-edit-chip', { hasText: 'Suggesting' })
+    .waitFor({ state: 'detached', timeout: 5000 })
+
+  // Table: the proposal is a marked row with its proposer in the source column.
+  await page.getByRole('button', { name: 'Table', exact: true }).click()
+  await expect(page.locator('.schedule-table-row.proposed', { hasText: 'ANTH 160' })).toHaveCount(1)
+
+  // Instructor: the proposed course lands on its instructor's timetable, marked.
+  await page.goto('/#/instructor/Wahl', { waitUntil: 'networkidle' })
+  await expect(page.locator('.cal-block.teach.proposed', { hasText: 'ANTH 160' }).first()).toBeVisible()
+
+  // Course conflicts: the proposed section is listed, marked.
+  await page.goto('/#/course/ANTH%20160', { waitUntil: 'networkidle' })
+  await expect(page.locator('.req-block.proposed')).toHaveCount(1)
+
+  assertClean(errors)
+})
+
 test('edit session guard: deep links you cannot edit bounce back to the view', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })

@@ -29,6 +29,7 @@ import {
   offeringCodeLabel,
   offeringSectionLabel,
   matchOffering,
+  proposeOverlay,
 } from '@major-vis/schedule-core'
 import { buildFacultyAndEligible, makeSchedule } from '@major-vis/schedule-core/generate'
 import {
@@ -2206,6 +2207,55 @@ export const scheduleOfferings = computed(() => {
 
 // The merged index over the selected schedules' active-term offerings.
 export const schedule = computed(() => buildIndex(scheduleOfferings.value))
+
+// The pending-suggestion overlay for the active term: the draw-on-top set from
+// `overlaySuggestions`, gated by the toolbar toggle. `removalsByKey` lets a view
+// mark a live course whose removal is proposed; `aware` distinguishes "showing
+// nothing because the toggle is off / nothing pending" from a live overlay.
+export const pendingOverlay = computed(() => {
+  const empty = { proposed: [], removals: [], removalsByKey: new Map(), aware: false }
+  if (!showPendingSuggestions.value) return empty
+  const list = overlaySuggestions.value
+  if (!list.length) return empty
+  const scheduleOf = new Map(list.map((s) => [s.id, s.scheduleId]))
+  const { proposed, removals } = proposeOverlay(scheduleOfferings.value, list)
+  const removalsByKey = new Map()
+  for (const r of removals) {
+    removalsByKey.set(`${r.cur.prefix} ${r.cur.number} ${r.cur.section}`, r)
+  }
+  return {
+    proposed: proposed.map((p) => ({ ...p, scheduleId: scheduleOf.get(p.suggestionId) })),
+    removals,
+    removalsByKey,
+    aware: true,
+  }
+})
+
+// The offerings every view draws: the base (published, or the suggest-session
+// draft) plus each proposed offering, tagged (`$sid`/`$prop`) so views can style
+// it and never treat it as a real, editable row.
+export const shownOfferings = computed(() => {
+  const extra = pendingOverlay.value.proposed
+  if (!extra.length) return scheduleOfferings.value
+  return [
+    ...scheduleOfferings.value,
+    ...extra.map((p, i) => ({
+      ...p.offering,
+      $sid: 'prop:' + p.suggestionId + ':' + i,
+      $prop: {
+        kind: p.kind,
+        suggestionId: p.suggestionId,
+        proposer: p.proposer,
+        scheduleId: p.scheduleId,
+      },
+    })),
+  ]
+})
+
+// The merged index over `shownOfferings` (base + proposals).
+export const shownSchedule = computed(() =>
+  shownOfferings.value === scheduleOfferings.value ? schedule.value : buildIndex(shownOfferings.value),
+)
 
 // The core-curriculum areas a course satisfies in this schedule collection: the
 // union of the selected schedules' active-term offerings' own `coreReqs` (the

@@ -12,12 +12,19 @@
           </div>
 
           <div class="section-title">Offerings ({{ sections.length }})</div>
-          <div class="req-block" v-for="s in sections" :key="offeringItemKey(s)">
+          <div
+            class="req-block"
+            v-for="s in sections"
+            :key="offeringItemKey(s)"
+            :class="{ proposed: proposed(s), removed: removed(s) }"
+          >
             <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px">
               <div>
                 <div>
                   <strong>{{ s.sectionLabel }}</strong> · {{ s.o.days }} {{ formatTime(s.o.time) }} · Seats:
                   {{ s.o.seats ?? DEFAULT_SEATS }}
+                  <span v-if="proposed(s)" class="proposed-tag">Proposed by {{ s.o.$prop.proposer }}</span>
+                  <span v-else-if="removed(s)" class="proposed-tag">Removal proposed</span>
                 </div>
                 <div v-if="offeringTitle(s.o)" class="offering-title">{{ offeringTitle(s.o) }}</div>
               </div>
@@ -55,7 +62,7 @@
                   </td>
                   <td>
                     <button
-                      v-for="sec in schedule.byCourse[c]"
+                      v-for="sec in shownSchedule.byCourse[c]"
                       :key="sec.o.days + sec.o.time"
                       type="button"
                       class="course-chip mini"
@@ -95,15 +102,21 @@
     </div>
 
     <p class="results-count" style="margin-top: 20px">
-      {{ scheduleOfferings.length }} total offerings across
-      {{ Object.keys(schedule.byCourse).length }} courses.
+      {{ shownOfferings.length }} total offerings across
+      {{ Object.keys(shownSchedule.byCourse).length }} courses.
     </p>
   </div>
 </template>
 
 <script>
 import { useRoute } from 'vue-router'
-import { schedule, scheduleOfferings, instructorName, scheduleAreasOf } from '../src/scheduleStore.js'
+import {
+  pendingOverlay,
+  shownOfferings,
+  shownSchedule,
+  instructorName,
+  scheduleAreasOf,
+} from '../src/scheduleStore.js'
 import { courseByCode, courseName, coreReqLabel, crossListOf } from '@major-vis/catalog-client'
 import {
   conflictsForCourse,
@@ -122,11 +135,15 @@ export default {
     const route = useRoute()
     const code = computed(() => String(route.params.code || ''))
     const sections = computed(
-      () => (schedule.value && code.value ? schedule.value.byCourse[code.value] : []) || [],
+      () => (shownSchedule.value && code.value ? shownSchedule.value.byCourse[code.value] : []) || [],
     )
     const conflicts = computed(() =>
-      schedule.value && code.value ? conflictsForCourse(code.value, schedule.value) : [],
+      shownSchedule.value && code.value ? conflictsForCourse(code.value, shownSchedule.value) : [],
     )
+    // Pending-suggestion markers for this course's sections.
+    const proposed = (s) => Boolean(s.o.$prop)
+    const removed = (s) =>
+      pendingOverlay.value.removalsByKey.get(`${s.o.prefix} ${s.o.number} ${s.o.section}`) || null
     const catalog = computed(() => courseByCode(code.value))
     // The core-curriculum areas this course satisfies on the displayed
     // schedules — the imported rows' own designations, with the catalog as a
@@ -139,7 +156,7 @@ export default {
     const crossList = computed(() => {
       const others = crossListOf(code.value)
       if (!others.length) return null
-      const present = others.filter((c) => (schedule.value.byCourse[c] || []).length > 0)
+      const present = others.filter((c) => (shownSchedule.value.byCourse[c] || []).length > 0)
       const owner = (sections.value[0] && sections.value[0].o.crossListOwner) || null
       return { others, present, owner }
     })
@@ -156,8 +173,10 @@ export default {
       code,
       sections,
       conflicts,
-      schedule,
-      scheduleOfferings,
+      proposed,
+      removed,
+      shownSchedule,
+      shownOfferings,
       catalog,
       nameFor,
       offeringTitle,

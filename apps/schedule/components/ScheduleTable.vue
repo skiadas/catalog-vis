@@ -147,7 +147,12 @@
             v-for="row in rows"
             :key="row.key"
             class="schedule-table-row"
-            :class="{ reference: reference(row), lab: row.o.lab }"
+            :class="{
+              reference: reference(row),
+              lab: row.o.lab,
+              proposed: proposed(row),
+              removed: removed(row),
+            }"
           >
             <td class="schedule-table-cell schedule-table-code">
               <button class="course-code-cell" @click="goScheduleCourse(row.code)">
@@ -293,7 +298,7 @@
               @commit="(v) => commitField(row, 'seats', v)"
             />
             <td class="schedule-table-cell schedule-table-core">{{ areasText(row.o) || '—' }}</td>
-            <td class="schedule-table-cell schedule-table-source">{{ scheduleName(row.sid) }}</td>
+            <td class="schedule-table-cell schedule-table-source">{{ sourceText(row) }}</td>
             <td class="schedule-table-cell schedule-table-actions">
               <button
                 v-if="canOpen(row)"
@@ -359,10 +364,11 @@ import {
   isReferenceItem,
   myDepartments,
   openCourseEdit,
+  pendingOverlay,
   removeCourseFromSchedule,
-  schedule,
   scheduleById,
-  scheduleOfferings,
+  shownOfferings,
+  shownSchedule,
   updateOffering,
 } from '../src/scheduleStore.js'
 import { buildInstructorOptions } from '../src/instructorSuggest.js'
@@ -424,12 +430,12 @@ export default {
     // The selectable chips, unioned with any URL-selected value so a
     // stale-but-valid selection stays toggleable (and clearable).
     const departments = computed(() => {
-      const set = new Set(departmentsInOfferings(scheduleOfferings.value))
+      const set = new Set(departmentsInOfferings(shownOfferings.value))
       for (const d of selectedDepts.value) set.add(d)
       return [...set].sort()
     })
     const instructors = computed(() => {
-      const set = new Set(instructorsInSchedule(schedule.value))
+      const set = new Set(instructorsInSchedule(shownSchedule.value))
       for (const n of selectedInstructors.value) set.add(n)
       return [...set].sort(compareInstructors)
     })
@@ -457,7 +463,7 @@ export default {
     const deptOpen = ref(true)
     const instrOpen = ref(queryList(route.query.instructor).length > 0)
     const rows = computed(() =>
-      scheduleOfferings.value
+      shownOfferings.value
         .filter((o) => rowMatchesFilters(o, selectedDepts.value, selectedInstructors.value))
         .map((o) => ({
           o,
@@ -471,6 +477,19 @@ export default {
     const scheduleName = (sid) => {
       const s = scheduleById(sid)
       return s ? s.name : ''
+    }
+    // Pending-suggestion markers: a proposed row (dashed) or a live row whose
+    // removal is proposed (struck through). Proposed rows carry a `$prop` tag
+    // and a synthetic sid, so they never read as editable or reference rows.
+    const proposed = (row) => Boolean(row.o.$prop)
+    const removed = (row) =>
+      pendingOverlay.value.removalsByKey.get(`${row.o.prefix} ${row.o.number} ${row.o.section}`) || null
+    const sourceText = (row) => {
+      const prop = row.o.$prop
+      if (prop) return `Proposed by ${prop.proposer}`
+      const rem = removed(row)
+      if (rem) return `Removal proposed by ${rem.proposer}`
+      return scheduleName(row.sid)
     }
     const reference = (row) => isReferenceItem({ o: row.o, sid: row.sid })
     // Editable only inside a session on the row's own schedule and within the
@@ -543,7 +562,7 @@ export default {
       return buildInstructorOptions({
         prefix: row ? row.o.prefix : '',
         facultyByPrefix: facultyByPrefix.value,
-        termOfferings: scheduleOfferings.value,
+        termOfferings: shownOfferings.value,
         directoryIndex: directoryIndex.value,
       })
     })
@@ -711,7 +730,9 @@ export default {
       editingRole,
       editingScheduleId,
       myDepartments,
-      scheduleName,
+      proposed,
+      removed,
+      sourceText,
       reference,
       canEdit,
       canRemove,

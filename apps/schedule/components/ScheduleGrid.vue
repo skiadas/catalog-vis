@@ -76,12 +76,10 @@
 
 <script>
 import {
-  buildIndex,
   daySlotBlocks,
   formatTime,
   buildVisual,
   buildEditVisual,
-  proposeOverlay,
   termSlotOptions,
   termDayGroup,
   toMinutes,
@@ -103,15 +101,13 @@ import {
   verticalScale,
 } from '../src/scheduleStore.js'
 import {
-  schedule,
-  scheduleOfferings,
   selectedScheduleIds,
   colorSchedules,
   scheduleAreasOf,
   editingScheduleId,
   canTouchOffering,
-  showPendingSuggestions,
-  overlaySuggestions,
+  pendingOverlay,
+  shownSchedule,
   moveOffering,
   openCourseEdit,
   instructorName,
@@ -137,42 +133,11 @@ export default {
   setup() {
     const slotTitle = (slot) => slot.items.map((it) => it.code).join(', ')
 
-    // Pending-suggestion overlay: each pending proposal's ops are interpreted
-    // against the published term independently, so concurrent moves from
-    // different departments all render (dashed). Removal markers tag their
-    // current blocks.
-    const overlay = computed(() => {
-      if (!showPendingSuggestions.value) return { extra: [], removalsByKey: new Map() }
-      const list = overlaySuggestions.value
-      if (!list.length) return { extra: [], removalsByKey: new Map() }
-      const { proposed, removals } = proposeOverlay(scheduleOfferings.value, list)
-      const removalsByKey = new Map()
-      for (const r of removals) {
-        removalsByKey.set(`${r.cur.prefix} ${r.cur.number} ${r.cur.section}`, r)
-      }
-      return {
-        extra: proposed,
-        aware: true,
-        removalsByKey,
-      }
-    })
-
-    // The index rendered on the calendar: the published schedules plus the
-    // proposed offerings (each tagged with its suggestion so it colors and
-    // labels distinctly and is never draggable).
-    const shownIndex = computed(() => {
-      const extra = overlay.value.extra || []
-      if (!extra.length) return schedule.value
-      const merged = [
-        ...scheduleOfferings.value,
-        ...extra.map((p, i) => ({
-          ...p.offering,
-          $sid: 'prop:' + p.suggestionId + ':' + i,
-          $prop: p,
-        })),
-      ]
-      return buildIndex(merged)
-    })
+    // The index rendered on the calendar: the published/draft schedules plus the
+    // pending proposals (each tagged with its suggestion so it colors and labels
+    // distinctly and is never draggable), from the shared store overlay.
+    const overlay = pendingOverlay
+    const shownIndex = shownSchedule
 
     // In edit/suggest mode we force the per-course colored view so the session
     // schedule's courses are individually visible (and draggable), while an

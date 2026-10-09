@@ -40,6 +40,8 @@
               :key="b.key"
               type="button"
               class="cal-block teach"
+              :class="{ proposed: proposed(b.it), removed: removed(b.it) }"
+              :title="itemTitle(b.it)"
               :style="b.style"
               @click="goScheduleCourse(b.it.code)"
             >
@@ -54,7 +56,7 @@
 
 <script>
 import { useRoute } from 'vue-router'
-import { schedule, instructorName } from '../src/scheduleStore.js'
+import { shownSchedule, pendingOverlay, instructorName } from '../src/scheduleStore.js'
 import {
   instructorConflicts,
   compareInstructors,
@@ -73,16 +75,30 @@ export default {
   setup() {
     const route = useRoute()
     const instructors = computed(() =>
-      schedule.value ? Object.keys(schedule.value.byInstructor).sort(compareInstructors) : [],
+      shownSchedule.value ? Object.keys(shownSchedule.value.byInstructor).sort(compareInstructors) : [],
     )
     const name = computed(() => String(route.params.instructor || ''))
     const items = computed(
-      () => (schedule.value && name.value ? schedule.value.byInstructor[name.value] : []) || [],
+      () => (shownSchedule.value && name.value ? shownSchedule.value.byInstructor[name.value] : []) || [],
     )
     const conflicts = computed(() => {
-      if (!schedule.value) return []
-      return instructorConflicts(schedule.value).filter((c) => c.instructor === name.value)
+      if (!shownSchedule.value) return []
+      return instructorConflicts(shownSchedule.value).filter((c) => c.instructor === name.value)
     })
+    // Pending-suggestion markers on this instructor's timetable blocks.
+    const proposed = (it) => Boolean(it.o && it.o.$prop)
+    const removed = (it) =>
+      it.o
+        ? pendingOverlay.value.removalsByKey.get(`${it.o.prefix} ${it.o.number} ${it.o.section}`) || null
+        : null
+    const itemTitle = (it) => {
+      if (proposed(it)) {
+        const prop = it.o.$prop
+        return `${it.code}${it.o.section}: proposed ${prop.kind === 'move' ? 'move' : 'add'} by ${prop.proposer}`
+      }
+      if (removed(it)) return `${it.code}${it.o.section}: removal proposed by ${removed(it).proposer}`
+      return ''
+    }
     const itemStyle = (it) => ({
       top: (it.start - DAY_START_MIN) * PX_PER_MIN + 'px',
       height: (it.end - it.start) * PX_PER_MIN + 'px',
@@ -101,6 +117,9 @@ export default {
       name,
       items,
       conflicts,
+      proposed,
+      removed,
+      itemTitle,
       dayItems,
       onInstructorChange,
       instructorName,

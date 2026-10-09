@@ -1700,6 +1700,34 @@
   filter: saturate(0.5);
 }
 
+/* The course view's offering rows and the instructor timetable carry the same
+   proposed/removed markers as the calendar. */
+.req-block.proposed {
+  outline: 2px dashed var(--primary);
+  outline-offset: 2px;
+}
+.req-block.removed {
+  opacity: 0.85;
+}
+.cal-block.teach.proposed {
+  outline: 2px dashed var(--primary);
+  outline-offset: -3px;
+}
+.cal-block.teach.removed {
+  text-decoration: line-through;
+  opacity: 0.85;
+  filter: saturate(0.5);
+}
+.proposed-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
+}
+
 .schedule-proposals-toggle {
   margin-left: 8px;
 }

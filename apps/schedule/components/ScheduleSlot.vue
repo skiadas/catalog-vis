@@ -36,10 +36,8 @@ import {
   WEEKDAY_NAMES,
   formatTime,
   slotKey,
-  buildIndex,
   buildVisual,
   buildEditVisual,
-  proposeOverlay,
   colorForSchedule,
   termSlotOptions,
   offeringItemKey,
@@ -52,15 +50,13 @@ import {
   activeTerm,
 } from '../src/scheduleStore.js'
 import {
-  schedule,
-  scheduleOfferings,
   selectedScheduleIds,
   colorSchedules,
   scheduleAreasOf,
   editingScheduleId,
   canTouchOffering,
-  showPendingSuggestions,
-  overlaySuggestions,
+  pendingOverlay,
+  shownSchedule,
   openCourseEdit,
 } from '../src/scheduleStore.js'
 import { goScheduleCourse, goScheduleDay, goScheduleSlot } from '../router.js'
@@ -76,32 +72,10 @@ export default {
     const day = computed(() => String(route.params.day || ''))
     const time = computed(() => String(route.params.time || ''))
 
-    // Pending-suggestion overlay for this slot's index (see ScheduleGrid).
-    const overlay = computed(() => {
-      if (!showPendingSuggestions.value) return { extra: [], removalsByKey: new Map() }
-      const list = overlaySuggestions.value
-      if (!list.length) return { extra: [], removalsByKey: new Map() }
-      const { proposed, removals } = proposeOverlay(scheduleOfferings.value, list)
-      const removalsByKey = new Map()
-      for (const r of removals) {
-        removalsByKey.set(`${r.cur.prefix} ${r.cur.number} ${r.cur.section}`, r)
-      }
-      return { extra: proposed, aware: true, removalsByKey }
-    })
-
-    const shownIndex = computed(() => {
-      const extra = overlay.value.extra || []
-      if (!extra.length) return schedule.value
-      const merged = [
-        ...scheduleOfferings.value,
-        ...extra.map((p, i) => ({
-          ...p.offering,
-          $sid: 'prop:' + p.suggestionId + ':' + i,
-          $prop: p,
-        })),
-      ]
-      return buildIndex(merged)
-    })
+    // The slot's index: the shared schedule plus the pending-suggestion overlay
+    // (see ScheduleGrid / the store).
+    const overlay = pendingOverlay
+    const shownIndex = shownSchedule
 
     // In edit/suggest mode the filter is overridden (like the grid) so the
     // session schedule's courses are visible — an active filter still limits.

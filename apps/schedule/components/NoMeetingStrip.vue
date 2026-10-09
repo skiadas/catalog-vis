@@ -20,6 +20,8 @@
           :editable="canOpenEditor(it)"
           :draggable="isEditable(it)"
           :drag-day="''"
+          :proposed="proposalFor(it) ? itemTitle(it) : ''"
+          :removed="removalFor(it) ? itemTitle(it) : ''"
           @edit="openCourseEdit(it)"
         />
         <span class="no-meeting-pattern">{{
@@ -40,10 +42,11 @@ import {
   offeringItemKey,
 } from '@major-vis/schedule-core'
 import {
-  schedule,
+  shownSchedule,
   activeTerm,
   editingScheduleId,
   canTouchOffering,
+  pendingOverlay,
   openCourseEdit,
 } from '../src/scheduleStore.js'
 import CoursePill from './CoursePill.vue'
@@ -69,10 +72,10 @@ export default {
       // so the plain key would collapse or ghost rows. `offeringItemKey`
       // includes the lab marker, labSeq, content id, and source schedule.
       const keyOf = (it) => offeringItemKey(it)
-      const out = [...(schedule.value.unscheduled || [])]
+      const out = [...(shownSchedule.value.unscheduled || [])]
       const seen = new Set(out.map(keyOf))
       for (const d of WEEKDAYS) {
-        for (const b of daySlotBlocks(d, schedule.value)) {
+        for (const b of daySlotBlocks(d, shownSchedule.value)) {
           if (clipBand(b, range)) continue
           for (const it of b.items) {
             const key = keyOf(it)
@@ -86,6 +89,19 @@ export default {
       if (props.filter.active) return out.filter((it) => props.filter.matches(it))
       return out
     })
+    // Pending-suggestion markers: a proposed pill (dashed) or a removal marker
+    // (struck through) on a live course whose removal is proposed.
+    const proposalFor = (it) => (it.o && it.o.$prop) || null
+    const removalFor = (it) => pendingOverlay.value.removalsByKey.get(`${it.code} ${it.o.section}`) || null
+    const itemTitle = (it) => {
+      const prop = proposalFor(it)
+      if (prop) {
+        return `${it.code}${it.o.section}: proposed ${prop.kind === 'move' ? 'move' : 'add'} by ${prop.proposer}`
+      }
+      const rem = removalFor(it)
+      if (rem) return `${it.code}${it.o.section}: removal proposed by ${rem.proposer}`
+      return ''
+    }
     const editMode = computed(() => Boolean(editingScheduleId.value))
     // Per-item editability: the session's own schedule, scoped to the user's
     // departments in a non-owner suggest session.
@@ -99,6 +115,9 @@ export default {
       (canTouchOffering(it.sid, it.o, 'edit') || canTouchOffering(it.sid, it.o, 'remove'))
     return {
       items,
+      proposalFor,
+      removalFor,
+      itemTitle,
       editMode,
       isEditable,
       canOpenEditor,
