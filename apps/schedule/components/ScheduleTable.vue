@@ -364,7 +364,9 @@ import {
   isReferenceItem,
   myDepartments,
   openCourseEdit,
-  pendingOverlay,
+  overlayProposal,
+  overlayRemoval,
+  overlayTag,
   removeCourseFromSchedule,
   scheduleById,
   shownOfferings,
@@ -478,19 +480,13 @@ export default {
       const s = scheduleById(sid)
       return s ? s.name : ''
     }
-    // Pending-suggestion markers: a proposed row (dashed) or a live row whose
-    // removal is proposed (struck through). Proposed rows carry a `$prop` tag
-    // and a synthetic sid, so they never read as editable or reference rows.
-    const proposed = (row) => Boolean(row.o.$prop)
-    const removed = (row) =>
-      pendingOverlay.value.removalsByKey.get(`${row.o.prefix} ${row.o.number} ${row.o.section}`) || null
-    const sourceText = (row) => {
-      const prop = row.o.$prop
-      if (prop) return `Proposed by ${prop.proposer}`
-      const rem = removed(row)
-      if (rem) return `Removal proposed by ${rem.proposer}`
-      return scheduleName(row.sid)
-    }
+    // Pending-suggestion markers: a proposed row (dashed) or a live row a
+    // proposal would take away (removal, or a move's source — struck through).
+    // Proposed rows carry a `$prop` tag and a synthetic sid, so they never read
+    // as editable or reference rows.
+    const proposed = (row) => Boolean(overlayProposal(row.o))
+    const removed = (row) => overlayRemoval(row.o)
+    const sourceText = (row) => overlayTag(row.o) || scheduleName(row.sid)
     const reference = (row) => isReferenceItem({ o: row.o, sid: row.sid })
     // Editable only inside a session on the row's own schedule and within the
     // user's departments (`canTouchOffering` covers cross-list ownership).

@@ -477,6 +477,50 @@ test("a proposer's own replayed suggestion is not overlaid during their suggest 
   )
 })
 
+test('a proposed move strikes its source and dashes the destination', async () => {
+  await withRemote(
+    async ({ srv, store }) => {
+      const admin = srv
+      await admin.post('/api/auth/login', { username: 'registrar' })
+      const schedule = (await admin.post('/api/schedules', { name: 'Shared' })).json.schedule
+      await admin.patch(`/api/schedules/${schedule.id}`, {
+        visibility: 'public',
+        suggestMode: 'public',
+      })
+      await admin.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [COURSE] })
+      // The owner proposes a move of their own course (owners are exempt from
+      // department scoping).
+      await admin.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: 0,
+        operations: [
+          {
+            kind: 'update',
+            cur: { prefix: 'CS', number: '220', section: 'A' },
+            changes: { days: 'TR', time: '14:15-16:00' },
+          },
+        ],
+      })
+
+      assert.equal(await store.signIn('registrar'), true)
+      await flush()
+
+      // The source block is marked as a move (not a removal)...
+      const marker = store.pendingOverlay.value.removalsByKey.get('CS 220 A')
+      assert.ok(marker, 'the move source is marked')
+      assert.equal(marker.kind, 'move')
+      // ...and both the source and the tagged destination are drawn.
+      const drawn = store.shownOfferings.value.filter((o) => `${o.prefix} ${o.number}` === 'CS 220')
+      assert.equal(drawn.length, 2, 'source + destination')
+      const destination = drawn.find((o) => o.$prop)
+      assert.equal(destination.$prop.kind, 'move')
+      assert.match(store.overlayTag(destination), /Move proposed/)
+      assert.match(store.overlayTitle(drawn.find((o) => !o.$prop), 'CS 220'), /move proposed by/)
+    },
+    { adminUsernames: new Set(['registrar']) },
+  )
+})
+
 test('offline trail mirrors the lifecycle: propose, withdraw, propose again, self-approve', async () => {
   await withRemote(async ({ store }) => {
     // Make the store offline for this test (same process, remote back off).

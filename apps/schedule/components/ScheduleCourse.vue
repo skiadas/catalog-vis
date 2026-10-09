@@ -23,8 +23,7 @@
                 <div>
                   <strong>{{ s.sectionLabel }}</strong> · {{ s.o.days }} {{ formatTime(s.o.time) }} · Seats:
                   {{ s.o.seats ?? DEFAULT_SEATS }}
-                  <span v-if="proposed(s)" class="proposed-tag">Proposed by {{ s.o.$prop.proposer }}</span>
-                  <span v-else-if="removed(s)" class="proposed-tag">Removal proposed</span>
+                  <span v-if="proposed(s) || removed(s)" class="proposed-tag">{{ markerText(s) }}</span>
                 </div>
                 <div v-if="offeringTitle(s.o)" class="offering-title">{{ offeringTitle(s.o) }}</div>
               </div>
@@ -111,9 +110,11 @@
 <script>
 import { useRoute } from 'vue-router'
 import {
-  pendingOverlay,
   shownOfferings,
   shownSchedule,
+  overlayProposal,
+  overlayRemoval,
+  overlayTag,
   instructorName,
   scheduleAreasOf,
 } from '../src/scheduleStore.js'
@@ -141,9 +142,9 @@ export default {
       shownSchedule.value && code.value ? conflictsForCourse(code.value, shownSchedule.value) : [],
     )
     // Pending-suggestion markers for this course's sections.
-    const proposed = (s) => Boolean(s.o.$prop)
-    const removed = (s) =>
-      pendingOverlay.value.removalsByKey.get(`${s.o.prefix} ${s.o.number} ${s.o.section}`) || null
+    const proposed = (s) => Boolean(overlayProposal(s.o))
+    const removed = (s) => overlayRemoval(s.o)
+    const markerText = (s) => overlayTag(s.o)
     const catalog = computed(() => courseByCode(code.value))
     // The core-curriculum areas this course satisfies on the displayed
     // schedules — the imported rows' own designations, with the catalog as a
@@ -175,6 +176,7 @@ export default {
       conflicts,
       proposed,
       removed,
+      markerText,
       shownSchedule,
       shownOfferings,
       catalog,

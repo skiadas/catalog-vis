@@ -108,6 +108,9 @@ import {
   canTouchOffering,
   pendingOverlay,
   shownSchedule,
+  overlayProposal,
+  overlayRemoval,
+  overlayTitle,
   moveOffering,
   openCourseEdit,
   instructorName,
@@ -254,17 +257,13 @@ export default {
           active: filter.value.active,
         }))
 
-    // Overlay metadata for a rendered item (proposed pill / removal marker).
-    const proposalFor = (it) => (it.o && it.o.$prop) || null
-    const removalFor = (it) => overlay.value.removalsByKey.get(`${it.code} ${it.o.section}`) || null
+    // Overlay metadata for a rendered item (proposed pill / removal marker),
+    // plus a team-taught roster fallback when there is no marker.
+    const proposalFor = (it) => overlayProposal(it.o)
+    const removalFor = (it) => overlayRemoval(it.o)
     const itemTitle = (it) => {
-      const prop = proposalFor(it)
-      if (prop) {
-        return `${it.code}${it.o.section}: proposed ${prop.kind === 'move' ? 'move' : 'add'} by ${prop.proposer}`
-      }
-      const rem = removalFor(it)
-      if (rem) return `${it.code}${it.o.section}: removal proposed by ${rem.proposer}`
-      // Team-taught courses list the full roster in the tooltip.
+      const overlay = overlayTitle(it.o, it.code)
+      if (overlay) return overlay
       if ((it.instructors || []).length > 1) return it.instructors.map(instructorName).join(', ')
       return ''
     }

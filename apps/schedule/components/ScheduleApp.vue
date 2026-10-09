@@ -156,16 +156,19 @@
           >
             Clear
           </button>
-          <button
-            v-if="overlaySuggestions.length"
-            class="filter-btn schedule-proposals-toggle"
-            :class="{ active: showPendingSuggestions }"
-            :aria-pressed="showPendingSuggestions"
-            @click="setShowPendingSuggestions(!showPendingSuggestions)"
-          >
-            Show proposals
-          </button>
         </div>
+
+        <!-- On the toolbar proper, so it is available in every view (the filter
+             block above only renders for grid/day/slot). -->
+        <button
+          v-if="overlaySuggestions.length"
+          class="filter-btn schedule-proposals-toggle"
+          :class="{ active: showPendingSuggestions }"
+          :aria-pressed="showPendingSuggestions"
+          @click="setShowPendingSuggestions(!showPendingSuggestions)"
+        >
+          Show proposals
+        </button>
 
         <button
           v-if="suggestionsScheduleId"

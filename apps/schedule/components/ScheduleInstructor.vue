@@ -56,7 +56,13 @@
 
 <script>
 import { useRoute } from 'vue-router'
-import { shownSchedule, pendingOverlay, instructorName } from '../src/scheduleStore.js'
+import {
+  shownSchedule,
+  overlayProposal,
+  overlayRemoval,
+  overlayTitle,
+  instructorName,
+} from '../src/scheduleStore.js'
 import {
   instructorConflicts,
   compareInstructors,
@@ -86,19 +92,9 @@ export default {
       return instructorConflicts(shownSchedule.value).filter((c) => c.instructor === name.value)
     })
     // Pending-suggestion markers on this instructor's timetable blocks.
-    const proposed = (it) => Boolean(it.o && it.o.$prop)
-    const removed = (it) =>
-      it.o
-        ? pendingOverlay.value.removalsByKey.get(`${it.o.prefix} ${it.o.number} ${it.o.section}`) || null
-        : null
-    const itemTitle = (it) => {
-      if (proposed(it)) {
-        const prop = it.o.$prop
-        return `${it.code}${it.o.section}: proposed ${prop.kind === 'move' ? 'move' : 'add'} by ${prop.proposer}`
-      }
-      if (removed(it)) return `${it.code}${it.o.section}: removal proposed by ${removed(it).proposer}`
-      return ''
-    }
+    const proposed = (it) => Boolean(overlayProposal(it.o))
+    const removed = (it) => overlayRemoval(it.o)
+    const itemTitle = (it) => overlayTitle(it.o, it.code)
     const itemStyle = (it) => ({
       top: (it.start - DAY_START_MIN) * PX_PER_MIN + 'px',
       height: (it.end - it.start) * PX_PER_MIN + 'px',

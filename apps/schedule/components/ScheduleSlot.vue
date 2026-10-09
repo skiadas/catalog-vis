@@ -57,6 +57,9 @@ import {
   canTouchOffering,
   pendingOverlay,
   shownSchedule,
+  overlayProposal,
+  overlayRemoval,
+  overlayTitle,
   openCourseEdit,
 } from '../src/scheduleStore.js'
 import { goScheduleCourse, goScheduleDay, goScheduleSlot } from '../router.js'
@@ -116,17 +119,9 @@ export default {
       return list
     })
 
-    const proposalFor = (it) => (it.o && it.o.$prop) || null
-    const removalFor = (it) => overlay.value.removalsByKey.get(`${it.code} ${it.o.section}`) || null
-    const itemTitle = (it) => {
-      const prop = proposalFor(it)
-      if (prop) {
-        return `${it.code}${it.o.section}: proposed ${prop.kind === 'move' ? 'move' : 'add'} by ${prop.proposer}`
-      }
-      const rem = removalFor(it)
-      if (rem) return `${it.code}${it.o.section}: removal proposed by ${rem.proposer}`
-      return ''
-    }
+    const proposalFor = (it) => overlayProposal(it.o)
+    const removalFor = (it) => overlayRemoval(it.o)
+    const itemTitle = (it) => overlayTitle(it.o, it.code)
     const times = computed(() => termSlotOptions(activeTerm.value, day.value).map((s) => s.time))
     const timeIndex = computed(() => times.value.indexOf(time.value))
     const dayIndex = computed(() => WEEKDAYS.indexOf(day.value))

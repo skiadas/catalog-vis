@@ -46,7 +46,9 @@ import {
   activeTerm,
   editingScheduleId,
   canTouchOffering,
-  pendingOverlay,
+  overlayProposal,
+  overlayRemoval,
+  overlayTitle,
   openCourseEdit,
 } from '../src/scheduleStore.js'
 import CoursePill from './CoursePill.vue'
@@ -89,19 +91,11 @@ export default {
       if (props.filter.active) return out.filter((it) => props.filter.matches(it))
       return out
     })
-    // Pending-suggestion markers: a proposed pill (dashed) or a removal marker
-    // (struck through) on a live course whose removal is proposed.
-    const proposalFor = (it) => (it.o && it.o.$prop) || null
-    const removalFor = (it) => pendingOverlay.value.removalsByKey.get(`${it.code} ${it.o.section}`) || null
-    const itemTitle = (it) => {
-      const prop = proposalFor(it)
-      if (prop) {
-        return `${it.code}${it.o.section}: proposed ${prop.kind === 'move' ? 'move' : 'add'} by ${prop.proposer}`
-      }
-      const rem = removalFor(it)
-      if (rem) return `${it.code}${it.o.section}: removal proposed by ${rem.proposer}`
-      return ''
-    }
+    // Pending-suggestion markers: a proposed pill (dashed) or a removal/move
+    // marker (struck through) on a live course a proposal would take away.
+    const proposalFor = (it) => overlayProposal(it.o)
+    const removalFor = (it) => overlayRemoval(it.o)
+    const itemTitle = (it) => overlayTitle(it.o, it.code)
     const editMode = computed(() => Boolean(editingScheduleId.value))
     // Per-item editability: the session's own schedule, scoped to the user's
     // departments in a non-owner suggest session.
