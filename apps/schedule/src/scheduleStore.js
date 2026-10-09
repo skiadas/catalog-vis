@@ -720,7 +720,7 @@ function mutablePart(scheduleId, term = activeTerm.value) {
   if (isSuggestSessionFor(scheduleId)) {
     let d = getDraft(scheduleId, term)
     if (!d) {
-      d = { offerings: [], version: 0, dirty: false }
+      d = { offerings: [], version: 0, dirty: false, baseline: [] }
       setDraft(scheduleId, term, d)
     }
     return { part: d, draft: true }
@@ -1075,6 +1075,10 @@ async function setupDraft(scheduleId, term) {
     offerings: applyOperations(part.offerings, ownReplay(own)),
     version: part.version,
     dirty: false,
+    // The state this session started from: the published term plus the
+    // proposer's own replayed pending intent. Unsent changes are measured
+    // against this, so an already-proposed change is not counted again.
+    baseline: applyOperations(part.offerings, ownReplay(own)),
   })
   if (!remote.value || typeof window === 'undefined') return
   const current = await backend.fetchTerm(scheduleId, term)
@@ -1085,6 +1089,7 @@ async function setupDraft(scheduleId, term) {
     offerings: applyOperations(current.offerings, ownReplay(own2)),
     version: current.version,
     dirty: false,
+    baseline: applyOperations(current.offerings, ownReplay(own2)),
   })
 }
 
@@ -1103,6 +1108,16 @@ export function draftOperations(scheduleId, term = activeTerm.value) {
   if (!d || !s) return []
   const base = publishedOfferings(s, term)
   return diffOfferings(base, d.offerings || [])
+}
+
+// The changes made since this session began (or since the last successful
+// proposal): the draft against its `baseline` snapshot. This is what "unsent"
+// means — the published->draft diff also counts the proposer's own
+// already-proposed changes, which `setupDraft` replays into the working copy.
+export function draftUnsentOperations(scheduleId, term = activeTerm.value) {
+  const d = getDraft(scheduleId, term)
+  if (!d) return []
+  return diffOfferings(d.baseline || [], d.offerings || [])
 }
 
 // Proposes the draft of `scheduleId`'s active term as a suggestion. Remote:
@@ -1149,6 +1164,8 @@ export async function proposeDraft(scheduleId, note) {
     // written, so the work is still unsaved and fixable.
     if (saved && !saved.error) {
       draft.dirty = false
+      // The whole draft is now the proposal; measure the next edit from here.
+      draft.baseline = draft.offerings
       await refreshSuggestions(scheduleId)
     }
     return saved
@@ -1181,6 +1198,7 @@ export async function proposeDraft(scheduleId, note) {
   }
   persistTrail(rows)
   draft.version = part.version
+  draft.baseline = draft.offerings
   await refreshSuggestions(scheduleId)
   return row
 }

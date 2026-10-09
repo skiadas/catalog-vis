@@ -202,17 +202,15 @@
         >
           History{{ historyEntries.length ? ` (${historyEntries.length})` : '' }}
         </button>
-        <button
-          v-if="editingRole === 'suggest' && editingDraft && editingDraft.dirty"
-          class="filter-btn"
-          @click="discardDraft"
-        >
-          Discard draft
+        <!-- One exit, named for what it does: discarding comes only with unsent
+             changes (and asks first); otherwise you simply leave. -->
+        <button class="filter-btn" @click="exitEdit">
+          {{ editingRole === 'suggest' ? (draftOpCount ? 'Discard draft' : 'Leave') : 'Done' }}
         </button>
         <button
           v-if="editingRole === 'suggest'"
           class="filter-btn schedule-suggestions-btn"
-          :class="{ primary: editingDraft && editingDraft.dirty, active: overlay === 'proposals' }"
+          :class="{ primary: draftOpCount > 0, active: overlay === 'proposals' }"
           :aria-pressed="overlay === 'proposals'"
           :aria-label="proposeAriaLabel"
           @click="goProposals(editingId)"
@@ -220,9 +218,6 @@
           Propose changes<span v-if="draftOpCount" class="propose-badge" aria-hidden="true">{{
             draftOpCount
           }}</span>
-        </button>
-        <button class="filter-btn" @click="exitEdit">
-          {{ editingRole === 'suggest' ? 'Leave' : 'Done' }}
         </button>
       </div>
     </div>
@@ -345,7 +340,6 @@ import {
   editingRole,
   editingSchedule,
   editingDraft,
-  isOwner,
   setEditingSchedule,
   clearDraft,
   renameSchedule,
@@ -363,7 +357,7 @@ import {
   closeCourseEdit,
   courseSections,
   historyEntries,
-  draftOperations,
+  draftUnsentOperations,
   cancelLatest,
   jumpToEdit,
   remote,
@@ -526,14 +520,16 @@ export default {
     // for edit affordances, and the session's schedule is what they edit).
     const editingId = editingScheduleId
     const editingName = computed(() => (editingSchedule.value ? editingSchedule.value.name : ''))
-    // Renaming writes the schedule's name directly (an owner-only endpoint), so
-    // only offer the input where it can persist: owners (and offline users).
-    const canRename = computed(() => !remote.value || isOwner(editingSchedule.value))
-    // Unsent changes, for the Propose button's badge: the draft keeps its sent
-    // changes (like a working copy), so the count must ignore a clean draft.
+    // Renaming writes the schedule's name directly (an owner-only endpoint) and
+    // belongs to editing, so suggest sessions show the name as plain text.
+    const canRename = computed(() => editingRole.value === 'edit')
+    // Unsent changes (edits since the session began or the last propose), for
+    // the Propose button's badge and the exit button's label. The draft keeps
+    // its already-proposed changes replayed in, so counting published->draft
+    // would show those again; see `draftUnsentOperations`.
     const draftOpCount = computed(() => {
-      if (!editingDraft.value || !editingDraft.value.dirty || editingId.value == null) return 0
-      return draftOperations(editingId.value, activeTerm.value).length
+      if (editingRole.value !== 'suggest' || editingId.value == null) return 0
+      return draftUnsentOperations(editingId.value, activeTerm.value).length
     })
     const proposeAriaLabel = computed(() =>
       draftOpCount.value
@@ -573,20 +569,14 @@ export default {
       },
       { immediate: true },
     )
+    // Leaving a suggest session with unsent changes discards them (after a
+    // confirm); a clean session just ends. Edit sessions save as you go, so
+    // there is nothing to discard.
     const exitEdit = () => {
-      // Leaving a suggest session with unsaved draft changes asks first.
-      const draft = editingDraft.value
-      if (draft && draft.dirty) {
+      if (draftOpCount.value > 0) {
         if (!window.confirm('Discard your unsaved draft changes?')) return
         clearDraft(editingScheduleId.value, activeTerm.value)
       }
-      exitMode()
-    }
-
-    // The explicit "throw it away" exit: no confirm (the button is the intent).
-    const discardDraft = () => {
-      const id = editingScheduleId.value
-      if (id != null) clearDraft(id, activeTerm.value)
       exitMode()
     }
 
@@ -739,7 +729,6 @@ export default {
       nameDraft,
       enterEdit,
       exitEdit,
-      discardDraft,
       onProposed,
       commitRename,
       activeTerm,

@@ -413,6 +413,58 @@ test('non-owner suggest sessions consolidate into one upserted proposal; externa
   )
 })
 
+test('draftUnsentOperations counts only changes since the last proposal', async () => {
+  await withRemote(
+    async ({ srv, store }) => {
+      const registrar = srv.newClient()
+      await registrar.post('/api/auth/login', { username: 'registrar' })
+      const schedule = (await registrar.post('/api/schedules', { name: 'Unsent' })).json.schedule
+      await registrar.patch(`/api/schedules/${schedule.id}`, {
+        visibility: 'public',
+        suggestMode: 'public',
+      })
+      await registrar.post('/api/admin/users', { username: 'phys', departments: ['CS', 'BIO'] })
+      await registrar.put(`/api/schedules/${schedule.id}/terms/F`, {
+        offerings: [COURSE, { prefix: 'BIO', number: '161', section: 'A', days: 'MWF', time: '8:00-9:10' }],
+      })
+
+      assert.equal(await store.signIn('phys'), true)
+      assert.equal(await store.setEditingSchedule(schedule.id, 'suggest'), true)
+
+      // Propose one move: the draft still diff's against the published term, but
+      // nothing is unsent once it has been sent.
+      store.moveOffering(schedule.id, 'CS', '220', 'A', {
+        fromDay: 'M',
+        toDay: 'T',
+        group: 'TR',
+        time: '10:00-11:45',
+      })
+      assert.ok(await store.proposeDraft(schedule.id, ''))
+      assert.equal(store.draftOperations(schedule.id).length, 1)
+      assert.equal(store.draftUnsentOperations(schedule.id).length, 0)
+
+      // Re-enter: the pending move is replayed into the working copy, yet still
+      // nothing is unsent.
+      await store.setEditingSchedule(null)
+      assert.equal(await store.setEditingSchedule(schedule.id, 'suggest'), true)
+      assert.equal(store.draftOperations(schedule.id).length, 1)
+      assert.equal(store.draftUnsentOperations(schedule.id).length, 0)
+
+      // A second, distinct change is the only unsent one; the cumulative
+      // published->draft count would wrongly report 2.
+      store.moveOffering(schedule.id, 'BIO', '161', 'A', {
+        fromDay: 'M',
+        toDay: 'T',
+        group: 'TR',
+        time: '14:15-16:00',
+      })
+      assert.equal(store.draftOperations(schedule.id).length, 2)
+      assert.equal(store.draftUnsentOperations(schedule.id).length, 1)
+    },
+    { adminUsernames: new Set(['registrar']) },
+  )
+})
+
 test("a proposer's own replayed suggestion is not overlaid during their suggest session", async () => {
   await withRemote(
     async ({ srv, store }) => {
@@ -471,7 +523,10 @@ test("a proposer's own replayed suggestion is not overlaid during their suggest 
 
       // Leaving the session puts physics' own proposal back on the overlay.
       await store.setEditingSchedule(null)
-      assert.equal(store.overlaySuggestions.value.some((s) => s.id === own.id), true)
+      assert.equal(
+        store.overlaySuggestions.value.some((s) => s.id === own.id),
+        true,
+      )
     },
     { adminUsernames: new Set(['registrar']) },
   )
@@ -566,9 +621,7 @@ test('a split-meeting proposal touches only the meeting it names', async () => {
       await admin.post(`/api/schedules/${schedule.id}/suggestions`, {
         term: 'F',
         baseVersion: 0,
-        operations: [
-          { kind: 'remove', cur: { prefix: 'MUS', number: '001', section: 'A', id: 'oMW' } },
-        ],
+        operations: [{ kind: 'remove', cur: { prefix: 'MUS', number: '001', section: 'A', id: 'oMW' } }],
       })
       await store.refreshSuggestions(schedule.id)
       const marked = store.pendingOverlay.value.removalsByKey
@@ -1975,11 +2028,27 @@ test('copyCoursesInto upserts a filtered prefix from another schedule into the a
     setApiBase('../../api')
 
     const target = await store.addSchedule('This year', '2026-27', [
-      { prefix: 'MUS', number: '101', section: 'A', instructor: 'Old', days: 'MWF', time: '9:20-10:30', seats: 20 },
+      {
+        prefix: 'MUS',
+        number: '101',
+        section: 'A',
+        instructor: 'Old',
+        days: 'MWF',
+        time: '9:20-10:30',
+        seats: 20,
+      },
       { prefix: 'CS', number: '220', section: 'A', instructor: 'Jones', days: 'MWF', time: '9:20-10:30' },
     ])
     const source = await store.addSchedule('Two years ago', '2024-25', [
-      { prefix: 'MUS', number: '101', section: 'A', instructor: 'New', days: 'MWF', time: '9:20-10:30', seats: 30 },
+      {
+        prefix: 'MUS',
+        number: '101',
+        section: 'A',
+        instructor: 'New',
+        days: 'MWF',
+        time: '9:20-10:30',
+        seats: 30,
+      },
       { prefix: 'MUS', number: '102', section: 'B', instructor: 'Fresh', days: 'TR', time: '10:00-11:45' },
       { prefix: 'CS', number: '330', section: 'A', instructor: 'Wahl', days: 'MWF', time: '12:00-13:10' },
     ])
@@ -2002,10 +2071,7 @@ test('copyCoursesInto upserts a filtered prefix from another schedule into the a
       rows.some((o) => o.number === '102'),
       'the missing section is added',
     )
-    assert.ok(
-      !rows.some((o) => o.number === '330'),
-      'another department is not copied',
-    )
+    assert.ok(!rows.some((o) => o.number === '330'), 'another department is not copied')
   })
 })
 
@@ -2049,11 +2115,7 @@ test('planCourseCopy previews candidates and copies only the selected subset', a
     assert.deepEqual(applied, { added: 1, updated: 0, unchanged: 0 })
     const rows = store.scheduleById(target).terms.F.offerings
     assert.equal(rows.length, 2)
-    assert.equal(
-      rows.find((o) => o.number === '101').instructor,
-      'Old',
-      'the unticked update did not land',
-    )
+    assert.equal(rows.find((o) => o.number === '101').instructor, 'Old', 'the unticked update did not land')
     assert.ok(
       rows.some((o) => o.number === '102'),
       'the ticked new section landed',

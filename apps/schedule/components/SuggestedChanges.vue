@@ -126,8 +126,7 @@ import {
   resolveOp,
   withdrawSuggestion,
   proposeDraft,
-  draftOperations,
-  editingDraft,
+  draftUnsentOperations,
   isOwner,
   canSuggest,
   isSuggestSessionFor,
@@ -170,9 +169,11 @@ export default {
       !remote.value ||
       (currentUser.value != null && Number(s.proposer_user_id) === Number(currentUser.value.id))
 
-    // The draft's pending diff for the active term (what proposing would send).
+    // The changes made since the session began (or the last proposal) — the new
+    // work this session is collecting. The already-proposed ops are not repeated
+    // here; they show in the suggestions list below, where they can be withdrawn.
     const draftOps = computed(() =>
-      props.scheduleId ? draftOperations(props.scheduleId, activeTerm.value) : [],
+      props.scheduleId ? draftUnsentOperations(props.scheduleId, activeTerm.value) : [],
     )
     const draftText = computed(
       () =>
@@ -181,19 +182,8 @@ export default {
         }) || '(no changes yet)',
     )
 
-    // The draft keeps the sent changes (it is the session's working copy), so
-    // "draft differs from published" is not "there is something new to send".
-    // `dirty` is the unsent-changes flag; re-proposing unchanged ops is a store
-    // no-op, so the button stays disabled until a new edit re-dirties the draft.
-    const isDirty = computed(() => !!(editingDraft.value && editingDraft.value.dirty))
-    const canPropose = computed(() => isDirty.value && draftOps.value.length > 0)
-    const proposeLabel = computed(() =>
-      canPropose.value
-        ? 'Propose changes'
-        : draftOps.value.length
-          ? 'Nothing new to propose'
-          : 'Nothing to propose yet',
-    )
+    const canPropose = computed(() => draftOps.value.length > 0)
+    const proposeLabel = computed(() => (canPropose.value ? 'Propose changes' : 'Nothing new to propose'))
 
     // Refresh suggestions on mount and whenever the panel's schedule changes.
     const load = async () => {

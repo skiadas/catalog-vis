@@ -519,7 +519,7 @@ test("re-entering a suggest session doesn't double-draw the proposer's own addit
   assertClean(errors)
 })
 
-test('suggest session bar: unsent-changes badge, discard, and leave', async ({ page }) => {
+test('suggest session bar: unsent badge and one context-named exit', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page)
@@ -528,14 +528,17 @@ test('suggest session bar: unsent-changes badge, discard, and leave', async ({ p
   await page.locator('.schedule-pill-suggest').first().click()
   await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
 
-  // A clean draft: no badge, and the Propose button is not the primary action.
+  // A clean draft: no badge, Propose is not primary, and the exit is "Leave".
   const propose = page.getByRole('button', { name: /Propose changes/ })
   await expect(propose.locator('.propose-badge')).toHaveCount(0)
   await expect(propose).not.toHaveClass(/primary/)
-  // The owner can rename, so the name is an input.
-  await expect(page.locator('input[aria-label="Schedule name"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Leave' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Discard draft' })).toHaveCount(0)
+  // Renaming is an edit action: even the owner sees the name as text here.
+  await expect(page.locator('.schedule-edit-name-text')).toBeVisible()
+  await expect(page.locator('input[aria-label="Schedule name"]')).toHaveCount(0)
 
-  // A change lights up the button with the unsent count.
+  // A change lights up Propose with the unsent count and renames the exit.
   await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
   const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
   await em.waitFor({ state: 'visible', timeout: 5000 })
@@ -544,24 +547,13 @@ test('suggest session bar: unsent-changes badge, discard, and leave', async ({ p
   await em.waitFor({ state: 'detached', timeout: 5000 })
   await expect(propose.locator('.propose-badge')).toHaveText(/^[1-9]\d*$/)
   await expect(propose).toHaveClass(/primary/)
+  await expect(page.getByRole('button', { name: 'Leave' })).toHaveCount(0)
 
-  // Discard draft is the explicit exit: it clears the draft and ends the session
-  // without a confirm.
-  await page.getByRole('button', { name: 'Discard draft' }).click()
-  await page
-    .locator('.schedule-edit-chip', { hasText: 'Suggesting' })
-    .waitFor({ state: 'detached', timeout: 5000 })
-
-  // Leave is the guarded exit: with unsaved changes it asks first.
-  await page.locator('.schedule-pill-suggest').first().click()
-  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
-  await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
-  await em.waitFor({ state: 'visible', timeout: 5000 })
-  await em.locator('#course-edit-offering-title').fill('Leave title')
-  await em.getByRole('button', { name: 'Save changes' }).click()
-  await em.waitFor({ state: 'detached', timeout: 5000 })
+  // The exit now names its outcome and confirms before discarding.
+  const discard = page.getByRole('button', { name: 'Discard draft' })
+  await expect(discard).toBeVisible()
   page.once('dialog', (d) => d.accept())
-  await page.getByRole('button', { name: 'Leave' }).click()
+  await discard.click()
   await page
     .locator('.schedule-edit-chip', { hasText: 'Suggesting' })
     .waitFor({ state: 'detached', timeout: 5000 })

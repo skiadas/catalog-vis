@@ -68,7 +68,8 @@ works on it too.
 <Shot file="schedule-pill-bubble.png" />
 
 A bar appears with **＋ Add course**, **Copy courses…**, **History**,
-**Discard draft**, **Leave**, and **Propose changes**.
+**Propose changes**, and an exit that reads **Leave** (or **Discard draft**
+once you have unsent changes).
 
 <Shot file="schedule-suggest-session.png" />
 
@@ -165,8 +166,8 @@ private draft until you send them:
    shows a count of the changes not sent yet.
 2. Add a short note if you like (for example "CS 220 moved to TR; CS 223
    added"), then send. Sending ends the session and flashes a confirmation.
-3. Or use **Leave** instead to walk away; if anything is still unsent, the app
-   asks before discarding it (**Discard draft** throws it away outright).
+3. Or leave instead: the exit reads **Leave** when you have nothing unsent, and
+   **Discard draft** when you do — it asks before throwing unsent changes away.
 
 The proposals are now **pending**, waiting for the owner. Nothing is written
 to the schedule until they approve.

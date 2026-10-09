@@ -144,7 +144,7 @@ export const entries = [
     route: '/#/?mode=suggest&id=<id>',
     seed: 'suggest',
     steps: [{ act: 'assert', text: 'Suggesting' }],
-    alt: 'A suggest session: the Suggesting bar with Discard draft, Leave, and Propose changes',
+    alt: 'A suggest session: the Suggesting bar with the Propose changes button and the Leave exit',
     caption: 'Suggesting — your changes wait as a draft until the owner approves.',
   },
   {
