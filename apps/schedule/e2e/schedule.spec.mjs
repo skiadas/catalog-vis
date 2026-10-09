@@ -464,9 +464,7 @@ test('suggest session: leaving with an unsaved draft asks first', async ({ page 
   assertClean(errors)
 })
 
-test("re-entering a suggest session doesn't double-draw the proposer's own addition", async ({
-  page,
-}) => {
+test("re-entering a suggest session doesn't double-draw the proposer's own addition", async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page)
@@ -485,7 +483,10 @@ test("re-entering a suggest session doesn't double-draw the proposer's own addit
   await em.getByRole('button', { name: 'Save changes' }).click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
   await expect(
-    page.locator('.cal-block', { hasText: 'ANTH 160' }).first().locator('.filter-offering', { hasText: 'ANTH 160' }),
+    page
+      .locator('.cal-block', { hasText: 'ANTH 160' })
+      .first()
+      .locator('.filter-offering', { hasText: 'ANTH 160' }),
   ).toHaveCount(1)
 
   // Propose it, leave the session, then come back to keep editing.
@@ -505,7 +506,10 @@ test("re-entering a suggest session doesn't double-draw the proposer's own addit
 
   // The addition is still exactly one: the replayed working copy, not a ghost.
   await expect(
-    page.locator('.cal-block', { hasText: 'ANTH 160' }).first().locator('.filter-offering', { hasText: 'ANTH 160' }),
+    page
+      .locator('.cal-block', { hasText: 'ANTH 160' })
+      .first()
+      .locator('.filter-offering', { hasText: 'ANTH 160' }),
   ).toHaveCount(1)
   await expect(page.locator('.filter-offering.proposed')).toHaveCount(0)
   assertClean(errors)
@@ -558,10 +562,7 @@ test('pending suggestions show on the table, instructor, and course views', asyn
   assertClean(errors)
 })
 
-test('a proposed move hides its old slot, and only the meeting it names', async ({
-  page,
-  request,
-}) => {
+test('a proposed move hides its old slot, and only the meeting it names', async ({ page, request }) => {
   const errors = trackErrors(page)
   // Seed a split-meeting section (two rows, distinct ids) and a pending move of
   // just the R meeting.
@@ -769,9 +770,7 @@ test('course editor overlay route: section switcher saves the section you leave'
 // editor's "Add another meeting time" creates a same-section sibling, shows the
 // section's other meeting inline (and lets you jump to it), and removing one
 // meeting keeps the rest.
-test('split meetings: add another meeting time, jump between meetings, remove one', async ({
-  page,
-}) => {
+test('split meetings: add another meeting time, jump between meetings, remove one', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page, 'split-meeting-user')
@@ -1528,11 +1527,26 @@ test('table view: department filter, inline edit, add and remove', async ({ page
   await live.locator('input[aria-label^="Meeting of"]').press('Enter')
   await expect(live.locator('button[aria-label^="Edit meeting of"]')).toContainText('MW · 2:00 PM - 3:00 PM')
 
-  // The instructor cell autocompletes; picking a suggestion commits it.
+  // The instructor cell autocompletes; picking a suggestion commits it. The
+  // list is pinned to the viewport (fixed), so it is not cropped to the table's
+  // scroll box: widen to every instructor, then check an option past the first
+  // is actually the element on screen at its own point.
   await live.locator('button[aria-label^="Edit instructor of"]').click()
-  const suggests = live.locator('.schedule-table-combo-dropdown .course-picker-option')
+  const combo = live.locator('.schedule-table-combo-dropdown')
+  const suggests = combo.locator('.course-picker-option')
   await suggests.first().waitFor({ timeout: 5000 })
-  expect(await suggests.count()).toBeGreaterThan(0)
+  const scope = combo.locator('.course-picker-scope')
+  if ((await scope.count()) && (await scope.innerText()).includes('Show all')) await scope.click()
+  await live.locator('.schedule-table-input').fill('')
+  await expect.poll(() => suggests.count(), { timeout: 5000 }).toBeGreaterThan(1)
+  await expect(combo).toHaveCSS('position', 'fixed')
+  await expect.poll(() => combo.evaluate((el) => el.style.top || el.style.bottom)).not.toBe('')
+  const second = await suggests.nth(1).boundingBox()
+  const hit = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.closest('.course-picker-option') != null,
+    { x: second.x + second.width / 2, y: second.y + second.height / 2 },
+  )
+  expect(hit, 'the second suggestion is on screen (list not clipped)').toBe(true)
   const picked = (await suggests.first().innerText()).trim()
   await suggests.first().click()
   await expect(live.locator('button[aria-label^="Edit instructor of"]')).toContainText(picked)
@@ -1762,10 +1776,7 @@ test('main views and dialogs have no serious/critical accessibility violations',
   await copyDialog.locator('#schedule-copy-source').selectOption({ label: 'Axe create' })
   await copyDialog.getByRole('button', { name: /Review \d+ course/ }).click()
   await settle(page)
-  const copyViolations = await seriousViolations(
-    page,
-    '.modal[aria-labelledby="schedule-copy-title"]',
-  )
+  const copyViolations = await seriousViolations(page, '.modal[aria-labelledby="schedule-copy-title"]')
   expect(brief(copyViolations), 'copy courses review step').toEqual([])
   await copyDialog.getByRole('button', { name: 'Cancel' }).click()
   await copyDialog.waitFor({ state: 'detached', timeout: 5000 })

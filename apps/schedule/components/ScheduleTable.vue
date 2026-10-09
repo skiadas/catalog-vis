@@ -197,8 +197,8 @@
                 />
                 <div
                   v-if="instructorOpen"
-                  class="course-picker-dropdown schedule-table-combo-dropdown"
-                  :class="{ 'drop-up': instructorDropUp }"
+                  class="course-picker-dropdown schedule-table-combo-dropdown is-anchored"
+                  :style="instructorDropdownStyle"
                 >
                   <button
                     v-for="opt in instructorSuggestions"
@@ -375,7 +375,7 @@ import {
 } from '../src/scheduleStore.js'
 import { buildInstructorOptions } from '../src/instructorSuggest.js'
 import { defaultShowAll, instructorPoolFor } from '../src/instructorPool.js'
-import { shouldDropUp } from '../src/dropUp.js'
+import { useAnchoredDropdown } from '../src/useAnchoredDropdown.js'
 import {
   compareTableRows,
   departmentsInOfferings,
@@ -549,10 +549,13 @@ export default {
     const editingInstructorKey = ref(null)
     const instructorText = ref('')
     const instructorOpen = ref(false)
-    const instructorDropUp = ref(false)
     const showAllInstructors = ref(false)
     const instructorInputEl = ref(null)
     const instructorSuggestEl = ref(null)
+    const { style: instructorDropdownStyle } = useAnchoredDropdown(
+      () => elOf(instructorInputEl),
+      instructorOpen,
+    )
     const instructorPools = computed(() => {
       const row = editingInstructorKey.value == null ? null : rowByKey(editingInstructorKey.value)
       return buildInstructorOptions({
@@ -595,7 +598,6 @@ export default {
       nextTick(() => {
         const el = elOf(instructorInputEl)
         if (el && el.focus) el.focus()
-        instructorDropUp.value = shouldDropUp(el)
       })
     }
     const commitInstructor = () => {
@@ -741,7 +743,7 @@ export default {
       editingInstructorKey,
       instructorText,
       instructorOpen,
-      instructorDropUp,
+      instructorDropdownStyle,
       showAllInstructors,
       hasDeptPool,
       toggleShowAllInstructors,

@@ -108,8 +108,8 @@
                   />
                   <div
                     v-if="instructorSuggestOpen"
-                    class="course-picker-dropdown"
-                    :class="{ 'drop-up': instructorDropUp }"
+                    class="course-picker-dropdown is-anchored"
+                    :style="instructorDropdownStyle"
                   >
                     <button
                       v-for="opt in instructorSuggestions"
@@ -160,8 +160,8 @@
                     />
                     <div
                       v-if="suggestOpen"
-                      class="course-picker-dropdown"
-                      :class="{ 'drop-up': secondaryDropUp }"
+                      class="course-picker-dropdown is-anchored"
+                      :style="secondaryDropdownStyle"
                     >
                       <button
                         v-for="opt in secondarySuggestions"
@@ -398,7 +398,7 @@ import { buildFacultyAndEligible } from '@major-vis/schedule-core/generate'
 import { instructorLabel } from '../src/names.js'
 import { buildInstructorOptions } from '../src/instructorSuggest.js'
 import { defaultShowAll, instructorPoolFor } from '../src/instructorPool.js'
-import { shouldDropUp } from '../src/dropUp.js'
+import { useAnchoredDropdown } from '../src/useAnchoredDropdown.js'
 import { useModalFocus } from '../src/modalFocus.js'
 import AirDatepicker from 'air-datepicker'
 import 'air-datepicker/air-datepicker.css'
@@ -627,8 +627,11 @@ export default {
     // catalog roster + same-prefix term instructors) or the all-instructors
     // pool, matched against the typed token (a full name or a username).
     const instructorSuggestOpen = ref(false)
-    const instructorDropUp = ref(false)
     const instructorSuggestEl = ref(null)
+    const { style: instructorDropdownStyle } = useAnchoredDropdown(
+      () => instructorEl.value,
+      instructorSuggestOpen,
+    )
     const instructorSuggestions = computed(() => {
       if (!instructorSuggestOpen.value) return []
       const pool = instructorPoolFor({
@@ -644,13 +647,10 @@ export default {
         : pool
       return matched.slice(0, 8)
     })
-    // Opening also picks the dropdown's direction: a list near the bottom of the
-    // scrollable body flips up rather than being clipped.
+    // Focusing opens the combobox; `useAnchoredDropdown` places the list so a
+    // short modal body can't crop it.
     const onInstructorFocus = () => {
       instructorSuggestOpen.value = true
-      nextTick(() => {
-        instructorDropUp.value = shouldDropUp(instructorEl.value)
-      })
     }
     // Closes the suggestion list when focus leaves the input + list (clicking
     // an option is a mousedown.prevent, so the input keeps focus through click).
@@ -705,9 +705,9 @@ export default {
       return out
     })
     const suggestOpen = ref(false)
-    const secondaryDropUp = ref(false)
     const secondaryEl = ref(null)
     const secondarySuggestEl = ref(null)
+    const { style: secondaryDropdownStyle } = useAnchoredDropdown(() => secondaryEl.value, suggestOpen)
     const secondarySuggestions = computed(() => {
       if (!suggestOpen.value) return []
       const text = secondaryText.value
@@ -725,9 +725,6 @@ export default {
     })
     const onSecondaryFocus = () => {
       suggestOpen.value = true
-      nextTick(() => {
-        secondaryDropUp.value = shouldDropUp(secondaryEl.value)
-      })
     }
     // Closes the suggestion list when focus leaves the input + list (clicking
     // an option is a mousedown.prevent, so the input keeps focus through click).
@@ -1065,7 +1062,7 @@ export default {
       instructorSel,
       instructorEl,
       instructorSuggestOpen,
-      instructorDropUp,
+      instructorDropdownStyle,
       instructorSuggestEl,
       instructorSuggestions,
       onInstructorFocus,
@@ -1076,7 +1073,7 @@ export default {
       secondaryOpen,
       instructorPool,
       suggestOpen,
-      secondaryDropUp,
+      secondaryDropdownStyle,
       secondaryEl,
       secondarySuggestEl,
       secondarySuggestions,

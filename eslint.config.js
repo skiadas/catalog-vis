@@ -93,6 +93,7 @@ export default [
     languageOptions: {
       globals: {
         DataTransfer: 'readonly',
+        document: 'readonly',
       },
     },
   },

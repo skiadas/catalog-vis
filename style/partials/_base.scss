@@ -494,11 +494,15 @@ body {
   overflow-y: auto;
   box-shadow: var(--shadow-md);
 }
-// A list near the bottom of its scroll container opens upward instead of being
-// clipped (see `src/dropUp.js`).
-.course-picker-dropdown.drop-up {
+/* Pinned to the viewport by `src/useAnchoredDropdown.js` so a dropdown nested
+   in a scroll/clip box (the table's horizontal scroller, the editor modal body)
+   is never cropped; the inline top/bottom places it relative to its input.
+   `top: auto` clears the base rule so an upward `bottom` doesn't stretch it. */
+.course-picker-dropdown.is-anchored {
+  position: fixed;
   top: auto;
-  bottom: calc(100% + 4px);
+  right: auto;
+  z-index: var(--z-popover);
 }
 /* A borderless, underlined text button (the "escape hatch" pattern: add-course
    scope, instructor scope). */

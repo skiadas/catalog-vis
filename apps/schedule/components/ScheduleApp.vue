@@ -226,7 +226,7 @@
           @blur="onCourseBlur"
           @keydown.esc="courseOpen = false"
         />
-        <div v-if="courseOpen" class="course-picker-dropdown">
+        <div v-if="courseOpen" class="course-picker-dropdown is-anchored" :style="courseDropdownStyle">
           <button
             v-for="code in courseResults"
             :key="code"
@@ -348,6 +348,7 @@ import {
   remote,
 } from '../src/scheduleStore.js'
 import { TERM_KEYS, TERM_LABELS, offeringItemKey } from '@major-vis/schedule-core'
+import { useAnchoredDropdown } from '../src/useAnchoredDropdown.js'
 import ScheduleGrid from './ScheduleGrid.vue'
 import ScheduleDay from './ScheduleDay.vue'
 import ScheduleSlot from './ScheduleSlot.vue'
@@ -460,6 +461,7 @@ export default {
     const courseQuery = ref('')
     const courseOpen = ref(false)
     const coursePickerEl = ref(null)
+    const { style: courseDropdownStyle } = useAnchoredDropdown(() => coursePickerEl.value, courseOpen)
     const onCourseBlur = (e) => {
       const next = e.relatedTarget
       if (next && coursePickerEl.value && coursePickerEl.value.contains(next)) return
@@ -651,6 +653,7 @@ export default {
       courseQuery,
       courseOpen,
       coursePickerEl,
+      courseDropdownStyle,
       onCourseBlur,
       courseResults,
       courseName,
