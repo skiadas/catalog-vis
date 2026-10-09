@@ -73,9 +73,29 @@ function assertClean(errors) {
   expect(errors.consoleErrors, 'console errors').toEqual([])
 }
 
+// Every test signs into its own account unless it names one. The suite shares
+// one server and one DB, so a common account accumulates schedules across tests:
+// a newly created schedule then merges with earlier ones (surfacing them as
+// dimmed references and breaking row/drag/section-letter assertions). Deriving
+// the default from the running test keeps each test isolated automatically —
+// pass 'registrar' explicitly only for the shared public schedule and the admin
+// flows. `titlePath` seeds a readable slug, `testId` guarantees uniqueness, and
+// `retry` gives a retried attempt a clean account.
+function testAccount() {
+  const info = test.info()
+  const slug = info.titlePath
+    .join('-')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 24)
+  const id = String(info.testId).replace(/[^a-z0-9]/gi, '')
+  return `e2e-${slug}-${id}${info.retry ? `-r${info.retry}` : ''}`.slice(0, 120)
+}
+
 // The boot prompt (login or offline) appears on every fresh visit before any
 // app state. Signing in closes it and pins the identity in the header.
-async function signIn(page, username = 'registrar') {
+async function signIn(page, username = testAccount()) {
   const dialog = page.getByRole('dialog')
   await dialog.waitFor({ timeout: 10000 })
   await dialog.getByRole('button', { name: 'Sign in' }).click()
@@ -121,7 +141,9 @@ async function createPopulatedSchedule(page, name) {
 test('sign-in and schedule creation', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
-  await signIn(page)
+  // Registrar on purpose: this test publishes the shared "Smoke schedule" that
+  // later tests (and the guard deep-link) find by owner/visibility.
+  await signIn(page, 'registrar')
   // The top nav links out to the user guide (co-deployed at /docs/).
   const guide = page.getByRole('link', { name: 'Guide' })
   await expect(guide).toBeVisible()
@@ -2689,7 +2711,7 @@ test('access overlay route: deep links over the grid, floats over manage, denies
 test('admins maintain the user directory; access lists autocomplete from it', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
-  await signIn(page) // registrar is an admin (ADMIN_USERNAMES in the webServer env)
+  await signIn(page, 'registrar') // an admin (ADMIN_USERNAMES in the webServer env)
 
   // The Directory link is visible to the admin and opens the admin page.
   await page.getByRole('link', { name: 'Directory' }).click()
@@ -2760,7 +2782,7 @@ test('add-course dialog scopes to directory departments, with an all-courses esc
 }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })
-  await signIn(page) // registrar, the admin
+  await signIn(page, 'registrar') // the admin, to seed the directory
 
   // Seed a directory entry giving a regular user the MAT department.
   await page.getByRole('link', { name: 'Directory' }).click()
