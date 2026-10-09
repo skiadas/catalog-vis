@@ -413,6 +413,70 @@ test('non-owner suggest sessions consolidate into one upserted proposal; externa
   )
 })
 
+test("a proposer's own replayed suggestion is not overlaid during their suggest session", async () => {
+  await withRemote(
+    async ({ srv, store }) => {
+      const admin = srv
+      await admin.post('/api/auth/login', { username: 'registrar' })
+      const schedule = (await admin.post('/api/schedules', { name: 'Shared' })).json.schedule
+      await admin.patch(`/api/schedules/${schedule.id}`, {
+        visibility: 'public',
+        suggestMode: 'public',
+      })
+      await admin.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [COURSE] })
+      await admin.post('/api/admin/users', { username: 'physics', departments: ['CS'] })
+      await admin.post('/api/admin/users', { username: 'math', departments: ['MAT'] })
+
+      // Physics selects the shared schedule, suggests an addition, and proposes.
+      assert.equal(await store.signIn('physics'), true)
+      if (!store.selectedScheduleIds.value.includes(schedule.id)) store.toggleSchedule(schedule.id)
+      await flush()
+      assert.equal(await store.setEditingSchedule(schedule.id, 'suggest'), true)
+      store.addCourseToSchedule(schedule.id, 'CS 101')
+      const own = await store.proposeDraft(schedule.id, 'add CS 101')
+      assert.ok(own && own.operations.some((e) => e.op.kind === 'add'))
+
+      // The add lives in the working copy exactly once...
+      const draft = store.viewOfferings(store.scheduleById(schedule.id))
+      assert.equal(draft.filter((o) => `${o.prefix} ${o.number}` === 'CS 101').length, 1)
+      // ...and is not drawn again on top while physics is still suggesting.
+      assert.equal(
+        store.overlaySuggestions.value.some((s) => s.id === own.id),
+        false,
+        'own proposal is not overlaid during its own session',
+      )
+
+      // Another proposer's add still overlays.
+      const math = srv.newClient()
+      await math.post('/api/auth/login', { username: 'math' })
+      const mathSuggestion = (
+        await math.post(`/api/schedules/${schedule.id}/suggestions`, {
+          term: 'F',
+          baseVersion: 0,
+          operations: [
+            {
+              kind: 'add',
+              offering: { prefix: 'MAT', number: '131', section: 'A', days: 'MWF', time: '12:00-13:10' },
+            },
+          ],
+        })
+      ).json.suggestion
+      assert.ok(mathSuggestion)
+      await store.refreshSuggestions(schedule.id)
+      assert.equal(
+        store.overlaySuggestions.value.some((s) => s.id === mathSuggestion.id),
+        true,
+        "another proposer's add still overlays",
+      )
+
+      // Leaving the session puts physics' own proposal back on the overlay.
+      await store.setEditingSchedule(null)
+      assert.equal(store.overlaySuggestions.value.some((s) => s.id === own.id), true)
+    },
+    { adminUsernames: new Set(['registrar']) },
+  )
+})
+
 test('offline trail mirrors the lifecycle: propose, withdraw, propose again, self-approve', async () => {
   await withRemote(async ({ store }) => {
     // Make the store offline for this test (same process, remote back off).

@@ -2405,6 +2405,32 @@ test('proposeOverlay renders concurrent proposals independently with proposers',
   ])
 })
 
+test('proposeOverlay skips an add for a section already on the schedule', () => {
+  const base = [{ prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '8:00-9:10' }]
+  const pending = [
+    {
+      id: 3,
+      proposer: 'physics',
+      operations: [
+        // Already on the schedule (the proposer's own replayed suggestion, or a
+        // duplicate proposal): not a new block, so no ghost.
+        {
+          kind: 'add',
+          offering: { prefix: 'CS', number: '101', section: 'A', days: 'MWF', time: '8:00-9:10' },
+        },
+        // A genuinely new section still overlays.
+        {
+          kind: 'add',
+          offering: { prefix: 'CS', number: '101', section: 'B', days: 'MWF', time: '9:20-10:30' },
+        },
+      ],
+    },
+  ]
+  const { proposed } = proposeOverlay(base, pending)
+  assert.equal(proposed.length, 1)
+  assert.equal(proposed[0].offering.section, 'B')
+})
+
 // ---------------------------------------------------------------------------
 // Day timeline: lane assignment + expanded range
 // ---------------------------------------------------------------------------

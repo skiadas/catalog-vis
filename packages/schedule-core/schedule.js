@@ -1687,6 +1687,10 @@ export function proposeOverlay(baseOfferings, pendingSuggestions) {
     for (const op of sug.operations || []) {
       if (!op) continue
       if (op.kind === 'add' && op.offering) {
+        // An add for a section already on the schedule is a no-op, not a new
+        // block: skip it so an overlay can never ghost a duplicate (e.g. the
+        // proposer's own replayed suggestion, or two proposals for one course).
+        if (baseByKey.has(offeringKey(op.offering))) continue
         proposed.push({
           offering: { ...op.offering },
           kind: 'add',

@@ -1330,6 +1330,24 @@ export const pendingSuggestionsForTerm = computed(() => {
   return out
 })
 
+// The pending suggestions to draw on top of the displayed schedule. The
+// proposer's own suggestion is left out while they are suggesting on that
+// schedule: `setupDraft` already replays their pending ops into the working copy
+// they see, so drawing them again would double every change. Every other
+// proposal (and their own once they leave the session) still overlays.
+export const overlaySuggestions = computed(() => {
+  const list = pendingSuggestionsForTerm.value
+  if (!list.length) return list
+  const ownReplayed = new Set()
+  for (const sid of selectedScheduleIds.value) {
+    if (!isSuggestSessionFor(sid)) continue
+    const own = ownPendingSuggestion(sid, activeTerm.value)
+    if (own) ownReplayed.add(own.id)
+  }
+  if (!ownReplayed.size) return list
+  return list.filter((s) => !ownReplayed.has(s.id))
+})
+
 function suggestionId() {
   return 'sg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }

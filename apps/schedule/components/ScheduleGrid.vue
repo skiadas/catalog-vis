@@ -111,7 +111,7 @@ import {
   editingScheduleId,
   canTouchOffering,
   showPendingSuggestions,
-  pendingSuggestionsForTerm,
+  overlaySuggestions,
   moveOffering,
   openCourseEdit,
   instructorName,
@@ -143,7 +143,7 @@ export default {
     // current blocks.
     const overlay = computed(() => {
       if (!showPendingSuggestions.value) return { extra: [], removalsByKey: new Map() }
-      const list = pendingSuggestionsForTerm.value
+      const list = overlaySuggestions.value
       if (!list.length) return { extra: [], removalsByKey: new Map() }
       const { proposed, removals } = proposeOverlay(scheduleOfferings.value, list)
       const removalsByKey = new Map()

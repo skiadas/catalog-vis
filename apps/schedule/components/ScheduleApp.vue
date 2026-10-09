@@ -157,7 +157,7 @@
             Clear
           </button>
           <button
-            v-if="pendingSuggestionsForTerm.length"
+            v-if="overlaySuggestions.length"
             class="filter-btn schedule-proposals-toggle"
             :class="{ active: showPendingSuggestions }"
             :aria-pressed="showPendingSuggestions"
@@ -330,7 +330,7 @@ import {
   setActiveTerm,
   showPendingSuggestions,
   setShowPendingSuggestions,
-  pendingSuggestionsForTerm,
+  overlaySuggestions,
   blockMode,
   setBlockMode,
   verticalScale,
@@ -680,7 +680,7 @@ export default {
       setActiveTerm,
       showPendingSuggestions,
       setShowPendingSuggestions,
-      pendingSuggestionsForTerm,
+      overlaySuggestions,
       blockMode,
       setBlockMode,
       verticalScale,

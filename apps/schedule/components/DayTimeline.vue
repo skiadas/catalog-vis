@@ -123,7 +123,7 @@ import {
   editingScheduleId,
   canTouchOffering,
   showPendingSuggestions,
-  pendingSuggestionsForTerm,
+  overlaySuggestions,
   moveOffering,
   openCourseEdit,
   verticalScale,
@@ -151,7 +151,7 @@ export default {
     // Pending-suggestion overlay for this day's index (see ScheduleGrid).
     const overlay = computed(() => {
       if (!showPendingSuggestions.value) return { extra: [], removalsByKey: new Map() }
-      const list = pendingSuggestionsForTerm.value
+      const list = overlaySuggestions.value
       if (!list.length) return { extra: [], removalsByKey: new Map() }
       const { proposed, removals } = proposeOverlay(scheduleOfferings.value, list)
       const removalsByKey = new Map()
