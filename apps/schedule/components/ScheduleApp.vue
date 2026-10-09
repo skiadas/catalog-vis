@@ -183,14 +183,16 @@
     <div class="schedule-edit-bar" v-if="editingId && !isManagePage">
       <span class="schedule-edit-chip">{{ editingRole === 'suggest' ? 'Suggesting' : 'Editing' }}</span>
       <input
+        v-if="canRename"
         class="schedule-edit-name"
         v-model="nameDraft"
         @blur="commitRename"
         @keydown.enter="commitRename"
         aria-label="Schedule name"
       />
+      <span v-else class="schedule-edit-name-text">{{ editingName }}</span>
       <div class="schedule-edit-actions">
-        <button class="filter-btn primary" @click="showAddCourse = true">＋ Add course</button>
+        <button class="filter-btn" @click="showAddCourse = true">＋ Add course</button>
         <button class="filter-btn" @click="showCopyCourses = true">Copy courses…</button>
         <button
           class="filter-btn schedule-history-btn"
@@ -201,15 +203,27 @@
           History{{ historyEntries.length ? ` (${historyEntries.length})` : '' }}
         </button>
         <button
+          v-if="editingRole === 'suggest' && editingDraft && editingDraft.dirty"
+          class="filter-btn"
+          @click="discardDraft"
+        >
+          Discard draft
+        </button>
+        <button
           v-if="editingRole === 'suggest'"
           class="filter-btn schedule-suggestions-btn"
-          :class="{ active: overlay === 'proposals' }"
+          :class="{ primary: editingDraft && editingDraft.dirty, active: overlay === 'proposals' }"
           :aria-pressed="overlay === 'proposals'"
+          :aria-label="proposeAriaLabel"
           @click="goProposals(editingId)"
         >
-          {{ editingDraft && editingDraft.dirty ? 'Propose changes ●' : 'Propose changes' }}
+          Propose changes<span v-if="draftOpCount" class="propose-badge" aria-hidden="true">{{
+            draftOpCount
+          }}</span>
         </button>
-        <button class="filter-btn" @click="exitEdit">Done</button>
+        <button class="filter-btn" @click="exitEdit">
+          {{ editingRole === 'suggest' ? 'Leave' : 'Done' }}
+        </button>
       </div>
     </div>
 
@@ -262,7 +276,7 @@
     </div>
     <template v-else>
       <ScheduleGrid v-if="view === 'grid'" />
-      <ScheduleTable v-else-if="view === 'table'" @add-course="showAddCourse = true" />
+      <ScheduleTable v-else-if="view === 'table'" />
       <ScheduleDay v-else-if="view === 'day'" />
       <ScheduleSlot v-else-if="view === 'slot'" />
       <ScheduleCourse v-else-if="view === 'course'" />
@@ -331,6 +345,7 @@ import {
   editingRole,
   editingSchedule,
   editingDraft,
+  isOwner,
   setEditingSchedule,
   clearDraft,
   renameSchedule,
@@ -348,6 +363,7 @@ import {
   closeCourseEdit,
   courseSections,
   historyEntries,
+  draftOperations,
   cancelLatest,
   jumpToEdit,
   remote,
@@ -510,6 +526,20 @@ export default {
     // for edit affordances, and the session's schedule is what they edit).
     const editingId = editingScheduleId
     const editingName = computed(() => (editingSchedule.value ? editingSchedule.value.name : ''))
+    // Renaming writes the schedule's name directly (an owner-only endpoint), so
+    // only offer the input where it can persist: owners (and offline users).
+    const canRename = computed(() => !remote.value || isOwner(editingSchedule.value))
+    // Unsent changes, for the Propose button's badge: the draft keeps its sent
+    // changes (like a working copy), so the count must ignore a clean draft.
+    const draftOpCount = computed(() => {
+      if (!editingDraft.value || !editingDraft.value.dirty || editingId.value == null) return 0
+      return draftOperations(editingId.value, activeTerm.value).length
+    })
+    const proposeAriaLabel = computed(() =>
+      draftOpCount.value
+        ? `Propose changes — ${draftOpCount.value} unsent ${draftOpCount.value === 1 ? 'change' : 'changes'}`
+        : 'Propose changes',
+    )
     const nameDraft = ref('')
     const enterEdit = (id, role = 'edit') => goMode(id, role)
     // Route ↔ session sync. Entering ensures the target exists and joins the
@@ -550,6 +580,13 @@ export default {
         if (!window.confirm('Discard your unsaved draft changes?')) return
         clearDraft(editingScheduleId.value, activeTerm.value)
       }
+      exitMode()
+    }
+
+    // The explicit "throw it away" exit: no confirm (the button is the intent).
+    const discardDraft = () => {
+      const id = editingScheduleId.value
+      if (id != null) clearDraft(id, activeTerm.value)
       exitMode()
     }
 
@@ -695,10 +732,14 @@ export default {
       editingId,
       editingRole,
       editingName,
+      canRename,
       editingDraft,
+      draftOpCount,
+      proposeAriaLabel,
       nameDraft,
       enterEdit,
       exitEdit,
+      discardDraft,
       onProposed,
       commitRename,
       activeTerm,

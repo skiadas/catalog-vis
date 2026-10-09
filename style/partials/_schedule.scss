@@ -968,8 +968,36 @@
   box-shadow: var(--ring);
   outline: none;
   background: var(--surface);
-} /* Course-edit modal: time-slot picker with per-group day toggles */
+}
+/* Suggest sessions show the name as text (only the owner may rename). */
+.schedule-edit-name-text {
+  font-weight: var(--weight-bold);
+  color: var(--primary);
+  padding: 1px 5px;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Unsent-change count on the Propose button: white disk on the primary fill,
+   navy on the (rare) clean state, so it reads at a glance. */
+.propose-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--primary);
+  font-size: var(--font-2xs);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
 
+/* Course-edit modal: time-slot picker with per-group day toggles */
 .slot-time-groups {
   display: flex;
   flex-direction: column;

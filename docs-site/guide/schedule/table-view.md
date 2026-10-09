@@ -55,8 +55,9 @@ dimmed as references, and nothing on them can be changed.
 - The **pencil** opens the full [course editor](/guide/schedule/edit-course),
   where labs, cross-listing, and co-teachers live.
 - The **trash** removes the section from the schedule, after a confirmation.
-- **＋ Add course** sits in the table's header during a session and opens the
-  same dialog as everywhere else.
+
+Add courses from the session bar's **＋ Add course**, the same dialog as
+everywhere else.
 
 ## Related
 

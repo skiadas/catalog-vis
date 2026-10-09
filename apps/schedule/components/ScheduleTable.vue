@@ -8,13 +8,6 @@
       <span v-else-if="editingRole === 'suggest'" class="schedule-table-hint"
         >Suggesting — edits are limited to your departments and become proposals.</span
       >
-      <button
-        v-if="editingScheduleId"
-        class="filter-btn primary schedule-table-add"
-        @click="$emit('add-course')"
-      >
-        ＋ Add course
-      </button>
     </div>
 
     <div class="schedule-table-filters">
@@ -394,7 +387,6 @@ import { useRoute, useRouter } from 'vue-router'
 export default {
   name: 'ScheduleTable',
   components: { ScheduleTableCell },
-  emits: ['add-course'],
   setup() {
     const route = useRoute()
     const router = useRouter()

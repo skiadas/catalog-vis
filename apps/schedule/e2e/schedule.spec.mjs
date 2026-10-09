@@ -234,7 +234,7 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
 
   await page.locator('.schedule-pill-suggest').first().click()
   await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
-  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: 'Leave' }).click()
 
   // --- Edit mode: the TR->MWF guard ---
   await page.locator('.schedule-pill-edit').first().click()
@@ -439,7 +439,9 @@ test('suggest session: leaving with an unsaved draft asks first', async ({ page 
   await em.locator('#course-edit-instructor').fill('Draft Person')
   await em.getByRole('button', { name: 'Save changes' }).click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
-  await expect(page.getByRole('button', { name: /Propose changes/ })).toContainText('●')
+  await expect(page.getByRole('button', { name: /Propose changes/ }).locator('.propose-badge')).toHaveText(
+    '1',
+  )
 
   // Declining the discard confirm keeps the session put.
   page.once('dialog', (d) => d.dismiss())
@@ -514,6 +516,56 @@ test("re-entering a suggest session doesn't double-draw the proposer's own addit
       .locator('.filter-offering', { hasText: 'ANTH 160' }),
   ).toHaveCount(1)
   await expect(page.locator('.filter-offering.proposed')).toHaveCount(0)
+  assertClean(errors)
+})
+
+test('suggest session bar: unsent-changes badge, discard, and leave', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+  await createPopulatedSchedule(page, 'Suggest bar')
+
+  await page.locator('.schedule-pill-suggest').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
+
+  // A clean draft: no badge, and the Propose button is not the primary action.
+  const propose = page.getByRole('button', { name: /Propose changes/ })
+  await expect(propose.locator('.propose-badge')).toHaveCount(0)
+  await expect(propose).not.toHaveClass(/primary/)
+  // The owner can rename, so the name is an input.
+  await expect(page.locator('input[aria-label="Schedule name"]')).toBeVisible()
+
+  // A change lights up the button with the unsent count.
+  await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await em.locator('#course-edit-offering-title').fill('Badge title')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(propose.locator('.propose-badge')).toHaveText(/^[1-9]\d*$/)
+  await expect(propose).toHaveClass(/primary/)
+
+  // Discard draft is the explicit exit: it clears the draft and ends the session
+  // without a confirm.
+  await page.getByRole('button', { name: 'Discard draft' }).click()
+  await page
+    .locator('.schedule-edit-chip', { hasText: 'Suggesting' })
+    .waitFor({ state: 'detached', timeout: 5000 })
+
+  // Leave is the guarded exit: with unsaved changes it asks first.
+  await page.locator('.schedule-pill-suggest').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
+  await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await em.locator('#course-edit-offering-title').fill('Leave title')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: 'Leave' }).click()
+  await page
+    .locator('.schedule-edit-chip', { hasText: 'Suggesting' })
+    .waitFor({ state: 'detached', timeout: 5000 })
+
   assertClean(errors)
 })
 
@@ -1578,9 +1630,9 @@ test('table view: department filter, inline edit, add and remove', async ({ page
   await expect(page).toHaveURL(/#\/table/)
   await table.waitFor({ state: 'visible', timeout: 5000 })
 
-  // Add from the table header: the editor opens, saving lands a new row.
+  // Add from the session bar: the editor opens, saving lands a new row.
   const beforeAdd = await rows.count()
-  await table.getByRole('button', { name: '＋ Add course' }).click()
+  await page.getByRole('button', { name: '＋ Add course' }).click()
   const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
   await addm.waitFor({ state: 'visible', timeout: 5000 })
   await addm.getByPlaceholder('Search code or name…').fill('BIO')
@@ -2815,12 +2867,15 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   await row.getByRole('button', { name: 'Suggest changes for Access schedule' }).click()
   await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
   await expect(page.locator('.filter-offering-edit')).toHaveCount(0)
+  // Not the owner: the name shows as text, not an input that can't persist.
+  await expect(page.locator('input[aria-label="Schedule name"]')).toHaveCount(0)
+  await expect(page.locator('.schedule-edit-name-text')).toBeVisible()
   await page.getByRole('button', { name: 'Suggested changes' }).click()
   const panel = page.locator('.modal[aria-labelledby="suggested-title"]')
   await panel.waitFor({ state: 'visible', timeout: 5000 })
   await expect(panel.getByText(/no departments yet/i)).toBeVisible()
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'Done' }).click() // leave suggest mode
+  await page.getByRole('button', { name: 'Leave' }).click() // leave suggest mode
 
   // Carol: a viewer but not a suggester — neither action renders on her row.
   await page.getByRole('button', { name: 'Sign out' }).click()

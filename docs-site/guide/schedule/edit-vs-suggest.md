@@ -19,7 +19,9 @@ On the schedule's colored pill, or on its row in **Your schedules**:
 
 Either way, a bar appears under the toolbar with a chip that says **EDITING** or
 **SUGGESTING**, followed by the schedule name and these buttons: **＋ Add
-course**, **Copy courses…**, **History**, **Propose changes**, and **Done**.
+course**, **Copy courses…**, **History**, and **Done**. While you are
+suggesting there are three more: **Discard draft**, **Leave**, and **Propose
+changes**.
 
 <Shot file="schedule-suggest-session.png" />
 
@@ -29,15 +31,18 @@ While you suggest, your edits are kept as a private **draft**. The schedule
 itself is untouched. You can move between the grid, day, and other views and the
 draft comes with you.
 
-- **Propose changes ●** — the dot means you have changes not yet sent. Click it
-  to submit them for review. See
+- **Propose changes** — lights up (with a count of the changes you have not sent)
+  once you have changed something. Click it to submit them for review; sending
+  ends the session and flashes a confirmation. See
   [Submitting changes](/guide/schedule/proposals).
 - **History** — the list of what you have changed in this session, with the
   option to undo.
-- **Done** — leaves the session. If you have unsent changes, the app asks before
+- **Discard draft** — throws away the changes you have not sent and ends the
+  session.
+- **Leave** — ends the session. If you have unsent changes, the app asks before
   discarding them.
 
 ::: tip
-In an edit session, the schedule name is editable right in the bar — owners can
-rename a schedule by typing there.
+The schedule name is editable right in the bar for the schedule's owner (an edit
+session); everyone else sees it as plain text.
 :::

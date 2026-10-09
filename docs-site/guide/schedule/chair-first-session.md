@@ -68,7 +68,7 @@ works on it too.
 <Shot file="schedule-pill-bubble.png" />
 
 A bar appears with **＋ Add course**, **Copy courses…**, **History**,
-**Propose changes**, and **Done**.
+**Discard draft**, **Leave**, and **Propose changes**.
 
 <Shot file="schedule-suggest-session.png" />
 
@@ -149,8 +149,8 @@ it came from. It is the fastest way to check that your department adds up.
   click **Instructor** to pick from name suggestions, click **Meeting** to
   choose a standard time (or **Custom…**), and type over **Title** and
   **Seats**. Enter or clicking away commits; Esc cancels.
-- The row's **pencil** opens the full course editor, and **＋ Add course** is
-  right in the table's header.
+- The row's **pencil** opens the full course editor; **＋ Add course** is in the
+  session bar above.
 
 <Shot file="schedule-table-edit.png" />
 
@@ -161,12 +161,12 @@ Finer details: [Working with the table view](/guide/schedule/table-view).
 Nothing you have done so far has reached the schedule. Your edits sit in a
 private draft until you send them:
 
-1. Click **Propose changes** — the **●** beside it means there are changes not
-   sent yet.
+1. Click **Propose changes** — once you have changed something it lights up and
+   shows a count of the changes not sent yet.
 2. Add a short note if you like (for example "CS 220 moved to TR; CS 223
-   added"), then send.
-3. Click **Done** to leave the session. If anything is still unsent, the app
-   asks before discarding it.
+   added"), then send. Sending ends the session and flashes a confirmation.
+3. Or use **Leave** instead to walk away; if anything is still unsent, the app
+   asks before discarding it (**Discard draft** throws it away outright).
 
 The proposals are now **pending**, waiting for the owner. Nothing is written
 to the schedule until they approve.

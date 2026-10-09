@@ -109,7 +109,10 @@ export const entries = [
     as: 'registrar',
     route: '/#/',
     seed: 'hiding',
-    steps: [{ act: 'assert', text: 'No meeting times' }, { act: 'assert', text: 'custom' }],
+    steps: [
+      { act: 'assert', text: 'No meeting times' },
+      { act: 'assert', text: 'custom' },
+    ],
     fullPage: true,
     alt: 'The grid showing a dashed custom rail, with the No meeting times strip below it',
     caption: 'Courses that fall outside the standard times: a dashed "custom" rail, or the strip below.',
@@ -141,7 +144,7 @@ export const entries = [
     route: '/#/?mode=suggest&id=<id>',
     seed: 'suggest',
     steps: [{ act: 'assert', text: 'Suggesting' }],
-    alt: 'A suggest session: the Suggesting bar with Propose changes and Done',
+    alt: 'A suggest session: the Suggesting bar with Discard draft, Leave, and Propose changes',
     caption: 'Suggesting — your changes wait as a draft until the owner approves.',
   },
   {
@@ -240,7 +243,7 @@ export const entries = [
         text: 'Suggesting — edits are limited to your departments and become proposals.',
       },
     ],
-    alt: "The table view in a suggest session: editable cells on the advisor's department rows and Add course in the header",
+    alt: "The table view in a suggest session: editable cells on the advisor's department rows",
     caption: "The table view in a suggest session — your department's cells edit in place.",
   },
   {

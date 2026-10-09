@@ -87,10 +87,6 @@
   color: var(--text-muted);
 }
 
-.schedule-table-add {
-  margin-left: auto;
-}
-
 .schedule-table-empty {
   @include surface;
   padding: var(--space-5);
