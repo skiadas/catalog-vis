@@ -28,6 +28,7 @@ import {
   assignOfferingIds,
   offeringCodeLabel,
   offeringSectionLabel,
+  offeringIdentity,
   matchOffering,
   proposeOverlay,
 } from '@major-vis/schedule-core'
@@ -2209,14 +2210,21 @@ export const scheduleOfferings = computed(() => {
 export const schedule = computed(() => buildIndex(scheduleOfferings.value))
 
 // The pending-suggestion overlay for the active term: the draw-on-top set from
-// `overlaySuggestions`, gated by the toolbar toggle. `removalsByKey` marks the
-// live blocks a proposal would take away — a removal's current row and the
-// source of a proposed move (which the view strikes so a moved course doesn't
-// read as a duplicate). `aware` distinguishes "showing nothing because the
-// toggle is off / nothing pending" from a live overlay.
-const overlayKey = (o) => `${o.prefix} ${o.number} ${o.section}`
+// `overlaySuggestions`, gated by the toolbar toggle. A proposal takes a live row
+// away — a removal's current row (drawn struck) and the source of a proposed
+// move (hidden from its old slot). Both are keyed by the id-first offering
+// identity so split-meeting siblings are never collided. `aware` distinguishes
+// "showing nothing because the toggle is off / nothing pending" from a live
+// overlay.
+const overlayKey = (o) => offeringIdentity(o)
 export const pendingOverlay = computed(() => {
-  const empty = { proposed: [], removals: [], removalsByKey: new Map(), aware: false }
+  const empty = {
+    proposed: [],
+    removals: [],
+    removalsByKey: new Map(),
+    movedFromKeys: new Set(),
+    aware: false,
+  }
   if (!showPendingSuggestions.value) return empty
   const list = overlaySuggestions.value
   if (!list.length) return empty
@@ -2230,31 +2238,32 @@ export const pendingOverlay = computed(() => {
       suggestionId: r.suggestionId,
     })
   }
+  const movedFromKeys = new Set()
   for (const p of proposed) {
-    if (p.kind === 'move' && p.from) {
-      removalsByKey.set(overlayKey(p.from), {
-        kind: 'move',
-        proposer: p.proposer,
-        suggestionId: p.suggestionId,
-      })
-    }
+    if (p.kind === 'move' && p.from) movedFromKeys.add(overlayKey(p.from))
   }
   return {
     proposed: proposed.map((p) => ({ ...p, scheduleId: scheduleOf.get(p.suggestionId) })),
     removals,
     removalsByKey,
+    movedFromKeys,
     aware: true,
   }
 })
 
 // The offerings every view draws: the base (published, or the suggest-session
-// draft) plus each proposed offering, tagged (`$sid`/`$prop`) so views can style
-// it and never treat it as a real, editable row.
+// draft), minus the source rows of proposed moves (hidden from their old slot),
+// plus each proposed offering, tagged (`$sid`/`$prop`) so views can style it and
+// never treat it as a real, editable row.
 export const shownOfferings = computed(() => {
-  const extra = pendingOverlay.value.proposed
+  const overlay = pendingOverlay.value
+  const extra = overlay.proposed
   if (!extra.length) return scheduleOfferings.value
+  const base = overlay.movedFromKeys.size
+    ? scheduleOfferings.value.filter((o) => !overlay.movedFromKeys.has(overlayKey(o)))
+    : scheduleOfferings.value
   return [
-    ...scheduleOfferings.value,
+    ...base,
     ...extra.map((p, i) => ({
       ...p.offering,
       $sid: 'prop:' + p.suggestionId + ':' + i,
@@ -2274,15 +2283,13 @@ export const shownSchedule = computed(() =>
 )
 
 // The pending marker on an offering, if any: a proposed block (`$prop` tag) or a
-// live block a proposal would take away (removal, or a move's source). Shared by
-// every view so the "proposed/removed" distinction and the tooltip wording live
-// in one place.
+// live block a proposal would remove. Shared by every view so the
+// "proposed/removed" distinction and the tooltip wording live in one place.
 export function overlayProposal(o) {
   return (o && o.$prop) || null
 }
 export function overlayRemoval(o) {
-  // A proposed block (`$prop`) is a destination, never a source to strike — even
-  // when it shares a section tuple with the move that created it.
+  // A proposed block (`$prop`) is a destination, never a removal target.
   if (!o || o.$prop) return null
   return pendingOverlay.value.removalsByKey.get(overlayKey(o)) || null
 }
@@ -2299,7 +2306,7 @@ export function overlayTitle(o, code) {
   const label = `${code || `${o.prefix} ${o.number}`}${o.section}`
   if (m.side === 'proposed')
     return `${label}: proposed ${m.kind === 'move' ? 'move' : 'add'} by ${m.proposer}`
-  return `${label}: ${m.kind === 'move' ? 'move' : 'removal'} proposed by ${m.proposer}`
+  return `${label}: removal proposed by ${m.proposer}`
 }
 // A short phrase for a row/tag: "Move proposed by advisor".
 export function overlayTag(o) {

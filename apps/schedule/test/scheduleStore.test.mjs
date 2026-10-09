@@ -477,7 +477,7 @@ test("a proposer's own replayed suggestion is not overlaid during their suggest 
   )
 })
 
-test('a proposed move strikes its source and dashes the destination', async () => {
+test('a proposed move hides its source and dashes the destination', async () => {
   await withRemote(
     async ({ srv, store }) => {
       const admin = srv
@@ -489,7 +489,8 @@ test('a proposed move strikes its source and dashes the destination', async () =
       })
       await admin.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [COURSE] })
       // The owner proposes a move of their own course (owners are exempt from
-      // department scoping).
+      // department scoping). The op names only the tuple, so the overlay must
+      // resolve it to the base row and adopt its id.
       await admin.post(`/api/schedules/${schedule.id}/suggestions`, {
         term: 'F',
         baseVersion: 0,
@@ -505,17 +506,74 @@ test('a proposed move strikes its source and dashes the destination', async () =
       assert.equal(await store.signIn('registrar'), true)
       await flush()
 
-      // The source block is marked as a move (not a removal)...
-      const marker = store.pendingOverlay.value.removalsByKey.get('CS 220 A')
-      assert.ok(marker, 'the move source is marked')
-      assert.equal(marker.kind, 'move')
-      // ...and both the source and the tagged destination are drawn.
+      // The move hides the source, so only the tagged destination is drawn.
       const drawn = store.shownOfferings.value.filter((o) => `${o.prefix} ${o.number}` === 'CS 220')
-      assert.equal(drawn.length, 2, 'source + destination')
-      const destination = drawn.find((o) => o.$prop)
+      assert.equal(drawn.length, 1, 'only the destination remains')
+      const destination = drawn[0]
       assert.equal(destination.$prop.kind, 'move')
+      assert.equal(destination.days, 'TR')
       assert.match(store.overlayTag(destination), /Move proposed/)
-      assert.match(store.overlayTitle(drawn.find((o) => !o.$prop), 'CS 220'), /move proposed by/)
+      // A move is not a removal: nothing is struck.
+      assert.equal(store.pendingOverlay.value.removalsByKey.size, 0)
+      // The hidden source is tracked by the resolved identity.
+      assert.ok(store.pendingOverlay.value.movedFromKeys.size > 0)
+    },
+    { adminUsernames: new Set(['registrar']) },
+  )
+})
+
+test('a split-meeting proposal touches only the meeting it names', async () => {
+  await withRemote(
+    async ({ srv, store }) => {
+      const admin = srv
+      await admin.post('/api/auth/login', { username: 'registrar' })
+      const schedule = (await admin.post('/api/schedules', { name: 'Split' })).json.schedule
+      await admin.patch(`/api/schedules/${schedule.id}`, {
+        visibility: 'public',
+        suggestMode: 'public',
+      })
+      // Two meetings of one section, distinct content ids.
+      const mw = { prefix: 'MUS', number: '001', section: 'A', id: 'oMW', days: 'MW', time: '10:00-11:00' }
+      const r = { prefix: 'MUS', number: '001', section: 'A', id: 'oR', days: 'R', time: '13:00-14:30' }
+      await admin.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [mw, r] })
+      // Move the R meeting; the MW meeting must stay put.
+      await admin.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: 0,
+        operations: [
+          {
+            kind: 'update',
+            cur: { prefix: 'MUS', number: '001', section: 'A', id: 'oR' },
+            changes: { days: 'F' },
+          },
+        ],
+      })
+
+      assert.equal(await store.signIn('registrar'), true)
+      await flush()
+
+      const mus = store.shownOfferings.value.filter((o) => `${o.prefix} ${o.number}` === 'MUS 001')
+      // The untouched MW meeting (oMW) plus the moved destination (oR at F).
+      assert.equal(mus.length, 2)
+      const stationary = mus.find((o) => o.id === 'oMW')
+      assert.ok(stationary && !stationary.$prop, 'the sibling meeting stays as-is')
+      assert.equal(stationary.days, 'MW')
+      const moved = mus.find((o) => o.$prop)
+      assert.equal(moved.id, 'oR')
+      assert.equal(moved.days, 'F')
+
+      // A removal targeting the other meeting marks only that row.
+      await admin.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: 0,
+        operations: [
+          { kind: 'remove', cur: { prefix: 'MUS', number: '001', section: 'A', id: 'oMW' } },
+        ],
+      })
+      await store.refreshSuggestions(schedule.id)
+      const marked = store.pendingOverlay.value.removalsByKey
+      assert.equal(marked.size, 1)
+      assert.match([...marked.keys()][0], /oMW/)
     },
     { adminUsernames: new Set(['registrar']) },
   )

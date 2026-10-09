@@ -29,11 +29,11 @@ and **Reject**.
 
 Pending suggestions are also drawn over every view — the calendar, the table,
 and the instructor and course pages. A class someone proposes to add appears
-with a **dashed outline**; a proposed move dashes the new block and **strikes
-through** the block it is leaving; and a class a proposal would remove is shown
-**struck through** in place. Proposed blocks are never draggable. The **Show
-proposals** button on the toolbar switches this overlay on and off; it appears
-in every view whenever the term has pending proposals.
+with a **dashed outline**; a proposed move dashes the new block and **hides**
+the block it is leaving (only the new slot shows); and a class a proposal would
+remove is shown **struck through** in place. Proposed blocks are never
+draggable. The **Show proposals** button on the toolbar switches this overlay
+on and off; it appears in every view whenever the term has pending proposals.
 
 <Shot file="schedule-proposals-grid.png" />
 

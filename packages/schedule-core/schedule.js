@@ -709,6 +709,16 @@ export function offeringKey(o) {
   return `${o.prefix || ''}|${o.number || ''}|${o.section || ''}${o.lab ? '|L' : ''}${o.lab ? o.labSeq || '' : ''}`
 }
 
+// The id-first identity of an offering record: its content `id` when present,
+// else the section-tuple `offeringKey`. This is the key form of `matchOffering`
+// (and diff.js's `offeringKey`), used wherever rows sharing a section tuple
+// (split meetings) must stay distinguishable — every overlay lookup, diff, and
+// apply path.
+export function offeringIdentity(o) {
+  if (!o) return ''
+  return o.id != null && o.id !== '' ? `id:${o.id}` : offeringKey(o)
+}
+
 // The stable render identity of an indexed offering item (`{ o, sid }` as
 // `buildIndex` produces): the record identity plus its content `id` (so
 // split-meeting rows sharing a section tuple stay distinct) and its source
@@ -1677,9 +1687,22 @@ export function buildEditVisual(mode, depts, instructors, colorFn, coreReqs = []
 // Pure: the caller filters which ops are still live (the store passes only
 // unresolved entries' payloads).
 export function proposeOverlay(baseOfferings, pendingSuggestions) {
-  const baseByKey = new Map()
+  // Two lookups over the base: by content id (split-meeting rows) and by the
+  // section tuple (id-less/legacy rows and ops that only name the tuple). An op
+  // that carries an id targets exactly that row; one without resolves by tuple
+  // and the returned identity adopts the row's id, so the caller can hide/mark
+  // the exact row. A tuple lookup never stands in for an id-bearing add, so
+  // adding a second meeting to a section (same tuple, new id) is a real block.
+  const baseById = new Map()
+  const baseByTuple = new Map()
   for (const o of baseOfferings || []) {
-    baseByKey.set(offeringKey(o), o)
+    baseByTuple.set(offeringKey(o), o)
+    if (o.id != null && o.id !== '') baseById.set(o.id, o)
+  }
+  const findBase = (o) => {
+    if (!o) return null
+    if (o.id != null && o.id !== '') return baseById.get(o.id) || null
+    return baseByTuple.get(offeringKey(o)) || null
   }
   const proposed = []
   const removals = []
@@ -1687,10 +1710,10 @@ export function proposeOverlay(baseOfferings, pendingSuggestions) {
     for (const op of sug.operations || []) {
       if (!op) continue
       if (op.kind === 'add' && op.offering) {
-        // An add for a section already on the schedule is a no-op, not a new
-        // block: skip it so an overlay can never ghost a duplicate (e.g. the
-        // proposer's own replayed suggestion, or two proposals for one course).
-        if (baseByKey.has(offeringKey(op.offering))) continue
+        // An add for a row already on the schedule is a no-op, not a new block:
+        // skip it so an overlay can never ghost a duplicate (e.g. the proposer's
+        // own replayed suggestion, or two proposals for one course).
+        if (findBase(op.offering)) continue
         proposed.push({
           offering: { ...op.offering },
           kind: 'add',
@@ -1699,7 +1722,7 @@ export function proposeOverlay(baseOfferings, pendingSuggestions) {
           proposer: sug.proposer,
         })
       } else if (op.kind === 'update' && op.cur) {
-        const cur = baseByKey.get(offeringKeyOf(op.cur)) || { ...op.cur, days: '', time: '' }
+        const cur = findBase(op.cur) || { ...op.cur, days: '', time: '' }
         const next = { ...cur, ...(op.changes || {}) }
         const moved = (next.days || '') !== (cur.days || '') || (next.time || '') !== (cur.time || '')
         if (!moved || !next.days || !next.time) continue
@@ -1712,20 +1735,22 @@ export function proposeOverlay(baseOfferings, pendingSuggestions) {
             section: cur.section,
             lab: cur.lab,
             labSeq: cur.labSeq,
+            ...(cur.id != null && cur.id !== '' ? { id: cur.id } : {}),
           },
           suggestionId: sug.id,
           proposer: sug.proposer,
         })
       } else if (op.kind === 'remove' && op.cur) {
-        removals.push({ cur: { ...op.cur }, suggestionId: sug.id, proposer: sug.proposer })
+        // Keep the op's own identity fields, adopting the resolved row's id so a
+        // tuple-only removal still marks the exact (split-meeting) row.
+        const cur = { ...op.cur }
+        const base = findBase(op.cur)
+        if ((cur.id == null || cur.id === '') && base && base.id != null && base.id !== '') cur.id = base.id
+        removals.push({ cur, suggestionId: sug.id, proposer: sug.proposer })
       }
     }
   }
   return { proposed, removals }
-}
-
-function offeringKeyOf(o) {
-  return offeringKey(o)
 }
 
 // ---------------------------------------------------------------------------

@@ -2431,6 +2431,57 @@ test('proposeOverlay skips an add for a section already on the schedule', () => 
   assert.equal(proposed[0].offering.section, 'B')
 })
 
+test('proposeOverlay targets a split-meeting row by id, not its tuple sibling', () => {
+  // Two meetings of one section: same tuple, distinct content ids.
+  const base = [
+    { prefix: 'MUS', number: '001', section: 'A', id: 'oA', days: 'MW', time: '10:00-11:00' },
+    { prefix: 'MUS', number: '001', section: 'A', id: 'oB', days: 'R', time: '13:00-14:30' },
+  ]
+  const update = {
+    id: 5,
+    proposer: 'music',
+    operations: [
+      // Move only oB; the days-only change keeps the resolved row's own band
+      // visible in the result, so a tuple lookup (which would find oA) differs.
+      {
+        kind: 'update',
+        cur: { prefix: 'MUS', number: '001', section: 'A', id: 'oB' },
+        changes: { days: 'F' },
+      },
+    ],
+  }
+  const moved = proposeOverlay(base, [update]).proposed
+  assert.equal(moved.length, 1)
+  assert.equal(moved[0].from.id, 'oB')
+  assert.equal(moved[0].offering.days, 'F')
+  assert.equal(moved[0].offering.time, '13:00-14:30', "resolved oB's band, not oA's")
+
+  // Add of a second meeting (same tuple, new id) is a real new block...
+  const add = {
+    id: 6,
+    proposer: 'music',
+    operations: [
+      {
+        kind: 'add',
+        offering: { prefix: 'MUS', number: '001', section: 'A', id: 'oC', days: 'T', time: '9:00-10:00' },
+      },
+    ],
+  }
+  assert.equal(proposeOverlay(base, [add]).proposed.length, 1)
+  // ...but re-adding an existing id is still skipped.
+  const dup = {
+    id: 7,
+    proposer: 'music',
+    operations: [
+      {
+        kind: 'add',
+        offering: { prefix: 'MUS', number: '001', section: 'A', id: 'oA', days: 'MW', time: '10:00-11:00' },
+      },
+    ],
+  }
+  assert.equal(proposeOverlay(base, [dup]).proposed.length, 0)
+})
+
 // ---------------------------------------------------------------------------
 // Day timeline: lane assignment + expanded range
 // ---------------------------------------------------------------------------

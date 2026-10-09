@@ -558,19 +558,21 @@ test('pending suggestions show on the table, instructor, and course views', asyn
   assertClean(errors)
 })
 
-test('a proposed move is struck at its old slot and dashed at the new one', async ({
+test('a proposed move hides its old slot, and only the meeting it names', async ({
   page,
   request,
 }) => {
   const errors = trackErrors(page)
-  // Seed a schedule with one course and a pending move.
+  // Seed a split-meeting section (two rows, distinct ids) and a pending move of
+  // just the R meeting.
   await request.post('/api/auth/login', { data: { username: 'move-owner' } })
   const created = await request.post('/api/schedules', { data: { name: 'Move demo' } })
   const schedule = (await created.json()).schedule
   await request.put(`/api/schedules/${schedule.id}/terms/F`, {
     data: {
       offerings: [
-        { prefix: 'ANTH', number: '160', section: 'A', days: 'MWF', time: '9:20-10:30', instructor: 'Wahl' },
+        { prefix: 'MUS', number: '001', section: 'A', id: 'oMW', days: 'MW', time: '10:00-11:00' },
+        { prefix: 'MUS', number: '001', section: 'A', id: 'oR', days: 'R', time: '13:00-14:30' },
       ],
     },
   })
@@ -578,12 +580,12 @@ test('a proposed move is struck at its old slot and dashed at the new one', asyn
     data: {
       term: 'F',
       baseVersion: 0,
-      note: 'move ANTH 160',
+      note: 'move the R meeting',
       operations: [
         {
           kind: 'update',
-          cur: { prefix: 'ANTH', number: '160', section: 'A' },
-          changes: { days: 'TR', time: '10:00-11:45' },
+          cur: { prefix: 'MUS', number: '001', section: 'A', id: 'oR' },
+          changes: { days: 'F' },
         },
       ],
     },
@@ -592,21 +594,27 @@ test('a proposed move is struck at its old slot and dashed at the new one', asyn
   await page.goto('/', { waitUntil: 'networkidle' })
   await signIn(page, 'move-owner')
 
-  // The old slot is struck through; the new one is dashed. (Overlay is on by
-  // default; no session is needed to see someone's pending proposal.)
-  await expect(page.locator('.filter-offering.removed', { hasText: 'ANTH 160' }).first()).toBeVisible()
-  await expect(page.locator('.filter-offering.proposed', { hasText: 'ANTH 160' }).first()).toBeVisible()
+  // Overlay on by default: the moved meeting is dashed at its new slot, the
+  // untouched sibling is a plain block, and nothing is struck (no removal).
+  await expect(page.locator('.filter-offering.proposed', { hasText: 'MUS 001' }).first()).toBeVisible()
+  await expect(page.locator('.filter-offering.removed')).toHaveCount(0)
 
-  // The toggle is available off the grid too, and the table marks both blocks.
   await page.getByRole('button', { name: 'Table', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Show proposals' })).toBeVisible()
-  await expect(page.locator('.schedule-table-row.removed', { hasText: 'ANTH 160' })).toHaveCount(1)
-  await expect(page.locator('.schedule-table-row.proposed', { hasText: 'ANTH 160' })).toHaveCount(1)
+  // Two rows: the untouched MW meeting and the proposed F move.
+  await expect(page.locator('.schedule-table-row', { hasText: 'MUS 001' })).toHaveCount(2)
+  await expect(page.locator('.schedule-table-row.proposed', { hasText: 'MUS 001' })).toHaveCount(1)
+  await expect(page.locator('.schedule-table-row.removed')).toHaveCount(0)
+  await expect(
+    page.locator('.schedule-table-row', { hasText: 'MUS 001' }).filter({ hasText: '10:00 AM' }),
+  ).toHaveCount(1)
 
-  // Toggling proposals off hides the marker and the proposed row.
+  // Toggling proposals off restores the real schedule: the R meeting is back.
   await page.getByRole('button', { name: 'Show proposals' }).click()
-  await expect(page.locator('.schedule-table-row.removed', { hasText: 'ANTH 160' })).toHaveCount(0)
-  await expect(page.locator('.schedule-table-row.proposed', { hasText: 'ANTH 160' })).toHaveCount(0)
+  await expect(page.locator('.schedule-table-row.proposed')).toHaveCount(0)
+  await expect(
+    page.locator('.schedule-table-row', { hasText: 'MUS 001' }).filter({ hasText: '1:00 PM' }),
+  ).toHaveCount(1)
 
   assertClean(errors)
 })

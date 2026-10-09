@@ -16,7 +16,7 @@
 
 import {
   addOfferingToSchedule,
-  offeringKey as tupleKey,
+  offeringIdentity,
   removeOfferingFromSchedule,
   updateOfferingInSchedule,
   courseNumberLabel,
@@ -25,10 +25,10 @@ import {
 
 // Tuple key identifying an offering by id (preferred) or prefix/number/section
 // (plus the lab marker, so a lab section never matches the lecture section it
-// mirrors).
+// mirrors). Delegates to the shared id-first identity so diff/apply and the
+// overlay agree on what "the same row" means (split meetings).
 export function offeringKey(o) {
-  if (o.id != null && o.id !== '') return `id:${o.id}`
-  return tupleKey(o)
+  return offeringIdentity(o)
 }
 
 // The editable fields considered when diffing two offerings. `seats` is a

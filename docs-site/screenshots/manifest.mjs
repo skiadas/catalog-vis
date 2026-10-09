@@ -269,8 +269,8 @@ export const entries = [
         },
       },
     ],
-    alt: 'The weekly grid with pending proposals overlaid: proposed classes dashed, and the blocks a proposal would move or remove struck through',
-    caption: 'Pending proposals on the week — additions dashed, moves and removals struck through.',
+    alt: 'The weekly grid with pending proposals overlaid: proposed classes dashed — a move shows only at its new slot — and a class a proposal would remove struck through',
+    caption: 'Pending proposals on the week — additions and moves dashed, removals struck through.',
   },
   {
     file: 'schedule-csv.png',
