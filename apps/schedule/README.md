@@ -343,7 +343,14 @@ identity row carries **Title | Section | Seats**; the people row carries
 **Instructor | Other instructors**. The instructor autocomplete draws from the
 course's department roster, with a "Show all instructors" scope link at the
 foot of its dropdown (an existing instructor outside the department opens the
-dropdown on the all-instructors pool instead). The "Other instructors" field
+dropdown on the all-instructors pool instead; a prefix with no department
+roster — no catalog faculty, no same-prefix term rows, no directory people —
+falls back to the all-instructors pool, so a brand-new course still suggests
+names). The field is a combobox: focusing it always opens the app's list, which
+shows a "No matches" note when nothing fits rather than yielding to the
+browser's native autofill (native autocomplete is disabled on the input), and
+the list flips above the input when the scrollable dialog leaves no room below.
+The "Other instructors" field
 autocompletes from the term's roster, matching the last comma-separated token
 ("Smith, Jo" → pick Jones); it stays collapsed behind a **＋ Add** trigger
 unless the offering already has co-teachers. Its **Seats** field edits the

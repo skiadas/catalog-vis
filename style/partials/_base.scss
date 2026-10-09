@@ -494,6 +494,12 @@ body {
   overflow-y: auto;
   box-shadow: var(--shadow-md);
 }
+// A list near the bottom of its scroll container opens upward instead of being
+// clipped (see `src/dropUp.js`).
+.course-picker-dropdown.drop-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
 /* A borderless, underlined text button (the "escape hatch" pattern: add-course
    scope, instructor scope). */
 .link-toggle {

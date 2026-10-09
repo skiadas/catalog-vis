@@ -96,15 +96,20 @@
                     ref="instructorEl"
                     class="search-input"
                     type="text"
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
                     v-model="instructorSel"
                     placeholder="Type or pick a name…"
-                    @focus="instructorSuggestOpen = true"
+                    @focus="onInstructorFocus"
                     @blur="onInstructorBlur"
                     @keydown.esc="instructorSuggestOpen = false"
                   />
                   <div
-                    v-if="instructorSuggestOpen && instructorSuggestions.length"
+                    v-if="instructorSuggestOpen"
                     class="course-picker-dropdown"
+                    :class="{ 'drop-up': instructorDropUp }"
                   >
                     <button
                       v-for="opt in instructorSuggestions"
@@ -118,11 +123,15 @@
                     >
                       <span class="planner-pick-code">{{ opt.label }}</span>
                     </button>
+                    <div v-if="!instructorSuggestions.length" class="course-picker-empty">
+                      No matches — keep typing.
+                    </div>
                     <button
+                      v-if="hasDeptPool"
                       type="button"
                       class="course-picker-scope link-toggle"
                       @mousedown.prevent
-                      @click="showAll = !showAll"
+                      @click="toggleShowAll"
                     >
                       {{ showAll ? 'Limit to department' : 'Show all instructors' }}
                     </button>
@@ -136,15 +145,24 @@
                   <div class="secondary-suggest-wrap" ref="secondarySuggestEl">
                     <input
                       id="course-edit-secondary"
+                      ref="secondaryEl"
                       class="search-input"
                       type="text"
+                      autocomplete="off"
+                      autocorrect="off"
+                      autocapitalize="off"
+                      spellcheck="false"
                       v-model="secondaryText"
                       placeholder="e.g. Smith, Jones"
-                      @focus="suggestOpen = true"
+                      @focus="onSecondaryFocus"
                       @blur="onSecondaryBlur"
                       @keydown.esc="suggestOpen = false"
                     />
-                    <div v-if="suggestOpen && secondarySuggestions.length" class="course-picker-dropdown">
+                    <div
+                      v-if="suggestOpen"
+                      class="course-picker-dropdown"
+                      :class="{ 'drop-up': secondaryDropUp }"
+                    >
                       <button
                         v-for="opt in secondarySuggestions"
                         :key="opt.value"
@@ -157,6 +175,9 @@
                       >
                         <span class="planner-pick-code">{{ opt.label }}</span>
                       </button>
+                      <div v-if="!secondarySuggestions.length" class="course-picker-empty">
+                        No matches — keep typing.
+                      </div>
                     </div>
                   </div>
                 </template>
@@ -376,6 +397,8 @@ import { courseName as catalogCourseName, programs, allCourses } from '@major-vi
 import { buildFacultyAndEligible } from '@major-vis/schedule-core/generate'
 import { instructorLabel } from '../src/names.js'
 import { buildInstructorOptions } from '../src/instructorSuggest.js'
+import { defaultShowAll, instructorPoolFor } from '../src/instructorPool.js'
+import { shouldDropUp } from '../src/dropUp.js'
 import { useModalFocus } from '../src/modalFocus.js'
 import AirDatepicker from 'air-datepicker'
 import 'air-datepicker/air-datepicker.css'
@@ -571,9 +594,20 @@ export default {
     const deptOptions = computed(() => instructorPools.value.deptOptions)
     const allOptions = computed(() => instructorPools.value.allOptions)
 
-    const showAll = ref(
-      Boolean(o.instructor) && !deptOptions.value.some((e) => e.value === instructorValue(o.instructor)),
-    )
+    const hasDeptPool = computed(() => deptOptions.value.length > 0)
+    // The scope is user-togglable, but its default is derived (not frozen at
+    // setup): an offering whose stored instructor isn't in the department pool
+    // opens on the all-instructors pool, so that name stays visible. Deriving
+    // it reactively also means a late-loading catalog/directory can't leave the
+    // scope stuck on an empty pool.
+    const showAllTouched = ref(false)
+    const showAllChoice = ref(false)
+    const showAllDefault = computed(() => defaultShowAll(instructorValue(o.instructor), deptOptions.value))
+    const showAll = computed(() => (showAllTouched.value ? showAllChoice.value : showAllDefault.value))
+    const toggleShowAll = () => {
+      showAllChoice.value = !showAll.value
+      showAllTouched.value = true
+    }
 
     const instructorSel = ref(instructorLabel(o.instructor, directoryIndex.value))
     const sectionSel = ref(o.section || '')
@@ -593,10 +627,15 @@ export default {
     // catalog roster + same-prefix term instructors) or the all-instructors
     // pool, matched against the typed token (a full name or a username).
     const instructorSuggestOpen = ref(false)
+    const instructorDropUp = ref(false)
     const instructorSuggestEl = ref(null)
     const instructorSuggestions = computed(() => {
       if (!instructorSuggestOpen.value) return []
-      const pool = showAll.value ? allOptions.value : deptOptions.value
+      const pool = instructorPoolFor({
+        deptOptions: deptOptions.value,
+        allOptions: allOptions.value,
+        showAll: showAll.value,
+      })
       const token = instructorSel.value.trim().toLowerCase()
       const matched = token
         ? pool.filter(
@@ -605,6 +644,14 @@ export default {
         : pool
       return matched.slice(0, 8)
     })
+    // Opening also picks the dropdown's direction: a list near the bottom of the
+    // scrollable body flips up rather than being clipped.
+    const onInstructorFocus = () => {
+      instructorSuggestOpen.value = true
+      nextTick(() => {
+        instructorDropUp.value = shouldDropUp(instructorEl.value)
+      })
+    }
     // Closes the suggestion list when focus leaves the input + list (clicking
     // an option is a mousedown.prevent, so the input keeps focus through click).
     const onInstructorBlur = (e) => {
@@ -658,6 +705,8 @@ export default {
       return out
     })
     const suggestOpen = ref(false)
+    const secondaryDropUp = ref(false)
+    const secondaryEl = ref(null)
     const secondarySuggestEl = ref(null)
     const secondarySuggestions = computed(() => {
       if (!suggestOpen.value) return []
@@ -674,6 +723,12 @@ export default {
         : pool
       return matched.slice(0, 8)
     })
+    const onSecondaryFocus = () => {
+      suggestOpen.value = true
+      nextTick(() => {
+        secondaryDropUp.value = shouldDropUp(secondaryEl.value)
+      })
+    }
     // Closes the suggestion list when focus leaves the input + list (clicking
     // an option is a mousedown.prevent, so the input keeps focus through click).
     const onSecondaryBlur = (e) => {
@@ -997,6 +1052,8 @@ export default {
     return {
       schedule,
       showAll,
+      hasDeptPool,
+      toggleShowAll,
       modalEl,
       offeringKey,
       sectionOptionLabel,
@@ -1006,9 +1063,12 @@ export default {
       hasSiblings,
       offeringItemKey,
       instructorSel,
+      instructorEl,
       instructorSuggestOpen,
+      instructorDropUp,
       instructorSuggestEl,
       instructorSuggestions,
+      onInstructorFocus,
       onInstructorBlur,
       pickInstructor,
       secondaryText,
@@ -1016,8 +1076,11 @@ export default {
       secondaryOpen,
       instructorPool,
       suggestOpen,
+      secondaryDropUp,
+      secondaryEl,
       secondarySuggestEl,
       secondarySuggestions,
+      onSecondaryFocus,
       onSecondaryBlur,
       pickSecondary,
       sectionSel,

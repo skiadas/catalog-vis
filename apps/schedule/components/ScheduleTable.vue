@@ -179,6 +179,10 @@
                   ref="instructorInputEl"
                   class="schedule-table-input"
                   type="text"
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
                   v-model="instructorText"
                   :aria-label="`Instructor of ${row.code}`"
                   @focus="instructorOpen = true"
@@ -187,8 +191,9 @@
                   @keydown.esc.prevent="cancelInstructor"
                 />
                 <div
-                  v-if="instructorOpen && instructorSuggestions.length"
+                  v-if="instructorOpen"
                   class="course-picker-dropdown schedule-table-combo-dropdown"
+                  :class="{ 'drop-up': instructorDropUp }"
                 >
                   <button
                     v-for="opt in instructorSuggestions"
@@ -202,11 +207,15 @@
                   >
                     <span class="planner-pick-code">{{ opt.label }}</span>
                   </button>
+                  <div v-if="!instructorSuggestions.length" class="course-picker-empty">
+                    No matches — keep typing.
+                  </div>
                   <button
+                    v-if="hasDeptPool"
                     type="button"
                     class="course-picker-scope link-toggle"
                     @mousedown.prevent
-                    @click="showAllInstructors = !showAllInstructors"
+                    @click="toggleShowAllInstructors"
                   >
                     {{ showAllInstructors ? 'Limit to department' : 'Show all instructors' }}
                   </button>
@@ -357,6 +366,8 @@ import {
   updateOffering,
 } from '../src/scheduleStore.js'
 import { buildInstructorOptions } from '../src/instructorSuggest.js'
+import { defaultShowAll, instructorPoolFor } from '../src/instructorPool.js'
+import { shouldDropUp } from '../src/dropUp.js'
 import {
   compareTableRows,
   departmentsInOfferings,
@@ -523,6 +534,7 @@ export default {
     const editingInstructorKey = ref(null)
     const instructorText = ref('')
     const instructorOpen = ref(false)
+    const instructorDropUp = ref(false)
     const showAllInstructors = ref(false)
     const instructorInputEl = ref(null)
     const instructorSuggestEl = ref(null)
@@ -535,11 +547,14 @@ export default {
         directoryIndex: directoryIndex.value,
       })
     })
+    const hasDeptPool = computed(() => instructorPools.value.deptOptions.length > 0)
     const instructorSuggestions = computed(() => {
       if (!instructorOpen.value) return []
-      const pool = showAllInstructors.value
-        ? instructorPools.value.allOptions
-        : instructorPools.value.deptOptions
+      const pool = instructorPoolFor({
+        deptOptions: instructorPools.value.deptOptions,
+        allOptions: instructorPools.value.allOptions,
+        showAll: showAllInstructors.value,
+      })
       const token = instructorText.value.trim().toLowerCase()
       const matched = token
         ? pool.filter(
@@ -548,14 +563,24 @@ export default {
         : pool
       return matched.slice(0, 8)
     })
+    const toggleShowAllInstructors = () => {
+      showAllInstructors.value = !showAllInstructors.value
+    }
     const beginInstructor = (row) => {
       editingInstructorKey.value = row.key
       instructorText.value = row.o.instructor ? instructorName(row.o.instructor) : ''
       instructorOpen.value = true
-      showAllInstructors.value = false
+      // Default the scope from the row's instructor (an outside name opens the
+      // all pool); a late-loading catalog/directory is handled by the pool
+      // fallback in `instructorPoolFor`.
+      showAllInstructors.value = defaultShowAll(
+        instructorValue(row.o.instructor),
+        instructorPools.value.deptOptions,
+      )
       nextTick(() => {
         const el = elOf(instructorInputEl)
         if (el && el.focus) el.focus()
+        instructorDropUp.value = shouldDropUp(el)
       })
     }
     const commitInstructor = () => {
@@ -699,7 +724,10 @@ export default {
       editingInstructorKey,
       instructorText,
       instructorOpen,
+      instructorDropUp,
       showAllInstructors,
+      hasDeptPool,
+      toggleShowAllInstructors,
       instructorInputEl,
       instructorSuggestEl,
       instructorSuggestions,

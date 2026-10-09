@@ -933,9 +933,10 @@ test('instructor combobox suggests catalog faculty on a fresh schedule and accep
   await expect(scope).toHaveText('Show all instructors')
   await scope.click()
   await expect(scope).toHaveText('Limit to department')
-  // Typing a name from nobody's roster closes the suggestions and stays legal.
+  // Typing a name from nobody's roster stays legal: the dropdown remains open
+  // with a no-match note rather than yielding to the browser's autocomplete.
   await inst.fill('Ada Lovelace')
-  await expect(em.locator('.course-picker-dropdown')).toHaveCount(0)
+  await expect(em.locator('.course-picker-dropdown .course-picker-empty')).toBeVisible()
   await em.getByRole('button', { name: 'Save changes' }).click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
 
