@@ -55,6 +55,16 @@ COPY --from=build /src/dist/browse /srv/static/apps/browse
 COPY --from=build /src/dist/schedule /srv/static/apps/schedule
 COPY --from=build /src/dist/planner /srv/static/apps/planner
 COPY --from=build /src/docs-site/.vitepress/dist /srv/static/docs
+# Build metadata: injected by the publish workflow (see .github/workflows/
+# publish.yml) and read at boot for GET /api/version so an operator can confirm
+# a push reached the live host. Declared/ENV'd at the end so a new commit SHA
+# only invalidates this trivial layer, never the COPYs above.
+ARG GIT_SHA=""
+ARG GIT_REF=""
+ARG GIT_BUILT_AT=""
+ENV GIT_SHA=${GIT_SHA} \
+    GIT_REF=${GIT_REF} \
+    GIT_BUILT_AT=${GIT_BUILT_AT}
 # Persistent schedules/suggestions DB (see DB_PATH above).
 VOLUME ["/data"]
 EXPOSE 8080

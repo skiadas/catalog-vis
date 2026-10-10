@@ -3,17 +3,27 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { loadConfig, parseAuth, parseAuthDomain, parseAdminUsernames } from '../src/config.js'
+import { loadConfig, parseAuth, parseAuthDomain, parseAdminUsernames, parseVersion } from '../src/config.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 // The env vars config.js reads that are deliberately NOT container settings:
 // STATIC_DIR, SESSION_COOKIE, and SEED_DIRECTORY are dev-only overrides, and
 // NODE_ENV is the dev/test marker (`npm run serve` sets development; the
-// harnesses set test). Every other env loadConfig reads must reach the
-// container through compose.yaml and be documented in deploy/.env.example — the
-// deploy seam that a unit-testable config() alone cannot protect.
-const CONFIG_INTERNAL_ONLY = new Set(['STATIC_DIR', 'SESSION_COOKIE', 'NODE_ENV', 'SEED_DIRECTORY'])
+// harnesses set test). GIT_* is build metadata the image bakes in via ENV (the
+// Dockerfile), not an operator setting. Every other env loadConfig reads must
+// reach the container through compose.yaml and be documented in
+// deploy/.env.example — the deploy seam that a unit-testable config() alone
+// cannot protect.
+const CONFIG_INTERNAL_ONLY = new Set([
+  'STATIC_DIR',
+  'SESSION_COOKIE',
+  'NODE_ENV',
+  'SEED_DIRECTORY',
+  'GIT_SHA',
+  'GIT_REF',
+  'GIT_BUILT_AT',
+])
 
 // The env names loadConfig actually reads, captured by handing it a recording
 // proxy (once per auth provider, since the OIDC vars are only touched in that
@@ -157,6 +167,30 @@ test('parseAdminUsernames canonicalizes the comma list; unset means no admins', 
 test('loadConfig exposes adminUsernames', () => {
   assert.deepEqual(loadConfig({}).adminUsernames, new Set())
   assert.deepEqual(loadConfig({ ADMIN_USERNAMES: 'a, b' }).adminUsernames, new Set(['a', 'b']))
+})
+
+test('parseVersion shortens the commit and passes ref/builtAt through', () => {
+  const version = parseVersion({
+    GIT_SHA: '0123456789abcdef0123456789abcdef01234567',
+    GIT_REF: 'main',
+    GIT_BUILT_AT: '2026-10-10T12:00:00Z',
+  })
+  assert.deepEqual(version, { commit: '0123456', ref: 'main', builtAt: '2026-10-10T12:00:00Z' })
+})
+
+test('parseVersion is null when the build metadata is absent (production-safe)', () => {
+  assert.deepEqual(parseVersion({}), { commit: null, ref: null, builtAt: null })
+  // Blank strings and a whitespace-only SHA count as absent.
+  assert.deepEqual(parseVersion({ GIT_SHA: '  ' }), { commit: null, ref: null, builtAt: null })
+})
+
+test('loadConfig exposes the version slice', () => {
+  assert.deepEqual(loadConfig({}).version, { commit: null, ref: null, builtAt: null })
+  assert.deepEqual(loadConfig({ GIT_SHA: 'abcdef0123456', GIT_REF: 'main' }).version, {
+    commit: 'abcdef0',
+    ref: 'main',
+    builtAt: null,
+  })
 })
 
 test('loadConfig seeds the directory only in development mode', () => {

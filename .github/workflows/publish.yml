@@ -44,3 +44,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Build metadata baked into the image and surfaced by GET /api/version
+          # (so the live host can be matched to a commit without tagging).
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            GIT_REF=${{ github.ref_name }}
+            GIT_BUILT_AT=${{ github.event.head_commit.timestamp }}

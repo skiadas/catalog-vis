@@ -113,6 +113,9 @@ curl -s https://catalog.harisskiadas.com/api/config | grep -o '"provider":"[a-z]
 # -> "provider":"oidc"
 curl -s -o /dev/null -w '%{http_code}\n' https://catalog.harisskiadas.com/api/schedules
 # -> 401 (anonymous sees nothing)
+curl -s https://catalog.harisskiadas.com/api/version
+# -> {"commit":"<short sha>","ref":"main","builtAt":"..."}; match `commit`
+#    against `git rev-parse --short main` to confirm the push is live
 ```
 
 In a browser: open the app → **Sign in with SSO** → email code → land back

@@ -48,7 +48,13 @@ new_id="$(docker image inspect --format '{{.Id}}' "$IMAGE" 2>/dev/null || echo '
 old_id="$(docker inspect --format '{{.Image}}' "$CONTAINER" 2>/dev/null || echo '')"
 
 if [ -n "$new_id" ] && [ "$new_id" != "$old_id" ]; then
-  echo "[$(date)] update ($old_id -> $new_id)"
+  # Name the commit the new image was built from (its OCI revision label, set
+  # by the publish workflow) so update.log shows which push went live — the
+  # same SHA GET /api/version reports.
+  rev="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$IMAGE" 2>/dev/null || echo '')"
+  at=""
+  [ -n "$rev" ] && at=" @ $(printf '%s' "$rev" | cut -c1-7)"
+  echo "[$(date)] update ($old_id -> $new_id$at)"
   docker compose up -d
   docker image prune -f >/dev/null 2>&1 || true
 else

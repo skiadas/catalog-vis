@@ -114,6 +114,7 @@ the apps (CORS needed only when hosted off-origin).
 
 ```
 GET    /api/config                          -> { services, auth }
+GET    /api/version                         -> { commit, ref, builtAt }  (public; build metadata)
 GET    /api/auth/session                    -> { user } | 401
 POST   /api/auth/login { username }         -> { user }          (provider: username only)
 GET    /api/auth/login?return_to=           -> 302 to the issuer (provider: oidc only)
@@ -139,6 +140,14 @@ POST   /api/suggestions/:id/reject   { opId } -> { suggestion }  (owner)
 POST   /api/suggestions/:id/withdraw { opId? } -> { suggestion } (proposer; one op, or every remaining pending op)
 GET    /api/schedules/:id/suggestions/export?fmt=json|md|csv     (viewers)
 ```
+
+**Version**: `GET /api/version` is always public and reports the commit the
+image was built from — `{ commit, ref, builtAt }`, with `commit` the short SHA
+(matching the `sha-xxxxxxx` image tag) and `null` when the metadata was not
+injected. The publish workflow passes `GIT_SHA`/`GIT_REF`/`GIT_BUILT_AT` as
+build args and the Dockerfile bakes them into the image (see `src/version.js`),
+so `curl …/api/version` can be matched against the pushed commit without
+tagging. Local runs fall back to the working tree's HEAD in development.
 
 **Auth**: opaque session token in an `mjv_sid` httpOnly cookie (30 days;
 `Secure` when `COOKIE_SECURE=true`). `AUTH_PROVIDER` picks the identity source:

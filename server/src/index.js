@@ -11,6 +11,7 @@ import { loadConfig } from './config.js'
 import { openDb } from './db.js'
 import { createApp } from './app.js'
 import { catalogRouter } from './catalog.js'
+import { versionRouter } from './version.js'
 import { seedDirectoryFromCsv } from './seed-directory.js'
 
 // In the container the assembled static layout (/srv/static) already holds the
@@ -93,6 +94,9 @@ export async function buildServer(env = process.env) {
 
   // Catalog API: the three artifacts + manifest, always public.
   app.use(catalogRouter(config.staticDir))
+
+  // Build metadata: which commit this deployment runs, always public.
+  app.use(versionRouter(config.version))
 
   // Local repo-root serving: the built apps take the /apps/<name>/ slots the
   // container assembles and the docs build takes /docs/ (runs before the

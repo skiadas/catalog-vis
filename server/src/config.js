@@ -1,6 +1,7 @@
 // Server configuration, read from environment once at boot. Centralizes the
 // env contract so the app factory is easy to construct in tests too.
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { canonicalUsername } from './names.js'
 
@@ -134,6 +135,54 @@ export function effectiveAuthDomain(env, devMode) {
   return parseAuthDomain(env.AUTH_DOMAIN)
 }
 
+// The short (7-char) form of a full commit SHA. Empty in, empty out.
+export function shortCommit(sha) {
+  const full = String(sha ?? '').trim()
+  return full ? full.slice(0, 7) : ''
+}
+
+// Best-effort `git rev-parse --short HEAD`, for local development only. The
+// container carries no git binary or .git dir, so this never runs in
+// production (see parseVersion). Any failure is a silent null.
+function gitShortHead(cwd) {
+  try {
+    const out = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    return String(out).trim() || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Build metadata for the `/api/version` endpoint: which commit the running
+ * code came from. The container bakes `GIT_SHA`/`GIT_REF`/`GIT_BUILT_AT` at
+ * image build (see the Dockerfile + publish workflow); unset (local `npm run
+ * serve`, tests) falls back to the working tree's `git rev-parse --short HEAD`
+ * in development, and to nulls otherwise.
+ * @param {Record<string, string | undefined>} env
+ * @param {{ repoRoot?: string, devMode?: boolean }} [options]
+ * @returns {{ commit: string | null, ref: string | null, builtAt: string | null }}
+ */
+export function parseVersion(env, { repoRoot, devMode } = {}) {
+  const commit = shortCommit(env.GIT_SHA)
+  if (commit) {
+    return {
+      commit,
+      ref: String(env.GIT_REF || '').trim() || null,
+      builtAt: String(env.GIT_BUILT_AT || '').trim() || null,
+    }
+  }
+  if (devMode) {
+    const dev = gitShortHead(repoRoot)
+    if (dev) return { commit: dev, ref: null, builtAt: null }
+  }
+  return { commit: null, ref: null, builtAt: null }
+}
+
 export function loadConfig(env = process.env) {
   const repoRoot = path.resolve(__dirname, '..', '..')
   // Where the static apps + catalog JSON live (the repo root by default).
@@ -161,6 +210,8 @@ export function loadConfig(env = process.env) {
     // and the departments each user belongs to. Canonicalized through the same
     // effective domain, so `ADMIN_USERNAMES=haris` matches in dev.
     adminUsernames: parseAdminUsernames(env.ADMIN_USERNAMES, authDomain),
+    // Build metadata (see parseVersion): the commit the running code came from.
+    version: parseVersion(env, { repoRoot, devMode }),
     // Dev convenience: seed the user directory from the gitignored repo-root
     // `directory.csv` at boot (see seed-directory.js), so a developer sees real
     // display names without signing in as an admin. Dev-only, and
