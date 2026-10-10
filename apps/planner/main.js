@@ -2,6 +2,8 @@
 // the catalog into the shared refs. The root component (App.vue) renders the
 // planner view.
 import { loadCatalog } from '@major-vis/catalog-client'
+import { watchAppVersion } from '@major-vis/app-config'
+import { notify } from '@major-vis/shared-components'
 import { createApp } from 'vue'
 import { addTrack } from './src/plannerStore.js'
 import { router } from './router.js'
@@ -18,3 +20,15 @@ router.isReady().then(() => {
   if (q.program && q.track) addTrack(String(q.program), String(q.track))
 })
 loadCatalog({ baseUrl: '../../' }).catch(() => {})
+
+// Offer a refresh when the server has moved past this bundle (no-op in dev /
+// static hosting, where there is no /api/version or no build id).
+watchAppVersion({
+  current: __APP_VERSION__,
+  endpoint: '../../api/version',
+  onStale: () =>
+    notify.action('A newer version of this app is available.', {
+      label: 'Refresh',
+      onClick: () => location.reload(),
+    }),
+})

@@ -42,6 +42,11 @@ draft comes with you.
   and simply ends the session; with unsent changes it reads **Discard draft**
   and asks before throwing them away.
 
+Your draft also survives a page reload — including one you take to pick up a new
+version of the app, which the app offers when it notices the server has updated.
+A brief note confirms the draft was restored, and you land back in the session
+where you left off (every draft you had going comes back with you).
+
 ::: tip
 The schedule name is editable right in the bar for the schedule's owner (an edit
 session); everyone else — and any suggest session — sees it as plain text.

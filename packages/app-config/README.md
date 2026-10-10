@@ -27,6 +27,17 @@ the next. Malformed payloads never throw — they just skip to the next source.
 Returns the resolved config `{ services, auth }` (a promise; awaiting is
 expected). Concurrent callers share one fetch.
 
+`watchAppVersion({ endpoint, current, intervalMs, fetchImpl, documentImpl,
+onStale })` notices when the deployment has moved past the build the page is
+running, so the app can offer a refresh. It polls `endpoint` (the deployment's
+`/api/version`, which returns `{ commit, ref, builtAt }`) on an interval and on
+`visibilitychange`, and fires `onStale({ current, remote })` **once** when the
+server's `commit` is non-empty and differs from `current` (the bundle's own
+build id, injected as `__APP_VERSION__` — see `vite.apps.mjs`). It is a no-op
+when `current` is empty (dev / static hosting) or the fetch fails/404s. The
+comparison is deliberately bundle-vs-server: a boot-time snapshot of the server
+would miss a stale cached bundle loaded after a deploy. Returns `{ stop, check }`.
+
 Other exports:
 
 - `isEnabled(key)` — whether a service key (`'program' | 'schedule' |

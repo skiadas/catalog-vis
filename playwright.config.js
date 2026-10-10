@@ -24,7 +24,10 @@ export default defineConfig({
     baseURL,
   },
   webServer: {
-    command: `npm run build && PORT=${PORT} HOST=127.0.0.1 NODE_ENV=test ADMIN_USERNAMES=registrar DB_PATH="${join(
+    // GIT_SHA is set for BOTH the app build (`__APP_VERSION__`) and the server
+    // (`/api/version`) so their versions match by default — the version-stale
+    // tests force a mismatch by intercepting /api/version.
+    command: `GIT_SHA=e2etest npm run build && GIT_SHA=e2etest PORT=${PORT} HOST=127.0.0.1 NODE_ENV=test ADMIN_USERNAMES=registrar DB_PATH="${join(
       mkdtempSync(join(tmpdir(), 'major-vis-e2e-')),
       'e2e.db',
     )}" node server/src/index.js`,

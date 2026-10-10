@@ -364,7 +364,7 @@ import {
 } from '../src/scheduleStore.js'
 import { TERM_KEYS, TERM_LABELS, offeringItemKey } from '@major-vis/schedule-core'
 import { useAnchoredDropdown } from '../src/useAnchoredDropdown.js'
-import { notify } from '../src/notify.js'
+import { notify } from '@major-vis/shared-components'
 import ScheduleGrid from './ScheduleGrid.vue'
 import ScheduleDay from './ScheduleDay.vue'
 import ScheduleSlot from './ScheduleSlot.vue'

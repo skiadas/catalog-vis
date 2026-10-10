@@ -3087,3 +3087,64 @@ test('non-admins cannot open the admin page', async ({ page }) => {
   await expect(page.getByText('Only administrators can manage the user directory.')).toBeVisible()
   assertClean(errors)
 })
+
+test('a stale bundle prompts a refresh when the server has moved on', async ({ page }) => {
+  const errors = trackErrors(page)
+  // Pretend the server is running a different commit than this bundle.
+  await page.route('**/api/version', (route) =>
+    route.fulfill({ json: { commit: 'deadbeef', ref: 'test', builtAt: null } }),
+  )
+  await page.goto('/', { waitUntil: 'networkidle' })
+  const toast = page.locator('[data-sonner-toast]')
+  await expect(toast).toContainText('newer version')
+  await expect(toast.getByRole('button', { name: 'Refresh' })).toBeVisible()
+  assertClean(errors)
+})
+
+test('no refresh prompt when the bundle matches the server', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await page.waitForTimeout(500)
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0)
+  assertClean(errors)
+})
+
+test('an unsent suggest draft survives a reload', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+  await createSchedule(page, 'Reload schedule')
+
+  await page.locator('.schedule-pill-suggest').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: '＋ Add course' }).click()
+  const addm = page.locator('.modal[aria-labelledby="schedule-add-course-title"]')
+  await addm.waitFor({ state: 'visible', timeout: 5000 })
+  await addm.getByPlaceholder('Search code or name…').fill('ANTH 160')
+  await addm.locator('.schedule-add-option', { hasText: 'ANTH 160' }).first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+  await expect(
+    page
+      .locator('.cal-block', { hasText: 'ANTH 160' })
+      .first()
+      .locator('.filter-offering', { hasText: 'ANTH 160' }),
+  ).toHaveCount(1)
+
+  // Let the debounced draft write land, then reload (the version-refresh path).
+  await page.waitForTimeout(400)
+  await page.reload({ waitUntil: 'networkidle' })
+
+  // Back in the session, the addition is present exactly once and unsent.
+  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
+  await expect(
+    page
+      .locator('.cal-block', { hasText: 'ANTH 160' })
+      .first()
+      .locator('.filter-offering', { hasText: 'ANTH 160' }),
+  ).toHaveCount(1)
+  await expect(page.locator('[data-sonner-toast]')).toContainText('Restored your unsaved changes')
+  assertClean(errors)
+})

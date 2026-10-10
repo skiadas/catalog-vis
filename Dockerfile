@@ -11,6 +11,11 @@ COPY server server
 COPY style style
 COPY docs-site docs-site
 COPY vite.apps.mjs ./
+# The commit identity baked into the app bundles as `__APP_VERSION__` (see
+# vite.apps.mjs) so a running app can detect the server has moved on and offer
+# a refresh. Passed by the publish workflow alongside the runtime ENV below.
+ARG GIT_SHA=""
+ENV GIT_SHA=${GIT_SHA}
 RUN npm ci && npm run build && npm run build:docs
 
 # Prod-deps stage: the runtime install (npm ci --omit=dev) so build-only

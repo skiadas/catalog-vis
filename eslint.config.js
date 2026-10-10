@@ -64,6 +64,8 @@ export default [
       sourceType: 'module',
       globals: {
         ...globals.browser,
+        // Injected by Vite's define (see vite.apps.mjs / apps/env.d.ts).
+        __APP_VERSION__: 'readonly',
       },
     },
   },

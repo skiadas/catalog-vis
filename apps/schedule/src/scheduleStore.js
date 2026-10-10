@@ -50,6 +50,7 @@ import {
 } from '@major-vis/schedule-core/diff'
 import * as backend from './backend.js'
 import { buildNameIndex, instructorLabel, canonicalInstructor } from './names.js'
+import { collectRestorable, readRestorable, readDrafts, writeDrafts } from './draftPersistence.js'
 
 import { ref, computed, watch } from 'vue'
 
@@ -138,6 +139,13 @@ export const editingRole = ref(null)
 // term and upserts the proposer's own pending suggestion. `dirty` tracks
 // unsaved changes since the last propose.
 export const pendingDrafts = ref({})
+
+// Unsent suggest-draft work recovered from a reload, keyed `${scheduleId}:${term}`
+// and consumed by `setupDraft` when the session is re-entered (see
+// draftPersistence.js). A one-shot signal lets the app root flash a brief
+// notice; the store stays UI-free.
+const restoredDraftOps = new Map()
+export const restoredNotice = ref(false)
 
 // Whether pending suggestions are overlaid on the calendar views. Persisted.
 export const showPendingSuggestions = ref(true)
@@ -554,6 +562,9 @@ export async function signOut() {
   editingScheduleId.value = null
   editingRole.value = null
   pendingDrafts.value = {}
+  restoredDraftOps.clear()
+  restoredNotice.value = false
+  writeDrafts(draftsStorage(), null)
 }
 
 // Replaces the local view with the backend's schedule collection (after a
@@ -586,6 +597,8 @@ async function loadServerState() {
   editingScheduleId.value = null
   editingRole.value = null
   pendingDrafts.value = {}
+  restoredDraftOps.clear()
+  restoredNotice.value = false
   refreshAllSuggestions()
   collectionReady.value = true
   return true
@@ -699,6 +712,80 @@ function setDraft(scheduleId, term, draft) {
 
 function touchDraft() {
   pendingDrafts.value = { ...pendingDrafts.value }
+  schedulePersistDrafts()
+}
+
+// ---- Unsent-draft persistence (survives a reload) -----------------------
+// A suggest session's unsent work lives in memory; persist it (unsent ops only,
+// see draftPersistence.js) so a reload — e.g. to take a new deployment — can
+// restore it. Best-effort: a storage failure never breaks editing.
+
+function draftsStorage() {
+  return typeof window !== 'undefined' && window.sessionStorage ? window.sessionStorage : null
+}
+
+// The current user id, or 'local' for the serverless/sample collection, so one
+// identity never restores another's draft on a shared browser.
+function draftUserId() {
+  return currentUser.value && currentUser.value.id != null ? String(currentUser.value.id) : 'local'
+}
+
+let persistTimer = null
+
+function persistDrafts() {
+  const payload = collectRestorable(pendingDrafts.value, {
+    user: draftUserId(),
+    // `typeof` keeps the node test harness (where the define is absent) safe.
+    appVersion: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '',
+  })
+  writeDrafts(draftsStorage(), payload)
+}
+
+// Cancels the pending debounce and writes now — used by the version-refresh
+// action, which reloads immediately.
+export function flushDrafts() {
+  if (persistTimer) {
+    clearTimeout(persistTimer)
+    persistTimer = null
+  }
+  persistDrafts()
+}
+
+function schedulePersistDrafts() {
+  if (persistTimer) clearTimeout(persistTimer)
+  persistTimer = setTimeout(() => {
+    persistTimer = null
+    persistDrafts()
+  }, 250)
+}
+
+// Reads any stored unsent work for the current identity into `restoredDraftOps`
+// (applied later, when the session is re-entered). Schedule ids resolve back to
+// live ids; a draft whose schedule is gone is dropped. Called at boot (and by
+// tests, which seed sessionStorage to simulate a reload).
+export function restoreStoredDrafts() {
+  const list = readRestorable(readDrafts(draftsStorage()), {
+    user: draftUserId(),
+    resolveScheduleId: (stored) => {
+      const s = schedules.value.find((x) => String(x.id) === String(stored))
+      return s ? s.id : null
+    },
+  })
+  restoredDraftOps.clear()
+  for (const d of list) {
+    if (!TERM_KEYS.includes(d.term)) continue
+    restoredDraftOps.set(draftKey(d.scheduleId, d.term), d.operations)
+  }
+  if (!list.length) writeDrafts(draftsStorage(), null)
+  else restoredNotice.value = true
+}
+
+// Consumes recovered unsent ops for a (schedule, term), if any — once.
+function takeRestored(scheduleId, term) {
+  const k = draftKey(scheduleId, term)
+  const ops = restoredDraftOps.get(k)
+  if (ops) restoredDraftOps.delete(k)
+  return ops || null
 }
 
 // Discards a suggest session's draft for a (schedule, term) — used when leaving
@@ -707,6 +794,7 @@ export function clearDraft(scheduleId, term = activeTerm.value) {
   const drafts = { ...pendingDrafts.value }
   delete drafts[draftKey(scheduleId, term)]
   pendingDrafts.value = drafts
+  persistDrafts()
 }
 
 // Whether `scheduleId` is being edited as a suggestion right now.
@@ -1071,26 +1159,35 @@ async function setupDraft(scheduleId, term) {
   const ownReplay = (own) =>
     own ? pureOps(own.operations.filter((e) => !e.resolution || e.resolution.status === 'pending')) : []
   const own = ownPendingSuggestion(scheduleId, term)
-  setDraft(scheduleId, term, {
-    offerings: applyOperations(part.offerings, ownReplay(own)),
-    version: part.version,
-    dirty: false,
-    // The state this session started from: the published term plus the
-    // proposer's own replayed pending intent. Unsent changes are measured
-    // against this, so an already-proposed change is not counted again.
-    baseline: applyOperations(part.offerings, ownReplay(own)),
-  })
-  if (!remote.value || typeof window === 'undefined') return
+  const base = applyOperations(part.offerings, ownReplay(own))
+  if (!remote.value || typeof window === 'undefined') {
+    settleDraft(scheduleId, term, base, part.version)
+    return
+  }
+  // A provisional clean draft keeps the view from flashing empty while the
+  // freshest term loads; the fetch below re-bases it (and applies any work
+  // recovered from a reload).
+  setDraft(scheduleId, term, { offerings: base, version: part.version, dirty: false, baseline: base })
   const current = await backend.fetchTerm(scheduleId, term)
   if (!current || editingScheduleId.value !== scheduleId) return
   setLocalTerm(scheduleId, term, current.offerings, current.version)
   const own2 = ownPendingSuggestion(scheduleId, term)
+  settleDraft(scheduleId, term, applyOperations(current.offerings, ownReplay(own2)), current.version)
+}
+
+// Writes the session's starting draft: the base (published + own-pending replay)
+// with any unsent work recovered from a reload re-applied on top. Recovered work
+// makes the draft dirty again (its unsent count is the recovered diff) and is
+// consumed — a later reload won't replay it twice.
+function settleDraft(scheduleId, term, base, version) {
+  const restored = takeRestored(scheduleId, term)
   setDraft(scheduleId, term, {
-    offerings: applyOperations(current.offerings, ownReplay(own2)),
-    version: current.version,
-    dirty: false,
-    baseline: applyOperations(current.offerings, ownReplay(own2)),
+    offerings: restored ? applyOperations(base, restored) : base,
+    version,
+    dirty: Boolean(restored),
+    baseline: base,
   })
+  if (restored) persistDrafts()
 }
 
 // Creates a draft for the freshly-active term when the session crosses terms.
@@ -1166,6 +1263,7 @@ export async function proposeDraft(scheduleId, note) {
       draft.dirty = false
       // The whole draft is now the proposal; measure the next edit from here.
       draft.baseline = draft.offerings
+      persistDrafts()
       await refreshSuggestions(scheduleId)
     }
     return saved
@@ -1199,6 +1297,7 @@ export async function proposeDraft(scheduleId, note) {
   persistTrail(rows)
   draft.version = part.version
   draft.baseline = draft.offerings
+  persistDrafts()
   await refreshSuggestions(scheduleId)
   return row
 }
@@ -1760,6 +1859,7 @@ export function deleteSchedule(id) {
     if (key.startsWith(id + ':')) delete drafts[key]
   }
   pendingDrafts.value = drafts
+  persistDrafts()
   if (remote.value) backend.deleteSchedule(id)
   persistSchedules()
   persistSelectedSchedules()
@@ -2464,6 +2564,7 @@ export async function initScheduleCollection() {
   if (!config || localStorage.getItem(LS_OFFLINE) === '1') {
     setRemote(false)
     seedSampleSchedule()
+    restoreStoredDrafts()
     collectionReady.value = true
     return
   }
@@ -2473,7 +2574,10 @@ export async function initScheduleCollection() {
     openAuthPrompt()
     return
   }
-  if (await loadServerState()) restoreAux()
+  if (await loadServerState()) {
+    restoreAux()
+    restoreStoredDrafts()
+  }
 }
 
 function restoreAux() {

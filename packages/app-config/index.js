@@ -95,3 +95,7 @@ export function resetConfig() {
   state = null
   loading = null
 }
+
+// Notices when the server has moved past this bundle's build id, so the app can
+// offer a refresh (see version.js).
+export { watchAppVersion } from './version.js'

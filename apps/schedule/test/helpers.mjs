@@ -10,18 +10,25 @@ import { startTestServer } from '../../../server/test/helpers.mjs'
 
 const memoryStorage = new Map()
 
-// Minimal `Storage`-shaped shim (the store reads localStorage behind
-// window-guards; node only provides the real thing behind a flag).
-const shim = {
+// Minimal `Storage`-shaped shim (the store reads localStorage/sessionStorage
+// behind window-guards; node only provides the real thing behind a flag).
+const makeStorage = (map) => ({
   get length() {
-    return memoryStorage.size
+    return map.size
   },
-  clear: () => memoryStorage.clear(),
-  key: (i) => Array.from(memoryStorage.keys())[i] ?? null,
-  getItem: (k) => (memoryStorage.has(k) ? memoryStorage.get(k) : null),
-  setItem: (k, v) => memoryStorage.set(k, String(v)),
-  removeItem: (k) => memoryStorage.delete(k),
-}
+  clear: () => map.clear(),
+  key: (i) => Array.from(map.keys())[i] ?? null,
+  getItem: (k) => (map.has(k) ? map.get(k) : null),
+  setItem: (k, v) => map.set(k, String(v)),
+  removeItem: (k) => map.delete(k),
+})
+
+const shim = makeStorage(memoryStorage)
+
+// sessionStorage backs the unsent-draft persistence; a separate map so the two
+// storages don't share keys. Exported so tests can seed/inspect it.
+export const sessionMemory = new Map()
+const sessionShim = makeStorage(sessionMemory)
 
 // The browser navigation surface the store touches: `location` (OIDC redirects
 // and ?auth_error parsing) and `history.replaceState` (stripping the error).
@@ -43,6 +50,7 @@ globalThis.window = /** @type {Window & typeof globalThis} */ (
   /** @type {unknown} */ ({
     confirm: () => true,
     localStorage: shim,
+    sessionStorage: sessionShim,
     location: navigation.location,
     history: { replaceState: () => {} },
   })
@@ -50,6 +58,7 @@ globalThis.window = /** @type {Window & typeof globalThis} */ (
 // The store reads the bare `localStorage` global (what browsers expose);
 // Node only provides it behind a flag, so shim it directly.
 globalThis.localStorage = /** @type {Storage} */ (/** @type {unknown} */ (shim))
+globalThis.sessionStorage = /** @type {Storage} */ (/** @type {unknown} */ (sessionShim))
 
 // A fetch that keeps the session cookie for the STORE's calls (which behave
 // like a browser). Real HTTP to the in-process server; only cookie plumbing is
@@ -131,6 +140,10 @@ export function resetStore(store) {
   store.authError.value = ''
   navigation.assigned = []
   memoryStorage.clear()
+  sessionMemory.clear()
+  store.restoredNotice.value = false
+  // Drops any recovered ops left in the store's private map.
+  store.restoreStoredDrafts()
 }
 
 // Lets in-flight promise chains (draft setup, fire-and-forget term syncs)

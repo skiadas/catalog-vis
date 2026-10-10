@@ -5,7 +5,8 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@major-vis/catalog-client": "*"
+    "@major-vis/catalog-client": "*",
+    "@major-vis/shared-components": "*"
   },
   "devDependencies": {
     "vue": "^3.5.42",

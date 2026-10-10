@@ -9,10 +9,33 @@
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 import { readFile } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 const repoRoot = fileURLToPath(new URL('.', import.meta.url))
+
+// The commit this build came from, baked into every bundle as `__APP_VERSION__`
+// so a running app can detect (via /api/version) that the server has moved on
+// and offer a refresh. The container passes GIT_SHA (the publish workflow);
+// local builds fall back to the working tree's short HEAD so dev/staging line
+// up with the server's own dev fallback. '' means "no id" — the runtime check
+// disables itself rather than compare against nothing.
+function appVersion() {
+  const sha = String(process.env.GIT_SHA || '').trim()
+  if (sha) return sha.slice(0, 7)
+  try {
+    return String(
+      execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }),
+    ).trim()
+  } catch {
+    return ''
+  }
+}
 
 // The catalog artifacts the apps fetch via `loadCatalog({ baseUrl })`. In the
 // co-deployed layout these live at the repo root, two levels above each app;
@@ -64,6 +87,8 @@ export function appConfig(name) {
       __VUE_OPTIONS_API__: true,
       __VUE_PROD_DEVTOOLS__: false,
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+      // The commit identity this bundle was built from (see appVersion).
+      __APP_VERSION__: JSON.stringify(appVersion()),
     },
   })
 }

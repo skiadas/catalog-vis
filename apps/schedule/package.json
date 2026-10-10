@@ -7,7 +7,7 @@
   "dependencies": {
     "@major-vis/catalog-client": "*",
     "@major-vis/schedule-core": "*",
-    "vue-sonner": "^2.0.9"
+    "@major-vis/shared-components": "*"
   },
   "devDependencies": {
     "lucide-vue-next": "^1.0.0",

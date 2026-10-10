@@ -57,9 +57,9 @@
   <ScheduleHelp :is-open="showHelp" @close="showHelp = false" />
   <AuthPrompt />
 
-  <!-- App-level flash confirmations (see src/notify.js); mounted once here so
-       a toast survives the route/overlay change that triggers it. -->
-  <Toaster position="top-right" :close-button="true" />
+  <!-- App-level flash confirmations (see @major-vis/shared-components); mounted
+       once here so a toast survives the route/overlay change that triggers it. -->
+  <Notifier />
 </template>
 
 <script>
@@ -79,19 +79,30 @@ import {
   signIn,
   signOut,
   startSsoLogin,
+  restoredNotice,
 } from './src/scheduleStore.js'
 import ScheduleHelp from './components/ScheduleHelp.vue'
 import AuthPrompt from './components/AuthPrompt.vue'
 import { displayName } from './src/names.js'
-import { Toaster } from 'vue-sonner'
-import 'vue-sonner/style.css'
+import { Notifier, notify } from '@major-vis/shared-components'
 
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 export default {
   name: 'ScheduleAppRoot',
-  components: { ScheduleHelp, AuthPrompt, Toaster },
+  components: { ScheduleHelp, AuthPrompt, Notifier },
   setup() {
+    // Unsent suggest-draft work recovered from a reload: a brief, one-shot
+    // confirmation (the draft itself is already back in its session).
+    watch(
+      restoredNotice,
+      (recovered) => {
+        if (!recovered) return
+        restoredNotice.value = false
+        notify.success('Restored your unsaved changes.')
+      },
+      { immediate: true },
+    )
     // Remote sign-in: username self-identify or an OIDC redirect, per the
     // server's /api/config. The shared schedules, pending suggestions, and
     // ownership roles all require a session.
