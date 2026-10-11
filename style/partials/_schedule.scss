@@ -715,14 +715,11 @@
   min-width: 0;
   overflow: hidden;
 }
-/* The code+section label truncates on the right only (the leading course
-   code always stays visible), with the instructor chip kept intact. */
+/* The course number+section takes precedence: it is never truncated, so a
+   narrow row sacrifices the instructor chip before it ever loses a digit. */
 .filter-offering-code {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .filter-offering-edit {
   flex: 0 0 auto;
@@ -847,12 +844,12 @@
 .day-tl-item .filter-offering {
   flex: 1;
 }
-/* The instructor chip inside colored offering rows renders at full strength:
-   the 90% white would drop below WCAG AA on the row's color. It never shrinks
-   — the code label takes the truncation. */
+/* The instructor chip inside colored offering rows renders at full strength
+   (the 90% white would drop below WCAG AA on the row's color), but it is the
+   element that yields under width pressure — the course label keeps its digits. */
 .filter-offering .do-inst {
   opacity: 1;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
 } /* Schedule filter chips */
 
 .filter-panel {

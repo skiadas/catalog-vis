@@ -1063,6 +1063,60 @@ test("copy courses can carry the source's pending suggestions", async ({ page, r
   assertClean(errors)
 })
 
+// In a squeezed offering row the course number+section takes precedence: the
+// instructor chip truncates first, never the course digits.
+test('a narrow course row truncates the instructor, not the course number', async ({
+  page,
+  request,
+}) => {
+  const errors = trackErrors(page)
+  const user = testAccount()
+  await request.post('/api/auth/login', { data: { username: user } })
+  const created = await request.post('/api/schedules', { data: { name: 'Narrow', year: '2026-27' } })
+  const schedule = (await created.json()).schedule
+  await request.put(`/api/schedules/${schedule.id}/terms/F`, {
+    data: {
+      offerings: [
+        {
+          prefix: 'BIO',
+          number: '166',
+          section: 'A',
+          instructor: 'Alexanderson-Worthington',
+          days: 'MWF',
+          time: '9:20-10:30',
+        },
+      ],
+    },
+  })
+
+  // Narrow enough that the week sits at its 640px minimum, so each day column
+  // is tight and the row has to give somewhere.
+  await page.setViewportSize({ width: 600, height: 800 })
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, user)
+  await page.locator('.schedule-pill', { hasText: 'Narrow' }).locator('.schedule-pill-edit').click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  // Open the block so its offering row renders.
+  await page.locator('.cal-block:not(.off-pattern) .cal-block-time').first().click()
+
+  const row = page.locator('.filter-offering', { hasText: 'BIO 166' }).first()
+  await row.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(row.locator('.filter-offering-code')).toHaveText('BIO 166 A')
+
+  const truncation = await row.evaluate((el) => {
+    const code = el.querySelector('.filter-offering-code')
+    const inst = el.querySelector('.do-inst')
+    return {
+      codeOver: code.scrollWidth - code.clientWidth,
+      instOver: inst ? inst.scrollWidth - inst.clientWidth : 0,
+    }
+  })
+  expect(truncation.codeOver, 'the course number is never truncated').toBeLessThanOrEqual(1)
+  expect(truncation.instOver, 'the instructor absorbs the squeeze').toBeGreaterThan(0)
+
+  assertClean(errors)
+})
+
 test('history panel lists session edits; Cancel removes one change, Restore brings it back, Edit jumps', async ({
   page,
 }) => {
