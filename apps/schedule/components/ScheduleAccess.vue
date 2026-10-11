@@ -87,6 +87,14 @@
               {{ displayName(u.displayName || u.username) }}
             </option>
           </datalist>
+          <label v-if="suggestMode !== 'owner'" class="access-out-of-dept" for="access-out-of-dept">
+            <input id="access-out-of-dept" type="checkbox" v-model="allowOutOfDept" />
+            Allow suggestions from any department
+          </label>
+          <p v-if="suggestMode !== 'owner' && allowOutOfDept" class="modal-intro">
+            Suggesters will be able to propose changes to courses in any department, not just their own. The
+            owner still approves every change.
+          </p>
           <p class="modal-intro">
             A listed suggester can always see the schedule too. Everyone signed in can see and propose on
             public schedules.
@@ -156,6 +164,7 @@ export default {
     const suggestMode = ref('owner')
     const viewers = ref([])
     const suggesters = ref([])
+    const allowOutOfDept = ref(false)
     const viewerDraft = ref('')
     const suggesterDraft = ref('')
     const feedback = ref('')
@@ -193,6 +202,7 @@ export default {
         suggestMode.value = s.suggestMode || 'owner'
         viewers.value = [...(s.viewers || [])]
         suggesters.value = [...(s.suggesters || [])]
+        allowOutOfDept.value = Boolean(s.allowOutOfDept)
         viewerDraft.value = ''
         suggesterDraft.value = ''
         feedback.value = ''
@@ -225,6 +235,7 @@ export default {
         suggestMode: suggestMode.value,
         viewers: viewers.value,
         suggesters: suggesters.value,
+        allowOutOfDept: allowOutOfDept.value,
       })
       saving.value = false
       if (saved) {
@@ -243,6 +254,7 @@ export default {
       suggestMode,
       viewers,
       suggesters,
+      allowOutOfDept,
       viewerDraft,
       suggesterDraft,
       feedback,

@@ -101,14 +101,18 @@ export async function fetchTerm(id, term) {
  *   suggestMode?: 'owner' | 'shared' | 'public';
  *   viewers?: string[];
  *   suggesters?: string[];
+ *   allowOutOfDept?: boolean;
  * }} meta
  */
-export async function updateScheduleMeta(id, { name, status, visibility, suggestMode, viewers, suggesters }) {
+export async function updateScheduleMeta(
+  id,
+  { name, status, visibility, suggestMode, viewers, suggesters, allowOutOfDept },
+) {
   try {
     const res = await fetch(`${apiBase}/schedules/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, status, visibility, suggestMode, viewers, suggesters }),
+      body: JSON.stringify({ name, status, visibility, suggestMode, viewers, suggesters, allowOutOfDept }),
     })
     if (!res.ok) return null
     const data = await res.json()

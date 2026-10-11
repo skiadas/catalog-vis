@@ -55,6 +55,7 @@ import { canonicalUsername } from './names.js'
  * @property {'owner' | 'shared' | 'public'} suggestMode
  * @property {string[]} viewers
  * @property {string[]} suggesters
+ * @property {boolean} allowOutOfDept
  * @property {number} owner_user_id
  * @property {string | null} owner
  */
@@ -72,6 +73,7 @@ import { canonicalUsername } from './names.js'
  * @property {'owner' | 'shared' | 'public'} suggest_mode
  * @property {string} viewers
  * @property {string} suggesters
+ * @property {number} allow_out_of_dept
  * @property {number} owner_user_id
  * @property {string | null} owner
  */
@@ -576,12 +578,13 @@ export function listSchedules(db, { year, user } = {}) {
       .all(...(clause ? [year] : []))
   )
   const schedules = rows.map((r) => {
-    const { suggest_mode, viewers, suggesters, ...rest } = r
+    const { suggest_mode, viewers, suggesters, allow_out_of_dept, ...rest } = r
     return {
       ...rest,
       suggestMode: suggest_mode,
       viewers: storedNameList(viewers),
       suggesters: storedNameList(suggesters),
+      allowOutOfDept: Boolean(allow_out_of_dept),
       terms: getTerms(db, r.id),
     }
   })
@@ -645,12 +648,13 @@ export function getSchedule(db, id) {
       .get(id)
   )
   if (!row) return null
-  const { suggest_mode, viewers, suggesters, ...rest } = row
+  const { suggest_mode, viewers, suggesters, allow_out_of_dept, ...rest } = row
   return {
     ...rest,
     suggestMode: suggest_mode,
     viewers: storedNameList(viewers),
     suggesters: storedNameList(suggesters),
+    allowOutOfDept: Boolean(allow_out_of_dept),
     terms: getTerms(db, id),
   }
 }
@@ -684,9 +688,14 @@ export function getTerm(db, scheduleId, term) {
  *   suggestMode?: 'owner' | 'shared' | 'public';
  *   viewers?: string[];
  *   suggesters?: string[];
+ *   allowOutOfDept?: boolean;
  * }} meta
  */
-export function updateScheduleMeta(db, id, { name, status, visibility, suggestMode, viewers, suggesters }) {
+export function updateScheduleMeta(
+  db,
+  id,
+  { name, status, visibility, suggestMode, viewers, suggesters, allowOutOfDept },
+) {
   const fields = []
   const vals = []
   if (name != null) {
@@ -712,6 +721,10 @@ export function updateScheduleMeta(db, id, { name, status, visibility, suggestMo
   if (suggesters != null) {
     fields.push('suggesters = ?')
     vals.push(JSON.stringify(suggesters))
+  }
+  if (allowOutOfDept != null) {
+    fields.push('allow_out_of_dept = ?')
+    vals.push(allowOutOfDept ? 1 : 0)
   }
   if (!fields.length) return getSchedule(db, id)
   fields.push("updated_at = datetime('now')")

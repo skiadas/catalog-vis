@@ -49,7 +49,13 @@ function fkAction(db, table, column) {
 test('a fresh DB migrates to head: all baseline tables exist, ordered, with cascading user FKs', async () => {
   const db = await openDb(':memory:')
   try {
-    assert.deepEqual(applied(db), ['0001_baseline', '0002_oidc_flows', '0003_access_control', '0004_directory'])
+    assert.deepEqual(applied(db), [
+      '0001_baseline',
+      '0002_oidc_flows',
+      '0003_access_control',
+      '0004_directory',
+      '0005_out_of_dept_suggestions',
+    ])
     for (const t of TABLES) assert.equal(tableNames(db).includes(t), true, t)
     assert.equal(fkAction(db, 'schedules', 'owner_user_id'), 'CASCADE')
     assert.equal(fkAction(db, 'schedule_changes', 'proposer_user_id'), 'CASCADE')
@@ -63,11 +69,23 @@ test('reopening a file DB is idempotent: migrations run once, tables persist', a
   const dbPath = join(dir, 'db.sqlite')
   try {
     const first = await openDb(dbPath)
-    assert.deepEqual(applied(first), ['0001_baseline', '0002_oidc_flows', '0003_access_control', '0004_directory'])
+    assert.deepEqual(applied(first), [
+      '0001_baseline',
+      '0002_oidc_flows',
+      '0003_access_control',
+      '0004_directory',
+      '0005_out_of_dept_suggestions',
+    ])
     first.close()
 
     const second = await openDb(dbPath)
-    assert.deepEqual(applied(second), ['0001_baseline', '0002_oidc_flows', '0003_access_control', '0004_directory'])
+    assert.deepEqual(applied(second), [
+      '0001_baseline',
+      '0002_oidc_flows',
+      '0003_access_control',
+      '0004_directory',
+      '0005_out_of_dept_suggestions',
+    ])
     assert.equal(tableNames(second).includes('schedules'), true)
     second.close()
   } finally {

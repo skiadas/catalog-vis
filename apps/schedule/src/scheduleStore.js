@@ -510,14 +510,16 @@ function sectionIsFree(offerings, prefix, number, section) {
 // Whether the active session may touch an offering: owners (and every offline
 // session) may touch anything; a non-owner's suggest session is scoped to the
 // user's departments — the client-side mirror of the server's `dept_restricted`
-// rule. `offering` is the record (or a bare prefix for non-group callers).
-// `action` is 'edit' (rewrite the row: a cross-listed group is the owner's to
-// edit), 'add' (attach a version), or 'remove' (a member may remove its own
-// version; the owner may remove any).
+// rule — unless the schedule admits out-of-department suggestions. `offering` is
+// the record (or a bare prefix for non-group callers). `action` is 'edit'
+// (rewrite the row: a cross-listed group is the owner's to edit), 'add' (attach
+// a version), or 'remove' (a member may remove its own version; the owner may
+// remove any).
 export function canTouchOffering(scheduleId, offering, action = 'edit') {
   const s = scheduleById(scheduleId)
   if (!s) return false
   if (editingRole.value !== 'suggest' || isOwner(s)) return true
+  if (s.allowOutOfDept) return true
   const mine = myDepartments.value.map((d) => String(d).toUpperCase())
   const rec = typeof offering === 'string' ? { prefix: offering } : offering || {}
   const prefix = String(rec.prefix || '').toUpperCase()
@@ -648,11 +650,21 @@ export function canSuggest(schedule) {
  *   suggestMode?: 'owner' | 'shared' | 'public';
  *   viewers?: string[];
  *   suggesters?: string[];
+ *   allowOutOfDept?: boolean;
  * }} [access]
  */
-export async function updateScheduleAccess(id, { visibility, suggestMode, viewers, suggesters } = {}) {
+export async function updateScheduleAccess(
+  id,
+  { visibility, suggestMode, viewers, suggesters, allowOutOfDept } = {},
+) {
   if (!remote.value || typeof window === 'undefined') return null
-  const saved = await backend.updateScheduleMeta(id, { visibility, suggestMode, viewers, suggesters })
+  const saved = await backend.updateScheduleMeta(id, {
+    visibility,
+    suggestMode,
+    viewers,
+    suggesters,
+    allowOutOfDept,
+  })
   if (!saved) return null
   schedules.value = schedules.value.map((s) => (s.id === id ? saved : s))
   return saved
@@ -1760,8 +1772,11 @@ function copyOrphanLabs(rows) {
 // The selected codes a non-owner's suggest session could not propose: outside
 // the user's departments and not owned by one of them (the cross-list owner
 // exception). The server would refuse the whole proposal, so the dialog warns.
-function copyOutsideDeptCodes(rows) {
+// A schedule that admits out-of-department suggestions has nothing to warn
+// about.
+function copyOutsideDeptCodes(rows, target) {
   if (editingRole.value !== 'suggest') return []
+  if (target && target.allowOutOfDept) return []
   const mine = new Set(myDepartments.value.map((d) => String(d).toUpperCase()))
   if (!mine.size) return []
   const out = new Set()
@@ -1842,7 +1857,7 @@ export function planCourseCopy(
     rows: selected.length,
     candidates,
     orphans: copyOrphanLabs(selected),
-    outside: copyOutsideDeptCodes(selected),
+    outside: copyOutsideDeptCodes(selected, target),
     pendingOpCount: includeSuggestions ? pendingOpsFor(source.id, term).length : 0,
     offerings: plan.offerings,
   }

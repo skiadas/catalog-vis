@@ -505,9 +505,12 @@ export default {
     }
     const suggestBadge = (s) => {
       if (!s || !s.suggestMode) return ''
-      if (s.suggestMode === 'shared') return `listed (${(s.suggesters || []).length})`
-      if (s.suggestMode === 'public') return 'everyone'
-      return isOwner(s) ? 'only you' : 'the owner'
+      let badge
+      if (s.suggestMode === 'shared') badge = `listed (${(s.suggesters || []).length})`
+      else if (s.suggestMode === 'public') badge = 'everyone'
+      else badge = isOwner(s) ? 'only you' : 'the owner'
+      if (s.allowOutOfDept && s.suggestMode !== 'owner') badge += ' · any department'
+      return badge
     }
     const accessTitle = (s) => {
       if (!s || !s.visibility) return ''

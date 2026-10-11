@@ -128,7 +128,7 @@ POST   /api/admin/users/import (text/csv body)                   -> { added, upd
 GET    /api/schedules?year=                 -> { schedules }     (auth; filtered to schedules the caller may view)
 POST   /api/schedules { name, year }        -> { schedule }      (creates 3 empty term parts)
 GET    /api/schedules/:id                   -> { schedule: { ..., terms } }  (viewers)
-PATCH  /api/schedules/:id { name?, status?, visibility?, suggestMode?, viewers?, suggesters? } -> { schedule } (owner)
+PATCH  /api/schedules/:id { name?, status?, visibility?, suggestMode?, viewers?, suggesters?, allowOutOfDept? } -> { schedule } (owner)
 DELETE /api/schedules/:id                                          (owner)
 GET    /api/schedules/:id/terms/:term       -> { term: { offerings, version } }  (viewers)
 PUT    /api/schedules/:id/terms/:term       -> { term }           (owner, full replace)
@@ -201,7 +201,9 @@ listed `viewers` see it), or `public` (every signed-in user). `suggestMode` —
 `owner` (only the owner proposes), `shared` (the listed `suggesters` propose),
 or `public` (everyone proposes). Both default to the most restrictive option
 (`private`/`owner`), so nothing is shared until its owner opens it up; existing
-rows in a deployed DB pick up the same defaults on migration. A listed
+rows in a deployed DB pick up the same defaults on migration. A third owner
+switch, `allowOutOfDept`, lifts the department scope on non-owner suggestions
+for that schedule (see **Suggestions**). A listed
 suggester can always view the schedule too, whatever the visibility mode — you
 must see a schedule to propose against it. `viewers`/`suggesters` are arrays of
 canonical usernames: trimmed + lowercased server-side, and when `AUTH_DOMAIN`
@@ -220,7 +222,11 @@ the departments in their directory entry: any operation touching another
 prefix is refused with 403 `dept_restricted` (the body names the courses), and
 an empty entry can propose nothing. The same check guards a proposer replacing
 their own pending ops (`PATCH /api/suggestions/:id`); the owner is exempt from
-both. Many suggestions from many proposers stay live **concurrently**:
+both, and so is any suggester when the schedule's owner has set
+`allowOutOfDept` — a per-schedule switch for sandboxes that take feedback from
+outside the courses' departments. `allowOutOfDept` lifts only the department
+scope: who may propose (`suggestMode`) and who approves (the owner) are
+unchanged. Many suggestions from many proposers stay live **concurrently**:
 approval applies the operations to whatever the term's current state is (no
 base-version guard), so approving one proposal never invalidates others.
 Unmatched ops no-op, duplicate adds dedupe, and an approval that changes

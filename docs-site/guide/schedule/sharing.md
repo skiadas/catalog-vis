@@ -24,6 +24,18 @@ edit access to anyone else — only the owner edits a schedule directly. Everyon
 else can propose changes.
 :::
 
+## Suggestions and departments
+
+By default a suggester can only propose changes to courses in **their own
+departments** — the departments an administrator lists for their account. When
+you allow others to suggest, a switch appears: **Allow suggestions from any
+department**. Turn it on for a schedule where you want feedback from people
+outside the courses' departments — a sandbox schedule collecting ideas from
+across the college, for example.
+
+Turning it on does not change who can suggest or who approves: it only lifts the
+department limit, and the owner still accepts or rejects every proposed change.
+
 ## What the other person sees
 
 Once you add someone, the schedule appears on their **Your schedules** page

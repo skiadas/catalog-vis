@@ -255,8 +255,13 @@ courses from a past schedule. A two-step wizard picks the source and the
 departments (prefixes) to carry over, plus optionally its cross-listed versions,
 then lists every candidate course with a checkbox (and **Select all** /
 **Deselect all**), each tagged **new** or **update**, so individual rows can be
-left out. A live preview shows how many rows are **new** vs **updated** (a
-matching section is updated to the source, a missing one is added) plus lab and
+left out. **Include pending suggestions** (on by default) makes the source rows
+the source's *effective* offerings — its stored courses with every pending
+suggestion applied, so a course arrives in its proposed state and a course with
+a pending removal is left out; unticking it copies the stored courses. The
+suggestions themselves are not carried as proposals. A live preview shows how
+many rows are **new** vs **updated**
+(a matching section is updated to the source, a missing one is added) plus lab and
 department warnings; confirming writes through the normal edit path, so an
 owner's copy lands in History (cancellable) and a suggester's lands in the draft
 as a proposal the server still scopes to their departments (cross-listing is the
@@ -291,7 +296,12 @@ drag for the rest), and the server refuses any proposal operation touching
 another department (`dept_restricted`, naming the courses); the panel says so
 instead of the generic "nothing to propose". Owners and offline users may touch
 anything, and a user with no departments can propose nothing until an admin
-adds them (the panel says that too).
+adds them (the panel says that too). A schedule's owner can lift the scope with
+**Allow suggestions from any department** (the access dialog's
+`allowOutOfDept`): the server then admits any op from a permitted suggester, and
+the client's `canTouchOffering` and the copy dialog's department warning follow
+suit. It changes only the department limit — who may suggest and who approves
+are unchanged.
 
 **The add-course picker is department-scoped too.** When your directory entry
 lists departments, "＋ Add course" shows only their courses (the code's leading

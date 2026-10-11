@@ -2962,6 +2962,58 @@ test('access: a shared schedule admits listed viewers; suggest gating follows th
   assertClean(errors)
 })
 
+// The owner can drop the department scope for a schedule's suggesters: a
+// suggester with no directory departments then edits any course in a suggest
+// session instead of being locked to their own.
+test('access: out-of-department suggestions let a dept-less suggester edit any course', async ({
+  page,
+}) => {
+  const errors = trackErrors(page)
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page)
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page.getByRole('button', { name: '＋ New schedule' }).click()
+  await page.locator('#schedule-create-name').fill('Sandbox')
+  await page.getByRole('button', { name: 'Single department' }).click()
+  await page.getByRole('button', { name: 'Generate' }).click()
+  await page.locator('#schedule-create-name').waitFor({ state: 'detached', timeout: 10000 })
+
+  // Bob may suggest, and the out-of-department switch is on.
+  await page.getByRole('button', { name: 'Control access to Sandbox' }).click()
+  const access = page.locator('.modal[aria-labelledby="schedule-access-title"]')
+  await access.waitFor({ state: 'visible', timeout: 5000 })
+  await access.locator('#access-suggest').selectOption('shared')
+  await access.getByLabel('Add suggester').fill('bob')
+  await access.locator('.access-add').last().getByRole('button', { name: 'Add' }).click()
+  await access.getByLabel('Allow suggestions from any department').check()
+  await access.getByRole('button', { name: 'Save' }).click()
+  await access.waitFor({ state: 'detached', timeout: 5000 })
+
+  // The server stored it, and the row badge names it.
+  const saved = await page.evaluate(() => fetch('../../api/schedules').then((r) => r.json()))
+  const mine = saved.schedules.find((s) => s.name === 'Sandbox')
+  expect(mine.allowOutOfDept).toBe(true)
+  await expect(
+    page.locator('.schedule-manage-row', { hasText: 'Sandbox' }).locator('.schedule-manage-suggest'),
+  ).toHaveText('can suggest: listed (1) · any department')
+  await closeManage(page)
+
+  // Bob has no departments yet every course is editable in his suggest session.
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  const cluster = page.locator('.schedule-auth-cluster')
+  await cluster.getByLabel('Username').fill('bob')
+  await cluster.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByText('Signed in as bob').waitFor({ timeout: 10000 })
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  const row = page.locator('.schedule-manage-row', { hasText: 'Sandbox' })
+  await row.waitFor({ state: 'visible', timeout: 5000 })
+  await row.getByRole('button', { name: 'Suggest changes for Sandbox' }).click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
+  await expect(page.locator('.filter-offering-edit').first()).toBeVisible()
+
+  assertClean(errors)
+})
+
 // The access dialog is an overlay route now: it floats over the surface it was
 // opened from, is deep-linkable, and closing returns there. A non-owner (or a
 // deleted schedule) gets the denial state instead of a form that cannot save.

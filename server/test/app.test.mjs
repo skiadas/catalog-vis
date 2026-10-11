@@ -1417,6 +1417,84 @@ test('non-owner suggestions are scoped to their directory departments', async ()
   }
 })
 
+test('a schedule can allow out-of-department suggestions', async () => {
+  const database = await openDb(':memory:')
+  const app = createApp({
+    database,
+    services: ['schedule'],
+    adminUsernames: new Set(['alice']),
+  })
+  const srv = await startTestServer(app)
+  try {
+    const alice = srv.newClient()
+    const bob = srv.newClient()
+    await alice.post('/api/auth/login', { username: 'alice' })
+    await bob.post('/api/auth/login', { username: 'bob' })
+    // Bob belongs to CS only.
+    await alice.post('/api/admin/users', { username: 'bob', departments: ['CS'] })
+
+    const { schedule } = (await alice.post('/api/schedules', { name: 'Sandbox' })).json
+    await alice.patch(`/api/schedules/${schedule.id}`, { visibility: 'public', suggestMode: 'public' })
+    await alice.put(`/api/schedules/${schedule.id}/terms/F`, {
+      offerings: [{ prefix: 'MAT', number: '131', section: 'A', days: 'TR', time: '10:00-11:45' }],
+    })
+    const term = (await alice.get(`/api/schedules/${schedule.id}/terms/F`)).json.term
+    const matOp = [
+      {
+        kind: 'update',
+        cur: { prefix: 'MAT', number: '131', section: 'A' },
+        changes: { time: '14:15-16:00' },
+        diff: [],
+      },
+    ]
+
+    // Off by default: the out-of-department op is refused.
+    const denied = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: term.version,
+      operations: matOp,
+    })
+    assert.equal(denied.status, 403)
+    assert.equal(denied.json.error, 'dept_restricted')
+
+    // The owner turns it on; the same op (and a proposer edit) is admitted.
+    const patched = await alice.patch(`/api/schedules/${schedule.id}`, { allowOutOfDept: true })
+    assert.equal(patched.status, 200)
+    assert.equal(patched.json.schedule.allowOutOfDept, true)
+
+    const ok = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: term.version,
+      operations: matOp,
+    })
+    assert.equal(ok.status, 201)
+    const edit = await bob.patch(`/api/suggestions/${ok.json.suggestion.id}`, {
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'MAT', number: '131', section: 'A' },
+          changes: { time: '15:00-16:10' },
+          diff: [],
+        },
+      ],
+    })
+    assert.equal(edit.status, 200)
+
+    // Turning it back off restores the scope.
+    await alice.patch(`/api/schedules/${schedule.id}`, { allowOutOfDept: false })
+    const reblocked = await bob.post(`/api/schedules/${schedule.id}/suggestions`, {
+      term: 'F',
+      baseVersion: term.version,
+      operations: matOp,
+    })
+    assert.equal(reblocked.status, 403)
+    assert.equal(reblocked.json.error, 'dept_restricted')
+  } finally {
+    srv.close()
+    database.close()
+  }
+})
+
 test('cross-list dept rule: the owner edits the group; members add/remove their own version', async () => {
   const database = await openDb(':memory:')
   const app = createApp({ database, services: ['schedule'], adminUsernames: new Set(['registrar']) })

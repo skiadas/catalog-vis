@@ -394,6 +394,8 @@ export function createApp({
     const visibility = req.body && typeof req.body.visibility === 'string' ? req.body.visibility : undefined
     const suggestMode =
       req.body && typeof req.body.suggestMode === 'string' ? req.body.suggestMode : undefined
+    const allowOutOfDept =
+      req.body && typeof req.body.allowOutOfDept === 'boolean' ? req.body.allowOutOfDept : undefined
     if (status !== undefined && !['draft', 'official'].includes(status))
       return res.status(400).json({ error: 'bad_status' })
     if (name !== undefined && name === '') return res.status(400).json({ error: 'name_required' })
@@ -420,6 +422,7 @@ export function createApp({
       suggestMode,
       viewers,
       suggesters,
+      allowOutOfDept,
     })
     res.json({ schedule })
   })
@@ -460,8 +463,9 @@ export function createApp({
     const schedule = req.schedule
     // A non-owner's proposal is scoped to the departments in their directory
     // entry: every op must touch one of their prefixes (an empty entry allows
-    // nothing). The owner is exempt — their own schedule.
-    if (schedule.owner_user_id !== req.user.id) {
+    // nothing). The owner is exempt — their own schedule — and so is any
+    // schedule whose owner has turned on out-of-department suggestions.
+    if (schedule.owner_user_id !== req.user.id && !schedule.allowOutOfDept) {
       const blocked = deptBlocked(req.body && req.body.operations, req.user)
       if (blocked) return res.status(403).json(blocked)
     }
@@ -515,10 +519,11 @@ export function createApp({
     if (operations === undefined && note === undefined)
       return res.status(400).json({ error: 'nothing_to_update' })
     // A non-owner replacing their ops is dept-scoped like a fresh proposal:
-    // the replacement must not touch departments outside their entry.
+    // the replacement must not touch departments outside their entry, unless
+    // the schedule admits out-of-department suggestions.
     if (operations !== undefined && suggestion.proposer_user_id === req.user.id) {
       const schedule = db.getSchedule(database, suggestion.schedule_id)
-      if (schedule && schedule.owner_user_id !== req.user.id) {
+      if (schedule && schedule.owner_user_id !== req.user.id && !schedule.allowOutOfDept) {
         const blocked = deptBlocked(operations, req.user)
         if (blocked) return res.status(403).json(blocked)
       }
