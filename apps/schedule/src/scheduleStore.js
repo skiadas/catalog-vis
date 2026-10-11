@@ -1467,6 +1467,30 @@ export const overlaySuggestions = computed(() => {
   return list.filter((s) => !ownReplayed.has(s.id))
 })
 
+// The still-pending operations of every visible suggestion on (scheduleId,
+// term), unwrapped from their resolution entries. The "proposed changes" set an
+// overlay (or a copy) applies on top of the published term.
+function pendingOpsFor(scheduleId, term) {
+  const out = []
+  for (const s of suggestionsBySchedule.value[scheduleId] || []) {
+    if (s.status !== 'pending' || s.term !== term) continue
+    for (const e of s.operations || []) {
+      if (!e.resolution || e.resolution.status === 'pending') out.push(e.op)
+    }
+  }
+  return out
+}
+
+// The effective offerings of a (schedule, term) with pending suggestions taken
+// into account: the published rows with every visible pending op applied, in
+// proposal order (a conflict resolves last-writer-wins). A read-only projection
+// for the copy dialog's "after suggestions" source — never writes.
+export function effectiveOfferings(scheduleId, term = activeTerm.value) {
+  const s = scheduleById(scheduleId)
+  if (!s) return []
+  return applyOperations(publishedOfferings(s, term), pendingOpsFor(s.id, term))
+}
+
 function suggestionId() {
   return 'sg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }
@@ -1760,15 +1784,21 @@ function copyOutsideDeptCodes(rows) {
 // will take ('added' | 'updated' | 'unchanged') — the dialog's review step. When
 // `selectedKeys` is a non-null iterable, only those candidate keys are merged;
 // passing null/undefined selects every candidate (the historical behavior).
+//
+// With `includeSuggestions`, the source rows are the effective offerings — the
+// published term with its pending suggestions applied — so a copy carries the
+// proposed-but-unapproved state rather than the stored one. `pendingOpCount` is
+// the number of pending ops that option folded in (0 otherwise), for the
+// dialog's hint.
 /**
  * @param {string | number} targetId
  * @param {string | number} sourceId
- * @param {{ prefixes?: string[]; includeSiblings?: boolean; selectedKeys?: Iterable<string> | null }} [opts]
+ * @param {{ prefixes?: string[]; includeSiblings?: boolean; selectedKeys?: Iterable<string> | null; includeSuggestions?: boolean }} [opts]
  */
 export function planCourseCopy(
   targetId,
   sourceId,
-  { prefixes = [], includeSiblings = false, selectedKeys = null } = {},
+  { prefixes = [], includeSiblings = false, selectedKeys = null, includeSuggestions = false } = {},
 ) {
   const empty = {
     added: 0,
@@ -1778,6 +1808,7 @@ export function planCourseCopy(
     candidates: [],
     orphans: [],
     outside: [],
+    pendingOpCount: 0,
     offerings: null,
   }
   const target = scheduleById(targetId)
@@ -1786,8 +1817,10 @@ export function planCourseCopy(
   const term = activeTerm.value
   const part = viewPart(target, term)
   const base = (part && part.offerings) || []
-  const sourcePart = source.terms && source.terms[term]
-  const all = filterCopyRows((sourcePart && sourcePart.offerings) || [], prefixes, includeSiblings)
+  const sourceRows = includeSuggestions
+    ? effectiveOfferings(source.id, term)
+    : (source.terms && source.terms[term] && source.terms[term].offerings) || []
+  const all = filterCopyRows(sourceRows, prefixes, includeSiblings)
   const preview = mergeOfferings(base, all)
   const candidates = all.map((o, i) => ({
     key: copyCandidateKey(o, i),
@@ -1810,6 +1843,7 @@ export function planCourseCopy(
     candidates,
     orphans: copyOrphanLabs(selected),
     outside: copyOutsideDeptCodes(selected),
+    pendingOpCount: includeSuggestions ? pendingOpsFor(source.id, term).length : 0,
     offerings: plan.offerings,
   }
 }
@@ -1821,13 +1855,18 @@ export function planCourseCopy(
 // applied counts, or null when the write was refused.
 /**
  * @param {string | number} targetId
- * @param {{ sourceId: string | number; prefixes?: string[]; includeSiblings?: boolean; selectedKeys?: Iterable<string> | null }} opts
+ * @param {{ sourceId: string | number; prefixes?: string[]; includeSiblings?: boolean; selectedKeys?: Iterable<string> | null; includeSuggestions?: boolean }} opts
  */
 export function copyCoursesInto(
   targetId,
-  { sourceId, prefixes = [], includeSiblings = false, selectedKeys = null },
+  { sourceId, prefixes = [], includeSiblings = false, selectedKeys = null, includeSuggestions = false },
 ) {
-  const plan = planCourseCopy(targetId, sourceId, { prefixes, includeSiblings, selectedKeys })
+  const plan = planCourseCopy(targetId, sourceId, {
+    prefixes,
+    includeSiblings,
+    selectedKeys,
+    includeSuggestions,
+  })
   if (!plan.offerings) return null
   if (plan.added === 0 && plan.updated === 0) {
     return { added: 0, updated: 0, unchanged: plan.unchanged }

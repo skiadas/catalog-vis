@@ -15,7 +15,9 @@
         <p v-if="step === 'choose'" class="modal-intro">
           Copy another schedule's {{ termLabel }} courses into this one. Pick the source and departments, then
           review the courses before copying. Matching sections are <strong>updated</strong> to the source;
-          missing ones are added. Switch term to copy a different term.
+          missing ones are added. Switch term to copy a different term. By default a course comes over with
+          the source's pending suggestions applied; untick <strong>Include pending suggestions</strong> to
+          copy the stored courses instead.
         </p>
         <p v-else class="modal-intro">
           Untick any course you do not want to bring over. Matching sections are
@@ -57,6 +59,15 @@
                 Include cross-listed versions
               </label>
             </div>
+
+            <label class="schedule-copy-suggestions" for="schedule-copy-suggestions">
+              <input id="schedule-copy-suggestions" type="checkbox" v-model="includeSuggestions" />
+              Include pending suggestions
+              <span v-if="pendingSourceCount" class="schedule-copy-suggestions-hint">
+                {{ pendingSourceCount }} pending change{{ pendingSourceCount === 1 ? '' : 's' }} on this
+                source
+              </span>
+            </label>
           </template>
 
           <template v-else>
@@ -147,7 +158,10 @@
 // all), each tagged with whether the copy will add or update it. Confirming
 // writes through the store's `copyCoursesInto` — a direct edit for the owner, or
 // the suggest draft for a proposer (where the server still enforces the
-// department scope). Visibility via the `isOpen` prop.
+// department scope). By default the source rows are the source's *effective*
+// offerings — its pending suggestions applied — so a copy can carry the
+// proposed-but-unapproved state; unticking "Include pending suggestions" copies
+// the stored courses instead. Visibility via the `isOpen` prop.
 import {
   schedules,
   editingSchedule,
@@ -155,6 +169,8 @@ import {
   myDepartments,
   planCourseCopy,
   copyCoursesInto,
+  effectiveOfferings,
+  refreshSuggestions,
 } from '../src/scheduleStore.js'
 import { TERM_LABELS } from '@major-vis/schedule-core'
 import { useModalFocus } from '../src/modalFocus.js'
@@ -169,6 +185,7 @@ const EMPTY_PLAN = {
   candidates: [],
   orphans: [],
   outside: [],
+  pendingOpCount: 0,
   offerings: null,
 }
 
@@ -184,8 +201,14 @@ export default {
     const sourceId = ref(null)
     const prefixes = ref([])
     const includeSiblings = ref(false)
+    const includeSuggestions = ref(true)
     const step = ref('choose')
     const selectedKeys = ref([])
+    // True once the source's suggestion list has been loaded (remote fetch or
+    // offline trail). The review step waits on it so its counts don't flash the
+    // published rows before the pending ones land.
+    const sourceReady = ref(false)
+    let sourceLoadToken = 0
 
     const editingName = computed(() => (editingSchedule.value ? editingSchedule.value.name : ''))
     const termLabel = computed(() => TERM_LABELS[activeTerm.value] || activeTerm.value)
@@ -193,6 +216,9 @@ export default {
       schedules.value.filter((s) => String(s.id) !== String(props.scheduleId)),
     )
     const sourceOfferings = computed(() => {
+      if (includeSuggestions.value && sourceId.value != null) {
+        return effectiveOfferings(sourceId.value, activeTerm.value)
+      }
       const s = schedules.value.find((x) => String(x.id) === String(sourceId.value))
       const part = s && s.terms && s.terms[activeTerm.value]
       return (part && part.offerings) || []
@@ -209,19 +235,47 @@ export default {
     // untick rows.
     const plan = computed(() => {
       if (!props.scheduleId || !sourceId.value) return EMPTY_PLAN
-      const opts = { prefixes: prefixes.value, includeSiblings: includeSiblings.value }
+      const opts = {
+        prefixes: prefixes.value,
+        includeSiblings: includeSiblings.value,
+        includeSuggestions: includeSuggestions.value,
+      }
       if (step.value === 'review') opts.selectedKeys = selectedKeys.value
       return planCourseCopy(props.scheduleId, sourceId.value, opts)
     })
     const candidates = computed(() => plan.value.candidates)
     const selectedKeySet = computed(() => new Set(selectedKeys.value))
+    // The pending-change count on the source, for the option's hint.
+    const pendingSourceCount = computed(() => (includeSuggestions.value ? plan.value.pendingOpCount : 0))
+
+    // Loads the source's suggestions so `effectiveOfferings` can fold them in.
+    // A token guards against a slow fetch for a source the user has since
+    // changed away from.
+    const loadSource = () => {
+      const id = sourceId.value
+      const token = ++sourceLoadToken
+      if (id == null) {
+        sourceReady.value = true
+        return
+      }
+      sourceReady.value = false
+      Promise.resolve(refreshSuggestions(id)).finally(() => {
+        if (token === sourceLoadToken) sourceReady.value = true
+      })
+    }
 
     // The modal stays mounted between opens, so reset its scope on open: the
-    // first source, no cross-list siblings, the user's own departments when the
-    // source carries them (else every department present), back to step one.
+    // first source, suggestions on, no cross-list siblings, the user's own
+    // departments when the source carries them (else every department present),
+    // back to step one.
     const reset = () => {
       const first = sourceSchedules.value[0]
-      sourceId.value = first ? first.id : null
+      const next = first ? first.id : null
+      // If the source actually changes, the `sourceId` watcher loads it; when it
+      // stays put (the common reopen), load here so the list is still fresh.
+      const changed = String(next) !== String(sourceId.value)
+      sourceId.value = next
+      includeSuggestions.value = true
       includeSiblings.value = false
       const mine = myDepartments.value.map((d) => String(d).toUpperCase())
       const opts = prefixOptions.value
@@ -229,6 +283,7 @@ export default {
       prefixes.value = own.length ? own : [...opts]
       step.value = 'choose'
       selectedKeys.value = []
+      if (!changed) loadSource()
     }
     watch(
       () => props.isOpen,
@@ -236,14 +291,16 @@ export default {
         if (open) reset()
       },
     )
-    // Keep the selected departments valid when the source changes.
+    // Keep the selected departments valid when the source changes, and reload
+    // its suggestions.
     watch(sourceId, () => {
       const opts = prefixOptions.value
       const kept = prefixes.value.filter((p) => opts.includes(p))
       prefixes.value = kept.length ? kept : [...opts]
+      loadSource()
     })
 
-    const canReview = computed(() => candidates.value.length > 0)
+    const canReview = computed(() => sourceReady.value && candidates.value.length > 0)
     const canApply = computed(
       () => Boolean(plan.value.offerings) && plan.value.added + plan.value.updated > 0,
     )
@@ -290,6 +347,7 @@ export default {
         prefixes: prefixes.value,
         includeSiblings: includeSiblings.value,
         selectedKeys: selectedKeys.value,
+        includeSuggestions: includeSuggestions.value,
       })
       if (res) emit('close')
     }
@@ -304,6 +362,9 @@ export default {
       prefixOptions,
       prefixes,
       includeSiblings,
+      includeSuggestions,
+      pendingSourceCount,
+      sourceReady,
       togglePrefix,
       step,
       selectedKeys,

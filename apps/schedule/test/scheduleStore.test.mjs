@@ -2171,3 +2171,82 @@ test('planCourseCopy flags orphan labs and is a no-op against itself', async () 
     })
   })
 })
+
+test("copyCoursesInto can carry the source's pending suggestions", async () => {
+  await withRemote(
+    async ({ srv, store }) => {
+      const registrar = srv
+      await registrar.post('/api/auth/login', { username: 'registrar' })
+      const target = (await registrar.post('/api/schedules', { name: 'This year', year: '2026-27' }))
+        .json.schedule
+      const source = (await registrar.post('/api/schedules', { name: 'Source', year: '2024-25' }))
+        .json.schedule
+      await registrar.put(`/api/schedules/${target.id}/terms/F`, {
+        offerings: [
+          { prefix: 'MUS', number: '101', section: 'A', instructor: 'Old', days: 'MWF', time: '9:20-10:30' },
+        ],
+      })
+      await registrar.put(`/api/schedules/${source.id}/terms/F`, {
+        offerings: [
+          { prefix: 'MUS', number: '101', section: 'A', instructor: 'Old', days: 'MWF', time: '9:20-10:30' },
+          { prefix: 'MUS', number: '102', section: 'B', instructor: 'Fresh', days: 'TR', time: '10:00-11:45' },
+        ],
+      })
+      // A pending proposal on the source: give 101 a new instructor and remove
+      // 102 entirely.
+      await registrar.post(`/api/schedules/${source.id}/suggestions`, {
+        term: 'F',
+        baseVersion: 0,
+        operations: [
+          {
+            kind: 'update',
+            cur: { prefix: 'MUS', number: '101', section: 'A' },
+            changes: { instructor: 'Proposed' },
+          },
+          { kind: 'remove', cur: { prefix: 'MUS', number: '102', section: 'B' } },
+        ],
+      })
+
+      assert.equal(await store.signIn('registrar'), true)
+      await flush()
+      await store.refreshSuggestions(source.id)
+
+      // Default: the stored source rows, and no suggestion accounting.
+      const stored = store.planCourseCopy(target.id, source.id, { prefixes: ['MUS'] })
+      assert.deepEqual(
+        stored.candidates.map((c) => c.code),
+        ['MUS 101', 'MUS 102'],
+      )
+      assert.equal(stored.candidates.find((c) => c.code === 'MUS 101').instructor, 'Old')
+      assert.equal(stored.pendingOpCount, 0)
+
+      // With suggestions: 101 carries the proposed instructor, and the row a
+      // pending removal targets is absent.
+      const proposed = store.planCourseCopy(target.id, source.id, {
+        prefixes: ['MUS'],
+        includeSuggestions: true,
+      })
+      assert.deepEqual(
+        proposed.candidates.map((c) => c.code),
+        ['MUS 101'],
+        'the pending removal is not a copy candidate',
+      )
+      assert.equal(proposed.candidates[0].instructor, 'Proposed')
+      assert.equal(proposed.pendingOpCount, 2)
+
+      const applied = store.copyCoursesInto(target.id, {
+        sourceId: source.id,
+        prefixes: ['MUS'],
+        includeSuggestions: true,
+      })
+      assert.equal(applied.updated, 1)
+      const rows = store.scheduleById(target.id).terms.F.offerings
+      assert.equal(rows.find((o) => o.number === '101').instructor, 'Proposed')
+      assert.ok(
+        !rows.some((o) => o.number === '102'),
+        'the pending removal is not copied',
+      )
+    },
+    { adminUsernames: new Set(['registrar']) },
+  )
+})

@@ -22,11 +22,15 @@ public one.
    departments are shown.
 4. Leave **Include cross-listed versions** unticked unless you also want the
    other department codes a cross-listed course appears under.
-5. Click **Review N courses**. Every course is ticked by default; untick any you
+5. **Include pending suggestions** is on by default: each course comes over with
+   the source's proposed-but-unapproved changes applied. Untick it to copy the
+   courses exactly as they are stored on the source. The option shows how many
+   pending changes the source carries.
+6. Click **Review N courses**. Every course is ticked by default; untick any you
    do not want, or use **Select all** / **Deselect all**. Each row is tagged
    **new** (a section not yet in your schedule) or **update** (an existing
    section whose teacher, time, seats, and title will be replaced).
-6. Click **Copy N courses**.
+7. Click **Copy N courses**.
 
 <Shot file="schedule-copy-courses.png" />
 
@@ -41,6 +45,23 @@ The copy looks at the section letter (**A**, **B**, …):
 So you can run it more than once, or after you have made some changes, without
 piling up duplicates. The review step also lets you leave individual courses out
 of a run.
+
+## Copying the proposed version
+
+With **Include pending suggestions** on (the default), a course comes over in its
+**effective** state — the source's stored courses with every pending suggestion
+applied. So a course a colleague has proposed a new teacher or time for arrives
+already showing that change, and a course with a pending removal is left out. The
+copy does not bring the suggestions themselves across; the target gets ordinary
+courses, edited directly if you own it or held in your draft if you are
+suggesting.
+
+This is useful when a schedule's changes are waiting on an approval and you want
+to work from the proposed state rather than the stored one. For example, a
+department can copy its pending changes into a fresh sandbox schedule, share that
+sandbox for further suggestions, fold the feedback in, and then copy the merged
+result back — a "pull request" for a schedule. Untick the option to copy the
+stored courses instead.
 
 ## Two things to know
 

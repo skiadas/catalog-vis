@@ -1470,13 +1470,18 @@
   flex-wrap: wrap;
   gap: 6px;
 }
-.schedule-copy-siblings {
+.schedule-copy-siblings,
+.schedule-copy-suggestions {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   margin-top: var(--space-2);
   font-size: var(--font-sm);
   color: var(--text-muted);
+}
+.schedule-copy-suggestions-hint {
+  color: var(--text-muted);
+  font-style: italic;
 }
 .schedule-copy-summary {
   margin-top: var(--space-2);

@@ -81,7 +81,9 @@ If your department ran a schedule before, this is likely your main starting
 point: do not retype every course. Copy them in.
 
 1. Click **Copy courses…**. Pick the **Source schedule** — an older schedule
-   your department taught — and tick the **departments** to copy.
+   your department taught — and tick the **departments** to copy. **Include
+   pending suggestions** (on by default) brings the source's proposed changes
+   along; untick it for the stored courses.
 2. Click **Review N courses**. Every course is ticked; untick any you do not
    want, or use **Select all** / **Deselect all**. Each row is tagged **new**
    or **update**.

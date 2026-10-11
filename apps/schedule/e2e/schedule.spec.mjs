@@ -984,6 +984,85 @@ test('copy courses from another schedule upserts a filtered department', async (
   assertClean(errors)
 })
 
+// Copy courses can carry the source's pending suggestions: the default-on
+// option folds the proposed-but-unapproved rows in, and the hint names how many
+// pending changes the source carries.
+test("copy courses can carry the source's pending suggestions", async ({ page, request }) => {
+  const errors = trackErrors(page)
+  const user = testAccount()
+  await request.post('/api/auth/login', { data: { username: user } })
+  const target = (await (await request.post('/api/schedules', { data: { name: 'This year', year: '2026-27' } })).json())
+    .schedule
+  const source = (await (await request.post('/api/schedules', { data: { name: 'Source', year: '2024-25' } })).json())
+    .schedule
+  await request.put(`/api/schedules/${target.id}/terms/F`, {
+    data: {
+      offerings: [
+        { prefix: 'MUS', number: '101', section: 'A', instructor: 'Old', days: 'MWF', time: '9:20-10:30' },
+      ],
+    },
+  })
+  await request.put(`/api/schedules/${source.id}/terms/F`, {
+    data: {
+      offerings: [
+        { prefix: 'MUS', number: '101', section: 'A', instructor: 'Old', days: 'MWF', time: '9:20-10:30' },
+        { prefix: 'MUS', number: '102', section: 'B', instructor: 'Fresh', days: 'TR', time: '10:00-11:45' },
+      ],
+    },
+  })
+  // A pending proposal on the source: retitle 101, remove 102.
+  await request.post(`/api/schedules/${source.id}/suggestions`, {
+    data: {
+      term: 'F',
+      baseVersion: 0,
+      operations: [
+        {
+          kind: 'update',
+          cur: { prefix: 'MUS', number: '101', section: 'A' },
+          changes: { instructor: 'Proposed' },
+        },
+        { kind: 'remove', cur: { prefix: 'MUS', number: '102', section: 'B' } },
+      ],
+    },
+  })
+
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, user)
+  // The first owned schedule (this year) is auto-selected; enter edit on it.
+  await page.locator('.schedule-pill', { hasText: 'This year' }).locator('.schedule-pill-edit').click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: /Copy courses/ }).click()
+  const copy = page.locator('.modal[aria-labelledby="schedule-copy-title"]')
+  await copy.waitFor({ state: 'visible', timeout: 5000 })
+  await copy.locator('#schedule-copy-source').selectOption({ label: 'Source · 2024-25' })
+
+  // Default on: the effective rows — 101 updated, the pending removal gone.
+  await expect(copy.locator('#schedule-copy-suggestions')).toBeChecked()
+  await expect(copy.locator('.schedule-copy-suggestions-hint')).toContainText('2 pending changes')
+  await expect(copy.locator('.schedule-copy-counts')).toHaveText('0 new · 1 updated')
+
+  // Off: back to the stored rows (101 matches, the added 102 is new), no hint.
+  await copy.locator('#schedule-copy-suggestions').uncheck()
+  await expect(copy.locator('.schedule-copy-counts')).toHaveText('1 new · 0 updated · 1 unchanged')
+  await expect(copy.locator('.schedule-copy-suggestions-hint')).toHaveCount(0)
+
+  // Back on and copy: the proposed instructor lands, the removed row does not.
+  await copy.locator('#schedule-copy-suggestions').check()
+  await copy.getByRole('button', { name: 'Review 1 course' }).click()
+  await expect(copy.locator('.schedule-copy-item', { hasText: 'MUS 101' })).toHaveCount(1)
+  await copy.getByRole('button', { name: 'Copy 1 course' }).click()
+  await copy.waitFor({ state: 'detached', timeout: 5000 })
+
+  await page.getByRole('button', { name: /History/ }).click()
+  const history = page.locator('.modal[aria-labelledby="history-title"]')
+  await history.waitFor({ state: 'visible', timeout: 5000 })
+  await expect(history.getByText('MUS 101 A: instructor from Old to Proposed')).toBeVisible()
+  await expect(history.getByText(/add MUS 102/)).toHaveCount(0)
+  await history.getByRole('button', { name: 'OK' }).click()
+
+  assertClean(errors)
+})
+
 test('history panel lists session edits; Cancel removes one change, Restore brings it back, Edit jumps', async ({
   page,
 }) => {
