@@ -85,9 +85,11 @@ right-anchored dashed **"custom" rail** spanning 80% of the column width, and
 its
 in-range portion is clamped at the grid's edges with a corner notch when it
 starts before or ends after the ruled hours. Courses entirely outside the
-ruled hours — together with no-meeting-time courses — appear in the **"No
-meeting times" strip** under the grid (draggable onto slots in edit mode, so
-you can give an independent study a time). The strip and the rail keep
+ruled hours — together with no-meeting-time courses — appear in the strip
+under the grid, split into two columns: **"Other times"** (the off-hours ones,
+each labelled with its days and time) and **"No meeting time"** (the
+deliberately unscheduled ones); the pills are draggable onto slots in edit mode,
+so you can give an independent study a time. The strip and the rail keep
 off-pattern courses visible without letting them compete with normal ones.
 
 Clicking a grid block **opens its course list in the same footprint** (click
@@ -280,7 +282,7 @@ the same way.
 A section may carry **split meetings** — the same section meeting at different
 days/times (e.g. MW at one band, R at another). **"＋ Add another meeting
 time"** clones the section as a blank same-section sibling (unscheduled, in the
-"No meeting times" strip) and switches the editor to it to set its days/time;
+off-calendar strip) and switches the editor to it to set its days/time;
 an inline **"This section also meets:"** note lists the section's other
 meetings, each a link that jumps the editor to that row, and the header
 switcher labels every row with its meeting. A cross-listed group stays
@@ -338,7 +340,7 @@ grid).
 
 **Labs**: the course editor's "Add lab section" (lecture rows only) creates a
 lab that mirrors the lecture's section letter, copies its instructors (lead
-plus secondary), and starts unscheduled in the "No meeting times" strip,
+plus secondary), and starts unscheduled in the off-calendar strip,
 ready to drag onto a slot. Confirmation appears in the editor; if nothing
 else was being edited the editor closes itself and drops the user back onto
 the grid. Removing a lecture removes its labs; renaming a lecture's letter

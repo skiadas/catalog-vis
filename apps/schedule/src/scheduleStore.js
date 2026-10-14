@@ -2229,7 +2229,7 @@ export function addLabSection(id, cur) {
 // Adds a further meeting band to an existing lecture section as a same-section
 // sibling row — split meetings are how one section carries different days/times
 // (e.g. MW at one band, R at another). The new row starts unscheduled (blank
-// days/time, so it lands in the "No meeting times" strip, matching a new lab)
+// days/time, so it lands in the off-calendar strip, matching a new lab)
 // and copies the section's title / instructors / seats. A cross-listed group
 // stays parallel: one mirror row is added per present sibling version (deduped
 // by code), and an unowned group is claimed. Returns the created row for

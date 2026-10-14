@@ -482,9 +482,10 @@
   background: var(--accent-12);
   border-color: var(--primary);
 }
-/* The "No meeting times" strip under the grid: courses that deliberately have
-   no meeting time (independent studies) or sit entirely outside the ruled
-   hours. Pills are draggable onto slots in edit mode. */
+/* The strip under the grid: courses that never appear on the calendar, in two
+   labelled columns — "Other times" (scheduled, but entirely outside the ruled
+   hours) and "No meeting time" (deliberately unscheduled, independent studies).
+   Pills are draggable onto slots in edit mode. */
 .no-meeting-strip {
   margin-top: var(--space-3);
   border: 1px dashed var(--primary-35);
@@ -492,15 +493,21 @@
   padding: var(--space-2) var(--space-3);
   background: var(--gray-50);
 }
-.no-meeting-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+/* Side by side when the strip has the width, stacked on narrow screens; a
+   lone non-empty column still spans the full width. */
+.no-meeting-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-2) var(--space-4);
+  align-items: start;
 }
 .no-meeting-title {
   @include text-eyebrow;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   color: var(--text-muted);
-  margin: 0;
+  margin: 0 0 var(--space-2);
 }
 .no-meeting-count {
   @include text-caption;
@@ -509,10 +516,10 @@
   border-radius: var(--radius-pill);
   padding: 1px var(--space-2);
 }
-.no-meeting-hint {
+.no-meeting-empty {
   @include text-caption;
   color: var(--text-muted);
-  margin: var(--space-1) 0 var(--space-2);
+  margin: 0;
 }
 .no-meeting-list {
   display: flex;

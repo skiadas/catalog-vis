@@ -3,14 +3,16 @@
 Usually a course is a colored block on the grid. Here is everywhere else it can
 be — and why a course you know about might seem to be missing.
 
-## Below the grid: "No meeting times"
+## Below the grid: the off-calendar strip
 
-Under the week grid there is a strip headed **No meeting times**. It holds two
-kinds of courses, both easy to overlook because they are not on the calendar:
+Under the week grid there is a strip with two columns, for the courses that
+never show up on the calendar — both easy to overlook because they aren't on it:
 
-- Courses with **no meeting time at all** — independent studies and the like.
-- Courses whose time falls **outside the hours the grid shows**, such as a 6:00
-  PM class. Their pattern is shown as **Custom · 6:00 PM - 6:50 PM**.
+- **Other times** — courses whose meeting falls **outside the hours the grid
+  shows**, such as a 6:00 PM class. Each names its days and time, for example
+  **M 6:00 PM - 6:50 PM**.
+- **No meeting time** — courses with **no meeting time at all**, such as
+  independent studies.
 
 <Shot file="schedule-no-meeting.png" />
 

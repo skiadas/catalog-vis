@@ -1,33 +1,51 @@
 <template>
-  <div v-if="items.length" class="no-meeting-strip">
-    <div class="no-meeting-head">
-      <h3 class="no-meeting-title">No meeting times</h3>
-      <span class="no-meeting-count">{{ items.length }}</span>
-    </div>
-    <p class="no-meeting-hint">
-      These courses aren't placed on the calendar — a no-meeting course is a choice (independent studies and
-      the like), and custom times outside the day's hours have nowhere to sit on the grid.
-      <template v-if="editMode"
-        >Drag one onto a time slot to give it a meeting time, or click the pencil to edit it.</template
-      >
-    </p>
-    <div class="no-meeting-list">
-      <div v-for="it in items" :key="offeringItemKey(it)" class="no-meeting-row">
-        <CoursePill
-          :item="it"
-          :filter-active="filter.active"
-          :color="filter.active ? filter.color(it) : ''"
-          :editable="canOpenEditor(it)"
-          :draggable="isEditable(it)"
-          :drag-day="''"
-          :proposed="proposalFor(it) ? itemTitle(it) : ''"
-          :removed="removalFor(it) ? itemTitle(it) : ''"
-          @edit="openCourseEdit(it)"
-        />
-        <span class="no-meeting-pattern">{{
-          it.o.days && it.o.time ? `Custom · ${formatTime(it.o.time)}` : 'No meeting time'
-        }}</span>
-      </div>
+  <div v-if="groups.otherTimes.length || groups.noMeeting.length" class="no-meeting-strip">
+    <div class="no-meeting-columns">
+      <section class="no-meeting-group" aria-label="Other times">
+        <h3 class="no-meeting-title">
+          Other times
+          <span class="no-meeting-count">{{ groups.otherTimes.length }}</span>
+        </h3>
+        <div v-if="groups.otherTimes.length" class="no-meeting-list">
+          <div v-for="it in groups.otherTimes" :key="offeringItemKey(it)" class="no-meeting-row">
+            <CoursePill
+              :item="it"
+              :filter-active="filter.active"
+              :color="filter.active ? filter.color(it) : ''"
+              :editable="canOpenEditor(it)"
+              :draggable="isEditable(it)"
+              :drag-day="''"
+              :proposed="proposalFor(it) ? itemTitle(it) : ''"
+              :removed="removalFor(it) ? itemTitle(it) : ''"
+              @edit="openCourseEdit(it)"
+            />
+            <span class="no-meeting-pattern">{{ it.o.days }} {{ formatTime(it.o.time) }}</span>
+          </div>
+        </div>
+        <p v-else class="no-meeting-empty">None</p>
+      </section>
+      <section class="no-meeting-group" aria-label="No meeting time">
+        <h3 class="no-meeting-title">
+          No meeting time
+          <span class="no-meeting-count">{{ groups.noMeeting.length }}</span>
+        </h3>
+        <div v-if="groups.noMeeting.length" class="no-meeting-list">
+          <div v-for="it in groups.noMeeting" :key="offeringItemKey(it)" class="no-meeting-row">
+            <CoursePill
+              :item="it"
+              :filter-active="filter.active"
+              :color="filter.active ? filter.color(it) : ''"
+              :editable="canOpenEditor(it)"
+              :draggable="isEditable(it)"
+              :drag-day="''"
+              :proposed="proposalFor(it) ? itemTitle(it) : ''"
+              :removed="removalFor(it) ? itemTitle(it) : ''"
+              @edit="openCourseEdit(it)"
+            />
+          </div>
+        </div>
+        <p v-else class="no-meeting-empty">None</p>
+      </section>
     </div>
   </div>
 </template>
@@ -55,10 +73,12 @@ import CoursePill from './CoursePill.vue'
 
 import { computed } from 'vue'
 
-// Courses that never appear on the calendar grid for the active term:
-// no-meeting-time offerings plus scheduled ones whose band lies entirely
-// outside the term's rendered hours (e.g. a 6pm class in Fall). Both are
-// deliberate choices, so they live in this strip with their pattern shown.
+// Courses that never appear on the calendar grid for the active term, split
+// into two labelled columns: offerings scheduled entirely outside the term's
+// rendered hours ("Other times", e.g. a 6pm class in Fall) and offerings with
+// no meeting time at all ("No meeting time" — independent studies and the
+// like). Both are deliberate, so they live in this strip, draggable onto slots
+// in edit mode.
 export default {
   name: 'NoMeetingStrip',
   components: { CoursePill },
@@ -66,7 +86,7 @@ export default {
     filter: { type: Object, required: true },
   },
   setup(props) {
-    const items = computed(() => {
+    const groups = computed(() => {
       const range = calendarDayRange(activeTerm.value)
       // Dedup and key by the offering's full identity: `code + section` is the
       // same for a lecture and every lab on its letter (labs carry the L in
@@ -74,8 +94,9 @@ export default {
       // so the plain key would collapse or ghost rows. `offeringItemKey`
       // includes the lab marker, labSeq, content id, and source schedule.
       const keyOf = (it) => offeringItemKey(it)
-      const out = [...(shownSchedule.value.unscheduled || [])]
-      const seen = new Set(out.map(keyOf))
+      const noMeeting = [...(shownSchedule.value.unscheduled || [])]
+      const seen = new Set(noMeeting.map(keyOf))
+      const otherTimes = []
       for (const d of WEEKDAYS) {
         for (const b of daySlotBlocks(d, shownSchedule.value)) {
           if (clipBand(b, range)) continue
@@ -83,20 +104,19 @@ export default {
             const key = keyOf(it)
             if (!seen.has(key)) {
               seen.add(key)
-              out.push(it)
+              otherTimes.push(it)
             }
           }
         }
       }
-      if (props.filter.active) return out.filter((it) => props.filter.matches(it))
-      return out
+      const matches = (it) => !props.filter.active || props.filter.matches(it)
+      return { otherTimes: otherTimes.filter(matches), noMeeting: noMeeting.filter(matches) }
     })
     // Pending-suggestion markers: a proposed pill (dashed) or a removal/move
     // marker (struck through) on a live course a proposal would take away.
     const proposalFor = (it) => overlayProposal(it.o)
     const removalFor = (it) => overlayRemoval(it.o)
     const itemTitle = (it) => overlayTitle(it.o, it.code)
-    const editMode = computed(() => Boolean(editingScheduleId.value))
     // Per-item editability: the session's own schedule, scoped to the user's
     // departments in a non-owner suggest session.
     const isEditable = (it) =>
@@ -108,11 +128,10 @@ export default {
       it.sid === editingScheduleId.value &&
       (canTouchOffering(it.sid, it.o, 'edit') || canTouchOffering(it.sid, it.o, 'remove'))
     return {
-      items,
+      groups,
       proposalFor,
       removalFor,
       itemTitle,
-      editMode,
       isEditable,
       canOpenEditor,
       formatTime,

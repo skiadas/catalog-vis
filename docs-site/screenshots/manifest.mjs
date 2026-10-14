@@ -110,11 +110,12 @@ export const entries = [
     route: '/#/',
     seed: 'hiding',
     steps: [
-      { act: 'assert', text: 'No meeting times' },
+      { act: 'assert', text: 'Other times' },
+      { act: 'assert', text: 'No meeting time' },
       { act: 'assert', text: 'custom' },
     ],
     fullPage: true,
-    alt: 'The grid showing a dashed custom rail, with the No meeting times strip below it',
+    alt: 'The grid showing a dashed custom rail, with the off-calendar strip below it split into "Other times" and "No meeting time" columns',
     caption: 'Courses that fall outside the standard times: a dashed "custom" rail, or the strip below.',
   },
   {

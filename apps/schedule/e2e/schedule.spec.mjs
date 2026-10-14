@@ -266,8 +266,8 @@ test('edit/suggest modes and the meeting-pattern guards + strip/rail', async ({ 
   await em.getByRole('button', { name: 'No meeting time' }).click()
   await saveBtn.click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
-  await page.getByText('No meeting times').first().waitFor({ timeout: 5000 })
-  await page.locator('.no-meeting-pattern', { hasText: 'No meeting time' }).first().waitFor({ timeout: 5000 })
+  await page.locator('.no-meeting-strip').waitFor({ timeout: 5000 })
+  await expect(page.locator('.no-meeting-title', { hasText: 'No meeting time' })).toBeVisible()
 
   // Reopen from the strip; a custom time past 16:00 needs a day picked first
   // (Save stays disabled without one) and renders as a clipped off-pattern
@@ -1519,9 +1519,10 @@ test('no-meeting strip keys a lecture and its labs apart and survives filter tog
   await unschedule('BIO 160')
 
   const strip = page.locator('.no-meeting-strip')
+  const noMeetingCol = strip.locator('.no-meeting-group', { hasText: 'No meeting time' })
   await expect(strip).toBeVisible()
   await expect(strip.locator('.no-meeting-row')).toHaveCount(3)
-  await expect(strip.locator('.no-meeting-count')).toHaveText('3')
+  await expect(noMeetingCol.locator('.no-meeting-count')).toHaveText('3')
   await expect(strip.locator('.slot-pill', { hasText: 'ANTH 160L' })).toHaveCount(1)
   await expect(strip.locator('.slot-pill', { hasText: /ANTH 160A/ })).toHaveCount(1)
 
@@ -1533,7 +1534,7 @@ test('no-meeting strip keys a lecture and its labs apart and survives filter tog
   await anthChip.click()
   await settle(page)
   await expect(strip.locator('.no-meeting-row')).toHaveCount(2)
-  await expect(strip.locator('.no-meeting-count')).toHaveText('2')
+  await expect(noMeetingCol.locator('.no-meeting-count')).toHaveText('2')
   await expect(strip.locator('.slot-pill', { hasText: 'ANTH 160L' })).toHaveCount(1)
   await expect(strip.locator('.slot-pill', { hasText: 'BIO 160' })).toHaveCount(0)
   await anthChip.click()
@@ -1542,7 +1543,43 @@ test('no-meeting strip keys a lecture and its labs apart and survives filter tog
   await anthChip.click()
   await settle(page)
   await expect(strip.locator('.no-meeting-row')).toHaveCount(2)
-  await expect(strip.locator('.no-meeting-count')).toHaveText('2')
+  await expect(noMeetingCol.locator('.no-meeting-count')).toHaveText('2')
+
+  assertClean(errors)
+})
+
+// The strip splits into "Other times" (scheduled, off the grid's hours) and
+// "No meeting time" (deliberately unscheduled), each with its own count — the
+// off-hours kind names its days and time instead of getting lost in the mix.
+test('the strip separates off-hours courses from no-meeting ones', async ({ page, request }) => {
+  const errors = trackErrors(page)
+  const user = testAccount()
+  await request.post('/api/auth/login', { data: { username: user } })
+  const created = await request.post('/api/schedules', { data: { name: 'Strip kinds', year: '2026-27' } })
+  const schedule = (await created.json()).schedule
+  await request.put(`/api/schedules/${schedule.id}/terms/F`, {
+    data: {
+      offerings: [
+        { prefix: 'BIO', number: '185', section: 'A', instructor: 'Smith' },
+        { prefix: 'PSY', number: '201', section: 'A', instructor: 'Nguyen', days: 'M', time: '18:00-18:50' },
+      ],
+    },
+  })
+
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, user)
+  const strip = page.locator('.no-meeting-strip')
+  await strip.waitFor({ timeout: 5000 })
+  const other = strip.locator('.no-meeting-group', { hasText: 'Other times' })
+  const none = strip.locator('.no-meeting-group', { hasText: 'No meeting time' })
+
+  await expect(other.locator('.no-meeting-count')).toHaveText('1')
+  await expect(other.locator('.slot-pill', { hasText: 'PSY 201' })).toHaveCount(1)
+  await expect(other.locator('.no-meeting-pattern')).toHaveText('M 6:00 PM - 6:50 PM')
+
+  await expect(none.locator('.no-meeting-count')).toHaveText('1')
+  await expect(none.locator('.slot-pill', { hasText: 'BIO 185' })).toHaveCount(1)
+  await expect(none.locator('.no-meeting-pattern')).toHaveCount(0)
 
   assertClean(errors)
 })

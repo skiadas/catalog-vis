@@ -103,7 +103,7 @@ export const fixtures = {
 
   // Where courses hide: a normal pair, a no-meeting course, a custom time
   // inside the calendar's hours (a dashed rail), and one past closing time
-  // (only reachable through the "No meeting times" strip).
+  // (only reachable through the strip's "Other times" column).
   hiding: async (request) => {
     const schedule = await createSchedule(request, {
       name: 'Fall 2026',
