@@ -1562,6 +1562,7 @@ test('the strip separates off-hours courses from no-meeting ones', async ({ page
       offerings: [
         { prefix: 'BIO', number: '185', section: 'A', instructor: 'Smith' },
         { prefix: 'PSY', number: '201', section: 'A', instructor: 'Nguyen', days: 'M', time: '18:00-18:50' },
+        { prefix: 'ANT', number: '101', section: 'A', instructor: 'Garcia', days: 'T', time: '18:00-18:50' },
       ],
     },
   })
@@ -1573,9 +1574,15 @@ test('the strip separates off-hours courses from no-meeting ones', async ({ page
   const other = strip.locator('.no-meeting-group', { hasText: 'Other times' })
   const none = strip.locator('.no-meeting-group', { hasText: 'No meeting time' })
 
-  await expect(other.locator('.no-meeting-count')).toHaveText('1')
-  await expect(other.locator('.slot-pill', { hasText: 'PSY 201' })).toHaveCount(1)
-  await expect(other.locator('.no-meeting-pattern')).toHaveText('M 6:00 PM - 6:50 PM')
+  // Off-hours courses read alphabetically by code (ANT before PSY), not by day
+  // or time, and each names its days and time.
+  await expect(other.locator('.no-meeting-count')).toHaveText('2')
+  await expect(other.locator('.no-meeting-row').nth(0)).toContainText('ANT 101')
+  await expect(other.locator('.no-meeting-row').nth(1)).toContainText('PSY 201')
+  await expect(other.locator('.no-meeting-pattern')).toHaveText([
+    'T 6:00 PM - 6:50 PM',
+    'M 6:00 PM - 6:50 PM',
+  ])
 
   await expect(none.locator('.no-meeting-count')).toHaveText('1')
   await expect(none.locator('.slot-pill', { hasText: 'BIO 185' })).toHaveCount(1)

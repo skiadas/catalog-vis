@@ -58,6 +58,7 @@ import {
   calendarDayRange,
   formatTime,
   offeringItemKey,
+  compareItems,
 } from '@major-vis/schedule-core'
 import {
   shownSchedule,
@@ -109,6 +110,11 @@ export default {
           }
         }
       }
+      // Both columns read alphabetically by course code (prefix, number,
+      // section) — the same order used elsewhere in the app — rather than the
+      // loops' incidental day/time order, so the two lists stay consistent.
+      otherTimes.sort(compareItems)
+      noMeeting.sort(compareItems)
       const matches = (it) => !props.filter.active || props.filter.matches(it)
       return { otherTimes: otherTimes.filter(matches), noMeeting: noMeeting.filter(matches) }
     })
