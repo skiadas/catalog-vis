@@ -468,7 +468,8 @@ test('mergeOfferings upserts by section tuple, keeping the target id', () => {
   assert.equal(out.added, 1)
   assert.equal(out.updated, 1)
   assert.equal(out.unchanged, 0)
-  assert.deepEqual(out.outcomes, ['updated', 'added'], 'one outcome per incoming row, in order')
+  assert.equal(out.sections.get('MUS|101|A'), 'updated')
+  assert.equal(out.sections.get('MUS|103|B'), 'added')
   assert.equal(out.offerings.length, 3)
   const updated = out.offerings.find((o) => o.number === '101')
   assert.equal(updated.id, 't1', 'the target row keeps its id')
@@ -483,35 +484,62 @@ test('mergeOfferings upserts by section tuple, keeping the target id', () => {
   assert.equal(out.offerings.find((o) => o.number === '103').instructor, 'Fresh', 'new row appended')
 })
 
-test('mergeOfferings is a no-op for identical rows and matches split sections by band', () => {
+test('mergeOfferings replaces a section set and matches split sections by band', () => {
   const base = [
     { prefix: 'MUS', number: '001', section: 'A', id: 'mw', days: 'MW', time: '16:00-16:50' },
     { prefix: 'MUS', number: '001', section: 'A', id: 'r', days: 'R', time: '16:10-17:00' },
   ]
-  // Identical incoming -> unchanged, no rewrite.
+  // Identical incoming -> one unchanged section, no rewrite.
   const same = mergeOfferings(
     base,
     base.map((o) => ({ ...o })),
   )
   assert.equal(same.added, 0)
   assert.equal(same.updated, 0)
-  assert.equal(same.unchanged, 2)
-  assert.deepEqual(same.outcomes, ['unchanged', 'unchanged'])
-  // A changed R band updates only the R row; the MW sibling is untouched.
+  assert.equal(same.unchanged, 1, 'the split section counts as one course')
+  assert.equal(same.offerings.length, 2)
+  assert.equal(same.sections.get('MUS|001|A'), 'unchanged')
+  // A changed R band updates the R meeting (same days keep its id). The source
+  // carries only that meeting, so the MW sibling is replaced away — the source
+  // section's meeting set wins.
   const moved = mergeOfferings(base, [
     { prefix: 'MUS', number: '001', section: 'A', days: 'R', time: '14:15-16:00' },
   ])
   assert.equal(moved.updated, 1)
-  assert.deepEqual(moved.outcomes, ['updated'])
-  assert.equal(moved.offerings.find((o) => o.id === 'r').time, '14:15-16:00')
-  assert.equal(moved.offerings.find((o) => o.id === 'mw').time, '16:00-16:50')
-  // A band with no match is a new split meeting.
+  assert.equal(moved.offerings.length, 1, 'the source section carries one meeting')
+  assert.equal(moved.offerings[0].id, 'r', 'the R meeting keeps its id')
+  assert.equal(moved.offerings[0].time, '14:15-16:00')
+  // A band with no same-days match still replaces the section's set.
   const third = mergeOfferings(base, [
     { prefix: 'MUS', number: '001', section: 'A', days: 'T', time: '10:00-11:45' },
   ])
-  assert.equal(third.added, 1)
-  assert.deepEqual(third.outcomes, ['added'])
-  assert.equal(third.offerings.length, 3)
+  assert.equal(third.updated, 1)
+  assert.equal(third.offerings.length, 1)
+})
+
+test('mergeOfferings copies a split section as one course (both meetings land)', () => {
+  const meetings = [
+    { prefix: 'MUS', number: '001', section: 'A', days: 'MW', time: '16:00-16:50' },
+    { prefix: 'MUS', number: '001', section: 'A', days: 'R', time: '16:10-17:00' },
+  ]
+  // Into an absent section: appended whole as one added section (the bug made
+  // the second meeting collapse into the first as an update).
+  const fresh = mergeOfferings([], meetings)
+  assert.equal(fresh.added, 1, 'one course, not two rows')
+  assert.equal(fresh.updated, 0)
+  assert.equal(fresh.offerings.length, 2)
+  assert.equal(fresh.sections.get('MUS|001|A'), 'added')
+  // Into a section holding one of the two: the course is updated, the matched
+  // meeting keeps its id, the second meeting is appended.
+  const grew = mergeOfferings(
+    [{ prefix: 'MUS', number: '001', section: 'A', id: 'mw', days: 'MW', time: '16:00-16:50' }],
+    meetings,
+  )
+  assert.equal(grew.added, 0)
+  assert.equal(grew.updated, 1, 'a meeting-set change is one update')
+  assert.equal(grew.offerings.length, 2)
+  assert.equal(grew.offerings.find((o) => o.id === 'mw').days, 'MW')
+  assert.ok(grew.offerings.some((o) => o.days === 'R' && o.id === ''))
 })
 
 test('mergeOfferings carries a source crossListOwner onto a new row', () => {

@@ -2123,6 +2123,67 @@ test('copyCoursesInto upserts a filtered prefix from another schedule into the a
   })
 })
 
+test('copyCoursesInto copies a split-meeting course as one course', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const target = await store.addSchedule('This year', '2026-27', [])
+    const source = await store.addSchedule('Last year', '2024-25', [
+      { prefix: 'MUS', number: '001', section: 'A', instructor: 'Wahl', days: 'MW', time: '16:00-16:50' },
+      { prefix: 'MUS', number: '001', section: 'A', instructor: 'Wahl', days: 'R', time: '16:10-17:00' },
+    ])
+
+    // One candidate per course/section (not one per meeting), badged new.
+    const plan = store.planCourseCopy(target, source, { prefixes: ['MUS'] })
+    assert.equal(plan.candidates.length, 1, 'the split section is one candidate')
+    assert.equal(plan.candidates[0].action, 'added')
+    assert.equal(plan.candidates[0].meetings.length, 2)
+    assert.equal(plan.added, 1, 'one new course')
+    assert.equal(plan.updated, 0)
+    assert.equal(plan.rows, 1)
+
+    // Both meeting times land, with distinct ids.
+    const applied = store.copyCoursesInto(target, { sourceId: source, prefixes: ['MUS'] })
+    assert.deepEqual(applied, { added: 1, updated: 0, unchanged: 0 })
+    const rows = store.scheduleById(target).terms.F.offerings
+    assert.equal(rows.length, 2)
+    assert.deepEqual(
+      rows.map((o) => `${o.days} ${o.time}`).sort(),
+      ['MW 16:00-16:50', 'R 16:10-17:00'],
+    )
+    assert.equal(new Set(rows.map((o) => o.id)).size, 2, 'the two meetings get distinct ids')
+  })
+})
+
+test('copyCoursesInto updates a section to the source meeting set', async () => {
+  await withRemote(async ({ store }) => {
+    store.setRemote(false)
+    const { setApiBase } = await import('../src/backend.js')
+    setApiBase('../../api')
+
+    const target = await store.addSchedule('This year', '2026-27', [
+      { prefix: 'MUS', number: '001', section: 'A', instructor: 'Old', days: 'MW', time: '16:00-16:50' },
+    ])
+    const source = await store.addSchedule('Last year', '2024-25', [
+      { prefix: 'MUS', number: '001', section: 'A', instructor: 'New', days: 'MW', time: '16:00-16:50' },
+      { prefix: 'MUS', number: '001', section: 'A', instructor: 'New', days: 'R', time: '16:10-17:00' },
+    ])
+
+    const plan = store.planCourseCopy(target, source, { prefixes: ['MUS'] })
+    assert.equal(plan.candidates.length, 1, 'a split section is one candidate')
+    assert.equal(plan.candidates[0].action, 'updated', 'the course updates, it is not added')
+    assert.equal(plan.added, 0)
+    assert.equal(plan.updated, 1)
+
+    store.copyCoursesInto(target, { sourceId: source, prefixes: ['MUS'] })
+    const rows = store.scheduleById(target).terms.F.offerings
+    assert.equal(rows.length, 2, 'the target section now meets both times')
+    assert.equal(rows.find((o) => o.days === 'MW').instructor, 'New')
+  })
+})
+
 test('planCourseCopy previews candidates and copies only the selected subset', async () => {
   await withRemote(async ({ store }) => {
     store.setRemote(false)

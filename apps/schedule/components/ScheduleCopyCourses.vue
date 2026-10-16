@@ -14,10 +14,10 @@
       <div class="modal-body">
         <p v-if="step === 'choose'" class="modal-intro">
           Copy another schedule's {{ termLabel }} courses into this one. Pick the source and departments, then
-          review the courses before copying. Matching sections are <strong>updated</strong> to the source;
-          missing ones are added. Switch term to copy a different term. By default a course comes over with
-          the source's pending suggestions applied; untick <strong>Include pending suggestions</strong> to
-          copy the stored courses instead.
+          review the courses before copying. Matching sections are <strong>updated</strong> to the source — a
+          section's meeting times are updated as a whole; missing ones are added. Switch term to copy a
+          different term. By default a course comes over with the source's pending suggestions applied; untick
+          <strong>Include pending suggestions</strong> to copy the stored courses instead.
         </p>
         <p v-else class="modal-intro">
           Untick any course you do not want to bring over. Matching sections are
@@ -336,9 +336,12 @@ export default {
     }
     const actionLabel = (action) =>
       action === 'added' ? 'new' : action === 'updated' ? 'update' : 'no change'
+    // One candidate is one course/section; its meeting times are shown together
+    // (a course with two meeting times reads as one course).
+    const bandLabel = (m) => `${m.days} ${m.time}`.trim() || 'No meeting time'
     const candidateMeta = (c) => {
-      const when = c.days || c.time ? `${c.days} ${c.time}`.trim() : 'No meeting time'
-      return [c.instructor, when].filter(Boolean).join(' · ')
+      const times = (c.meetings || []).map(bandLabel).join(' · ')
+      return [c.instructor, times].filter(Boolean).join(' · ')
     }
     const apply = () => {
       if (!canApply.value) return

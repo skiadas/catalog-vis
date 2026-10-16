@@ -1120,6 +1120,63 @@ test('copy courses from another schedule upserts a filtered department', async (
   assertClean(errors)
 })
 
+// A course with two meeting times is one course in the copy dialog: one
+// candidate, one badge, and both meeting times ride together into the target.
+test('copy courses treats a split-meeting course as one course', async ({ page, request }) => {
+  const errors = trackErrors(page)
+  const user = testAccount()
+  await request.post('/api/auth/login', { data: { username: user } })
+  await request.post('/api/schedules', { data: { name: 'This year', year: '2026-27' } })
+  const source = (await (await request.post('/api/schedules', { data: { name: 'Source', year: '2024-25' } })).json())
+    .schedule
+  await request.put(`/api/schedules/${source.id}/terms/F`, {
+    data: {
+      offerings: [
+        { prefix: 'MUS', number: '001', section: 'A', instructor: 'Wahl', days: 'MW', time: '16:00-16:50' },
+        { prefix: 'MUS', number: '001', section: 'A', instructor: 'Wahl', days: 'R', time: '16:10-17:00' },
+      ],
+    },
+  })
+
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, user)
+  await page.locator('.schedule-pill', { hasText: 'This year' }).locator('.schedule-pill-edit').click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Editing' }).first().waitFor({ timeout: 5000 })
+  await page.getByRole('button', { name: /Copy courses/ }).click()
+  const copy = page.locator('.modal[aria-labelledby="schedule-copy-title"]')
+  await copy.waitFor({ state: 'visible', timeout: 5000 })
+  await copy.locator('#schedule-copy-source').selectOption(String(source.id))
+  await expect(copy.locator('.schedule-copy-counts')).toContainText('1 new')
+
+  // One candidate for the whole course, badged new, naming both meeting times.
+  await copy.getByRole('button', { name: 'Review 1 course' }).click()
+  await expect(copy.locator('.schedule-copy-item')).toHaveCount(1)
+  const item = copy.locator('.schedule-copy-item').first()
+  await expect(item.locator('.schedule-copy-badge')).toHaveText('new')
+  await expect(item).toContainText('MW 16:00-16:50 · R 16:10-17:00')
+
+  await copy.getByRole('button', { name: 'Copy 1 course' }).click()
+  await copy.waitFor({ state: 'detached', timeout: 5000 })
+
+  // Both meeting times landed: the table shows two rows for MUS 001.
+  await page.getByRole('button', { name: 'Table', exact: true }).click()
+  await expect(page.locator('.schedule-table-row', { hasText: 'MUS 001' })).toHaveCount(2)
+
+  // Clean up.
+  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: /Your schedules/ }).click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'This year' })
+    .getByRole('button', { name: 'Delete This year' })
+    .click()
+  await page
+    .locator('.schedule-manage-row', { hasText: 'Source' })
+    .getByRole('button', { name: 'Delete Source' })
+    .click()
+  await closeManage(page)
+  assertClean(errors)
+})
+
 // Copy courses can carry the source's pending suggestions: the default-on
 // option folds the proposed-but-unapproved rows in, and the hint names how many
 // pending changes the source carries.

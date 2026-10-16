@@ -251,23 +251,25 @@ Copy courses · History · Review & propose… · Done). Leaving — Done, brows
 to edit a schedule you don't own (or that no longer exists) bounces back to the
 view.
 
-**Copy courses…** bulk-upserts a filtered slice of another viewable schedule's
+**Copy courses…** bulk-copies a filtered slice of another viewable schedule's
 **active term** into the schedule being edited — e.g. copy a department's
 courses from a past schedule. A two-step wizard picks the source and the
 departments (prefixes) to carry over, plus optionally its cross-listed versions,
-then lists every candidate course with a checkbox (and **Select all** /
-**Deselect all**), each tagged **new** or **update**, so individual rows can be
-left out. **Include pending suggestions** (on by default) makes the source rows
-the source's *effective* offerings — its stored courses with every pending
-suggestion applied, so a course arrives in its proposed state and a course with
-a pending removal is left out; unticking it copies the stored courses. The
-suggestions themselves are not carried as proposals. A live preview shows how
-many rows are **new** vs **updated**
-(a matching section is updated to the source, a missing one is added) plus lab and
-department warnings; confirming writes through the normal edit path, so an
-owner's copy lands in History (cancellable) and a suggester's lands in the draft
-as a proposal the server still scopes to their departments (cross-listing is the
-one exception). Copying another term means switching term and repeating.
+then lists every candidate **course** with a checkbox (and **Select all** /
+**Deselect all**), each tagged **new** or **update**, so individual courses can
+be left out. A course with several **meeting times** is one candidate and rides
+together: an existing section is updated to the source *as a whole* (its meeting
+times included), a missing one is added, and gaining or losing a meeting time is
+part of that update, never a separate add/remove. **Include pending suggestions**
+(on by default) makes the source rows the source's *effective* offerings — its
+stored courses with every pending suggestion applied, so a course arrives in its
+proposed state and a course with a pending removal is left out; unticking it
+copies the stored courses. The suggestions themselves are not carried as
+proposals. A live preview shows how many courses are **new** vs **updated** plus
+lab and department warnings; confirming writes through the normal edit path, so
+an owner's copy lands in History (cancellable) and a suggester's lands in the
+draft as a proposal the server still scopes to their departments (cross-listing
+is the one exception). Copying another term means switching term and repeating.
 
 **The course editor and the proposals panel are overlay routes**, so they are
 deep-linkable and back closes them without leaving the session. The editor is

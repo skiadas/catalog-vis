@@ -27,24 +27,28 @@ public one.
    courses exactly as they are stored on the source. The option shows how many
    pending changes the source carries.
 6. Click **Review N courses**. Every course is ticked by default; untick any you
-   do not want, or use **Select all** / **Deselect all**. Each row is tagged
-   **new** (a section not yet in your schedule) or **update** (an existing
-   section whose teacher, time, seats, and title will be replaced).
+   do not want, or use **Select all** / **Deselect all**. Each row is one course,
+   tagged **new** (not yet in your schedule) or **update** (an existing course
+   whose teacher, seats, title, and meeting times will be replaced).
 7. Click **Copy N courses**.
 
 <Shot file="schedule-copy-courses.png" />
 
 ## What "updated" means
 
-The copy looks at the section letter (**A**, **B**, …):
+The copy looks at the section letter (**A**, **B**, …). A course stays one
+course even when it meets at more than one time — its meeting times travel
+together.
 
 - A section that is already in your schedule is **updated** to match the source
-  — its teacher, time, seats, and title are replaced.
+  — its teacher, seats, title, and its **meeting times** all become the
+  source's. Gaining or losing a meeting time is simply part of that update, never
+  a separate add or removal.
 - A section that is missing is **added**.
 
 So you can run it more than once, or after you have made some changes, without
-piling up duplicates. The review step also lets you leave individual courses out
-of a run.
+piling up duplicates. The review step lists one row per course and lets you leave
+individual courses out of a run.
 
 ## Copying the proposed version
 

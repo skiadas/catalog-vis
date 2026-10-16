@@ -968,15 +968,9 @@ export function addOfferingToSchedule(offerings, offering) {
 // the identity fields (matched, never overwritten).
 const COPY_FIELDS = ['title', 'instructor', 'secondaryInstructors', 'days', 'time', 'seats', 'coreReqs']
 
-// The section a copy matches on: prefix/number/section plus the lab marker and
-// sequence, so a lab never matches the lecture it mirrors.
-function copyMatchKey(o) {
-  const lab = o.lab ? `|L${o.labSeq || 0}` : ''
-  return `${o.prefix || ''}|${o.number || ''}|${o.section || ''}${lab}`
-}
-
-// A row's meeting band, used to disambiguate a split section (several rows
-// sharing the section tuple).
+// A row's meeting band, used to order/match the meetings of one section.
+// Sections are keyed by `offeringKey` (band excluded), so a course with two
+// meeting times is a single section.
 function copyBand(o) {
   return `${o.days || ''}|${o.time || ''}`
 }
@@ -991,67 +985,127 @@ function copyFieldsChanged(a, b) {
   return COPY_FIELDS.some((f) => copyCanonical(a[f]) !== copyCanonical(b[f]))
 }
 
-// Upserts `incoming` offerings into `base`: a row is matched by its section
-// tuple (prefix/number/section + lab marker), and — when the section carries
-// split meetings (several base rows share the tuple) — by its meeting days,
-// then its full band. A matched row takes the incoming row's editable fields
-// but keeps its own `id` (so history/diff identity is stable); an unmatched row
-// is appended with the source's fields. A row's `crossListOwner` travels with a
-// copy (a matched row keeps the target's, an added row keeps the source's), so
-// the cross-list permission exception still applies to the copied group.
-// Returns a new array plus added/updated/unchanged counts. `outcomes` is
-// aligned to `incoming` (one 'added' | 'updated' | 'unchanged' per row), so a
-// caller previewing a copy can label each candidate row with what it will do.
+// Copies `incoming` sections into `base`, one section at a time. A section is
+// keyed by `offeringKey` (prefix/number/section + lab markers; the meeting band
+// is excluded), so a course with two meeting times is still one section. A
+// section the target lacks is appended whole; a section the target has
+// *replaces* its meeting set with the source's — the source's meetings are
+// matched to the target's by band (a moved meeting keeps its target id), any
+// leftover target meetings pair up with leftover source meetings, the target's
+// surplus meetings are dropped, and the source's surplus meetings are appended.
+// So adding or removing a meeting reads as one update to the course, never a
+// separate add/remove. A matched row takes the incoming row's editable fields
+// but keeps its own `id` (history/diff identity is stable), and a row's
+// `crossListOwner` travels with a copy (kept from the target on a match, from
+// the source on an append). Returns a new array plus added/updated/unchanged
+// *section* counts and a `sections` map (`offeringKey -> 'added' | 'updated' |
+// 'unchanged'`) so a caller previewing a copy can label each candidate.
 export function mergeOfferings(base, incoming) {
-  const list = (base || []).map((o) => ({ ...o }))
-  const byKey = new Map()
-  for (let i = 0; i < list.length; i++) {
-    const k = copyMatchKey(list[i])
-    if (!byKey.has(k)) byKey.set(k, [])
-    byKey.get(k).push(i)
+  const baseList = base || []
+  const baseGroups = new Map()
+  for (const o of baseList) {
+    const k = offeringKey(o)
+    if (!baseGroups.has(k)) baseGroups.set(k, [])
+    baseGroups.get(k).push(o)
   }
+  const incomingGroups = new Map()
+  for (const o of incoming || []) {
+    const k = offeringKey(o)
+    if (!incomingGroups.has(k)) incomingGroups.set(k, [])
+    incomingGroups.get(k).push(o)
+  }
+  // Preserve the base's section order, then append any new source sections.
+  const order = [...baseGroups.keys()]
+  for (const k of incomingGroups.keys()) if (!baseGroups.has(k)) order.push(k)
+
+  const offerings = []
+  const sections = new Map()
   let added = 0
   let updated = 0
   let unchanged = 0
-  const outcomes = []
-  for (const src of incoming || []) {
-    const k = copyMatchKey(src)
-    const idxs = byKey.get(k) || []
-    let target = -1
-    if (idxs.length === 1) {
-      target = idxs[0]
-    } else if (idxs.length > 1) {
-      // Split section: prefer the row with the same meeting days (a changed
-      // time still matches its band), then the exact band.
-      const sameDays = idxs.filter((i) => (list[i].days || '') === (src.days || ''))
-      if (sameDays.length === 1) target = sameDays[0]
-      else if (sameDays.length > 1) target = sameDays.find((i) => copyBand(list[i]) === copyBand(src)) ?? -1
+  for (const k of order) {
+    const bRows = baseGroups.get(k)
+    const sRows = incomingGroups.get(k)
+    if (!sRows) {
+      for (const b of bRows) offerings.push({ ...b })
+      continue
     }
-    if (target >= 0) {
-      const row = { ...list[target] }
-      for (const f of COPY_FIELDS) {
-        if (src[f] !== undefined) row[f] = Array.isArray(src[f]) ? [...src[f]] : src[f]
-      }
-      if (copyFieldsChanged(list[target], row)) {
-        list[target] = row
-        updated++
-        outcomes.push('updated')
-      } else {
-        unchanged++
-        outcomes.push('unchanged')
-      }
-    } else {
-      // A copied row is new to the target: drop the source id so the target
-      // assigns a fresh (collision-free) content id.
-      const row = { ...src, id: '' }
-      list.push(row)
-      if (!byKey.has(k)) byKey.set(k, [])
-      byKey.get(k).push(list.length - 1)
+    if (!bRows) {
+      for (const src of sRows) offerings.push({ ...src, id: '' })
+      sections.set(k, 'added')
       added++
-      outcomes.push('added')
+      continue
+    }
+    const { rows, changed } = replaceSection(bRows, sRows)
+    offerings.push(...rows)
+    if (changed) {
+      sections.set(k, 'updated')
+      updated++
+    } else {
+      sections.set(k, 'unchanged')
+      unchanged++
     }
   }
-  return { offerings: list, added, updated, unchanged, outcomes }
+  return { offerings, added, updated, unchanged, sections }
+}
+
+// Replaces one section's `base` rows with its `source` rows: source meetings
+// first claim a base row of the same band (its id survives), the rest pair with
+// whatever base rows remain (a moved meeting keeps its id), extra source
+// meetings are appended (fresh id), and extra base meetings are dropped.
+// Returns the section's new rows and whether anything changed.
+function replaceSection(bRows, sRows) {
+  const usedBase = new Set()
+  const srcUsed = new Set()
+  const paired = new Map() // baseIndex -> srcIndex
+  const claim = (match) => {
+    for (let si = 0; si < sRows.length; si++) {
+      if (srcUsed.has(si)) continue
+      const bi = match(sRows[si])
+      if (bi >= 0) {
+        usedBase.add(bi)
+        srcUsed.add(si)
+        paired.set(bi, si)
+      }
+    }
+  }
+  // Pass 1: each source meeting claims a base meeting of the same band.
+  claim((src) => bRows.findIndex((b, i) => !usedBase.has(i) && copyBand(b) === copyBand(src)))
+  // Pass 2: a moved meeting claims a base row of the same days (a time change
+  // updates its band rather than inventing a new meeting).
+  claim((src) => bRows.findIndex((b, i) => !usedBase.has(i) && (b.days || '') === (src.days || '')))
+  // Pass 3: leftover source meetings pair with leftover base rows (the base id
+  // survives); any still-unpaired source meetings append.
+  const freeBase = bRows.map((b, i) => i).filter((i) => !usedBase.has(i))
+  const appended = []
+  for (let si = 0; si < sRows.length; si++) {
+    if (srcUsed.has(si)) continue
+    if (freeBase.length) {
+      paired.set(freeBase.shift(), si)
+    } else {
+      appended.push(si)
+    }
+  }
+  const rows = []
+  let changed = false
+  for (let i = 0; i < bRows.length; i++) {
+    if (!paired.has(i)) {
+      changed = true
+      continue
+    }
+    const src = sRows[paired.get(i)]
+    const merged = { ...bRows[i] }
+    for (const f of COPY_FIELDS) {
+      if (src[f] !== undefined) merged[f] = Array.isArray(src[f]) ? [...src[f]] : src[f]
+    }
+    if (copyFieldsChanged(bRows[i], merged)) changed = true
+    rows.push(merged)
+  }
+  for (const si of appended) {
+    rows.push({ ...sRows[si], id: '' })
+    changed = true
+  }
+  return { rows, changed }
 }
 
 // Removes the offering matching `cur` (its full identity — the content `id`

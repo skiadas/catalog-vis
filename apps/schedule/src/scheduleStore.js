@@ -29,6 +29,7 @@ import {
   offeringCodeLabel,
   offeringSectionLabel,
   offeringIdentity,
+  offeringKey,
   matchOffering,
   proposeOverlay,
 } from '@major-vis/schedule-core'
@@ -1717,19 +1718,6 @@ export function importCsvRows(scheduleId, rows) {
   return written
 }
 
-// A stable identity for a candidate row in the copy dialog's review list: the
-// row's content `id` when it has one, else its code/section/lab/band, plus the
-// row's position so exact duplicates still get distinct keys. The position
-// makes keys order-dependent, which is fine — the candidate list is fixed while
-// the user reviews it.
-function copyCandidateKey(o, index) {
-  const base =
-    o && o.id
-      ? `id:${o.id}`
-      : `k:${o.prefix || ''}|${o.number || ''}|${o.section || ''}|${o.lab ? `L${o.labSeq || 0}` : ''}|${o.days || ''}|${o.time || ''}`
-  return `${base}#${index}`
-}
-
 // The source rows a copy carries for `prefixes`: every row whose department
 // prefix is selected, plus — when `includeSiblings` — the sibling versions of
 // those codes that are present in the source (catalog cross-list groups).
@@ -1790,14 +1778,16 @@ function copyOutsideDeptCodes(rows, target) {
 
 // Plans a bulk copy of another schedule's active-term offerings into `targetId`:
 // the source rows matching `prefixes` (plus cross-list siblings when asked) are
-// upserted onto the target's current active term. Pure read — returns the merged
-// offerings plus counts and warnings for the dialog preview, or a zeroed plan
-// when the source/target is missing or they are the same schedule.
+// merged onto the target's current active term, one section at a time. Pure read
+// — returns the merged offerings plus counts and warnings for the dialog
+// preview, or a zeroed plan when the source/target is missing or they are the
+// same schedule.
 //
-// `candidates` is the full filtered row list (independent of the selection),
-// each annotated with a stable `key`, display fields, and the `action` the copy
-// will take ('added' | 'updated' | 'unchanged') — the dialog's review step. When
-// `selectedKeys` is a non-null iterable, only those candidate keys are merged;
+// `candidates` is one entry per section (a course with several meeting times is
+// one course), independent of the selection, each annotated with a stable `key`,
+// display fields, its `meetings`, and the `action` the copy will take
+// ('added' | 'updated' | 'unchanged') — the dialog's review step. When
+// `selectedKeys` is a non-null iterable, only those section keys are merged;
 // passing null/undefined selects every candidate (the historical behavior).
 //
 // With `includeSuggestions`, the source rows are the effective offerings — the
@@ -1837,24 +1827,31 @@ export function planCourseCopy(
     : (source.terms && source.terms[term] && source.terms[term].offerings) || []
   const all = filterCopyRows(sourceRows, prefixes, includeSiblings)
   const preview = mergeOfferings(base, all)
-  const candidates = all.map((o, i) => ({
-    key: copyCandidateKey(o, i),
-    code: offeringCodeLabel(o),
-    section: offeringSectionLabel(o),
-    title: o.title || '',
-    instructor: instructorName(o.instructor),
-    days: o.days || '',
-    time: o.time || '',
-    action: preview.outcomes[i] || 'added',
+  // One candidate per section: a split-meeting course is one row here, its
+  // meetings ride together under a single new/update badge.
+  const groups = new Map()
+  for (const o of all) {
+    const key = offeringKey(o)
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(o)
+  }
+  const candidates = [...groups.entries()].map(([key, rows]) => ({
+    key,
+    code: offeringCodeLabel(rows[0]),
+    section: offeringSectionLabel(rows[0]),
+    title: rows[0].title || '',
+    instructor: instructorName(rows[0].instructor),
+    meetings: rows.map((o) => ({ days: o.days || '', time: o.time || '' })),
+    action: preview.sections.get(key) || 'added',
   }))
   const keys = selectedKeys == null ? null : new Set(selectedKeys)
-  const selected = keys ? all.filter((o, i) => keys.has(copyCandidateKey(o, i))) : all
+  const selected = keys ? all.filter((o) => keys.has(offeringKey(o))) : all
   const plan = keys ? mergeOfferings(base, selected) : preview
   return {
     added: plan.added,
     updated: plan.updated,
     unchanged: plan.unchanged,
-    rows: selected.length,
+    rows: new Set(selected.map(offeringKey)).size,
     candidates,
     orphans: copyOrphanLabs(selected),
     outside: copyOutsideDeptCodes(selected, target),
