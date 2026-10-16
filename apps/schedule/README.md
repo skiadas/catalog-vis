@@ -246,7 +246,7 @@ into editing CS), the picker reduces to the schedule pills (the edited one
 tagged _Editing_ or _Suggesting_, references removable with their eye), and
 manage/CSV/color are out of reach. The session bar carries an **Editing**/**Suggesting** chip, the
 schedule's rename field, and the session's actions right-aligned (Add course ·
-Copy courses · History · Propose changes · Done). Leaving — Done, browser back, or a header link
+Copy courses · History · Review & propose… · Done). Leaving — Done, browser back, or a header link
 — ends the session; an unsaved suggest draft asks before discarding. A deep link
 to edit a schedule you don't own (or that no longer exists) bounces back to the
 view.
@@ -435,7 +435,11 @@ so departments see where each other plan to offer courses. The overlay also
 drives the surfaces that describe what is on screen: the filter chips (a
 proposed course's department, instructor, and core areas are offered) and the
 "Download summary CSV" rows (`shownOfferings`; the registrar CSV stays
-accepted-only). The owner reviews
+accepted-only). In a suggest session the panel becomes the focused **Review &
+propose…** step: the draft, an optional note, and a pinned **Propose changes**
+action lead, the proposer's own already-sent suggestions stay visible (still
+withdrawable), and every other proposer's collapse behind **Other pending
+changes (N)** so they cannot bury the action. The owner reviews
 each pending suggestion **change by change**:
 every operation of a suggestion is first-class (its own id + resolution:
 `pending`/`accepted`/`rejected`/`withdrawn`), and the panel offers an

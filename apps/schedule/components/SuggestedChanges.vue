@@ -3,122 +3,149 @@
     <div
       ref="modalEl"
       class="modal modal-wide"
+      :class="{ 'modal-editor': suggesting }"
       role="dialog"
       aria-modal="true"
       aria-labelledby="suggested-title"
     >
       <div class="modal-head">
-        <h3 id="suggested-title">Suggested changes — {{ schedule && schedule.name }}</h3>
+        <h3 id="suggested-title">
+          {{ suggesting ? 'Propose changes' : 'Suggested changes' }} — {{ schedule && schedule.name }}
+        </h3>
         <button class="modal-close" @click="$emit('close')" aria-label="Close">×</button>
       </div>
       <div class="modal-body">
         <p v-if="feedback" class="suggested-feedback" role="status">{{ feedback }}</p>
 
-        <div v-if="suggesting" class="field">
-          <span class="field-label"
-            >Your proposal for {{ TERM_LABELS[activeTerm] }} ({{ schedule && schedule.name }})</span
-          >
-          <p class="modal-intro">
-            These are the changes you have collected in this session. Nothing is written to the schedule until
-            you propose them and the owner approves.
-          </p>
-          <p v-if="!owned && !myDepartments.length" class="suggested-feedback" role="status">
-            Your account has no departments yet — suggestions are limited to your departments, so ask an admin
-            to add them before proposing.
-          </p>
-          <div class="suggested-draft-preview">{{ draftText }}</div>
+        <template v-if="suggesting">
           <div class="field">
-            <label for="suggested-note">Note (optional)</label>
-            <input
-              id="suggested-note"
-              class="search-input"
-              type="text"
-              v-model="noteDraft"
-              placeholder="e.g. suggested by the physics department"
+            <span class="field-label"
+              >Your proposal for {{ TERM_LABELS[activeTerm] }} ({{ schedule && schedule.name }})</span
+            >
+            <p class="modal-intro">
+              These are the changes you have collected in this session. Nothing is written to the schedule
+              until you propose them and the owner approves.
+            </p>
+            <p v-if="!owned && !myDepartments.length" class="suggested-feedback" role="status">
+              Your account has no departments yet — suggestions are limited to your departments, so ask an
+              admin to add them before proposing.
+            </p>
+            <div class="suggested-draft-preview">{{ draftText }}</div>
+            <div class="field">
+              <label for="suggested-note">Note (optional)</label>
+              <input
+                id="suggested-note"
+                class="search-input"
+                type="text"
+                v-model="noteDraft"
+                placeholder="e.g. suggested by the physics department"
+              />
+            </div>
+          </div>
+
+          <!-- The proposer's own already-sent suggestions stay in view (so they
+               can still withdraw), while everyone else's collapse behind a
+               disclosure so the draft + send action lead the dialog. -->
+          <div v-if="mineSuggestions.length" class="suggested-mine">
+            <span class="field-label">Already proposed</span>
+            <div class="suggested-list">
+              <SuggestedRow
+                v-for="s in mineSuggestions"
+                :key="s.id"
+                :s="s"
+                :owned="owned"
+                :mine="true"
+                :schedule-id="scheduleId"
+                @approve="doApproveOp"
+                @reject="doRejectOp"
+                @withdraw="doWithdrawOp"
+                @withdraw-all="doWithdrawAll"
+              />
+            </div>
+          </div>
+          <details v-if="otherSuggestions.length" class="suggested-others">
+            <summary>Other pending changes ({{ otherSuggestions.length }})</summary>
+            <div class="suggested-list">
+              <SuggestedRow
+                v-for="s in otherSuggestions"
+                :key="s.id"
+                :s="s"
+                :owned="owned"
+                :mine="false"
+                :schedule-id="scheduleId"
+                @approve="doApproveOp"
+                @reject="doRejectOp"
+                @withdraw="doWithdrawOp"
+                @withdraw-all="doWithdrawAll"
+              />
+            </div>
+          </details>
+          <div v-if="!suggestions.length" class="schedule-manage-empty">No suggestions yet.</div>
+        </template>
+
+        <template v-else>
+          <p class="modal-intro">
+            {{
+              owned
+                ? 'Pending changes from the departments are live: approve or reject each change individually; the trail keeps everything that happened.'
+                : canSuggestFor
+                  ? `You don't own this schedule${ownerName ? ` (${displayName(ownerName)} does)` : ''}. Proposals here are suggestions for the owner — make your changes via 'Suggest changes'.`
+                  : `You can view this schedule${ownerName ? ` (${displayName(ownerName)} owns it)` : ''}, but you aren't listed as a suggester — ask the owner to add you if you need to propose changes.`
+            }}
+          </p>
+
+          <div v-if="!suggestions.length" class="schedule-manage-empty">No suggestions yet.</div>
+          <div v-else class="suggested-list">
+            <SuggestedRow
+              v-for="s in suggestions"
+              :key="s.id"
+              :s="s"
+              :owned="owned"
+              :mine="isMine(s)"
+              :schedule-id="scheduleId"
+              @approve="doApproveOp"
+              @reject="doRejectOp"
+              @withdraw="doWithdrawOp"
+              @withdraw-all="doWithdrawAll"
             />
           </div>
-          <div class="controls">
-            <span class="controls-spacer"></span>
-            <button class="filter-btn" @click="$emit('close')">Close</button>
-            <button class="filter-btn primary" :disabled="!canPropose" @click="doPropose">
-              {{ proposeLabel }}
-            </button>
-          </div>
-        </div>
+          <a
+            v-if="remote && owned && suggestions.length"
+            class="filter-btn"
+            :href="exportUrl"
+            target="_blank"
+            rel="noopener"
+            >Export (markdown)</a
+          >
+        </template>
+      </div>
 
-        <p class="modal-intro" v-else>
-          {{
-            owned
-              ? 'Pending changes from the departments are live: approve or reject each change individually; the trail keeps everything that happened.'
-              : canSuggestFor
-                ? `You don't own this schedule${ownerName ? ` (${displayName(ownerName)} does)` : ''}. Proposals here are suggestions for the owner — make your changes via 'Suggest changes'.`
-                : `You can view this schedule${ownerName ? ` (${displayName(ownerName)} owns it)` : ''}, but you aren't listed as a suggester — ask the owner to add you if you need to propose changes.`
-          }}
-        </p>
-
-        <div v-if="!suggestions.length" class="schedule-manage-empty">No suggestions yet.</div>
-        <div v-else class="suggested-list">
-          <div v-for="s in suggestions" :key="s.id" class="suggested-row" :class="s.status">
-            <div class="suggested-main">
-              <div class="suggested-head">
-                <span class="suggested-pill">{{ TERM_LABELS[s.term] || s.term }}</span>
-                <span class="suggested-who"
-                  >#{{ s.id }} · {{ displayName(s.proposer) }}{{ isMine(s) ? ' (yours)' : '' }}</span
-                >
-                <span class="suggested-status">{{ rowLabel(s) }}</span>
-              </div>
-              <div v-if="(owned || isMine(s)) && s.status === 'pending'" class="suggested-ops">
-                <div v-for="e in s.operations" :key="e.id" class="suggested-op" :class="'op-' + opStatus(e)">
-                  <span class="suggested-op-text">{{ opLabel(s, e) || '(empty change)' }}</span>
-                  <span v-if="opStatus(e) !== 'pending'" class="suggested-op-status">{{ opStatus(e) }}</span>
-                  <span v-else class="suggested-op-actions">
-                    <template v-if="owned">
-                      <button class="filter-btn" @click="doApproveOp(s.id, e.id)">Approve</button>
-                      <button class="filter-btn" @click="doRejectOp(s.id, e.id)">Reject</button>
-                    </template>
-                    <template v-else-if="isMine(s)">
-                      <button class="filter-btn" @click="doWithdrawOp(s.id, e.id)">Withdraw</button>
-                    </template>
-                  </span>
-                </div>
-              </div>
-              <div v-else class="suggested-change">{{ changeText(s) }}</div>
-              <div v-if="s.note" class="suggested-note">{{ s.note }}</div>
-            </div>
-            <div v-if="s.status === 'pending' && isMine(s) && !owned" class="suggested-actions">
-              <button class="filter-btn" :disabled="!hasPending(s)" @click="doWithdrawAll(s.id)">
-                Withdraw all
-              </button>
-            </div>
-          </div>
-        </div>
-        <a
-          v-if="remote && owned && suggestions.length"
-          class="filter-btn"
-          :href="exportUrl"
-          target="_blank"
-          rel="noopener"
-          >Export (markdown)</a
-        >
+      <!-- The send action is pinned: however long the schedule's change list
+           is, the proposer can always reach it. -->
+      <div v-if="suggesting" class="modal-foot">
+        <span class="controls-spacer"></span>
+        <button class="filter-btn" @click="$emit('close')">Close</button>
+        <button class="filter-btn primary" :disabled="!canPropose" @click="doPropose">
+          {{ proposeLabel }}
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-// "Suggested changes" panel for a schedule. The live (pending) suggestions of
-// every proposer are visible to everyone — that's the coordination surface
-// (a CS change from a non-CS person is reviewable by the owner). History is
-// visible to the owner and to the row's own proposer.
+// Suggestions panel for a schedule. The live (pending) suggestions of every
+// proposer are visible to everyone — that's the coordination surface (a CS
+// change from a non-CS person is reviewable by the owner).
 //
-// While a suggest session is active on this schedule, the panel leads with the
-// draft's diff preview and a one-click propose (upserting the proposer's own
-// pending suggestion). Review is per change: each operation of a suggestion is
+// While a suggest session is active on this schedule the panel becomes the
+// focused "Propose changes" step: the draft's diff preview, a note field, and
+// a pinned send action lead, the proposer's own already-proposed suggestions
+// stay in view (withdrawable), and every other proposer's suggestions collapse
+// behind a disclosure so they don't bury the action. Without a session it is
+// the review surface: the flat list of every suggestion, each operation
 // first-class (its own id + resolution: pending/accepted/rejected/withdrawn),
-// and the owner approves or rejects them individually; the proposer can
-// withdraw their own changes one at a time or all at once. A suggestion's
-// status stays 'pending' until every op is decided, then finalizes to its
-// derived summary ('approved'/'moot'/'withdrawn'/'rejected').
+// which the owner approves or rejects individually.
 
 import {
   suggestions,
@@ -138,14 +165,16 @@ import {
   splitGroupsFor,
 } from '../src/scheduleStore.js'
 import { TERM_LABELS } from '@major-vis/schedule-core'
-import { renderChanges, describeChange, opGroupKey } from '@major-vis/schedule-core/diff'
+import { renderChanges } from '@major-vis/schedule-core/diff'
 import { useModalFocus } from '../src/modalFocus.js'
 import { displayName } from '../src/names.js'
+import SuggestedRow from './SuggestedRow.vue'
 
 import { ref, computed, watch } from 'vue'
 
 export default {
   name: 'SuggestedChanges',
+  components: { SuggestedRow },
   props: {
     scheduleId: { type: [String, Number], default: null },
   },
@@ -169,9 +198,14 @@ export default {
       !remote.value ||
       (currentUser.value != null && Number(s.proposer_user_id) === Number(currentUser.value.id))
 
+    // While composing, the row lists split by ownership: your own stay visible,
+    // everyone else's collapse. In the review view the flat list is used.
+    const mineSuggestions = computed(() => suggestions.value.filter((s) => isMine(s)))
+    const otherSuggestions = computed(() => suggestions.value.filter((s) => !isMine(s)))
+
     // The changes made since the session began (or the last proposal) — the new
     // work this session is collecting. The already-proposed ops are not repeated
-    // here; they show in the suggestions list below, where they can be withdrawn.
+    // here; they show above, where they can be withdrawn.
     const draftOps = computed(() =>
       props.scheduleId ? draftUnsentOperations(props.scheduleId, activeTerm.value) : [],
     )
@@ -191,39 +225,6 @@ export default {
       if (props.scheduleId) await refreshSuggestions(props.scheduleId)
     }
     watch(() => props.scheduleId, load, { immediate: true })
-
-    const opStatus = (e) => (e && e.resolution && e.resolution.status) || 'pending'
-    const hasPending = (s) => (s.operations || []).some((e) => opStatus(e) === 'pending')
-
-    // One op's readable label, naming the meeting when its section is split
-    // (the split set comes from the schedule's published term plus the row's
-    // own ops, so a newly added meeting counts too).
-    const opLabel = (s, e) => {
-      const groups = splitGroupsFor(s.operations || [], props.scheduleId)
-      return describeChange(e.op, { showMeeting: groups.has(opGroupKey(e.op)) })
-    }
-
-    // The row status pill: final states verbatim; a live row under review shows
-    // how much of it is settled ("pending · accepted 1 of 3").
-    const rowLabel = (s) => {
-      const ops = s.operations || []
-      const settled = ops.filter((e) => opStatus(e) !== 'pending').length
-      if (s.status === 'pending' && settled > 0) {
-        const accepted = ops.filter((e) => opStatus(e) === 'accepted').length
-        return `${s.status} · ${accepted} of ${ops.length} accepted`
-      }
-      return s.status
-    }
-
-    // Resolved without per-op buttons: the change text carries markers.
-    const changeText = (s) =>
-      (s.operations || [])
-        .map((e) => {
-          const label = opStatus(e)
-          const text = opLabel(s, e)
-          return label === 'pending' ? text : `${text} [${label}]`
-        })
-        .join('\n') || '(no changes)'
 
     const doApproveOp = async (id, opId) => {
       const saved = await resolveOp(id, opId, 'accepted')
@@ -281,18 +282,15 @@ export default {
       ownerName,
       suggesting,
       suggestions,
+      mineSuggestions,
+      otherSuggestions,
       noteDraft,
       feedback,
       draftText,
       draftOps,
       canPropose,
       proposeLabel,
-      changeText,
       displayName,
-      opStatus,
-      opLabel,
-      hasPending,
-      rowLabel,
       isMine,
       myDepartments,
       doApproveOp,

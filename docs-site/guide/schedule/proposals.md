@@ -4,12 +4,14 @@
 
 1. Make your changes as described in
    [Changing a course](/guide/schedule/edit-course).
-2. Click **Propose changes** in the session bar. Once you have changed
+2. Click **Review & propose…** in the session bar. Once you have changed
    something, it lights up and shows a count of the changes you have not sent
    yet.
-3. Add a short note if you like, then send them. Sending ends your suggest
-   session, flashes a confirmation, and leaves your changes drawn on the
-   schedule as pending proposals.
+3. The dialog leads with your draft and an optional note, then **send** with the
+   pinned **Propose changes** button at the bottom. Everyone else's proposals
+   are tucked under **Other pending changes** so they don't get in the way.
+   Sending ends your suggest session, flashes a confirmation, and leaves your
+   changes drawn on the schedule as pending proposals.
 
 Nothing is written to the schedule at this point. Your changes are waiting for
 the owner.

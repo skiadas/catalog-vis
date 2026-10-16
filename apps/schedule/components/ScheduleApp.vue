@@ -215,7 +215,7 @@
           :aria-label="proposeAriaLabel"
           @click="goProposals(editingId)"
         >
-          Propose changes<span v-if="draftOpCount" class="propose-badge" aria-hidden="true">{{
+          Review &amp; propose…<span v-if="draftOpCount" class="propose-badge" aria-hidden="true">{{
             draftOpCount
           }}</span>
         </button>
@@ -533,8 +533,8 @@ export default {
     })
     const proposeAriaLabel = computed(() =>
       draftOpCount.value
-        ? `Propose changes — ${draftOpCount.value} unsent ${draftOpCount.value === 1 ? 'change' : 'changes'}`
-        : 'Propose changes',
+        ? `Review & propose — ${draftOpCount.value} unsent ${draftOpCount.value === 1 ? 'change' : 'changes'}`
+        : 'Review & propose',
     )
     const nameDraft = ref('')
     const enterEdit = (id, role = 'edit') => goMode(id, role)

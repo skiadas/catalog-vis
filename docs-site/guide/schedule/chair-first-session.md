@@ -68,7 +68,7 @@ works on it too.
 <Shot file="schedule-pill-bubble.png" />
 
 A bar appears with **＋ Add course**, **Copy courses…**, **History**,
-**Propose changes**, and an exit that reads **Leave** (or **Discard draft**
+**Review & propose…**, and an exit that reads **Leave** (or **Discard draft**
 once you have unsent changes).
 
 <Shot file="schedule-suggest-session.png" />
@@ -164,10 +164,12 @@ Finer details: [Working with the table view](/guide/schedule/table-view).
 Nothing you have done so far has reached the schedule. Your edits sit in a
 private draft until you send them:
 
-1. Click **Propose changes** — once you have changed something it lights up and
-   shows a count of the changes not sent yet.
-2. Add a short note if you like (for example "CS 220 moved to TR; CS 223
-   added"), then send. Sending ends the session and flashes a confirmation.
+1. Click **Review & propose…** — once you have changed something it lights up
+   and shows a count of the changes not sent yet.
+2. The dialog leads with your draft and a note box; send with the pinned
+   **Propose changes** button at the bottom (other departments' proposals stay
+   tucked under **Other pending changes**). Sending ends the session and flashes
+   a confirmation.
 3. Or leave instead: the exit reads **Leave** when you have nothing unsent, and
    **Discard draft** when you do — it asks before throwing unsent changes away.
 

@@ -1585,6 +1585,25 @@
   gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
+/* Compose view: the proposer's own already-sent suggestions stay visible; every
+   other proposer's collapse behind this so the draft + send action lead. */
+.suggested-mine {
+  margin-top: var(--space-2);
+}
+.suggested-others {
+  margin-top: var(--space-2);
+
+  > summary {
+    @include text-label;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--space-1) 0;
+  }
+
+  &[open] > summary {
+    margin-bottom: var(--space-2);
+  }
+}
 .suggested-row {
   display: flex;
   align-items: flex-start;

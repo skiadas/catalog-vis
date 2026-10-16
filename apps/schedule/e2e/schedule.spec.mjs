@@ -439,7 +439,7 @@ test('suggest session: leaving with an unsaved draft asks first', async ({ page 
   await em.locator('#course-edit-instructor').fill('Draft Person')
   await em.getByRole('button', { name: 'Save changes' }).click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
-  await expect(page.getByRole('button', { name: /Propose changes/ }).locator('.propose-badge')).toHaveText(
+  await expect(page.getByRole('button', { name: /Review & propose/ }).locator('.propose-badge')).toHaveText(
     '1',
   )
 
@@ -493,7 +493,7 @@ test("re-entering a suggest session doesn't double-draw the proposer's own addit
 
   // Propose it: sending ends the session (the change becomes a pending
   // proposal), closes the panel, and flashes a confirmation.
-  await page.getByRole('button', { name: /Propose changes/ }).click()
+  await page.getByRole('button', { name: /Review & propose/ }).click()
   const panel = page.locator('.modal[aria-labelledby="suggested-title"]')
   await panel.waitFor({ state: 'visible', timeout: 5000 })
   await panel.getByRole('button', { name: 'Propose changes' }).click()
@@ -529,7 +529,7 @@ test('suggest session bar: unsent badge and one context-named exit', async ({ pa
   await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
 
   // A clean draft: no badge, Propose is not primary, and the exit is "Leave".
-  const propose = page.getByRole('button', { name: /Propose changes/ })
+  const propose = page.getByRole('button', { name: /Review & propose/ })
   await expect(propose.locator('.propose-badge')).toHaveCount(0)
   await expect(propose).not.toHaveClass(/primary/)
   await expect(page.getByRole('button', { name: 'Leave' })).toBeVisible()
@@ -582,7 +582,7 @@ test('pending suggestions show on the table, instructor, and course views', asyn
   await em.getByRole('button', { name: 'Save changes' }).click()
   await em.waitFor({ state: 'detached', timeout: 5000 })
 
-  await page.getByRole('button', { name: /Propose changes/ }).click()
+  await page.getByRole('button', { name: /Review & propose/ }).click()
   const panel = page.locator('.modal[aria-labelledby="suggested-title"]')
   await panel.waitFor({ state: 'visible', timeout: 5000 })
   await panel.getByRole('button', { name: 'Propose changes' }).click()
@@ -782,6 +782,75 @@ test('proposals overlay route: opens from the toolbar, back closes, deep links',
     .getByRole('button', { name: 'Delete Proposals route' })
     .click()
   await closeManage(page)
+  assertClean(errors)
+})
+
+// The compose dialog leads with the draft and a pinned send action; other
+// proposers' suggestions stay collapsed so they don't bury it.
+test('propose dialog focuses the draft and tucks other proposals away', async ({ page, request }) => {
+  const errors = trackErrors(page)
+  await request.post('/api/auth/login', { data: { username: 'panel-owner' } })
+  const created = await request.post('/api/schedules', { data: { name: 'Panel demo' } })
+  const schedule = (await created.json()).schedule
+  await request.put(`/api/schedules/${schedule.id}/terms/F`, {
+    data: {
+      offerings: [
+        { prefix: 'CS', number: '220', section: 'A', days: 'MWF', time: '9:20-10:30', instructor: 'Jones' },
+      ],
+    },
+  })
+  await request.patch(`/api/schedules/${schedule.id}`, {
+    data: { visibility: 'public', suggestMode: 'public', allowOutOfDept: true },
+  })
+  // Another proposer's pending suggestion, so the panel has something to tuck.
+  await request.post('/api/auth/login', { data: { username: 'panel-other' } })
+  await request.post(`/api/schedules/${schedule.id}/suggestions`, {
+    data: {
+      term: 'F',
+      baseVersion: 0,
+      operations: [
+        {
+          kind: 'add',
+          offering: { prefix: 'ANTH', number: '160', section: 'A', days: 'TR', time: '10:00-11:45' },
+        },
+      ],
+    },
+  })
+
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'panel-owner')
+  await page.locator('.schedule-pill-suggest').first().click()
+  await page.locator('.schedule-edit-chip', { hasText: 'Suggesting' }).first().waitFor({ timeout: 5000 })
+
+  // A change to send.
+  await page.locator('.filter-offering:not(.reference) .filter-offering-edit').first().click()
+  const em = page.locator('.modal[aria-labelledby="course-edit-title"]')
+  await em.waitFor({ state: 'visible', timeout: 5000 })
+  await em.locator('#course-edit-instructor').fill('Draft Person')
+  await em.getByRole('button', { name: 'Save changes' }).click()
+  await em.waitFor({ state: 'detached', timeout: 5000 })
+
+  await page.getByRole('button', { name: /Review & propose/ }).click()
+  const panel = page.locator('.modal[aria-labelledby="suggested-title"]')
+  await panel.waitFor({ state: 'visible', timeout: 5000 })
+  // The dialog names the step and the pinned send action is available.
+  await expect(panel.getByText('Propose changes — Panel demo')).toBeVisible()
+  const send = panel.getByRole('button', { name: 'Propose changes' })
+  await expect(send).toBeVisible()
+  await expect(send).toBeEnabled()
+
+  // The other proposer's change is collapsed behind the disclosure.
+  const others = panel.locator('details.suggested-others')
+  await expect(others).toHaveCount(1)
+  await expect(others).not.toHaveAttribute('open', '')
+  await expect(others.locator('summary')).toHaveText('Other pending changes (1)')
+  await expect(others.getByText('ANTH 160')).toBeHidden()
+
+  // Expanding reveals it.
+  await others.locator('summary').click()
+  await expect(others).toHaveAttribute('open', '')
+  await expect(others.getByText('ANTH 160')).toBeVisible()
+
   assertClean(errors)
 })
 

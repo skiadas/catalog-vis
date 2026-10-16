@@ -20,7 +20,7 @@ On the schedule's colored pill, or on its row in **Your schedules**:
 Either way, a bar appears under the toolbar with a chip that says **EDITING** or
 **SUGGESTING**, followed by the schedule name and these buttons: **＋ Add
 course**, **Copy courses…**, **History**, and **Done**. While you are
-suggesting there is also **Propose changes**, and the exit button changes with
+suggesting there is also **Review & propose…**, and the exit button changes with
 your work — **Leave** when nothing is unsent, **Discard draft** when something
 is.
 
@@ -32,9 +32,11 @@ While you suggest, your edits are kept as a private **draft**. The schedule
 itself is untouched. You can move between the grid, day, and other views and the
 draft comes with you.
 
-- **Propose changes** — lights up (with a count of the changes you have not sent)
-  once you have changed something. Click it to submit them for review; sending
-  ends the session and flashes a confirmation. See
+- **Review & propose…** — lights up (with a count of the changes you have not
+  sent) once you have changed something. Click it to open the proposal dialog,
+  where your draft, an optional note, and a pinned **Propose changes** button
+  lead the view (everyone else's proposals are tucked under **Other pending
+  changes**). Sending ends the session and flashes a confirmation. See
   [Submitting changes](/guide/schedule/proposals).
 - **History** — the list of what you have changed in this session, with the
   option to undo.
