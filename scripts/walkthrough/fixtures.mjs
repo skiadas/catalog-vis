@@ -247,4 +247,43 @@ export const fixtures = {
     })
     return { id: schedule.id, code: 'MUS 001' }
   },
+
+  // A busy public schedule the advisor may suggest on: ~20 conflict-free
+  // offerings across many departments, so the grid reads as a full load before
+  // a department filter narrows it. The advisor's directory departments (CS,
+  // MAT) scope which rows they may edit in the suggest session — the walkthrough
+  // edits CS 220's meeting time and a CS/MAT row's instructor.
+  'suggest-large': async (request) => {
+    const schedule = await createSchedule(request, {
+      name: 'Fall 2026',
+      year: '2026-27',
+      owner: 'registrar',
+      visibility: 'public',
+      suggestMode: 'public',
+      offerings: [
+        offering('BIO', '165', 'A', 'MWF', '8:00-9:10', 'Novak'),
+        offering('ART', '111', 'A', 'MWF', '8:00-9:10', 'Bauer'),
+        offering('EDU', '101', 'A', 'MWF', '8:00-9:10', 'Cole'),
+        offering('CS', '220', 'A', 'MWF', '9:20-10:30', 'Jones'),
+        offering('PHI', '110', 'A', 'MWF', '9:20-10:30', 'Diaz'),
+        offering('MAT', '121', 'A', 'MWF', '10:40-11:50', 'Lee'),
+        offering('CS', '330', 'A', 'MWF', '10:40-11:50', 'Wahl'),
+        offering('FLS', '101', 'A', 'MWF', '10:40-11:50', 'Evans'),
+        offering('COM', '251', 'A', 'MWF', '12:00-13:10', 'Brown'),
+        offering('HIS', '160', 'A', 'MWF', '12:00-13:10', 'Foster'),
+        offering('THE', '111', 'A', 'MWF', '13:20-14:30', 'Green'),
+        offering('CHE', '160', 'A', 'MWF', '13:20-14:30', 'Patel'),
+        offering('PSY', '111', 'A', 'TR', '8:00-9:45', 'Nguyen'),
+        offering('MUS', '101', 'A', 'TR', '8:00-9:45', 'Irwin'),
+        offering('KIN', '101', 'A', 'TR', '8:00-9:45', 'Hall'),
+        offering('ENG', '113', 'A', 'TR', '10:00-11:45', 'Garcia'),
+        offering('SOC', '105', 'A', 'TR', '10:00-11:45', 'King'),
+        offering('MAT', '122', 'A', 'TR', '10:00-11:45', 'Lee'),
+        offering('ECO', '113', 'A', 'TR', '12:20-14:05', 'Adams'),
+        offering('GDN', '101', 'A', 'TR', '12:20-14:05', 'Lopez'),
+      ],
+    })
+    await setDirectory(request, 'advisor', { displayName: 'A. Advisor', departments: ['CS', 'MAT'] })
+    return { id: schedule.id, code: 'CS 220' }
+  },
 }

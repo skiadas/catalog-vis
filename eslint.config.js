@@ -99,5 +99,16 @@ export default [
       },
     },
   },
+  {
+    // The walkthrough harness injects a cursor and reads the DOM inside
+    // page.evaluate / addInitScript callbacks.
+    files: ['scripts/walkthrough/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+      },
+    },
+  },
   prettier,
 ]

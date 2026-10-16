@@ -12,7 +12,7 @@
 //   app       launcher | schedule | browse | planner (only schedule is captured)
 //   as        demo identity that signs in (fixtures create it)
 //   route     app URL, with <token>s interpolated from the fixture's return
-//   seed      named DATA fixture (fixtures.mjs)
+//   seed      named DATA fixture (scripts/walkthrough/fixtures.mjs)
 //   steps     declarative UI state that is not in the URL (dialogs, menus)
 //   fullPage  capture the whole scrollable page, not just the viewport
 //   selector  crop the shot to this element (a zoom-in), instead of the viewport

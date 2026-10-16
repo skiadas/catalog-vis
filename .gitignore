@@ -12,6 +12,9 @@ docs-site/.vitepress/cache/
 test-results/
 playwright-report/
 
+# Demo walkthrough videos (npm run demo:video) — regenerated on demand
+scripts/walkthrough/out/
+
 # Python
 __pycache__/
 *.pyc

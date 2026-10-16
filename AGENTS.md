@@ -161,6 +161,16 @@ e2e suite is the only net for them. Rules learned the hard way:
   "your" files (that rewrites unrelated shots with churn, and rendering is only
   ~deterministic, so re-captures are not guaranteed byte-identical). Run
   `npm run build:docs` after; it enforces the manifest ↔ `<Shot>` binding.
+- **Demo videos are separate, on-demand, and uncommitted.**
+  `npm run demo:video` (`scripts/walkthrough/record-video.mjs`) records bespoke
+  scene walkthroughs (`scripts/walkthrough/scenes.mjs`) to gitignored `.webm`
+  clips in `scripts/walkthrough/out/`, with an animated mouse cursor (Playwright
+  draws none by default, and its bundled overlay always adds a point + callout,
+  so the harness injects its own). The shared step DSL, server boot, and data
+  fixtures live in `scripts/walkthrough/` — the same fixtures the docs shots
+  seed from (`docs-site/screenshots/` imports them), so a fixture change affects
+  both. Native HTML5 drag-and-drop can't be recorded (no ghost; dispatched
+  events aren't pointer actions) — prefer a click/edit interaction in a scene.
 - **Instrument before theorizing.** A failing interaction that contradicts
   your mental model gets a DOM dump first (`page.evaluate(() =>
   document.body.innerText)` / the dialog's `outerHTML`) — guessing at
