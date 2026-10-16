@@ -431,7 +431,11 @@ concurrent: any number of
 departments may hold live pending proposals ("suggested moves"), visible to
 everyone who can see the schedule — pending suggestions render as dashed
 overlay blocks on the calendar (the "Show proposals" toggle, on by default),
-so departments see where each other plan to offer courses. The owner reviews
+so departments see where each other plan to offer courses. The overlay also
+drives the surfaces that describe what is on screen: the filter chips (a
+proposed course's department, instructor, and core areas are offered) and the
+"Download summary CSV" rows (`shownOfferings`; the registrar CSV stays
+accepted-only). The owner reviews
 each pending suggestion **change by change**:
 every operation of a suggestion is first-class (its own id + resolution:
 `pending`/`accepted`/`rejected`/`withdrawn`), and the panel offers an

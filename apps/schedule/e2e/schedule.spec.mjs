@@ -665,6 +665,73 @@ test('a proposed move hides its old slot, and only the meeting it names', async 
   assertClean(errors)
 })
 
+// The summary CSV follows the screen: a schedule whose only content is a
+// pending proposal exports that proposal's rows, and the calendar filter bar
+// offers its departments — both gated by the "Show proposals" overlay toggle.
+test('summary CSV and filter bar follow pending proposals', async ({ page, request }) => {
+  const errors = trackErrors(page)
+  await request.post('/api/auth/login', { data: { username: 'csv-proposals' } })
+  const created = await request.post('/api/schedules', { data: { name: 'CSV proposals' } })
+  const schedule = (await created.json()).schedule
+  await request.post(`/api/schedules/${schedule.id}/suggestions`, {
+    data: {
+      term: 'F',
+      baseVersion: 0,
+      operations: [
+        {
+          kind: 'add',
+          offering: {
+            prefix: 'CS',
+            number: '223',
+            section: 'A',
+            days: 'TR',
+            time: '12:20-14:05',
+            instructor: 'Jones',
+          },
+        },
+      ],
+    },
+  })
+
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await signIn(page, 'csv-proposals')
+  // Overlay on by default: the proposal draws as a dashed block.
+  await expect(page.locator('.filter-offering.proposed', { hasText: 'CS 223' }).first()).toBeVisible()
+
+  // The calendar filter bar reflects the proposed course's department too.
+  await page
+    .getByRole('group', { name: 'Filter by' })
+    .getByRole('button', { name: 'Departments' })
+    .click()
+  await expect(page.locator('.filter-panel .filter-chip', { hasText: 'CS' })).toBeVisible()
+
+  // The summary CSV carries the proposed row.
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    (async () => {
+      await page.locator('.schedule-csv-wrap button').first().click()
+      await page.getByRole('button', { name: 'Download summary CSV' }).click()
+    })(),
+  ])
+  const rows = parseCsv(readFileSync(await download.path(), 'utf8'))
+  expect(rows.some((r) => r.prefix === 'CS' && r.number === '223')).toBe(true)
+
+  // Toggling the overlay off drops both the filter chip and the CSV row.
+  await page.getByRole('button', { name: 'Show proposals' }).click()
+  await expect(page.locator('.filter-panel .filter-chip', { hasText: 'CS' })).toHaveCount(0)
+  const [download2] = await Promise.all([
+    page.waitForEvent('download'),
+    (async () => {
+      await page.locator('.schedule-csv-wrap button').first().click()
+      await page.getByRole('button', { name: 'Download summary CSV' }).click()
+    })(),
+  ])
+  const rows2 = parseCsv(readFileSync(await download2.path(), 'utf8'))
+  expect(rows2.some((r) => r.prefix === 'CS' && r.number === '223')).toBe(false)
+
+  assertClean(errors)
+})
+
 test('edit session guard: deep links you cannot edit bounce back to the view', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/', { waitUntil: 'networkidle' })

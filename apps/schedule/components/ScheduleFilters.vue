@@ -70,7 +70,7 @@ import {
 } from '@major-vis/schedule-core'
 import { coreRequirements } from '@major-vis/catalog-client'
 import {
-  schedule,
+  shownSchedule,
   scheduleAreasOf,
   filterMode,
   filterPanelOpen,
@@ -89,12 +89,13 @@ export default {
   },
   setup(props) {
     const showFilter = computed(() => ['grid', 'day', 'slot'].includes(props.view))
-    const depts = computed(() => departmentsInSchedule(schedule.value))
-    const instructors = computed(() => instructorsInSchedule(schedule.value))
+    const depts = computed(() => departmentsInSchedule(shownSchedule.value))
+    const instructors = computed(() => instructorsInSchedule(shownSchedule.value))
     // Only the areas some course in the schedule actually satisfies, so the
-    // chip row stays a reflection of what is on screen (like depts/instructors).
+    // chip row stays a reflection of what is on screen (like depts/instructors)
+    // — including any pending proposals the overlay is drawing.
     const coreReqs = computed(() =>
-      coreReqsInSchedule(schedule.value, coreRequirements.value, scheduleAreasOf),
+      coreReqsInSchedule(shownSchedule.value, coreRequirements.value, scheduleAreasOf),
     )
 
     const toggleDept = (prefix) => {

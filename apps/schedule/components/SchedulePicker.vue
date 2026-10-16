@@ -141,7 +141,7 @@ import {
   selectedCoreReqs,
   coreReqsByCode,
   activeTerm,
-  viewOfferings,
+  shownOfferings,
   publishedOfferings,
   isOwner,
   canSuggest,
@@ -261,19 +261,30 @@ export default {
       a.click()
       URL.revokeObjectURL(url)
     }
+    // The source schedule id of a rendered row: a base row carries its schedule
+    // id in `$sid`, a proposed row carries a synthetic `prop:` `$sid` and the
+    // real schedule in `$prop.scheduleId`. Groups `shownOfferings` back to one
+    // list per visible schedule.
+    const sourceScheduleId = (o) => (o.$prop && o.$prop.scheduleId) || o.$sid
     // Downloads one row per course offering across all selected (visible)
     // schedules' active term in the canonical registrar format, so the file
-    // round-trips through Upload registrar CSV. The rows go through
-    // schedule-core's `renderCsv`, so the column list lives in one place
-    // (`CSV_COLUMNS`) and any new column appears here automatically. Offerings
-    // are ordered alphabetically by prefix, then number, then section. With a
-    // single visible schedule the file is named after that schedule.
+    // round-trips through Upload registrar CSV. It follows the screen: the rows
+    // are `shownOfferings` (the published/draft base plus the pending-proposal
+    // overlay, gated by the "Show proposals" toggle), grouped back per schedule.
+    // The rows go through schedule-core's `renderCsv`, so the column list lives
+    // in one place (`CSV_COLUMNS`) and any new column appears here automatically.
+    // Offerings are ordered alphabetically by prefix, then number, then section.
+    // With a single visible schedule the file is named after that schedule.
     const downloadSummaryCsv = async () => {
+      const bySchedule = new Map()
+      for (const o of shownOfferings.value) {
+        const sid = sourceScheduleId(o)
+        if (!bySchedule.has(sid)) bySchedule.set(sid, [])
+        bySchedule.get(sid).push(o)
+      }
       const rows = []
       for (const s of visibleSchedules.value) {
-        const offerings = [...viewOfferings(s, activeTerm.value)].sort((a, b) =>
-          compareItems({ o: a }, { o: b }),
-        )
+        const offerings = [...(bySchedule.get(s.id) || [])].sort((a, b) => compareItems({ o: a }, { o: b }))
         for (const o of offerings) {
           rows.push({
             ...o,

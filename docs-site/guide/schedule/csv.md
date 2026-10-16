@@ -20,7 +20,11 @@ offline — the full-name column repeats the username instead of going blank.
 
 For the owner, this is the schedule as it stands. For someone suggesting
 changes, it includes their **not-yet-submitted draft** — because the summary
-follows your screen.
+follows your screen. It also carries any **pending proposals** while the **Show
+proposals** overlay is on (the default): turn that toggle off and the summary
+matches the accepted schedule instead. The filter chips above the calendar
+follow the same rule, so a proposal-only department or instructor is offered
+there too.
 
 ## Download registrar CSV
 

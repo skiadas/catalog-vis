@@ -632,6 +632,54 @@ test('a split-meeting proposal touches only the meeting it names', async () => {
   )
 })
 
+test('scheduleAreasOf follows pending proposals, gated by the overlay toggle', async () => {
+  await withRemote(
+    async ({ srv, store }) => {
+      await srv.post('/api/auth/login', { username: 'registrar' })
+      const schedule = (await srv.post('/api/schedules', { name: 'Proposal areas' })).json.schedule
+      await srv.patch(`/api/schedules/${schedule.id}`, {
+        visibility: 'public',
+        suggestMode: 'public',
+      })
+      await srv.put(`/api/schedules/${schedule.id}/terms/F`, { offerings: [COURSE] })
+      // A pending proposal adds a course carrying its own core areas.
+      await srv.post(`/api/schedules/${schedule.id}/suggestions`, {
+        term: 'F',
+        baseVersion: 0,
+        operations: [
+          {
+            kind: 'add',
+            offering: {
+              prefix: 'ANTH',
+              number: '160',
+              section: 'A',
+              days: 'TR',
+              time: '10:00-11:45',
+              coreReqs: ['SM', 'HW'],
+            },
+          },
+        ],
+      })
+
+      assert.equal(await store.signIn('registrar'), true)
+      await flush()
+      store.selectedScheduleIds.value = [schedule.id]
+      store.activeTerm.value = 'F'
+
+      // The proposed addition resolves to its areas while the overlay is shown…
+      assert.deepEqual(store.scheduleAreasOf('ANTH 160').sort(), ['HW', 'SM'])
+      // …and disappears with it (the lookup follows the screen).
+      store.setShowPendingSuggestions(false)
+      assert.deepEqual(store.scheduleAreasOf('ANTH 160'), [], 'hidden with the overlay')
+      store.setShowPendingSuggestions(true)
+      assert.deepEqual(store.scheduleAreasOf('ANTH 160').sort(), ['HW', 'SM'])
+      // A course on neither the base nor a proposal still has no areas.
+      assert.deepEqual(store.scheduleAreasOf('CS 999'), [])
+    },
+    { adminUsernames: new Set(['registrar']) },
+  )
+})
+
 test('offline trail mirrors the lifecycle: propose, withdraw, propose again, self-approve', async () => {
   await withRemote(async ({ store }) => {
     // Make the store offline for this test (same process, remote back off).

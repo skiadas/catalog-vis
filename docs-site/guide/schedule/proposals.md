@@ -37,6 +37,9 @@ the block it is leaving (only the new slot shows); and a class a proposal would
 remove is shown **struck through** in place. Proposed blocks are never
 draggable. The **Show proposals** button on the toolbar switches this overlay
 on and off; it appears in every view whenever the term has pending proposals.
+The overlay also reaches the surfaces that describe what is on screen: the
+filter chips offer a proposed course's department, instructor, and core areas,
+and [Download summary CSV](/guide/schedule/csv) includes the proposed rows.
 
 <Shot file="schedule-proposals-grid.png" />
 

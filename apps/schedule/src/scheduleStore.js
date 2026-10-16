@@ -2492,13 +2492,15 @@ export function overlayTag(o) {
 // union of the selected schedules' active-term offerings' own `coreReqs` (the
 // imported registrar feed is the source of truth). An offering whose row carries
 // no areas falls back to the catalog's mapping, so an untagged feed and
-// schedules stored before the feed's areas were kept still resolve. Empty when
+// schedules stored before the feed's areas were kept still resolve. Reads
+// `shownOfferings` (base + pending proposals, gated by the toggle), so a
+// proposed addition resolves to its areas exactly like a drawn row. Empty when
 // the course isn't on any selected schedule.
 export function scheduleAreasOf(code) {
   const want = String(code || '').trim()
   if (!want) return []
   const out = new Set()
-  for (const o of scheduleOfferings.value) {
+  for (const o of shownOfferings.value) {
     if (o.lab) continue
     if (`${o.prefix || ''} ${o.number || ''}`.trim() !== want) continue
     const own = o.coreReqs && o.coreReqs.length ? o.coreReqs : coreReqsByCode.value.get(want) || []
